@@ -19,7 +19,8 @@ from agents.itinerary.parser import ItineraryParser
 from agents.itinerary.web_view import ItineraryWebView
 from agents.itinerary.templates import generate_trips_page, generate_about_page, generate_home_page
 
-OUTPUT_DIR = Path(__file__).parent / "output"
+# Allow OUTPUT_DIR to be configured via environment variable (for Render persistent disk)
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent / "output"))
 TRIPS_DATA_FILE = OUTPUT_DIR / "trips_data.json"
 
 

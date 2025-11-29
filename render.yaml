@@ -7,3 +7,9 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
+      - key: OUTPUT_DIR
+        value: /var/data/output
+    disk:
+      name: libertas-data
+      mountPath: /var/data
+      sizeGB: 1
