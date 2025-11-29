@@ -212,6 +212,55 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         # Serve files from output directory
         super().__init__(*args, directory=str(OUTPUT_DIR), **kwargs)
 
+    def do_GET(self):
+        """Handle GET requests - add debug endpoint."""
+        if self.path == "/api/debug":
+            self.handle_debug()
+        else:
+            # Let parent class handle static files
+            super().do_GET()
+
+    def handle_debug(self):
+        """Return debug info about disk and environment."""
+        import subprocess
+        debug_info = {
+            "output_dir": str(OUTPUT_DIR),
+            "output_dir_exists": OUTPUT_DIR.exists(),
+            "output_dir_is_dir": OUTPUT_DIR.is_dir() if OUTPUT_DIR.exists() else False,
+            "trips_data_file": str(TRIPS_DATA_FILE),
+            "trips_data_exists": TRIPS_DATA_FILE.exists(),
+            "env_output_dir": os.environ.get("OUTPUT_DIR", "NOT SET"),
+            "env_port": os.environ.get("PORT", "NOT SET"),
+            "cwd": os.getcwd(),
+        }
+
+        # List files in output dir
+        if OUTPUT_DIR.exists():
+            try:
+                files = list(OUTPUT_DIR.iterdir())
+                debug_info["output_files"] = [f.name for f in files]
+                debug_info["output_file_count"] = len(files)
+            except Exception as e:
+                debug_info["output_files_error"] = str(e)
+
+        # Check disk space
+        try:
+            result = subprocess.run(["df", "-h", str(OUTPUT_DIR)], capture_output=True, text=True, timeout=5)
+            debug_info["disk_space"] = result.stdout
+        except Exception as e:
+            debug_info["disk_space_error"] = str(e)
+
+        # Check trips data content
+        if TRIPS_DATA_FILE.exists():
+            try:
+                trips = load_trips_data()
+                debug_info["trips_count"] = len(trips)
+                debug_info["trips_titles"] = [t.get("title", "?") for t in trips[:5]]
+            except Exception as e:
+                debug_info["trips_data_error"] = str(e)
+
+        self.send_json_response(debug_info)
+
     def do_POST(self):
         """Handle POST requests (file uploads and URL imports)."""
         if self.path == "/api/upload":
