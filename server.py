@@ -732,7 +732,9 @@ def run_server(port: int = 8000):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Run the Libertas web server")
-    parser.add_argument("-p", "--port", type=int, default=8000, help="Port to run on (default: 8000)")
+    parser.add_argument("-p", "--port", type=int, default=None, help="Port to run on (default: 8000)")
     args = parser.parse_args()
 
-    run_server(args.port)
+    # Use PORT env var (for Render), then --port arg, then default 8000
+    port = args.port or int(os.environ.get("PORT", 8000))
+    run_server(port)
