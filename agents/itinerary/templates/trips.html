@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Trips - Libertas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+{main_css}
+
+{trips_css}
+    </style>
+</head>
+<body>
+    {nav_html}
+
+    <div class="trips-header">
+        <h1><i class="fas fa-route"></i> My Trips</h1>
+        <p>Your travel adventures, organized and visualized</p>
+    </div>
+
+    <div class="trips-container">
+        <div class="upload-section">
+            <div class="upload-area" id="upload-area">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>Import a Trip</h3>
+                <p>Drop file here or click to browse</p>
+                <button class="upload-btn">
+                    <i class="fas fa-folder-open"></i> Choose File
+                </button>
+                <p class="supported-formats">PDF, Excel (.xlsx, .xls)</p>
+                <input type="file" id="upload-input" class="upload-input" accept=".pdf,.xlsx,.xls">
+            </div>
+
+            <div class="url-import-section">
+                <div class="url-divider">
+                    <span>or import from URL</span>
+                </div>
+                <div class="url-input-wrapper">
+                    <input type="text" id="url-input" class="url-input" placeholder="Paste Google Drive or TripIt link...">
+                    <button id="url-submit" class="url-submit-btn">
+                        <i class="fas fa-link"></i> Import
+                    </button>
+                </div>
+            </div>
+
+            <div id="upload-status" class="upload-status"></div>
+        </div>
+
+        <div class="trips-header-row">
+            <h2>Your Trips</h2>
+            <div class="view-toggle">
+                <button class="view-toggle-btn active" data-view="grid" title="Grid view">
+                    <i class="fas fa-th-large"></i>
+                </button>
+                <button class="view-toggle-btn" data-view="list" title="List view">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="trips-grid" id="trips-container">
+{trip_cards}
+        </div>
+    </div>
+
+    <script>
+{main_js}
+
+{upload_js}
+    </script>
+</body>
+</html>
