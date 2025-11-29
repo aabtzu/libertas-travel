@@ -126,19 +126,30 @@ class ItineraryParser:
         """Extract text content from a PDF file."""
         text_parts = []
 
-        with pdfplumber.open(file_path) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(page_text)
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages:
+                    try:
+                        page_text = page.extract_text()
+                        if page_text:
+                            text_parts.append(page_text)
 
-                # Also extract tables
-                tables = page.extract_tables()
-                for table in tables:
-                    for row in table:
-                        if row:
-                            row_text = " | ".join(str(cell) for cell in row if cell)
-                            text_parts.append(row_text)
+                        # Also extract tables
+                        tables = page.extract_tables()
+                        for table in tables:
+                            for row in table:
+                                if row:
+                                    row_text = " | ".join(str(cell) for cell in row if cell)
+                                    text_parts.append(row_text)
+                    except Exception as e:
+                        # Some pages may have malformed color values or other issues
+                        print(f"Warning: Could not fully extract page: {e}")
+                        continue
+        except Exception as e:
+            raise ValueError(f"Could not parse PDF file: {e}")
+
+        if not text_parts:
+            raise ValueError("Could not extract any text from PDF. The file may be image-based or corrupted.")
 
         return "\n\n".join(text_parts)
 
