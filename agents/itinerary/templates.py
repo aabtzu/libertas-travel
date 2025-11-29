@@ -423,10 +423,24 @@ def generate_trips_page(trips: list[dict]) -> str:
     Args:
         trips: List of trip dicts with keys: title, link, dates, days, locations, activities
     """
-    trip_cards = "\n".join(
-        generate_trip_card(index=i, **trip)
-        for i, trip in enumerate(trips)
-    )
+    trip_cards_list = []
+    for i, trip in enumerate(trips):
+        try:
+            # Ensure all required fields have defaults
+            card = generate_trip_card(
+                title=trip.get("title", "Untitled Trip"),
+                link=trip.get("link", "#"),
+                dates=trip.get("dates", "Date unknown"),
+                days=trip.get("days", 0) or 0,
+                locations=trip.get("locations", 0) or 0,
+                activities=trip.get("activities", 0) or 0,
+                index=i,
+            )
+            trip_cards_list.append(card)
+        except Exception as e:
+            print(f"Warning: Could not generate card for trip {trip}: {e}")
+            continue
+    trip_cards = "\n".join(trip_cards_list)
 
     template = get_template("trips.html")
     return template.format(

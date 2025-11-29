@@ -187,9 +187,14 @@ def save_trips_data(trips: list[dict]) -> None:
 
 def regenerate_trips_page() -> None:
     """Regenerate the trips.html page with current trips data."""
-    trips = load_trips_data()
-    html = generate_trips_page(trips)
-    (OUTPUT_DIR / "trips.html").write_text(html)
+    try:
+        trips = load_trips_data()
+        html = generate_trips_page(trips)
+        (OUTPUT_DIR / "trips.html").write_text(html)
+    except Exception as e:
+        print(f"Error regenerating trips page: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def slugify(text: str) -> str:
@@ -666,7 +671,10 @@ class LibertasHandler(SimpleHTTPRequestHandler):
 
 def initialize_trips_data():
     """Initialize trips data file with existing trips if needed."""
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    try:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        print(f"Warning: Could not create output directory: {e}")
 
     if not TRIPS_DATA_FILE.exists():
         # Check for existing trip files and create initial data
