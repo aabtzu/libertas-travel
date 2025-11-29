@@ -10,9 +10,13 @@ import folium
 from folium import plugins
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
 from .models import Itinerary, Location
 
+
+# Maximum number of locations to geocode (to avoid long waits)
+MAX_GEOCODE_LOCATIONS = 20
 
 # Map marker colors by location type
 MARKER_COLORS = {
@@ -44,16 +48,32 @@ class ItineraryMapper:
     """Generate interactive maps from itineraries."""
 
     def __init__(self, user_agent: str = "libertas-itinerary-agent"):
-        self.geolocator = Nominatim(user_agent=user_agent)
+        # Add timeout of 5 seconds to avoid hanging on slow responses
+        self.geolocator = Nominatim(user_agent=user_agent, timeout=5)
         self.geocode = RateLimiter(
-            self.geolocator.geocode, min_delay_seconds=1, max_retries=2
+            self.geolocator.geocode, min_delay_seconds=1, max_retries=1
         )
+        self._geocode_failures = 0
 
     def geocode_locations(self, itinerary: Itinerary) -> Itinerary:
         """Add coordinates to all locations in the itinerary."""
-        for item in itinerary.items:
-            if not item.location.has_coordinates:
-                self._geocode_location(item.location)
+        # Limit geocoding to avoid long waits
+        locations_to_geocode = [
+            item for item in itinerary.items
+            if not item.location.has_coordinates
+        ]
+
+        # Only geocode up to MAX_GEOCODE_LOCATIONS
+        for item in locations_to_geocode[:MAX_GEOCODE_LOCATIONS]:
+            # Stop if too many failures (likely network/rate limit issue)
+            if self._geocode_failures >= 3:
+                print(f"Stopping geocoding after {self._geocode_failures} consecutive failures")
+                break
+            self._geocode_location(item.location)
+
+        if len(locations_to_geocode) > MAX_GEOCODE_LOCATIONS:
+            print(f"Note: Only geocoded {MAX_GEOCODE_LOCATIONS} of {len(locations_to_geocode)} locations")
+
         return itinerary
 
     def _geocode_location(self, location: Location) -> None:
@@ -72,8 +92,19 @@ class ItineraryMapper:
                     location.longitude = result.longitude
                     if not location.address:
                         location.address = result.address
+                    self._geocode_failures = 0  # Reset on success
                     break
-            except Exception:
+            except GeocoderTimedOut:
+                print(f"Geocoding timed out for: {query}")
+                self._geocode_failures += 1
+                continue
+            except GeocoderServiceError as e:
+                print(f"Geocoding service error for {query}: {e}")
+                self._geocode_failures += 1
+                continue
+            except Exception as e:
+                print(f"Geocoding failed for {query}: {e}")
+                self._geocode_failures += 1
                 continue
 
     def create_map(

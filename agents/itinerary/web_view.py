@@ -75,9 +75,23 @@ class ItineraryWebView:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Generate the map - get the raw HTML
-        folium_map = self.mapper.create_map(itinerary, show_route=True)
-        map_html = self._get_map_html(folium_map)
+        # Generate the map - get the raw HTML (with error handling for geocoding issues)
+        try:
+            folium_map = self.mapper.create_map(itinerary, show_route=True)
+            map_html = self._get_map_html(folium_map)
+        except Exception as e:
+            print(f"Warning: Map generation failed: {e}")
+            import traceback
+            traceback.print_exc()
+            # Create a fallback empty map
+            import folium
+            fallback_map = folium.Map(location=[0, 0], zoom_start=2)
+            folium.Marker(
+                [0, 0],
+                popup="Map could not be generated - geocoding failed",
+                icon=folium.Icon(color="red", icon="exclamation-triangle", prefix="fa"),
+            ).add_to(fallback_map)
+            map_html = self._get_map_html(fallback_map)
 
         # Generate the summary HTML directly from itinerary data
         summary_html = self._build_summary_html(itinerary)
