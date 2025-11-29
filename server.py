@@ -707,7 +707,8 @@ def run_server(port: int = 8000):
     """Run the Libertas web server."""
     initialize_trips_data()
 
-    server = HTTPServer(('localhost', port), LibertasHandler)
+    # Bind to 0.0.0.0 for cloud deployment (Render, etc.)
+    server = HTTPServer(('0.0.0.0', port), LibertasHandler)
     print(f"""
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
