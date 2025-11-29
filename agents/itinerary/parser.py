@@ -126,6 +126,7 @@ class ItineraryParser:
         """Extract text content from a PDF file."""
         text_parts = []
 
+        # Try pdfplumber first (better table extraction)
         try:
             with pdfplumber.open(file_path) as pdf:
                 for page in pdf.pages:
@@ -143,10 +144,27 @@ class ItineraryParser:
                                     text_parts.append(row_text)
                     except Exception as e:
                         # Some pages may have malformed color values or other issues
-                        print(f"Warning: Could not fully extract page: {e}")
+                        print(f"Warning: pdfplumber could not extract page: {e}")
                         continue
         except Exception as e:
-            raise ValueError(f"Could not parse PDF file: {e}")
+            print(f"Warning: pdfplumber failed: {e}")
+
+        # If pdfplumber failed or got no text, try PyPDF2 as fallback
+        if not text_parts:
+            print("Trying PyPDF2 as fallback...")
+            try:
+                from PyPDF2 import PdfReader
+                reader = PdfReader(file_path)
+                for page in reader.pages:
+                    try:
+                        page_text = page.extract_text()
+                        if page_text:
+                            text_parts.append(page_text)
+                    except Exception as e:
+                        print(f"Warning: PyPDF2 could not extract page: {e}")
+                        continue
+            except Exception as e:
+                print(f"Warning: PyPDF2 also failed: {e}")
 
         if not text_parts:
             raise ValueError("Could not extract any text from PDF. The file may be image-based or corrupted.")
