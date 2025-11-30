@@ -85,16 +85,17 @@ function handleFile(file) {
     const validTypes = [
         'application/pdf',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-excel'
+        'application/vnd.ms-excel',
+        'text/html'
     ];
-    const validExtensions = ['.pdf', '.xlsx', '.xls'];
+    const validExtensions = ['.pdf', '.xlsx', '.xls', '.html', '.htm'];
 
     // Check file type
     const fileName = file.name.toLowerCase();
     const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
 
     if (!hasValidExtension) {
-        showStatus('error', `Invalid file type. Please upload a PDF or Excel file.`);
+        showStatus('error', `Invalid file type. Please upload a PDF, Excel, or HTML file.`);
         return;
     }
 

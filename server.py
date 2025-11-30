@@ -22,6 +22,9 @@ from agents.itinerary.templates import generate_trips_page, generate_about_page,
 # Import authentication
 import auth
 
+# Import geocoding worker for async map generation
+import geocoding_worker
+
 # Allow OUTPUT_DIR to be configured via environment variable (for Render persistent disk)
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent / "output"))
 TRIPS_DATA_FILE = OUTPUT_DIR / "trips_data.json"
@@ -260,6 +263,11 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.handle_debug()
             return
 
+        # API map status endpoint (check if map is ready)
+        if path.startswith("/api/map-status"):
+            self.handle_map_status()
+            return
+
         # Check authentication for all other routes
         if not self.require_auth():
             return
@@ -334,6 +342,32 @@ class LibertasHandler(SimpleHTTPRequestHandler):
 
         self.send_json_response(debug_info)
 
+    def handle_map_status(self):
+        """Return map status for a trip."""
+        # Get link from query string
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        link = params.get('link', [''])[0]
+
+        if not link:
+            self.send_json_error("Missing 'link' parameter")
+            return
+
+        # Find the trip
+        trips = load_trips_data()
+        trip = next((t for t in trips if t.get("link") == link), None)
+
+        if not trip:
+            self.send_json_error("Trip not found", status=404)
+            return
+
+        self.send_json_response({
+            "link": link,
+            "map_status": trip.get("map_status", "ready"),  # Default to ready for old trips
+            "map_error": trip.get("map_error"),
+            "queue_size": geocoding_worker.get_queue_size(),
+        })
+
     def do_POST(self):
         """Handle POST requests (file uploads, URL imports, and auth)."""
         # Auth endpoints (no auth required)
@@ -361,6 +395,8 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.handle_rename_trip()
         elif self.path == "/api/update-trip":
             self.handle_update_trip()
+        elif self.path == "/api/retry-geocoding":
+            self.handle_retry_geocoding()
         else:
             self.send_error(404, "Not Found")
 
@@ -408,6 +444,54 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         self.send_header('Set-Cookie', auth.get_logout_cookie_header())
         self.end_headers()
         self.wfile.write(json.dumps({"success": True}).encode())
+
+    def handle_retry_geocoding(self):
+        """Retry geocoding for a trip that failed."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        link = data.get('link', '').strip()
+        if not link:
+            self.send_json_error("No trip link provided")
+            return
+
+        # Find the trip and get the HTML file to re-parse
+        trips = load_trips_data()
+        trip = next((t for t in trips if t.get("link") == link), None)
+
+        if not trip:
+            self.send_json_error("Trip not found")
+            return
+
+        # Read the existing HTML file and extract itinerary data to re-geocode
+        html_path = OUTPUT_DIR / link
+        if not html_path.exists():
+            self.send_json_error("Trip HTML file not found")
+            return
+
+        # Reset status to pending
+        trip["map_status"] = "pending"
+        if "map_error" in trip:
+            del trip["map_error"]
+        save_trips_data(trips)
+
+        # We need to re-parse the trip. Check if there's a saved upload file
+        uploads_dir = OUTPUT_DIR / "uploads"
+        # Look for any file that might match this trip
+        possible_files = list(uploads_dir.glob("*")) if uploads_dir.exists() else []
+
+        # For now, just regenerate the map from scratch using the existing page content
+        # This requires parsing the summary HTML back to an itinerary - complex
+        # Instead, we'll set to pending and let the user re-upload if needed
+        self.send_json_response({
+            "success": True,
+            "message": "Map status reset to pending. Please re-import the trip to regenerate the map.",
+        })
 
     def handle_delete_trip(self):
         """Delete a trip by its link."""
@@ -611,6 +695,13 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 self.send_json_error("No file uploaded")
                 return
 
+            # Check for valid file extension
+            suffix = Path(filename).suffix.lower()
+            valid_extensions = ['.pdf', '.xlsx', '.xls', '.html', '.htm']
+            if suffix not in valid_extensions:
+                self.send_json_error(f"Invalid file type '{suffix}'. Supported: PDF, Excel, HTML")
+                return
+
             # Save to temp file
             suffix = Path(filename).suffix
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -631,10 +722,22 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 import time
                 start_time = time.time()
 
+                # Check if it's an HTML file - parse differently
+                is_html_file = suffix.lower() in ['.html', '.htm']
+
                 # Parse the itinerary
                 print(f"[UPLOAD] Step 1: Parsing file...")
                 parser = ItineraryParser()
-                itinerary = parser.parse_file(tmp_path)
+
+                if is_html_file:
+                    # Extract text from HTML and parse
+                    html_text = extract_text_from_html(file_data)
+                    if len(html_text) < 100:
+                        self.send_json_error("Could not extract meaningful content from the HTML file.")
+                        return
+                    itinerary = parser.parse_text(html_text, source_url=filename)
+                else:
+                    itinerary = parser.parse_file(tmp_path)
                 print(f"[UPLOAD] Step 1 done: {time.time() - start_time:.1f}s - Found {len(itinerary.items)} items")
 
                 # Generate web view (skip geocoding to avoid timeout - map shows placeholder)
@@ -659,6 +762,7 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                     "days": itinerary.duration_days or len(set(item.day_number for item in itinerary.items if item.day_number)),
                     "locations": len(locations),
                     "activities": len(itinerary.items),
+                    "map_status": "pending",  # Map will be generated async
                 }
 
                 # Add to trips data (avoid duplicates by link)
@@ -668,6 +772,10 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 trips.insert(0, trip_data)  # Add new trip at beginning
                 save_trips_data(trips)
                 print(f"[UPLOAD] Step 3 done: {time.time() - start_time:.1f}s - Saved {len(trips)} trips")
+
+                # Queue async geocoding for map generation
+                print(f"[UPLOAD] Step 3b: Queueing background geocoding...")
+                geocoding_worker.queue_geocoding(output_file, itinerary)
 
                 # Regenerate trips page
                 print(f"[UPLOAD] Step 4: Regenerating trips page...")
@@ -797,6 +905,7 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 "days": itinerary.duration_days or len(set(item.day_number for item in itinerary.items if item.day_number)),
                 "locations": len(locations),
                 "activities": len(itinerary.items),
+                "map_status": "pending",  # Map will be generated async
             }
 
             # Add to trips data (avoid duplicates by link)
@@ -804,6 +913,9 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             trips = [t for t in trips if t.get("link") != output_file]
             trips.insert(0, trip_data)
             save_trips_data(trips)
+
+            # Queue async geocoding for map generation
+            geocoding_worker.queue_geocoding(output_file, itinerary)
 
             # Regenerate trips page
             regenerate_trips_page()

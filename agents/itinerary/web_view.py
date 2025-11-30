@@ -21,6 +21,54 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
 {main_css}
+
+/* Map loading overlay */
+.map-loading-overlay {{
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(245, 245, 245, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}}
+.map-loading-overlay.hidden {{
+    display: none;
+}}
+.map-loading-spinner {{
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e0e0e0;
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}}
+@keyframes spin {{
+    to {{ transform: rotate(360deg); }}
+}}
+.map-loading-text {{
+    margin-top: 20px;
+    font-size: 1.1rem;
+    color: #666;
+}}
+.map-loading-subtext {{
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #999;
+}}
+.map-status-ready {{
+    color: #27ae60;
+}}
+.map-status-error {{
+    color: #e74c3c;
+}}
+#map-tab {{
+    position: relative;
+}}
     </style>
 </head>
 <body>
@@ -35,8 +83,8 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
         <div class="tab active" onclick="switchTab('summary')">
             <i class="fas fa-list-alt"></i> Summary
         </div>
-        <div class="tab" onclick="switchTab('map')">
-            <i class="fas fa-map-marked-alt"></i> Map
+        <div class="tab" onclick="switchTab('map')" id="map-tab-btn">
+            <i class="fas fa-map-marked-alt"></i> Map <span id="map-status-badge"></span>
         </div>
     </div>
 
@@ -47,11 +95,61 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
     </div>
 
     <div id="map-tab" class="tab-content">
+        <div class="map-loading-overlay" id="map-loading">
+            <div class="map-loading-spinner"></div>
+            <div class="map-loading-text">Generating map...</div>
+            <div class="map-loading-subtext">Geocoding locations, this may take a minute</div>
+        </div>
         <iframe id="map-frame" srcdoc="{map_html_escaped}"></iframe>
     </div>
 
     <script>
 {main_js}
+
+// Map status polling - only poll if map is pending/processing
+(function() {{
+    var tripLink = window.location.pathname.split('/').pop();
+    var mapLoading = document.getElementById('map-loading');
+    var mapBadge = document.getElementById('map-status-badge');
+    var pollInterval = null;
+    var wasNotReady = false;  // Track if we started in a non-ready state
+
+    function checkMapStatus() {{
+        fetch('/api/map-status?link=' + encodeURIComponent(tripLink))
+            .then(function(r) {{ return r.json(); }})
+            .then(function(data) {{
+                if (data.map_status === 'ready') {{
+                    if (mapLoading) mapLoading.classList.add('hidden');
+                    if (mapBadge) mapBadge.innerHTML = '';
+                    if (pollInterval) clearInterval(pollInterval);
+                    // Only reload if we were waiting for the map to become ready
+                    if (wasNotReady) {{
+                        window.location.reload();
+                    }}
+                }} else if (data.map_status === 'error') {{
+                    if (mapLoading) {{
+                        mapLoading.innerHTML = '<div class="map-status-error"><i class="fas fa-exclamation-triangle"></i></div>' +
+                            '<div class="map-loading-text map-status-error">Map generation failed</div>' +
+                            '<div class="map-loading-subtext">' + (data.map_error || 'Unknown error') + '</div>';
+                    }}
+                    if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-exclamation-circle" style="color:#e74c3c;margin-left:5px;"></i>';
+                    if (pollInterval) clearInterval(pollInterval);
+                }} else if (data.map_status === 'pending' || data.map_status === 'processing') {{
+                    // Still processing - mark that we need to reload when ready
+                    wasNotReady = true;
+                    if (mapLoading) mapLoading.classList.remove('hidden');
+                    if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#667eea;margin-left:5px;"></i>';
+                }}
+            }})
+            .catch(function(err) {{
+                console.log('Map status check failed:', err);
+            }});
+    }}
+
+    // Check immediately and then poll every 5 seconds
+    checkMapStatus();
+    pollInterval = setInterval(checkMapStatus, 5000);
+}})();
     </script>
 </body>
 </html>

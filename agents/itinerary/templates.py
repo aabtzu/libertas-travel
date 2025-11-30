@@ -231,8 +231,8 @@ TRIPS_PAGE_TEMPLATE = """<!DOCTYPE html>
                 <button class="upload-btn">
                     <i class="fas fa-folder-open"></i> Choose File
                 </button>
-                <p class="supported-formats">Supported formats: PDF, Excel (.xlsx, .xls)</p>
-                <input type="file" id="upload-input" class="upload-input" accept=".pdf,.xlsx,.xls">
+                <p class="supported-formats">Supported: PDF, Excel, HTML (save TripIt pages as HTML)</p>
+                <input type="file" id="upload-input" class="upload-input" accept=".pdf,.xlsx,.xls,.html,.htm">
             </div>
 
             <div class="url-import-section">
@@ -240,7 +240,7 @@ TRIPS_PAGE_TEMPLATE = """<!DOCTYPE html>
                     <span>or import from URL</span>
                 </div>
                 <div class="url-input-wrapper">
-                    <input type="text" id="url-input" class="url-input" placeholder="Paste Google Drive or TripIt link...">
+                    <input type="text" id="url-input" class="url-input" placeholder="Paste Google Drive link...">
                     <button id="url-submit" class="url-submit-btn">
                         <i class="fas fa-link"></i> Import
                     </button>
