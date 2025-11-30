@@ -238,10 +238,20 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         if OUTPUT_DIR.exists():
             try:
                 files = list(OUTPUT_DIR.iterdir())
-                debug_info["output_files"] = [f.name for f in files]
-                debug_info["output_file_count"] = len(files)
+                debug_info["output_files"] = [f.name for f in files if f.is_file()]
+                debug_info["output_file_count"] = len([f for f in files if f.is_file()])
             except Exception as e:
                 debug_info["output_files_error"] = str(e)
+
+        # List uploaded files
+        uploads_dir = OUTPUT_DIR / "uploads"
+        if uploads_dir.exists():
+            try:
+                uploads = list(uploads_dir.iterdir())
+                debug_info["uploaded_files"] = [f.name for f in uploads]
+                debug_info["uploaded_file_count"] = len(uploads)
+            except Exception as e:
+                debug_info["uploaded_files_error"] = str(e)
 
         # Check disk space
         try:
@@ -486,6 +496,16 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 tmp.write(file_data)
                 tmp_path = tmp.name
 
+            # Also save a copy for debugging (in uploads folder)
+            uploads_dir = OUTPUT_DIR / "uploads"
+            uploads_dir.mkdir(exist_ok=True)
+            saved_upload = uploads_dir / filename
+            try:
+                saved_upload.write_bytes(file_data)
+                print(f"Saved upload to: {saved_upload}")
+            except Exception as e:
+                print(f"Warning: Could not save upload copy: {e}")
+
             try:
                 # Parse the itinerary
                 parser = ItineraryParser()
@@ -600,6 +620,18 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
                     tmp.write(file_data)
                     tmp_path = tmp.name
+
+                # Also save a copy for debugging (in uploads folder)
+                uploads_dir = OUTPUT_DIR / "uploads"
+                uploads_dir.mkdir(exist_ok=True)
+                import hashlib
+                url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+                saved_upload = uploads_dir / f"url_import_{url_hash}{suffix}"
+                try:
+                    saved_upload.write_bytes(file_data)
+                    print(f"Saved URL import to: {saved_upload}")
+                except Exception as e:
+                    print(f"Warning: Could not save upload copy: {e}")
 
                 try:
                     # Parse the itinerary from file
