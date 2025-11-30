@@ -516,12 +516,12 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 itinerary = parser.parse_file(tmp_path)
                 print(f"[UPLOAD] Step 1 done: {time.time() - start_time:.1f}s - Found {len(itinerary.items)} items")
 
-                # Generate web view
-                print(f"[UPLOAD] Step 2: Generating web view...")
+                # Generate web view (skip geocoding to avoid timeout - map shows placeholder)
+                print(f"[UPLOAD] Step 2: Generating web view (no geocoding)...")
                 slug = slugify(itinerary.title)
                 output_file = f"{slug}.html"
                 web_view = ItineraryWebView()
-                web_view.generate(itinerary, OUTPUT_DIR / output_file, use_ai_summary=False)
+                web_view.generate(itinerary, OUTPUT_DIR / output_file, use_ai_summary=False, skip_geocoding=True)
                 print(f"[UPLOAD] Step 2 done: {time.time() - start_time:.1f}s - Generated {output_file}")
 
                 # Count unique locations
@@ -656,11 +656,11 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                     self.send_json_error(f"Failed to parse itinerary: {str(e)}")
                     return
 
-            # Generate web view
+            # Generate web view (skip geocoding to avoid timeout - map shows placeholder)
             slug = slugify(itinerary.title)
             output_file = f"{slug}.html"
             web_view = ItineraryWebView()
-            web_view.generate(itinerary, OUTPUT_DIR / output_file, use_ai_summary=False)
+            web_view.generate(itinerary, OUTPUT_DIR / output_file, use_ai_summary=False, skip_geocoding=True)
 
             # Count unique locations
             locations = set()

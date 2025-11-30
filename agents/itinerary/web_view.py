@@ -70,28 +70,46 @@ class ItineraryWebView:
         itinerary: Itinerary,
         output_path: str | Path,
         use_ai_summary: bool = True,
+        skip_geocoding: bool = False,
     ) -> Path:
-        """Generate a unified HTML page with summary and map tabs."""
+        """Generate a unified HTML page with summary and map tabs.
+
+        Args:
+            skip_geocoding: If True, skip geocoding to speed up generation.
+                           Map will show placeholder instead of real locations.
+        """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Generate the map - get the raw HTML (with error handling for geocoding issues)
-        try:
-            folium_map = self.mapper.create_map(itinerary, show_route=True)
-            map_html = self._get_map_html(folium_map)
-        except Exception as e:
-            print(f"Warning: Map generation failed: {e}")
-            import traceback
-            traceback.print_exc()
-            # Create a fallback empty map
+        if skip_geocoding:
+            # Create placeholder map without geocoding
             import folium
-            fallback_map = folium.Map(location=[0, 0], zoom_start=2)
+            fallback_map = folium.Map(location=[20, 0], zoom_start=2)
             folium.Marker(
-                [0, 0],
-                popup="Map could not be generated - geocoding failed",
-                icon=folium.Icon(color="red", icon="exclamation-triangle", prefix="fa"),
+                [20, 0],
+                popup=f"Map for {itinerary.title} - geocoding skipped for speed",
+                icon=folium.Icon(color="blue", icon="globe", prefix="fa"),
             ).add_to(fallback_map)
             map_html = self._get_map_html(fallback_map)
+            print(f"[WEB_VIEW] Skipped geocoding for speed")
+        else:
+            try:
+                folium_map = self.mapper.create_map(itinerary, show_route=True)
+                map_html = self._get_map_html(folium_map)
+            except Exception as e:
+                print(f"Warning: Map generation failed: {e}")
+                import traceback
+                traceback.print_exc()
+                # Create a fallback empty map
+                import folium
+                fallback_map = folium.Map(location=[0, 0], zoom_start=2)
+                folium.Marker(
+                    [0, 0],
+                    popup="Map could not be generated - geocoding failed",
+                    icon=folium.Icon(color="red", icon="exclamation-triangle", prefix="fa"),
+                ).add_to(fallback_map)
+                map_html = self._get_map_html(fallback_map)
 
         # Generate the summary HTML directly from itinerary data
         summary_html = self._build_summary_html(itinerary)
