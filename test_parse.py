@@ -124,6 +124,83 @@ def test_web_view(itinerary, output_path: str) -> None:
         import traceback
         traceback.print_exc()
 
+
+def save_to_webapp(itinerary, output_dir: str) -> None:
+    """Save the trip to the webapp (OUTPUT_DIR, trips_data.json, trips.html)."""
+    print(f"\n=== STEP 6: Save to Webapp ===")
+    print(f"Output dir: {output_dir}")
+
+    from pathlib import Path
+    from server import slugify, load_trips_data, save_trips_data, regenerate_trips_page, OUTPUT_DIR
+    from agents.itinerary.web_view import ItineraryWebView
+
+    # Use provided output_dir or default
+    if output_dir:
+        out_path = Path(output_dir)
+    else:
+        out_path = OUTPUT_DIR
+
+    print(f"Saving to: {out_path}")
+
+    try:
+        # Generate slug and output file
+        slug = slugify(itinerary.title)
+        output_file = f"{slug}.html"
+        full_path = out_path / output_file
+
+        # Generate web view
+        web_view = ItineraryWebView()
+        web_view.generate(itinerary, full_path, use_ai_summary=False)
+        print(f"✓ Generated HTML: {full_path}")
+
+        # Count unique locations
+        locations = set()
+        for item in itinerary.items:
+            if item.location.name and not item.is_home_location:
+                locations.add(item.location.name.split(',')[0])
+
+        # Format dates
+        if itinerary.start_date and itinerary.end_date:
+            if itinerary.start_date.year == itinerary.end_date.year:
+                if itinerary.start_date.month == itinerary.end_date.month:
+                    dates = f"{itinerary.start_date.strftime('%b %d')} - {itinerary.end_date.strftime('%d, %Y')}"
+                else:
+                    dates = f"{itinerary.start_date.strftime('%b %d')} - {itinerary.end_date.strftime('%b %d, %Y')}"
+            else:
+                dates = f"{itinerary.start_date.strftime('%b %d, %Y')} - {itinerary.end_date.strftime('%b %d, %Y')}"
+        else:
+            dates = "Dates unknown"
+
+        # Build trip data
+        trip_data = {
+            "title": itinerary.title,
+            "link": output_file,
+            "dates": dates,
+            "days": itinerary.duration_days or len(set(item.day_number for item in itinerary.items if item.day_number)),
+            "locations": len(locations),
+            "activities": len(itinerary.items),
+        }
+        print(f"✓ Trip data: {trip_data}")
+
+        # Add to trips data
+        trips = load_trips_data()
+        trips = [t for t in trips if t.get("link") != output_file]
+        trips.insert(0, trip_data)
+        save_trips_data(trips)
+        print(f"✓ Saved to trips_data.json ({len(trips)} trips)")
+
+        # Regenerate trips page
+        regenerate_trips_page()
+        print(f"✓ Regenerated trips.html")
+
+        print(f"\n✓ SUCCESS! Trip saved to webapp")
+        print(f"  View at: /{output_file}")
+
+    except Exception as e:
+        print(f"✗ Save failed: {e}")
+        import traceback
+        traceback.print_exc()
+
 def main():
     parser = argparse.ArgumentParser(description="Test parsing pipeline")
     parser.add_argument("--url", help="URL to download and parse")
@@ -132,6 +209,10 @@ def main():
                        help="Only test extraction, skip Claude API")
     parser.add_argument("--output", default="/tmp/test_output.html",
                        help="Output path for web view")
+    parser.add_argument("--save", action="store_true",
+                       help="Save trip to webapp (add to trips list)")
+    parser.add_argument("--output-dir",
+                       help="Output directory for webapp (default: OUTPUT_DIR env var)")
 
     args = parser.parse_args()
 
@@ -171,8 +252,11 @@ def main():
     # Test geocoding
     test_geocoding(itinerary)
 
-    # Test web view
-    test_web_view(itinerary, args.output)
+    # Save to webapp or just test web view
+    if args.save:
+        save_to_webapp(itinerary, args.output_dir)
+    else:
+        test_web_view(itinerary, args.output)
 
     print("\n=== ALL TESTS COMPLETE ===")
 
