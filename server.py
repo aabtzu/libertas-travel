@@ -507,15 +507,22 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 print(f"Warning: Could not save upload copy: {e}")
 
             try:
+                import time
+                start_time = time.time()
+
                 # Parse the itinerary
+                print(f"[UPLOAD] Step 1: Parsing file...")
                 parser = ItineraryParser()
                 itinerary = parser.parse_file(tmp_path)
+                print(f"[UPLOAD] Step 1 done: {time.time() - start_time:.1f}s - Found {len(itinerary.items)} items")
 
                 # Generate web view
+                print(f"[UPLOAD] Step 2: Generating web view...")
                 slug = slugify(itinerary.title)
                 output_file = f"{slug}.html"
                 web_view = ItineraryWebView()
                 web_view.generate(itinerary, OUTPUT_DIR / output_file, use_ai_summary=False)
+                print(f"[UPLOAD] Step 2 done: {time.time() - start_time:.1f}s - Generated {output_file}")
 
                 # Count unique locations
                 locations = set()
@@ -534,13 +541,19 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 }
 
                 # Add to trips data (avoid duplicates by link)
+                print(f"[UPLOAD] Step 3: Saving trip data...")
                 trips = load_trips_data()
                 trips = [t for t in trips if t.get("link") != output_file]
                 trips.insert(0, trip_data)  # Add new trip at beginning
                 save_trips_data(trips)
+                print(f"[UPLOAD] Step 3 done: {time.time() - start_time:.1f}s - Saved {len(trips)} trips")
 
                 # Regenerate trips page
+                print(f"[UPLOAD] Step 4: Regenerating trips page...")
                 regenerate_trips_page()
+                print(f"[UPLOAD] Step 4 done: {time.time() - start_time:.1f}s")
+
+                print(f"[UPLOAD] SUCCESS - Total time: {time.time() - start_time:.1f}s")
 
                 # Send success response
                 self.send_json_response({
