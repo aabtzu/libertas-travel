@@ -17,7 +17,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from agents.itinerary.parser import ItineraryParser
 from agents.itinerary.web_view import ItineraryWebView
-from agents.itinerary.templates import generate_trips_page, generate_about_page, generate_home_page
+from agents.itinerary.templates import generate_trips_page, generate_about_page, generate_home_page, generate_login_page
+
+# Import authentication
+import auth
 
 # Allow OUTPUT_DIR to be configured via environment variable (for Render persistent disk)
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent / "output"))
@@ -212,13 +215,73 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         # Serve files from output directory
         super().__init__(*args, directory=str(OUTPUT_DIR), **kwargs)
 
+    def get_session_token(self):
+        """Extract session token from cookies."""
+        cookie_header = self.headers.get('Cookie', '')
+        cookies = auth.parse_cookies(cookie_header)
+        return cookies.get(auth.SESSION_COOKIE_NAME)
+
+    def is_authenticated(self) -> bool:
+        """Check if the current request is authenticated."""
+        if not auth.is_auth_enabled():
+            return True
+        token = self.get_session_token()
+        return auth.validate_session(token) is not None
+
+    def require_auth(self) -> bool:
+        """Check authentication and redirect to login if needed. Returns True if authenticated."""
+        if self.is_authenticated():
+            return True
+
+        # Redirect to login page with original URL
+        parsed = urlparse(self.path)
+        redirect_path = parsed.path
+        if parsed.query:
+            redirect_path += f"?{parsed.query}"
+
+        self.send_response(302)
+        self.send_header('Location', f'/login.html?redirect={redirect_path}')
+        self.end_headers()
+        return False
+
     def do_GET(self):
-        """Handle GET requests - add debug endpoint."""
-        if self.path == "/api/debug":
+        """Handle GET requests - add debug endpoint and auth."""
+        # Parse URL path
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        # Public routes (no auth required)
+        if path == "/login.html" or path == "/login":
+            self.serve_login_page()
+            return
+
+        # API debug endpoint
+        if path == "/api/debug":
             self.handle_debug()
-        else:
-            # Let parent class handle static files
-            super().do_GET()
+            return
+
+        # Check authentication for all other routes
+        if not self.require_auth():
+            return
+
+        # Let parent class handle static files
+        super().do_GET()
+
+    def serve_login_page(self):
+        """Serve the login page."""
+        # If already authenticated, redirect to home
+        if self.is_authenticated():
+            self.send_response(302)
+            self.send_header('Location', '/')
+            self.end_headers()
+            return
+
+        html = generate_login_page()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(html.encode()))
+        self.end_headers()
+        self.wfile.write(html.encode())
 
     def handle_debug(self):
         """Return debug info about disk and environment."""
@@ -272,7 +335,20 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         self.send_json_response(debug_info)
 
     def do_POST(self):
-        """Handle POST requests (file uploads and URL imports)."""
+        """Handle POST requests (file uploads, URL imports, and auth)."""
+        # Auth endpoints (no auth required)
+        if self.path == "/api/login":
+            self.handle_login()
+            return
+        elif self.path == "/api/logout":
+            self.handle_logout()
+            return
+
+        # Check authentication for all other POST endpoints
+        if not self.is_authenticated():
+            self.send_json_error("Authentication required", status=401)
+            return
+
         if self.path == "/api/upload":
             self.handle_upload()
         elif self.path == "/api/import-url":
@@ -287,6 +363,51 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.handle_update_trip()
         else:
             self.send_error(404, "Not Found")
+
+    def handle_login(self):
+        """Handle login request."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        username = data.get('username', '').strip()
+        password = data.get('password', '').strip()
+
+        if not username or not password:
+            self.send_json_error("Username and password required")
+            return
+
+        if auth.verify_credentials(username, password):
+            # Create session and set cookie
+            token = auth.create_session(username)
+
+            # Determine if we should use Secure cookie (when on HTTPS)
+            # For local dev, don't use Secure flag
+            is_secure = self.headers.get('X-Forwarded-Proto') == 'https'
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Set-Cookie', auth.get_session_cookie_header(token, secure=is_secure))
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}).encode())
+        else:
+            self.send_json_error("Invalid username or password", status=401)
+
+    def handle_logout(self):
+        """Handle logout request."""
+        token = self.get_session_token()
+        if token:
+            auth.destroy_session(token)
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Set-Cookie', auth.get_logout_cookie_header())
+        self.end_headers()
+        self.wfile.write(json.dumps({"success": True}).encode())
 
     def handle_delete_trip(self):
         """Delete a trip by its link."""
@@ -755,9 +876,9 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
-    def send_json_error(self, message: str):
+    def send_json_error(self, message: str, status: int = 400):
         """Send JSON error response."""
-        self.send_response(400)
+        self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({"success": False, "error": message}).encode())
@@ -812,14 +933,29 @@ def run_server(port: int = 8000):
 
     # Bind to 0.0.0.0 for cloud deployment (Render, etc.)
     server = HTTPServer(('0.0.0.0', port), LibertasHandler)
+
+    # Get auth info
+    if auth.is_auth_enabled():
+        username, password = auth.get_credentials()
+        auth_info = f"""
+║   Authentication: ENABLED                                 ║
+║   Username: {username:<20}                        ║
+║   Password: {password:<20}                        ║
+║                                                           ║
+║   Set AUTH_USERNAME and AUTH_PASSWORD env vars to change  ║
+║   Set AUTH_DISABLED=true to disable authentication        ║"""
+    else:
+        auth_info = """
+║   Authentication: DISABLED                                ║
+║   Set AUTH_DISABLED=false to enable authentication        ║"""
+
     print(f"""
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║   🪶 LIBERTAS - Travel Freely                             ║
+║   LIBERTAS - Travel Freely                                ║
 ║                                                           ║
-║   Server running at: http://localhost:{port}               ║
-║                                                           ║
-║   Open http://localhost:{port} to get started              ║
+║   Server running at: http://localhost:{port:<5}              ║
+║                                                           ║{auth_info}
 ║                                                           ║
 ║   Press Ctrl+C to stop                                    ║
 ║                                                           ║

@@ -53,8 +53,16 @@ NAV_HTML = """
         <a href="index.html" class="nav-link {home_active}"><i class="fas fa-home"></i> Home</a>
         <a href="trips.html" class="nav-link {trips_active}"><i class="fas fa-route"></i> My Trips</a>
         <a href="about.html" class="nav-link {about_active}"><i class="fas fa-scroll"></i> About</a>
+        <a href="#" class="nav-link logout-link" onclick="logout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
 </nav>
+<script>
+function logout() {{
+    fetch('/api/logout', {{ method: 'POST' }})
+        .then(function() {{ window.location.href = '/login.html'; }})
+        .catch(function() {{ window.location.href = '/login.html'; }});
+}}
+</script>
 """
 
 
@@ -551,4 +559,100 @@ def generate_home_page() -> str:
         home_css=get_static_css("home.css"),
         nav_html=get_nav_html("home"),
         main_js=get_static_js("main.js"),
+    )
+
+
+LOGIN_PAGE_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Libertas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+{main_css}
+
+{login_css}
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <i class="fas fa-feather-alt brand-icon"></i>
+                <h1>LIBERTAS</h1>
+                <p class="tagline">Travel Freely</p>
+            </div>
+
+            <div class="login-error" id="login-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="error-message">Invalid username or password</span>
+            </div>
+
+            <form class="login-form" id="login-form" method="POST" action="/api/login">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username" autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </form>
+
+            <div class="login-footer">
+                Protected by authentication
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('login-form').addEventListener('submit', async function(e) {{
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('login-error');
+        const errorMsg = document.getElementById('error-message');
+
+        try {{
+            const response = await fetch('/api/login', {{
+                method: 'POST',
+                headers: {{
+                    'Content-Type': 'application/json',
+                }},
+                body: JSON.stringify({{ username, password }}),
+            }});
+
+            const data = await response.json();
+
+            if (data.success) {{
+                // Redirect to the original page or home
+                const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+                window.location.href = redirect;
+            }} else {{
+                errorMsg.textContent = data.error || 'Invalid username or password';
+                errorDiv.classList.add('show');
+            }}
+        }} catch (err) {{
+            errorMsg.textContent = 'Connection error. Please try again.';
+            errorDiv.classList.add('show');
+        }}
+    }});
+    </script>
+</body>
+</html>
+"""
+
+
+def generate_login_page() -> str:
+    """Generate the Login page HTML."""
+    return LOGIN_PAGE_TEMPLATE.format(
+        main_css=get_static_css("main.css"),
+        login_css=get_static_css("login.css"),
     )
