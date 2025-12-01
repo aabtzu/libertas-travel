@@ -85,9 +85,15 @@ def init_db():
                     map_status VARCHAR(50) DEFAULT 'pending',
                     map_error TEXT,
                     itinerary_data JSONB,
+                    is_public BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(user_id, link)
                 )
+            """)
+
+            # Add is_public column if it doesn't exist (for existing databases)
+            cursor.execute("""
+                ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE
             """)
 
             cursor.execute("""
@@ -118,10 +124,17 @@ def init_db():
                     map_status TEXT DEFAULT 'pending',
                     map_error TEXT,
                     itinerary_data TEXT,
+                    is_public INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(user_id, link)
                 )
             """)
+
+            # Add is_public column if it doesn't exist (for existing databases)
+            try:
+                cursor.execute("ALTER TABLE trips ADD COLUMN is_public INTEGER DEFAULT 0")
+            except:
+                pass  # Column already exists
 
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_trips_user_id ON trips(user_id)
@@ -241,14 +254,14 @@ def get_user_trips(user_id: int) -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         if USE_POSTGRES:
             cursor.execute("""
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
                 FROM trips WHERE user_id = %s ORDER BY created_at DESC
             """, (user_id,))
-            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error']
+            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'is_public']
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
         else:
             cursor.execute("""
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
                 FROM trips WHERE user_id = ? ORDER BY created_at DESC
             """, (user_id,))
             return [dict(row) for row in cursor.fetchall()]
@@ -409,6 +422,120 @@ def get_trip_owner(link: str) -> Optional[int]:
             cursor.execute("SELECT user_id FROM trips WHERE link = ?", (link,))
         row = cursor.fetchone()
         return row[0] if row else None
+
+
+# ============ User List Functions ============
+
+def get_all_users() -> List[Dict[str, Any]]:
+    """Get list of all users (id and username only, for sharing)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username FROM users ORDER BY username")
+        if USE_POSTGRES:
+            return [{"id": row[0], "username": row[1]} for row in cursor.fetchall()]
+        else:
+            return [dict(row) for row in cursor.fetchall()]
+
+
+# ============ Trip Sharing Functions ============
+
+def copy_trip_to_user(source_user_id: int, link: str, target_user_id: int) -> Optional[int]:
+    """Copy a trip from one user to another. Returns new trip ID or None if failed."""
+    # Get the source trip
+    source_trip = get_trip_by_link(source_user_id, link)
+    if not source_trip:
+        return None
+
+    # Create new trip data for target user
+    trip_data = {
+        "title": source_trip["title"],
+        "link": source_trip["link"],
+        "dates": source_trip.get("dates"),
+        "days": source_trip.get("days"),
+        "locations": source_trip.get("locations"),
+        "activities": source_trip.get("activities"),
+        "map_status": source_trip.get("map_status", "ready"),
+    }
+
+    # Add to target user (uses upsert, so will update if exists)
+    return add_trip(target_user_id, trip_data, source_trip.get("itinerary_data"))
+
+
+def share_trip_with_all(source_user_id: int, link: str) -> int:
+    """Share a trip with all users. Returns count of users shared with."""
+    users = get_all_users()
+    shared_count = 0
+    for user in users:
+        if user["id"] != source_user_id:
+            if copy_trip_to_user(source_user_id, link, user["id"]):
+                shared_count += 1
+    return shared_count
+
+
+# ============ Public Trips Functions ============
+
+def set_trip_public(user_id: int, link: str, is_public: bool) -> bool:
+    """Set a trip's public visibility."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute("""
+                UPDATE trips SET is_public = %s
+                WHERE user_id = %s AND link = %s
+            """, (is_public, user_id, link))
+        else:
+            cursor.execute("""
+                UPDATE trips SET is_public = ?
+                WHERE user_id = ? AND link = ?
+            """, (is_public, user_id, link))
+        return cursor.rowcount > 0
+
+
+def get_public_trips(exclude_user_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    """Get all public trips, optionally excluding a specific user's trips."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            if exclude_user_id:
+                cursor.execute("""
+                    SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
+                           t.map_status, t.map_error, u.username as owner_username
+                    FROM trips t
+                    JOIN users u ON t.user_id = u.id
+                    WHERE t.is_public = TRUE AND t.user_id != %s
+                    ORDER BY t.created_at DESC
+                """, (exclude_user_id,))
+            else:
+                cursor.execute("""
+                    SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
+                           t.map_status, t.map_error, u.username as owner_username
+                    FROM trips t
+                    JOIN users u ON t.user_id = u.id
+                    WHERE t.is_public = TRUE
+                    ORDER BY t.created_at DESC
+                """)
+            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'owner_username']
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        else:
+            if exclude_user_id:
+                cursor.execute("""
+                    SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
+                           t.map_status, t.map_error, u.username as owner_username
+                    FROM trips t
+                    JOIN users u ON t.user_id = u.id
+                    WHERE t.is_public = 1 AND t.user_id != ?
+                    ORDER BY t.created_at DESC
+                """, (exclude_user_id,))
+            else:
+                cursor.execute("""
+                    SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
+                           t.map_status, t.map_error, u.username as owner_username
+                    FROM trips t
+                    JOIN users u ON t.user_id = u.id
+                    WHERE t.is_public = 1
+                    ORDER BY t.created_at DESC
+                """)
+            return [dict(row) for row in cursor.fetchall()]
 
 
 # Initialize database on import

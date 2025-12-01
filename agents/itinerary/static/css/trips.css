@@ -656,3 +656,282 @@
 .form-row .modal-input {
     text-align: center;
 }
+
+/* ==================== Share & Public Buttons ==================== */
+.trip-action-btn.share-btn {
+    background: rgba(255, 255, 255, 0.95);
+    color: #2196f3;
+}
+
+.trip-action-btn.share-btn:hover {
+    background: #2196f3;
+    color: white;
+    transform: scale(1.1);
+}
+
+.trip-action-btn.public-btn {
+    background: rgba(255, 255, 255, 0.95);
+    color: #757575;
+}
+
+.trip-action-btn.public-btn:hover {
+    background: #4caf50;
+    color: white;
+    transform: scale(1.1);
+}
+
+.trip-action-btn.public-btn.active {
+    background: #4caf50;
+    color: white;
+}
+
+.trip-action-btn.public-btn.active:hover {
+    background: #757575;
+}
+
+/* Public badge on trip card */
+.public-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+}
+
+.public-badge i {
+    font-size: 0.7rem;
+    color: white;
+}
+
+/* Public badge in list view - smaller and repositioned */
+.trips-list .public-badge {
+    position: static;
+    margin-left: 8px;
+    padding: 2px 6px;
+    font-size: 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    vertical-align: middle;
+}
+
+.trips-list .public-badge i {
+    font-size: 0.6rem;
+}
+
+/* ==================== Share Modal ==================== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.modal-header h3 i {
+    margin-right: 8px;
+    color: #2196f3;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-body p {
+    margin: 0 0 16px 0;
+    color: #666;
+}
+
+#share-trip-title {
+    font-weight: 600;
+    color: #333;
+}
+
+.share-options {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.share-option-btn {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.share-option-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.share-option-btn i {
+    margin-right: 8px;
+}
+
+.share-divider {
+    text-align: center;
+    color: #999;
+    font-size: 0.8rem;
+    position: relative;
+}
+
+.share-divider::before,
+.share-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 30%;
+    height: 1px;
+    background: #e0e0e0;
+}
+
+.share-divider::before {
+    left: 0;
+}
+
+.share-divider::after {
+    right: 0;
+}
+
+.user-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.user-list .loading {
+    padding: 20px;
+    text-align: center;
+    color: #999;
+}
+
+.user-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-item:last-child {
+    border-bottom: none;
+}
+
+.user-item:hover {
+    background: #f8f9ff;
+}
+
+.user-item i {
+    color: #667eea;
+}
+
+.user-item .username {
+    font-weight: 500;
+    color: #333;
+}
+
+/* ==================== Public Trips Section ==================== */
+.public-trips-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 2px solid #f0f0f0;
+}
+
+.public-trips-section .trips-header-row h2 {
+    color: #4caf50;
+}
+
+.public-trips-section .trips-header-row h2 i {
+    margin-right: 8px;
+}
+
+.public-trips-grid {
+    opacity: 0.9;
+}
+
+.trip-card-wrapper.public-trip .trip-card {
+    border: 2px solid #e8f5e9;
+}
+
+.trip-owner {
+    color: #4caf50;
+    font-size: 0.85rem;
+}
+
+.trip-owner i {
+    color: #4caf50;
+}
+
+/* No public trips message */
+.no-public-trips {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+}
+
+.no-public-trips i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: block;
+}

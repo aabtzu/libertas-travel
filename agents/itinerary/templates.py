@@ -271,6 +271,7 @@ TRIP_CARD_TEMPLATE = """
                     <div class="trip-card-image" style="background: {gradient};">
                         <i class="fas fa-{icon}"></i>
                         <span class="trip-card-region">{region}</span>
+                        {public_badge}
                     </div>
                     <div class="trip-card-content">
                         <div class="trip-card-title">{title}</div>
@@ -294,16 +295,51 @@ TRIP_CARD_TEMPLATE = """
                     </div>
                 </a>
                 <div class="trip-card-actions">
+                    <button class="trip-action-btn share-btn" title="Share trip" data-link="{link}" data-title="{title}">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="trip-action-btn public-btn {public_class}" title="{public_title}" data-link="{link}" data-public="{is_public}">
+                        <i class="fas fa-{public_icon}"></i>
+                    </button>
                     <button class="trip-action-btn edit-btn" title="Edit trip" data-link="{link}" data-title="{title}" data-dates="{dates}" data-days="{days}" data-locations="{locations}" data-activities="{activities}">
                         <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="trip-action-btn copy-btn" title="Copy to new trip" data-link="{link}">
-                        <i class="fas fa-copy"></i>
                     </button>
                     <button class="trip-action-btn delete-btn" title="Delete trip" data-link="{link}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
+            </div>
+"""
+
+PUBLIC_TRIP_CARD_TEMPLATE = """
+            <div class="trip-card-wrapper public-trip" data-link="{link}">
+                <a href="{link}" class="trip-card">
+                    <div class="trip-card-image" style="background: {gradient};">
+                        <i class="fas fa-{icon}"></i>
+                        <span class="trip-card-region">{region}</span>
+                    </div>
+                    <div class="trip-card-content">
+                        <div class="trip-card-title">{title}</div>
+                        <div class="trip-card-meta">
+                            <span><i class="fas fa-calendar"></i> {dates}</span>
+                            <span class="trip-owner"><i class="fas fa-user"></i> {owner_username}</span>
+                        </div>
+                        <div class="trip-card-stats">
+                            <div class="trip-stat">
+                                <div class="trip-stat-value">{days}</div>
+                                <div class="trip-stat-label">Days</div>
+                            </div>
+                            <div class="trip-stat">
+                                <div class="trip-stat-value">{locations}</div>
+                                <div class="trip-stat-label">Locations</div>
+                            </div>
+                            <div class="trip-stat">
+                                <div class="trip-stat-value">{activities}</div>
+                                <div class="trip-stat-label">Activities</div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
             </div>
 """
 
@@ -404,13 +440,20 @@ def generate_trip_card(
     days: int,
     locations: int,
     activities: int,
-    index: int = 0
+    index: int = 0,
+    is_public: bool = False
 ) -> str:
     """Generate HTML for a single trip card."""
     # Use gradient colors (light colors with icon look good)
     gradient = TRIP_GRADIENTS[index % len(TRIP_GRADIENTS)]
     icon = get_region_icon(title)
     region = get_region_name(title)
+
+    # Public visibility settings
+    public_badge = '<span class="public-badge"><i class="fas fa-globe"></i></span>' if is_public else ''
+    public_class = 'active' if is_public else ''
+    public_icon = 'globe' if is_public else 'lock'
+    public_title = 'Make private' if is_public else 'Make public'
 
     return TRIP_CARD_TEMPLATE.format(
         link=link,
@@ -422,19 +465,61 @@ def generate_trip_card(
         days=days,
         locations=locations,
         activities=activities,
+        public_badge=public_badge,
+        public_class=public_class,
+        public_icon=public_icon,
+        public_title=public_title,
+        is_public='true' if is_public else 'false',
     )
 
 
-def generate_trips_page(trips: list[dict]) -> str:
+def generate_public_trip_card(
+    title: str,
+    link: str,
+    dates: str,
+    days: int,
+    locations: int,
+    activities: int,
+    owner_username: str,
+    index: int = 0
+) -> str:
+    """Generate HTML for a public trip card (from another user)."""
+    gradient = TRIP_GRADIENTS[index % len(TRIP_GRADIENTS)]
+    icon = get_region_icon(title)
+    region = get_region_name(title)
+
+    return PUBLIC_TRIP_CARD_TEMPLATE.format(
+        link=link,
+        gradient=gradient,
+        icon=icon,
+        region=region,
+        title=title,
+        dates=dates,
+        days=days,
+        locations=locations,
+        activities=activities,
+        owner_username=owner_username,
+    )
+
+
+def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> str:
     """Generate the My Trips page HTML.
 
     Args:
-        trips: List of trip dicts with keys: title, link, dates, days, locations, activities
+        trips: List of trip dicts with keys: title, link, dates, days, locations, activities, is_public
+        public_trips: List of public trip dicts from other users (with owner_username)
     """
+    if public_trips is None:
+        public_trips = []
+
     trip_cards_list = []
     for i, trip in enumerate(trips):
         try:
             # Ensure all required fields have defaults
+            is_public = trip.get("is_public", False)
+            # Handle SQLite integer (1/0) vs PostgreSQL boolean
+            if isinstance(is_public, int):
+                is_public = bool(is_public)
             card = generate_trip_card(
                 title=trip.get("title", "Untitled Trip"),
                 link=trip.get("link", "#"),
@@ -443,12 +528,45 @@ def generate_trips_page(trips: list[dict]) -> str:
                 locations=trip.get("locations", 0) or 0,
                 activities=trip.get("activities", 0) or 0,
                 index=i,
+                is_public=is_public,
             )
             trip_cards_list.append(card)
         except Exception as e:
             print(f"Warning: Could not generate card for trip {trip}: {e}")
             continue
     trip_cards = "\n".join(trip_cards_list)
+
+    # Generate public trips section if there are any
+    public_trips_section = ""
+    if public_trips:
+        public_cards_list = []
+        for i, trip in enumerate(public_trips):
+            try:
+                card = generate_public_trip_card(
+                    title=trip.get("title", "Untitled Trip"),
+                    link=trip.get("link", "#"),
+                    dates=trip.get("dates", "Date unknown"),
+                    days=trip.get("days", 0) or 0,
+                    locations=trip.get("locations", 0) or 0,
+                    activities=trip.get("activities", 0) or 0,
+                    owner_username=trip.get("owner_username", "Unknown"),
+                    index=i,
+                )
+                public_cards_list.append(card)
+            except Exception as e:
+                print(f"Warning: Could not generate public card for trip {trip}: {e}")
+                continue
+        public_cards = "\n".join(public_cards_list)
+        public_trips_section = f"""
+        <div class="public-trips-section">
+            <div class="trips-header-row">
+                <h2><i class="fas fa-globe"></i> Public Trips</h2>
+            </div>
+            <div class="trips-grid public-trips-grid">
+{public_cards}
+            </div>
+        </div>
+"""
 
     template = get_template("trips.html")
     return template.format(
@@ -458,6 +576,7 @@ def generate_trips_page(trips: list[dict]) -> str:
         main_js=get_static_js("main.js"),
         upload_js=get_static_js("upload.js"),
         trip_cards=trip_cards,
+        public_trips_section=public_trips_section,
     )
 
 

@@ -485,17 +485,18 @@ function copyTrip(link) {
 function initViewToggle() {
     const toggleBtns = document.querySelectorAll('.view-toggle-btn');
     const tripsContainer = document.getElementById('trips-container');
+    const publicTripsContainer = document.querySelector('.public-trips-grid');
 
     if (!toggleBtns.length || !tripsContainer) return;
 
     // Load saved preference
     const savedView = localStorage.getItem('tripsViewMode') || 'grid';
-    setView(savedView, tripsContainer, toggleBtns);
+    setView(savedView, tripsContainer, publicTripsContainer, toggleBtns);
 
     toggleBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const view = btn.dataset.view;
-            setView(view, tripsContainer, toggleBtns);
+            setView(view, tripsContainer, publicTripsContainer, toggleBtns);
             localStorage.setItem('tripsViewMode', view);
         });
     });
@@ -504,14 +505,221 @@ function initViewToggle() {
 /**
  * Set the view mode
  */
-function setView(view, container, buttons) {
-    // Update container class
+function setView(view, container, publicContainer, buttons) {
+    // Update main container class
     container.classList.remove('trips-grid', 'trips-list');
     container.classList.add(view === 'list' ? 'trips-list' : 'trips-grid');
+
+    // Update public trips container class if it exists
+    if (publicContainer) {
+        publicContainer.classList.remove('trips-grid', 'trips-list');
+        publicContainer.classList.add(view === 'list' ? 'trips-list' : 'trips-grid');
+    }
 
     // Update button states
     buttons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === view);
+    });
+}
+
+// ==================== Share Modal Functions ====================
+
+// Store current trip being shared
+let currentShareLink = '';
+let currentShareTitle = '';
+
+/**
+ * Open the share modal for a trip
+ */
+function openShareModal(link, title) {
+    currentShareLink = link;
+    currentShareTitle = title;
+
+    const modal = document.getElementById('share-modal');
+    const titleSpan = document.getElementById('share-trip-title');
+    const userList = document.getElementById('user-list');
+
+    if (!modal) return;
+
+    titleSpan.textContent = title;
+    userList.innerHTML = '<div class="loading">Loading users...</div>';
+
+    modal.classList.add('show');
+
+    // Load users
+    fetch('/api/users', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.users.length > 0) {
+                userList.innerHTML = data.users.map(user => `
+                    <div class="user-item" onclick="shareWithUser(${user.id}, '${user.username}')">
+                        <i class="fas fa-user"></i>
+                        <span class="username">${user.username}</span>
+                    </div>
+                `).join('');
+            } else {
+                userList.innerHTML = '<div class="loading">No other users available</div>';
+            }
+        })
+        .catch(() => {
+            userList.innerHTML = '<div class="loading">Failed to load users</div>';
+        });
+}
+
+/**
+ * Close the share modal
+ */
+function closeShareModal() {
+    const modal = document.getElementById('share-modal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+    currentShareLink = '';
+    currentShareTitle = '';
+}
+
+/**
+ * Share with a specific user
+ */
+function shareWithUser(userId, username) {
+    fetch('/api/share-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            link: currentShareLink,
+            targetUserId: userId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        closeShareModal();
+        if (data.success) {
+            showStatus('success', `Trip shared with ${username}`);
+        } else {
+            showStatus('error', data.error || 'Failed to share trip');
+        }
+    })
+    .catch(() => {
+        closeShareModal();
+        showStatus('error', 'Failed to share trip');
+    });
+}
+
+/**
+ * Share with all users
+ */
+function shareWithAll() {
+    fetch('/api/share-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            link: currentShareLink,
+            shareWithAll: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        closeShareModal();
+        if (data.success) {
+            showStatus('success', data.message || 'Trip shared with all users');
+        } else {
+            showStatus('error', data.error || 'Failed to share trip');
+        }
+    })
+    .catch(() => {
+        closeShareModal();
+        showStatus('error', 'Failed to share trip');
+    });
+}
+
+/**
+ * Toggle public visibility of a trip
+ */
+function togglePublic(btn) {
+    const link = btn.dataset.link;
+    const isCurrentlyPublic = btn.dataset.public === 'true';
+    const newPublicState = !isCurrentlyPublic;
+
+    fetch('/api/toggle-public', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            link: link,
+            isPublic: newPublicState
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button state
+            btn.dataset.public = newPublicState ? 'true' : 'false';
+            btn.classList.toggle('active', newPublicState);
+            btn.title = newPublicState ? 'Make private' : 'Make public';
+            btn.innerHTML = newPublicState ? '<i class="fas fa-globe"></i>' : '<i class="fas fa-lock"></i>';
+
+            // Update public badge
+            const wrapper = btn.closest('.trip-card-wrapper');
+            const cardImage = wrapper.querySelector('.trip-card-image');
+            let badge = cardImage.querySelector('.public-badge');
+
+            if (newPublicState && !badge) {
+                badge = document.createElement('span');
+                badge.className = 'public-badge';
+                badge.innerHTML = '<i class="fas fa-globe"></i>';
+                cardImage.appendChild(badge);
+            } else if (!newPublicState && badge) {
+                badge.remove();
+            }
+
+            showStatus('success', data.message);
+        } else {
+            showStatus('error', data.error || 'Failed to update visibility');
+        }
+    })
+    .catch(() => {
+        showStatus('error', 'Failed to update visibility');
+    });
+}
+
+/**
+ * Initialize share and public toggle actions
+ */
+function initShareActions() {
+    // Share buttons
+    document.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const link = btn.dataset.link;
+            const title = btn.dataset.title;
+            openShareModal(link, title);
+        });
+    });
+
+    // Public toggle buttons
+    document.querySelectorAll('.public-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePublic(btn);
+        });
+    });
+
+    // Close modal when clicking outside
+    const modal = document.getElementById('share-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeShareModal();
+            }
+        });
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeShareModal();
+        }
     });
 }
 
@@ -520,4 +728,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initUpload();
     initTripActions();
     initViewToggle();
+    initShareActions();
 });

@@ -303,7 +303,8 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         """Serve the trips page dynamically for the current user."""
         user_id = self.get_current_user_id()
         trips = db.get_user_trips(user_id)
-        html = generate_trips_page(trips)
+        public_trips = db.get_public_trips(exclude_user_id=user_id)
+        html = generate_trips_page(trips, public_trips)
         self.send_response(200)
         self.send_header('Content-Type', 'text/html')
         self.send_header('Content-Length', len(html.encode()))
@@ -452,6 +453,12 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.handle_update_trip()
         elif self.path == "/api/retry-geocoding":
             self.handle_retry_geocoding()
+        elif self.path == "/api/share-trip":
+            self.handle_share_trip()
+        elif self.path == "/api/toggle-public":
+            self.handle_toggle_public()
+        elif self.path == "/api/users":
+            self.handle_get_users()
         else:
             self.send_error(404, "Not Found")
 
@@ -564,6 +571,106 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             "success": True,
             "message": "Map status reset to pending. Please re-import the trip to regenerate the map.",
         })
+
+    def handle_get_users(self):
+        """Get list of all users for sharing."""
+        # Consume any request body
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length > 0:
+            self.rfile.read(content_length)
+
+        try:
+            users = db.get_all_users()
+            current_user_id = self.get_current_user_id()
+            # Filter out current user from the list
+            users = [u for u in users if u["id"] != current_user_id]
+            self.send_json_response({"success": True, "users": users})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json_error(str(e))
+
+    def handle_share_trip(self):
+        """Share a trip with another user or all users."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        try:
+            link = data.get('link', '').strip()
+            target_user_id = data.get('targetUserId')
+            share_with_all = data.get('shareWithAll', False)
+
+            if not link:
+                self.send_json_error("No trip link provided")
+                return
+
+            user_id = self.get_current_user_id()
+
+            if share_with_all:
+                # Share with all users
+                shared_count = db.share_trip_with_all(user_id, link)
+                self.send_json_response({
+                    "success": True,
+                    "message": f"Trip shared with {shared_count} users",
+                    "sharedCount": shared_count,
+                })
+            elif target_user_id:
+                # Share with specific user
+                result = db.copy_trip_to_user(user_id, link, target_user_id)
+                if result:
+                    self.send_json_response({
+                        "success": True,
+                        "message": "Trip shared successfully",
+                    })
+                else:
+                    self.send_json_error("Failed to share trip")
+            else:
+                self.send_json_error("No target user specified")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json_error(str(e))
+
+    def handle_toggle_public(self):
+        """Toggle a trip's public visibility."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        try:
+            link = data.get('link', '').strip()
+            is_public = data.get('isPublic', False)
+
+            if not link:
+                self.send_json_error("No trip link provided")
+                return
+
+            user_id = self.get_current_user_id()
+            updated = db.set_trip_public(user_id, link, is_public)
+
+            if updated:
+                self.send_json_response({
+                    "success": True,
+                    "message": f"Trip {'made public' if is_public else 'made private'}",
+                    "isPublic": is_public,
+                })
+            else:
+                self.send_json_error("Trip not found")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json_error(str(e))
 
     def handle_delete_trip(self):
         """Delete a trip by its link."""
