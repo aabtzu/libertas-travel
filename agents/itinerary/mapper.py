@@ -1,129 +1,198 @@
-"""Generate interactive maps from itineraries using Folium."""
+"""Generate interactive maps from itineraries using Google Maps."""
 
 from __future__ import annotations
 
 import os
+import json
+import html
+import requests
 from pathlib import Path
 from typing import Optional, Union
-
-import folium
-from folium import plugins
-from geopy.geocoders import Nominatim
-from geopy.extra.rate_limiter import RateLimiter
-from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
 from .models import Itinerary, Location
 
 
 # Maximum number of locations to geocode (to avoid long waits)
-MAX_GEOCODE_LOCATIONS = 20
+MAX_GEOCODE_LOCATIONS = 50
 
-# Map marker colors by location type
+# Google Maps marker colors by category
 MARKER_COLORS = {
-    "hotel": "blue",
-    "restaurant": "orange",
-    "attraction": "green",
-    "airport": "red",
-    "train_station": "purple",
-    "transport": "gray",
-    "other": "lightblue",
-}
-
-# Font Awesome icons by category
-MARKER_ICONS = {
-    "hotel": "bed",
-    "restaurant": "utensils",
-    "attraction": "camera",
-    "airport": "plane",
-    "train_station": "train",
-    "transport": "car",
-    "flight": "plane",
-    "meal": "utensils",
-    "activity": "star",
-    "other": "map-marker",
+    "hotel": "#4285F4",      # Google blue
+    "lodging": "#4285F4",
+    "restaurant": "#FF9800", # Orange
+    "meal": "#FF9800",
+    "attraction": "#34A853", # Google green
+    "activity": "#34A853",
+    "airport": "#EA4335",    # Google red
+    "flight": "#EA4335",
+    "train_station": "#9C27B0", # Purple
+    "transport": "#757575",  # Gray
+    "other": "#00BCD4",      # Cyan
 }
 
 
 class ItineraryMapper:
-    """Generate interactive maps from itineraries."""
+    """Generate interactive maps from itineraries using Google Maps."""
 
-    def __init__(self, user_agent: str = "libertas-itinerary-agent"):
-        # Add timeout of 5 seconds to avoid hanging on slow responses
-        self.geolocator = Nominatim(user_agent=user_agent, timeout=5)
-        self.geocode = RateLimiter(
-            self.geolocator.geocode, min_delay_seconds=1, max_retries=1
-        )
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.environ.get("GOOGLE_MAPS_API_KEY", "")
         self._geocode_failures = 0
 
     def geocode_locations(self, itinerary: Itinerary) -> Itinerary:
-        """Add coordinates to all locations in the itinerary."""
+        """Add coordinates to all locations in the itinerary using Google Geocoding API."""
+        if not self.api_key:
+            print("Warning: No GOOGLE_MAPS_API_KEY set, skipping geocoding")
+            return itinerary
+
+        # Determine the trip's region for biasing geocoding results
+        region_hint = self._get_region_hint(itinerary)
+
         # Limit geocoding to avoid long waits
-        locations_to_geocode = [
+        items_to_geocode = [
             item for item in itinerary.items
             if not item.location.has_coordinates
         ]
 
         # Only geocode up to MAX_GEOCODE_LOCATIONS
-        for item in locations_to_geocode[:MAX_GEOCODE_LOCATIONS]:
+        for item in items_to_geocode[:MAX_GEOCODE_LOCATIONS]:
             # Stop if too many failures (likely network/rate limit issue)
             if self._geocode_failures >= 3:
                 print(f"Stopping geocoding after {self._geocode_failures} consecutive failures")
                 break
-            self._geocode_location(item.location)
+            self._geocode_item(item, region_hint)
 
-        if len(locations_to_geocode) > MAX_GEOCODE_LOCATIONS:
-            print(f"Note: Only geocoded {MAX_GEOCODE_LOCATIONS} of {len(locations_to_geocode)} locations")
+        if len(items_to_geocode) > MAX_GEOCODE_LOCATIONS:
+            print(f"Note: Only geocoded {MAX_GEOCODE_LOCATIONS} of {len(items_to_geocode)} locations")
 
         return itinerary
 
-    def _geocode_location(self, location: Location) -> None:
-        """Geocode a single location."""
-        # Try with address first, then just name
+    def _get_region_hint(self, itinerary: Itinerary) -> str:
+        """Extract a region hint from the itinerary for biasing geocoding."""
+        # Look for country/region in title or locations
+        regions = []
+        if itinerary.title:
+            regions.append(itinerary.title)
+        for item in itinerary.items[:10]:  # Check first 10 items
+            if item.location.name:
+                regions.append(item.location.name)
+
+        # Common region patterns
+        region_text = " ".join(regions).lower()
+        if "italy" in region_text or "venice" in region_text or "rome" in region_text:
+            return "Italy"
+        elif "france" in region_text or "paris" in region_text:
+            return "France"
+        elif "spain" in region_text or "barcelona" in region_text:
+            return "Spain"
+        elif "india" in region_text or "delhi" in region_text or "jaipur" in region_text:
+            return "India"
+        elif "japan" in region_text or "tokyo" in region_text:
+            return "Japan"
+        elif "uk" in region_text or "london" in region_text or "england" in region_text:
+            return "United Kingdom"
+        elif "germany" in region_text or "berlin" in region_text:
+            return "Germany"
+        return ""
+
+    def _geocode_item(self, item, region_hint: str = "") -> None:
+        """Geocode an item using its title and location info."""
+        location = item.location
+
+        # Build smart queries - use item title (actual place name) + location context
         queries = []
+
+        # If we have an address, try it first
         if location.address:
             queries.append(location.address)
-        queries.append(location.name)
+
+        # Use item title with location context (e.g., "Sina Centurion Palace Venice Italy")
+        if item.title and location.name:
+            # Don't add location if title already contains it
+            if location.name.lower() not in item.title.lower():
+                queries.append(f"{item.title}, {location.name}")
+            else:
+                queries.append(item.title)
+        elif item.title:
+            if region_hint:
+                queries.append(f"{item.title}, {region_hint}")
+            queries.append(item.title)
+
+        # Fall back to just location name
+        if location.name:
+            queries.append(location.name)
 
         for query in queries:
-            try:
-                result = self.geocode(query)
-                if result:
-                    location.latitude = result.latitude
-                    location.longitude = result.longitude
-                    if not location.address:
-                        location.address = result.address
-                    self._geocode_failures = 0  # Reset on success
-                    break
-            except GeocoderTimedOut:
-                print(f"Geocoding timed out for: {query}")
-                self._geocode_failures += 1
-                continue
-            except GeocoderServiceError as e:
-                print(f"Geocoding service error for {query}: {e}")
-                self._geocode_failures += 1
-                continue
-            except Exception as e:
-                print(f"Geocoding failed for {query}: {e}")
-                self._geocode_failures += 1
-                continue
+            result = self._do_geocode(query, region_hint)
+            if result:
+                location.latitude = result["lat"]
+                location.longitude = result["lng"]
+                if not location.address:
+                    location.address = result.get("address", "")
+                self._geocode_failures = 0
+                return
 
-    def create_map(
-        self,
-        itinerary: Itinerary,
-        output_path: Optional[str | Path] = None,
-        show_route: bool = True,
-        cluster_markers: bool = False,
-    ) -> folium.Map:
-        """Create an interactive map from an itinerary.
+        # No results found
+        self._geocode_failures += 1
+
+    def _do_geocode(self, query: str, region_hint: str = "") -> Optional[dict]:
+        """Execute a geocoding request and return result or None."""
+        try:
+            url = "https://maps.googleapis.com/maps/api/geocode/json"
+            params = {
+                "address": query,
+                "key": self.api_key
+            }
+            # Add region bias if available
+            if region_hint:
+                # Use component filtering for better regional results
+                params["region"] = self._get_region_code(region_hint)
+
+            response = requests.get(url, params=params, timeout=5)
+            data = response.json()
+
+            if data.get("status") == "OK" and data.get("results"):
+                result = data["results"][0]
+                geo = result["geometry"]["location"]
+                return {
+                    "lat": geo["lat"],
+                    "lng": geo["lng"],
+                    "address": result.get("formatted_address", "")
+                }
+            elif data.get("status") == "ZERO_RESULTS":
+                return None
+            else:
+                print(f"Geocoding error for {query}: {data.get('status')}")
+                return None
+        except requests.Timeout:
+            print(f"Geocoding timed out for: {query}")
+            return None
+        except Exception as e:
+            print(f"Geocoding failed for {query}: {e}")
+            return None
+
+    def _get_region_code(self, region: str) -> str:
+        """Convert region name to ISO 3166-1 alpha-2 code for Google."""
+        codes = {
+            "Italy": "it",
+            "France": "fr",
+            "Spain": "es",
+            "India": "in",
+            "Japan": "jp",
+            "United Kingdom": "gb",
+            "Germany": "de",
+            "USA": "us",
+            "United States": "us",
+        }
+        return codes.get(region, "")
+
+    def create_map_data(self, itinerary: Itinerary) -> dict:
+        """Create map data structure for Google Maps.
 
         Args:
             itinerary: The itinerary to map
-            output_path: Path to save the HTML file (optional)
-            show_route: Whether to draw lines connecting locations in order
-            cluster_markers: Whether to cluster nearby markers
 
         Returns:
-            The folium Map object
+            Dictionary with map data (center, zoom, markers)
         """
         # Ensure locations are geocoded
         self.geocode_locations(itinerary)
@@ -136,14 +205,13 @@ class ItineraryMapper:
         ]
 
         if not locations_with_coords:
-            # Create empty map centered on a default location
-            m = folium.Map(location=[0, 0], zoom_start=2)
-            folium.Marker(
-                [0, 0],
-                popup="No locations could be geocoded",
-                icon=folium.Icon(color="red", icon="exclamation-triangle", prefix="fa"),
-            ).add_to(m)
-            return m
+            return {
+                "center": {"lat": 0, "lng": 0},
+                "zoom": 2,
+                "markers": [],
+                "route": [],
+                "error": "No locations could be geocoded"
+            }
 
         # Calculate map center and bounds
         lats = [loc.latitude for _, loc in locations_with_coords]
@@ -174,105 +242,84 @@ class ItineraryMapper:
         else:
             zoom = 12
 
-        # Create map centered on locations with calculated zoom
-        m = folium.Map(
-            location=[center_lat, center_lon],
-            zoom_start=zoom,
-            tiles="cartodbpositron"
-        )
-
-        # Add markers
-        if cluster_markers:
-            marker_cluster = plugins.MarkerCluster()
-            m.add_child(marker_cluster)
-            marker_target = marker_cluster
-        else:
-            marker_target = m
-
+        # Build markers data
+        markers = []
         for idx, (item, location) in enumerate(locations_with_coords, 1):
-            # Determine marker style
+            # Determine marker color based on category
+            category = item.category or "other"
             color = MARKER_COLORS.get(
-                location.location_type, MARKER_COLORS.get(item.category, "lightblue")
-            )
-            icon = MARKER_ICONS.get(
-                item.category, MARKER_ICONS.get(location.location_type, "map-marker")
+                location.location_type, MARKER_COLORS.get(category, "#00BCD4")
             )
 
-            # Build popup content
-            popup_html = self._build_popup(item, idx)
+            # Build info window content
+            info_html = self._build_info_window(item, idx)
 
-            # Create marker
-            folium.Marker(
-                [location.latitude, location.longitude],
-                popup=folium.Popup(popup_html, max_width=300),
-                tooltip=f"{idx}. {item.title}",
-                icon=folium.Icon(color=color, icon=icon, prefix="fa"),
-            ).add_to(marker_target)
+            markers.append({
+                "position": {"lat": location.latitude, "lng": location.longitude},
+                "title": item.title,
+                "category": category,
+                "color": color,
+                "info": info_html,
+            })
 
-        # Draw route connecting locations
-        if show_route and len(locations_with_coords) > 1:
-            route_coords = [
-                [loc.latitude, loc.longitude] for _, loc in locations_with_coords
-            ]
-            folium.PolyLine(
-                route_coords,
-                weight=2,
-                color="blue",
-                opacity=0.6,
-                dash_array="5, 10",
-            ).add_to(m)
+        return {
+            "center": {"lat": center_lat, "lng": center_lon},
+            "zoom": zoom,
+            "markers": markers,
+        }
 
-            # Add numbered circle markers for order
-            for idx, (lat, lon) in enumerate(route_coords, 1):
-                folium.CircleMarker(
-                    [lat, lon],
-                    radius=12,
-                    color="white",
-                    fill=True,
-                    fill_color="blue",
-                    fill_opacity=0.8,
-                    weight=2,
-                ).add_to(m)
+    def _build_info_window(self, item, idx: int) -> str:
+        """Build HTML content for a Google Maps info window."""
+        import urllib.parse
 
-                # Add number label
-                folium.DivIcon
-
-        # Add layer control and fullscreen
-        folium.LayerControl().add_to(m)
-        plugins.Fullscreen().add_to(m)
-
-        # Save if output path provided
-        if output_path:
-            output_path = Path(output_path)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            m.save(str(output_path))
-
-        return m
-
-    def _build_popup(self, item, idx: int) -> str:
-        """Build HTML content for a marker popup."""
         lines = [
-            f"<h4>{idx}. {item.title}</h4>",
-            f"<p><strong>{item.location.name}</strong></p>",
+            f'<div style="font-family: Arial, sans-serif; max-width: 320px; font-size: 15px;">',
+            f'<h4 style="margin: 0 0 10px 0; color: #1a73e8; font-size: 17px;">{idx}. {html.escape(item.title)}</h4>',
+            f'<p style="margin: 0 0 6px 0; font-weight: bold; font-size: 15px;">{html.escape(item.location.name)}</p>',
         ]
 
         if item.date:
             date_str = item.date.strftime("%B %d, %Y")
-            lines.append(f"<p><em>{date_str}</em></p>")
+            lines.append(f'<p style="margin: 0 0 6px 0; color: #666; font-size: 14px;"><em>{date_str}</em></p>')
 
         if item.start_time:
             time_str = item.start_time.strftime("%I:%M %p")
             if item.end_time:
                 time_str += f" - {item.end_time.strftime('%I:%M %p')}"
-            lines.append(f"<p>Time: {time_str}</p>")
+            lines.append(f'<p style="margin: 0 0 6px 0; font-size: 14px;">Time: {time_str}</p>')
 
         if item.description:
-            lines.append(f"<p>{item.description}</p>")
+            desc = html.escape(item.description[:200])
+            if len(item.description) > 200:
+                desc += "..."
+            lines.append(f'<p style="margin: 0 0 6px 0; font-size: 14px;">{desc}</p>')
 
         if item.confirmation_number:
-            lines.append(f"<p><small>Conf: {item.confirmation_number}</small></p>")
+            lines.append(f'<p style="margin: 0 0 6px 0; font-size: 13px; color: #888;">Conf: {html.escape(item.confirmation_number)}</p>')
 
         if item.location.address:
-            lines.append(f"<p><small>{item.location.address}</small></p>")
+            lines.append(f'<p style="margin: 0 0 10px 0; font-size: 13px; color: #888;">{html.escape(item.location.address)}</p>')
 
+        # Add action links
+        lines.append('<div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee;">')
+
+        # Google Maps link - search by place name for better results
+        query = urllib.parse.quote(f"{item.title} {item.location.name}")
+        maps_url = f"https://www.google.com/maps/search/?api=1&query={query}"
+        maps_link_text = html.escape(item.location.name[:30]) + ("..." if len(item.location.name) > 30 else "")
+        lines.append(f'<a href="{maps_url}" target="_blank" style="display: block; margin-bottom: 8px; color: #1a73e8; text-decoration: none; font-size: 14px;"><i class="fas fa-map-marker-alt" style="margin-right: 6px;"></i>{maps_link_text}</a>')
+
+        # Website link (for hotels, restaurants, activities)
+        if item.category in ("hotel", "lodging", "meal", "restaurant", "activity", "attraction"):
+            if item.website_url:
+                # Use the actual website URL from source data
+                website_link = item.website_url
+            else:
+                # Fall back to DuckDuckGo's "I'm Feeling Ducky" redirect
+                search_query = urllib.parse.quote(f"{item.title} {item.location.name} official site")
+                website_link = f"https://duckduckgo.com/?q=\\{search_query}"
+            lines.append(f'<a href="{website_link}" target="_blank" style="display: block; color: #1a73e8; text-decoration: none; font-size: 14px;"><i class="fas fa-globe" style="margin-right: 6px;"></i>Website</a>')
+
+        lines.append('</div>')
+        lines.append('</div>')
         return "".join(lines)

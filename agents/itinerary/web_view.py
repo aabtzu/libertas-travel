@@ -1,10 +1,12 @@
-"""Generate a unified web page with tabs for summary and map."""
+"""Generate a unified web page with tabs for summary and map using Google Maps."""
 
 from __future__ import annotations
 
+import os
+import json
 from pathlib import Path
 from typing import Optional, Union
-import html
+import html as html_module
 
 from .models import Itinerary, ItineraryItem
 from .mapper import ItineraryMapper
@@ -22,6 +24,15 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
     <style>
 {main_css}
 
+/* Google Maps container */
+#google-map {{
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+}}
+#map-tab {{
+    position: relative;
+}}
 /* Map loading overlay */
 .map-loading-overlay {{
     position: absolute;
@@ -66,8 +77,50 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
 .map-status-error {{
     color: #e74c3c;
 }}
-#map-tab {{
-    position: relative;
+/* Map legend */
+.map-legend {{
+    position: absolute;
+    bottom: 30px;
+    left: 10px;
+    background: white;
+    padding: 14px 18px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    font-size: 15px;
+    z-index: 100;
+    max-width: 180px;
+}}
+.map-legend h4 {{
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}}
+.legend-item {{
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+}}
+.legend-dot {{
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}}
+.legend-dot i {{
+    font-size: 11px;
+    color: white;
+}}
+.legend-label {{
+    color: #444;
+    font-size: 15px;
 }}
     </style>
 </head>
@@ -100,11 +153,112 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
             <div class="map-loading-text">Generating map...</div>
             <div class="map-loading-subtext">Geocoding locations, this may take a minute</div>
         </div>
-        <iframe id="map-frame" srcdoc="{map_html_escaped}"></iframe>
+        <div id="google-map"></div>
+        <div class="map-legend" id="map-legend">
+            <h4>Legend</h4>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#EA4335;"><i class="fas fa-plane"></i></div>
+                <span class="legend-label">Flight</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#4285F4;"><i class="fas fa-bed"></i></div>
+                <span class="legend-label">Hotel</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#34A853;"><i class="fas fa-star"></i></div>
+                <span class="legend-label">Activity</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#FF9800;"><i class="fas fa-utensils"></i></div>
+                <span class="legend-label">Meal</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#757575;"><i class="fas fa-car"></i></div>
+                <span class="legend-label">Transport</span>
+            </div>
+        </div>
     </div>
 
     <script>
 {main_js}
+
+// Google Maps data
+var mapData = {map_data_json};
+
+// Initialize Google Map
+var map = null;
+var markers = [];
+var infoWindow = null;
+
+function initMap() {{
+    var mapLoading = document.getElementById('map-loading');
+
+    if (!mapData || mapData.error) {{
+        if (mapLoading) {{
+            mapLoading.innerHTML = '<div class="map-status-error"><i class="fas fa-exclamation-triangle"></i></div>' +
+                '<div class="map-loading-text map-status-error">Map not available</div>' +
+                '<div class="map-loading-subtext">' + (mapData.error || 'No location data') + '</div>';
+        }}
+        return;
+    }}
+
+    // Create map with mapId for AdvancedMarkerElement support
+    map = new google.maps.Map(document.getElementById('google-map'), {{
+        center: mapData.center,
+        zoom: mapData.zoom,
+        mapId: 'DEMO_MAP_ID',
+        mapTypeControl: true,
+        mapTypeControlOptions: {{
+            style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+            position: google.maps.ControlPosition.TOP_RIGHT
+        }},
+        fullscreenControl: true,
+        streetViewControl: false,
+    }});
+
+    // Create info window
+    infoWindow = new google.maps.InfoWindow();
+
+    // Category icon mapping (using Font Awesome class names)
+    var categoryIcons = {{
+        'flight': 'fa-plane',
+        'hotel': 'fa-bed',
+        'lodging': 'fa-bed',
+        'meal': 'fa-utensils',
+        'restaurant': 'fa-utensils',
+        'activity': 'fa-star',
+        'attraction': 'fa-star',
+        'transport': 'fa-car',
+        'other': 'fa-map-marker-alt'
+    }};
+
+    // Add markers with category icons using custom HTML
+    mapData.markers.forEach(function(markerData, index) {{
+        var iconClass = categoryIcons[markerData.category] || 'fa-map-marker-alt';
+
+        // Create custom marker element
+        var markerDiv = document.createElement('div');
+        markerDiv.style.cssText = 'width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer; background-color: ' + markerData.color + ';';
+        markerDiv.innerHTML = '<i class="fas ' + iconClass + '" style="color: white; font-size: 12px;"></i>';
+
+        var marker = new google.maps.marker.AdvancedMarkerElement({{
+            position: markerData.position,
+            map: map,
+            title: markerData.title,
+            content: markerDiv
+        }});
+
+        marker.addListener('click', function() {{
+            infoWindow.setContent(markerData.info);
+            infoWindow.open(map, marker);
+        }});
+
+        markers.push(marker);
+    }});
+
+    // Hide loading overlay
+    if (mapLoading) mapLoading.classList.add('hidden');
+}}
 
 // Map status polling - only poll if map is pending/processing
 (function() {{
@@ -112,17 +266,15 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
     var mapLoading = document.getElementById('map-loading');
     var mapBadge = document.getElementById('map-status-badge');
     var pollInterval = null;
-    var wasNotReady = false;  // Track if we started in a non-ready state
+    var wasNotReady = false;
 
     function checkMapStatus() {{
         fetch('/api/map-status?link=' + encodeURIComponent(tripLink))
             .then(function(r) {{ return r.json(); }})
             .then(function(data) {{
                 if (data.map_status === 'ready') {{
-                    if (mapLoading) mapLoading.classList.add('hidden');
                     if (mapBadge) mapBadge.innerHTML = '';
                     if (pollInterval) clearInterval(pollInterval);
-                    // Only reload if we were waiting for the map to become ready
                     if (wasNotReady) {{
                         window.location.reload();
                     }}
@@ -135,7 +287,6 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
                     if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-exclamation-circle" style="color:#e74c3c;margin-left:5px;"></i>';
                     if (pollInterval) clearInterval(pollInterval);
                 }} else if (data.map_status === 'pending' || data.map_status === 'processing') {{
-                    // Still processing - mark that we need to reload when ready
                     wasNotReady = true;
                     if (mapLoading) mapLoading.classList.remove('hidden');
                     if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#667eea;margin-left:5px;"></i>';
@@ -146,21 +297,22 @@ TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
             }});
     }}
 
-    // Check immediately and then poll every 5 seconds
     checkMapStatus();
     pollInterval = setInterval(checkMapStatus, 5000);
 }})();
     </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key={google_maps_api_key}&libraries=marker&callback=initMap"></script>
 </body>
 </html>
 """
 
 
 class ItineraryWebView:
-    """Generate a unified web page with tabs for summary and map."""
+    """Generate a unified web page with tabs for summary and map using Google Maps."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.mapper = ItineraryMapper()
+        self.api_key = api_key or os.environ.get("GOOGLE_MAPS_API_KEY", "")
+        self.mapper = ItineraryMapper(api_key=self.api_key)
         self.summarizer = ItinerarySummarizer(api_key=api_key)
 
     def generate(
@@ -170,7 +322,7 @@ class ItineraryWebView:
         use_ai_summary: bool = True,
         skip_geocoding: bool = False,
     ) -> Path:
-        """Generate a unified HTML page with summary and map tabs.
+        """Generate a unified HTML page with summary and Google Maps tabs.
 
         Args:
             skip_geocoding: If True, skip geocoding to speed up generation.
@@ -179,35 +331,29 @@ class ItineraryWebView:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Generate the map - get the raw HTML (with error handling for geocoding issues)
+        # Generate map data for Google Maps
         if skip_geocoding:
-            # Create placeholder map without geocoding
-            import folium
-            fallback_map = folium.Map(location=[20, 0], zoom_start=2)
-            folium.Marker(
-                [20, 0],
-                popup=f"Map for {itinerary.title} - geocoding skipped for speed",
-                icon=folium.Icon(color="blue", icon="globe", prefix="fa"),
-            ).add_to(fallback_map)
-            map_html = self._get_map_html(fallback_map)
+            # Create placeholder map data without geocoding
+            map_data = {
+                "center": {"lat": 20, "lng": 0},
+                "zoom": 2,
+                "markers": [],
+                "error": f"Map for {itinerary.title} - geocoding skipped for speed"
+            }
             print(f"[WEB_VIEW] Skipped geocoding for speed")
         else:
             try:
-                folium_map = self.mapper.create_map(itinerary, show_route=True)
-                map_html = self._get_map_html(folium_map)
+                map_data = self.mapper.create_map_data(itinerary)
             except Exception as e:
                 print(f"Warning: Map generation failed: {e}")
                 import traceback
                 traceback.print_exc()
-                # Create a fallback empty map
-                import folium
-                fallback_map = folium.Map(location=[0, 0], zoom_start=2)
-                folium.Marker(
-                    [0, 0],
-                    popup="Map could not be generated - geocoding failed",
-                    icon=folium.Icon(color="red", icon="exclamation-triangle", prefix="fa"),
-                ).add_to(fallback_map)
-                map_html = self._get_map_html(fallback_map)
+                map_data = {
+                    "center": {"lat": 0, "lng": 0},
+                    "zoom": 2,
+                    "markers": [],
+                    "error": "Map could not be generated - geocoding failed"
+                }
 
         # Generate the summary HTML directly from itinerary data
         summary_html = self._build_summary_html(itinerary)
@@ -227,40 +373,27 @@ class ItineraryWebView:
 
         meta_info = " • ".join(meta_parts)
 
+        # Get Google Maps API key
+        google_maps_api_key = self.api_key or os.environ.get("GOOGLE_MAPS_API_KEY", "")
+
         # Build the full HTML
         full_html = TRIP_PAGE_TEMPLATE.format(
             main_css=get_static_css("main.css"),
             nav_html=get_nav_html("trips"),
             main_js=get_static_js("main.js"),
-            title=html.escape(itinerary.title),
-            meta_info=html.escape(meta_info),
+            title=html_module.escape(itinerary.title),
+            meta_info=html_module.escape(meta_info),
             summary_html=summary_html,
-            map_html_escaped=html.escape(map_html),
+            map_data_json=json.dumps(map_data),
+            google_maps_api_key=google_maps_api_key,
         )
 
         output_path.write_text(full_html)
         return output_path
 
-    def _get_map_html(self, folium_map) -> str:
-        """Get the full HTML for the folium map."""
-        import tempfile
-        import os
-
-        # Save to a temp file and read back
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
-            temp_path = f.name
-
-        folium_map.save(temp_path)
-
-        with open(temp_path, 'r') as f:
-            map_html = f.read()
-
-        os.unlink(temp_path)
-        return map_html
-
     def _build_summary_html(self, itinerary: Itinerary) -> str:
         """Build a compact HTML summary directly from itinerary data."""
-        lines = [f"<h2>{html.escape(itinerary.title)}</h2>"]
+        lines = [f"<h2>{html_module.escape(itinerary.title)}</h2>"]
 
         # Group items by day
         items_by_day: dict[int, list[ItineraryItem]] = {}
@@ -304,8 +437,8 @@ class ItineraryWebView:
 
                 title = item.title or "Untitled"
                 location = item.location.name or "Unknown location"
-                lines.append(f'<span class="activity-title">{html.escape(title)}</span>')
-                lines.append(f'<span class="activity-location">{html.escape(location)}</span>')
+                lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
+                lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
                 lines.append('</div>')
 
             lines.append('</div>')
@@ -331,8 +464,8 @@ class ItineraryWebView:
 
                 title = item.title or "Untitled"
                 location = item.location.name or "Unknown location"
-                lines.append(f'<span class="activity-title">{html.escape(title)}</span>')
-                lines.append(f'<span class="activity-location">{html.escape(location)}</span>')
+                lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
+                lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
                 lines.append('</div>')
             lines.append('</div>')
 
@@ -344,7 +477,7 @@ class ItineraryWebView:
             lines.append('<div class="location-list">')
             for loc in locations:
                 loc_name = loc.name or "Unknown"
-                lines.append(f'<span class="location-tag">{html.escape(loc_name)}</span>')
+                lines.append(f'<span class="location-tag">{html_module.escape(loc_name)}</span>')
             lines.append('</div>')
             lines.append('</div>')
 

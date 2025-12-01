@@ -44,6 +44,7 @@ class ItineraryItem:
     notes: Optional[str] = None
     day_number: Optional[int] = None
     is_home_location: bool = False  # True if this is the traveler's home/origin
+    website_url: Optional[str] = None  # Direct link to hotel/activity website if available
 
     def to_dict(self) -> dict:
         return {
@@ -58,6 +59,7 @@ class ItineraryItem:
             "notes": self.notes,
             "day_number": self.day_number,
             "is_home_location": self.is_home_location,
+            "website_url": self.website_url,
         }
 
 
