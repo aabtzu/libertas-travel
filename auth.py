@@ -1,14 +1,11 @@
-"""Simple authentication module for Libertas."""
+"""Authentication module for Libertas with database support."""
 
-import hashlib
 import os
 import secrets
 import time
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict
 
-# Default credentials (override with environment variables)
-DEFAULT_USERNAME = "aab"
-DEFAULT_PASSWORD = "abcxyz#$%"
+import database as db
 
 # Session settings
 SESSION_DURATION = 24 * 60 * 60  # 24 hours in seconds
@@ -18,33 +15,45 @@ SESSION_COOKIE_NAME = "libertas_session"
 _sessions = {}  # type: Dict[str, dict]
 
 
-def get_credentials():
-    # type: () -> Tuple[str, str]
-    """Get authentication credentials from environment or defaults."""
-    username = os.environ.get("AUTH_USERNAME", DEFAULT_USERNAME)
-    password = os.environ.get("AUTH_PASSWORD", DEFAULT_PASSWORD)
-    return username, password
+def verify_credentials(username: str, password: str) -> Optional[Dict]:
+    """Verify username and password against database.
+    Returns user dict if successful, None otherwise.
+    """
+    return db.authenticate_user(username, password)
 
 
-def hash_password(password: str) -> str:
-    """Create a simple hash of the password."""
-    return hashlib.sha256(password.encode()).hexdigest()
+def register_user(username: str, email: str, password: str) -> tuple:
+    """Register a new user.
+    Returns (success: bool, error_message: str or None)
+    """
+    # Validate input
+    if not username or len(username) < 3:
+        return False, "Username must be at least 3 characters"
+    if not email or "@" not in email:
+        return False, "Invalid email address"
+    if not password or len(password) < 6:
+        return False, "Password must be at least 6 characters"
+
+    # Check if username/email exists
+    if db.username_exists(username):
+        return False, "Username already taken"
+    if db.email_exists(email):
+        return False, "Email already registered"
+
+    # Create user
+    user_id = db.create_user(username, email, password)
+    if user_id:
+        return True, None
+    else:
+        return False, "Failed to create user"
 
 
-def verify_credentials(username: str, password: str) -> bool:
-    """Verify username and password against stored credentials."""
-    expected_username, expected_password = get_credentials()
-    return (
-        username == expected_username and
-        password == expected_password
-    )
-
-
-def create_session(username: str) -> str:
+def create_session(user: Dict) -> str:
     """Create a new session and return the session token."""
     token = secrets.token_urlsafe(32)
     _sessions[token] = {
-        "username": username,
+        "user_id": user["id"],
+        "username": user["username"],
         "created": time.time(),
         "expires": time.time() + SESSION_DURATION,
     }
@@ -66,6 +75,14 @@ def validate_session(token: Optional[str]) -> Optional[dict]:
         return None
 
     return session
+
+
+def get_session_user_id(token: Optional[str]) -> Optional[int]:
+    """Get the user_id from a session token."""
+    session = validate_session(token)
+    if session:
+        return session.get("user_id")
+    return None
 
 
 def destroy_session(token: str) -> bool:
@@ -108,6 +125,19 @@ def parse_cookies(cookie_header):
 
 def is_auth_enabled():
     # type: () -> bool
-    """Check if authentication is enabled (always enabled if credentials are set)."""
-    # Auth is enabled by default; set AUTH_DISABLED=true to disable
+    """Check if authentication is enabled."""
     return os.environ.get("AUTH_DISABLED", "").lower() != "true"
+
+
+def ensure_default_user():
+    """Ensure a default admin user exists (for initial setup)."""
+    default_username = os.environ.get("AUTH_USERNAME", "admin")
+    default_password = os.environ.get("AUTH_PASSWORD", "libertas")
+    default_email = os.environ.get("AUTH_EMAIL", "admin@example.com")
+
+    if not db.username_exists(default_username):
+        user_id = db.create_user(default_username, default_email, default_password)
+        if user_id:
+            print(f"[AUTH] Created default user: {default_username}")
+        else:
+            print(f"[AUTH] Failed to create default user")

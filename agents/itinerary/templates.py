@@ -606,7 +606,7 @@ LOGIN_PAGE_TEMPLATE = """<!DOCTYPE html>
             </form>
 
             <div class="login-footer">
-                Protected by authentication
+                <p>Don't have an account? <a href="/register.html">Create one</a></p>
             </div>
         </div>
     </div>
@@ -653,6 +653,129 @@ LOGIN_PAGE_TEMPLATE = """<!DOCTYPE html>
 def generate_login_page() -> str:
     """Generate the Login page HTML."""
     return LOGIN_PAGE_TEMPLATE.format(
+        main_css=get_static_css("main.css"),
+        login_css=get_static_css("login.css"),
+    )
+
+
+REGISTER_PAGE_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Libertas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+{main_css}
+
+{login_css}
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <i class="fas fa-feather-alt brand-icon"></i>
+                <h1>LIBERTAS</h1>
+                <p class="tagline">Create Your Account</p>
+            </div>
+
+            <div class="login-error" id="register-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="error-message">Registration failed</span>
+            </div>
+
+            <div class="login-success" id="register-success" style="display:none; background: #d4edda; color: #155724; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <i class="fas fa-check-circle"></i>
+                <span>Account created! Redirecting to login...</span>
+            </div>
+
+            <form class="login-form" id="register-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required minlength="3" autocomplete="username" autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required minlength="6" autocomplete="new-password">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required minlength="6" autocomplete="new-password">
+                </div>
+
+                <button type="submit" class="login-btn">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>Already have an account? <a href="/login.html">Sign in</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('register-form').addEventListener('submit', async function(e) {{
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        const errorDiv = document.getElementById('register-error');
+        const successDiv = document.getElementById('register-success');
+        const errorMsg = document.getElementById('error-message');
+
+        // Client-side validation
+        if (password !== confirmPassword) {{
+            errorMsg.textContent = 'Passwords do not match';
+            errorDiv.classList.add('show');
+            return;
+        }}
+
+        try {{
+            const response = await fetch('/api/register', {{
+                method: 'POST',
+                headers: {{
+                    'Content-Type': 'application/json',
+                }},
+                body: JSON.stringify({{ username, email, password }}),
+            }});
+
+            const data = await response.json();
+
+            if (data.success) {{
+                errorDiv.classList.remove('show');
+                successDiv.style.display = 'block';
+                setTimeout(function() {{
+                    window.location.href = '/login.html';
+                }}, 2000);
+            }} else {{
+                errorMsg.textContent = data.error || 'Registration failed';
+                errorDiv.classList.add('show');
+            }}
+        }} catch (err) {{
+            errorMsg.textContent = 'Connection error. Please try again.';
+            errorDiv.classList.add('show');
+        }}
+    }});
+    </script>
+</body>
+</html>
+"""
+
+
+def generate_register_page() -> str:
+    """Generate the Register page HTML."""
+    return REGISTER_PAGE_TEMPLATE.format(
         main_css=get_static_css("main.css"),
         login_css=get_static_css("login.css"),
     )

@@ -17,10 +17,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from agents.itinerary.parser import ItineraryParser
 from agents.itinerary.web_view import ItineraryWebView
-from agents.itinerary.templates import generate_trips_page, generate_about_page, generate_home_page, generate_login_page
+from agents.itinerary.templates import generate_trips_page, generate_about_page, generate_home_page, generate_login_page, generate_register_page
 
-# Import authentication
+# Import authentication and database
 import auth
+import database as db
 
 # Import geocoding worker for async map generation
 import geocoding_worker
@@ -191,10 +192,16 @@ def save_trips_data(trips: list[dict]) -> None:
         json.dump(trips, f, indent=2)
 
 
-def regenerate_trips_page() -> None:
-    """Regenerate the trips.html page with current trips data."""
+def regenerate_trips_page(user_id: int = None) -> None:
+    """Regenerate the trips.html page with current trips data.
+
+    If user_id is provided, uses database. Otherwise uses JSON file (legacy).
+    """
     try:
-        trips = load_trips_data()
+        if user_id is not None:
+            trips = db.get_user_trips(user_id)
+        else:
+            trips = load_trips_data()
         html = generate_trips_page(trips)
         (OUTPUT_DIR / "trips.html").write_text(html)
     except Exception as e:
@@ -231,6 +238,14 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         token = self.get_session_token()
         return auth.validate_session(token) is not None
 
+    def get_current_user_id(self) -> int:
+        """Get the current user's ID from session. Returns 1 (default) if auth is disabled."""
+        if not auth.is_auth_enabled():
+            return 1  # Default user
+        token = self.get_session_token()
+        user_id = auth.get_session_user_id(token)
+        return user_id if user_id else 1
+
     def require_auth(self) -> bool:
         """Check authentication and redirect to login if needed. Returns True if authenticated."""
         if self.is_authenticated():
@@ -258,6 +273,10 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.serve_login_page()
             return
 
+        if path == "/register.html" or path == "/register":
+            self.serve_register_page()
+            return
+
         # API debug endpoint
         if path == "/api/debug":
             self.handle_debug()
@@ -272,8 +291,24 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         if not self.require_auth():
             return
 
+        # Serve trips.html dynamically (user-specific)
+        if path == "/trips.html" or path == "/trips":
+            self.serve_trips_page()
+            return
+
         # Let parent class handle static files
         super().do_GET()
+
+    def serve_trips_page(self):
+        """Serve the trips page dynamically for the current user."""
+        user_id = self.get_current_user_id()
+        trips = db.get_user_trips(user_id)
+        html = generate_trips_page(trips)
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(html.encode()))
+        self.end_headers()
+        self.wfile.write(html.encode())
 
     def serve_login_page(self):
         """Serve the login page."""
@@ -285,6 +320,22 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             return
 
         html = generate_login_page()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(html.encode()))
+        self.end_headers()
+        self.wfile.write(html.encode())
+
+    def serve_register_page(self):
+        """Serve the registration page."""
+        # If already authenticated, redirect to home
+        if self.is_authenticated():
+            self.send_response(302)
+            self.send_header('Location', '/')
+            self.end_headers()
+            return
+
+        html = generate_register_page()
         self.send_response(200)
         self.send_header('Content-Type', 'text/html')
         self.send_header('Content-Length', len(html.encode()))
@@ -353,9 +404,9 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.send_json_error("Missing 'link' parameter")
             return
 
-        # Find the trip
-        trips = load_trips_data()
-        trip = next((t for t in trips if t.get("link") == link), None)
+        # Find the trip for current user
+        user_id = self.get_current_user_id()
+        trip = db.get_trip_by_link(user_id, link)
 
         if not trip:
             self.send_json_error("Trip not found", status=404)
@@ -373,6 +424,10 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         # Auth endpoints (no auth required)
         if self.path == "/api/login":
             self.handle_login()
+            return
+
+        if self.path == "/api/register":
+            self.handle_register()
             return
         elif self.path == "/api/logout":
             self.handle_logout()
@@ -417,9 +472,10 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.send_json_error("Username and password required")
             return
 
-        if auth.verify_credentials(username, password):
+        user = auth.verify_credentials(username, password)
+        if user:
             # Create session and set cookie
-            token = auth.create_session(username)
+            token = auth.create_session(user)
 
             # Determine if we should use Secure cookie (when on HTTPS)
             # For local dev, don't use Secure flag
@@ -429,9 +485,33 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.send_header('Set-Cookie', auth.get_session_cookie_header(token, secure=is_secure))
             self.end_headers()
-            self.wfile.write(json.dumps({"success": True}).encode())
+            self.wfile.write(json.dumps({"success": True, "username": user["username"]}).encode())
         else:
             self.send_json_error("Invalid username or password", status=401)
+
+    def handle_register(self):
+        """Handle user registration."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        password = data.get('password', '').strip()
+
+        success, error = auth.register_user(username, email, password)
+
+        if success:
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True}).encode())
+        else:
+            self.send_json_error(error, status=400)
 
     def handle_logout(self):
         """Handle logout request."""
@@ -460,9 +540,9 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.send_json_error("No trip link provided")
             return
 
-        # Find the trip and get the HTML file to re-parse
-        trips = load_trips_data()
-        trip = next((t for t in trips if t.get("link") == link), None)
+        # Find the trip for current user
+        user_id = self.get_current_user_id()
+        trip = db.get_trip_by_link(user_id, link)
 
         if not trip:
             self.send_json_error("Trip not found")
@@ -475,15 +555,7 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             return
 
         # Reset status to pending
-        trip["map_status"] = "pending"
-        if "map_error" in trip:
-            del trip["map_error"]
-        save_trips_data(trips)
-
-        # We need to re-parse the trip. Check if there's a saved upload file
-        uploads_dir = OUTPUT_DIR / "uploads"
-        # Look for any file that might match this trip
-        possible_files = list(uploads_dir.glob("*")) if uploads_dir.exists() else []
+        db.update_trip_map_status(user_id, link, "pending", None)
 
         # For now, just regenerate the map from scratch using the existing page content
         # This requires parsing the summary HTML back to an itinerary - complex
@@ -509,24 +581,18 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 self.send_json_error("No trip link provided")
                 return
 
-            # Remove from trips data
-            trips = load_trips_data()
-            original_count = len(trips)
-            trips = [t for t in trips if t.get("link") != link]
+            # Delete from database for current user
+            user_id = self.get_current_user_id()
+            deleted = db.delete_trip(user_id, link)
 
-            if len(trips) == original_count:
+            if not deleted:
                 self.send_json_error("Trip not found")
                 return
-
-            save_trips_data(trips)
 
             # Delete the HTML file
             html_file = OUTPUT_DIR / link
             if html_file.exists():
                 os.unlink(html_file)
-
-            # Regenerate trips page
-            regenerate_trips_page()
 
             self.send_json_response({
                 "success": True,
@@ -554,9 +620,9 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 self.send_json_error("No trip link provided")
                 return
 
-            # Find the trip
-            trips = load_trips_data()
-            trip = next((t for t in trips if t.get("link") == link), None)
+            # Find the trip for current user
+            user_id = self.get_current_user_id()
+            trip = db.get_trip_by_link(user_id, link)
 
             if not trip:
                 self.send_json_error("Trip not found")
@@ -596,20 +662,13 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 self.send_json_error("No new title provided")
                 return
 
-            # Update trips data
-            trips = load_trips_data()
-            trip = next((t for t in trips if t.get("link") == link), None)
+            # Update trip in database for current user
+            user_id = self.get_current_user_id()
+            updated = db.update_trip(user_id, link, {"title": new_title})
 
-            if not trip:
+            if not updated:
                 self.send_json_error("Trip not found")
                 return
-
-            # Update the title
-            trip["title"] = new_title
-            save_trips_data(trips)
-
-            # Regenerate trips page
-            regenerate_trips_page()
 
             self.send_json_response({
                 "success": True,
@@ -637,30 +696,30 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 self.send_json_error("No trip link provided")
                 return
 
-            # Update trips data
-            trips = load_trips_data()
-            trip = next((t for t in trips if t.get("link") == link), None)
+            # Build updates dict
+            updates = {}
+            if 'title' in data and data['title']:
+                updates["title"] = data['title']
+            if 'dates' in data and data['dates']:
+                updates["dates"] = data['dates']
+            if 'days' in data:
+                updates["days"] = int(data['days'])
+            if 'locations' in data:
+                updates["locations"] = int(data['locations'])
+            if 'activities' in data:
+                updates["activities"] = int(data['activities'])
 
-            if not trip:
-                self.send_json_error("Trip not found")
+            if not updates:
+                self.send_json_error("No fields to update")
                 return
 
-            # Update fields if provided
-            if 'title' in data and data['title']:
-                trip["title"] = data['title']
-            if 'dates' in data and data['dates']:
-                trip["dates"] = data['dates']
-            if 'days' in data:
-                trip["days"] = int(data['days'])
-            if 'locations' in data:
-                trip["locations"] = int(data['locations'])
-            if 'activities' in data:
-                trip["activities"] = int(data['activities'])
+            # Update trip in database for current user
+            user_id = self.get_current_user_id()
+            updated = db.update_trip(user_id, link, updates)
 
-            save_trips_data(trips)
-
-            # Regenerate trips page
-            regenerate_trips_page()
+            if not updated:
+                self.send_json_error("Trip not found")
+                return
 
             self.send_json_response({
                 "success": True,
@@ -765,22 +824,15 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                     "map_status": "pending",  # Map will be generated async
                 }
 
-                # Add to trips data (avoid duplicates by link)
+                # Add trip to database for current user
                 print(f"[UPLOAD] Step 3: Saving trip data...")
-                trips = load_trips_data()
-                trips = [t for t in trips if t.get("link") != output_file]
-                trips.insert(0, trip_data)  # Add new trip at beginning
-                save_trips_data(trips)
-                print(f"[UPLOAD] Step 3 done: {time.time() - start_time:.1f}s - Saved {len(trips)} trips")
+                user_id = self.get_current_user_id()
+                db.add_trip(user_id, trip_data)
+                print(f"[UPLOAD] Step 3 done: {time.time() - start_time:.1f}s - Saved trip for user {user_id}")
 
                 # Queue async geocoding for map generation
                 print(f"[UPLOAD] Step 3b: Queueing background geocoding...")
                 geocoding_worker.queue_geocoding(output_file, itinerary)
-
-                # Regenerate trips page
-                print(f"[UPLOAD] Step 4: Regenerating trips page...")
-                regenerate_trips_page()
-                print(f"[UPLOAD] Step 4 done: {time.time() - start_time:.1f}s")
 
                 print(f"[UPLOAD] SUCCESS - Total time: {time.time() - start_time:.1f}s")
 
@@ -908,17 +960,12 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 "map_status": "pending",  # Map will be generated async
             }
 
-            # Add to trips data (avoid duplicates by link)
-            trips = load_trips_data()
-            trips = [t for t in trips if t.get("link") != output_file]
-            trips.insert(0, trip_data)
-            save_trips_data(trips)
+            # Add trip to database for current user
+            user_id = self.get_current_user_id()
+            db.add_trip(user_id, trip_data)
 
             # Queue async geocoding for map generation
             geocoding_worker.queue_geocoding(output_file, itinerary)
-
-            # Regenerate trips page
-            regenerate_trips_page()
 
             # Clean up temp file if it exists
             if tmp_path:
@@ -1043,18 +1090,18 @@ def run_server(port: int = 8000):
     """Run the Libertas web server."""
     initialize_trips_data()
 
+    # Ensure default admin user exists
+    auth.ensure_default_user()
+
     # Bind to 0.0.0.0 for cloud deployment (Render, etc.)
     server = HTTPServer(('0.0.0.0', port), LibertasHandler)
 
     # Get auth info
     if auth.is_auth_enabled():
-        username, password = auth.get_credentials()
-        auth_info = f"""
-║   Authentication: ENABLED                                 ║
-║   Username: {username:<20}                        ║
-║   Password: {password:<20}                        ║
-║                                                           ║
-║   Set AUTH_USERNAME and AUTH_PASSWORD env vars to change  ║
+        auth_info = """
+║   Authentication: ENABLED (database-backed)               ║
+║   Default user: admin (set AUTH_USERNAME/AUTH_PASSWORD)   ║
+║   Registration: /register.html                            ║
 ║   Set AUTH_DISABLED=true to disable authentication        ║"""
     else:
         auth_info = """

@@ -7,6 +7,8 @@ from pathlib import Path
 from queue import Queue
 from typing import Optional
 
+import database as db
+
 # Queue for geocoding tasks
 _geocoding_queue = Queue()
 _worker_thread = None
@@ -18,35 +20,15 @@ def get_output_dir():
     return Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent / "output"))
 
 
-def load_trips_data():
-    """Load trips data from JSON file."""
-    trips_file = get_output_dir() / "trips_data.json"
-    if trips_file.exists():
-        with open(trips_file) as f:
-            return json.load(f)
-    return []
-
-
-def save_trips_data(trips):
-    """Save trips data to JSON file."""
-    trips_file = get_output_dir() / "trips_data.json"
-    with open(trips_file, "w") as f:
-        json.dump(trips, f, indent=2)
-
-
 def update_trip_map_status(link, status, error=None):
-    """Update the map_status for a specific trip."""
-    trips = load_trips_data()
-    for trip in trips:
-        if trip.get("link") == link:
-            trip["map_status"] = status
-            if error:
-                trip["map_error"] = error
-            elif "map_error" in trip:
-                del trip["map_error"]
-            break
-    save_trips_data(trips)
-    print(f"[GEOCODING] Updated map_status for {link}: {status}")
+    """Update the map_status for a specific trip in database."""
+    # Find which user owns this trip
+    user_id = db.get_trip_owner(link)
+    if user_id:
+        db.update_trip_map_status(user_id, link, status, error)
+        print(f"[GEOCODING] Updated map_status for {link} (user {user_id}): {status}")
+    else:
+        print(f"[GEOCODING] WARNING: Could not find owner for trip {link}")
 
 
 def regenerate_map_for_trip(link, itinerary_data):
