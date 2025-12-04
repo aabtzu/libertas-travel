@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore - Libertas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+{main_css}
+
+{explore_css}
+    </style>
+</head>
+<body>
+    {nav_html}
+
+    <div class="explore-container">
+        <!-- Main Content Area -->
+        <main class="explore-main">
+            <!-- Map Section -->
+            <div class="explore-map-container">
+                <div id="explore-map" class="explore-map">
+                    <div class="map-placeholder">
+                        <i class="fas fa-globe-americas"></i>
+                        <p>Map will appear when you search for places</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="explore-results">
+                <div class="results-header">
+                    <h3>Discover Places</h3>
+                    <span class="results-count" id="results-count">0 places</span>
+                </div>
+                <div class="venue-cards" id="venue-results">
+                    <div class="empty-results">
+                        <i class="fas fa-compass"></i>
+                        <h4>Start exploring!</h4>
+                        <p>Ask me about restaurants, bars, hotels, museums, or hiking spots around the world.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Sidebar Chat -->
+        <aside class="explore-sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-compass"></i> Explore Destinations</h2>
+                <p>Chat with me to discover amazing places</p>
+            </div>
+
+            <div class="chat-messages" id="chat-messages">
+                <!-- Messages will be added here -->
+            </div>
+
+            <div class="chat-input-container">
+                <div class="quick-suggestions">
+                    <span class="suggestion-chip">Japanese restaurants in Tokyo</span>
+                    <span class="suggestion-chip">Bars in Rome</span>
+                    <span class="suggestion-chip">Michelin starred</span>
+                </div>
+                <div class="chat-input-wrapper">
+                    <textarea
+                        id="chat-input"
+                        class="chat-input"
+                        placeholder="Ask about destinations..."
+                        rows="1"
+                    ></textarea>
+                    <button id="chat-send-btn" class="chat-send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key={google_maps_api_key}&libraries=marker&callback=initMap" async defer></script>
+    <script>
+{explore_js}
+    </script>
+</body>
+</html>

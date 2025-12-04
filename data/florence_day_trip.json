@@ -1,0 +1,71 @@
+{
+  "title": "Florence day trip",
+  "items": [
+    {
+      "title": "Frecciarossa 9308 to Florence",
+      "category": "transport",
+      "location": {
+        "name": "Roma Termini",
+        "address": "Rome, Italy"
+      },
+      "start_time": "08:35"
+    },
+    {
+      "title": "Santa Maria Novella Church",
+      "category": "activity",
+      "location": {
+        "name": "Basilica di Santa Maria Novella",
+        "address": "Florence, Italy"
+      }
+    },
+    {
+      "title": "San Lorenzo Basilica",
+      "category": "activity",
+      "location": {
+        "name": "Basilica di San Lorenzo",
+        "address": "Florence, Italy"
+      }
+    },
+    {
+      "title": "Trattoria Mario",
+      "category": "meal",
+      "location": {
+        "name": "Trattoria Mario",
+        "address": "Via Rosina 2, Florence, Italy"
+      }
+    },
+    {
+      "title": "Medici Riccardi Palace",
+      "category": "activity",
+      "location": {
+        "name": "Palazzo Medici Riccardi",
+        "address": "Via Cavour 3, Florence, Italy"
+      }
+    },
+    {
+      "title": "Palazzo Vecchio",
+      "category": "activity",
+      "location": {
+        "name": "Palazzo Vecchio",
+        "address": "Piazza della Signoria, Florence, Italy"
+      }
+    },
+    {
+      "title": "Cibreo Bistro",
+      "category": "meal",
+      "location": {
+        "name": "Cibreo Caffe",
+        "address": "Via Andrea del Verrocchio, Florence, Italy"
+      }
+    },
+    {
+      "title": "Frecciarossa 9563 to Rome",
+      "category": "transport",
+      "location": {
+        "name": "Firenze Santa Maria Novella Station",
+        "address": "Florence, Italy"
+      },
+      "start_time": "20:30"
+    }
+  ]
+}

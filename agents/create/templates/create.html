@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Trip - Libertas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=4">
+    <link rel="stylesheet" href="/static/css/categories.css">
+    <link rel="stylesheet" href="/static/css/create.css?v=10">
+</head>
+<body>
+    {nav_html}
+
+    <!-- Initial Dialog Modal -->
+    <div class="modal-overlay" id="create-dialog">
+        <div class="modal-content">
+            <h2><i class="fas fa-plane-departure"></i> Create New Trip</h2>
+            <p class="modal-subtitle">Let's plan your adventure!</p>
+
+            <form id="create-trip-form">
+                <div class="form-group">
+                    <label for="trip-title">Trip Name <span class="required">*</span></label>
+                    <input type="text" id="trip-title" placeholder="e.g., Summer in Italy" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Dates <span class="optional">(optional - add later)</span></label>
+                    <div class="date-inputs">
+                        <div class="date-input-group">
+                            <label for="start-date">Start</label>
+                            <input type="date" id="start-date">
+                        </div>
+                        <span class="date-separator">to</span>
+                        <div class="date-input-group">
+                            <label for="end-date">End</label>
+                            <input type="date" id="end-date">
+                        </div>
+                    </div>
+                    <div class="or-divider"><span>or</span></div>
+                    <div class="num-days-input">
+                        <label for="num-days">Number of days</label>
+                        <input type="number" id="num-days" min="1" max="365" placeholder="e.g., 7">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="/trips.html" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create Trip
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Editor (hidden until trip is created/loaded) -->
+    <div class="create-container" id="editor-container" style="display: none;">
+        <!-- Header -->
+        <div class="editor-header">
+            <div class="header-left">
+                <input type="text" id="editor-title" class="title-input" placeholder="Trip Name">
+                <div class="header-dates">
+                    <input type="date" id="editor-start-date" class="date-input-small">
+                    <span>-</span>
+                    <input type="date" id="editor-end-date" class="date-input-small">
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="save-status" id="save-status">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Saved</span>
+                </div>
+                <button class="btn btn-secondary" id="preview-btn">
+                    <i class="fas fa-eye"></i> Preview
+                </button>
+                <button class="btn btn-primary" id="publish-btn">
+                    <i class="fas fa-paper-plane"></i> Publish
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="editor-main">
+            <!-- Day Timeline -->
+            <div class="editor-timeline">
+                <!-- Tabs -->
+                <div class="timeline-tabs">
+                    <button class="timeline-tab active" data-tab="itinerary" onclick="switchTimelineTab('itinerary')">
+                        <i class="fas fa-calendar-alt"></i> Itinerary
+                    </button>
+                    <button class="timeline-tab" data-tab="grid" onclick="switchTimelineTab('grid')">
+                        <i class="fas fa-th-large"></i> Grid
+                    </button>
+                    <button class="timeline-tab" data-tab="map" onclick="switchTimelineTab('map')">
+                        <i class="fas fa-map-marked-alt"></i> Map
+                    </button>
+                    <div class="timeline-tab-actions">
+                        <button class="btn-icon" id="add-day-btn" title="Add Day">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Itinerary Tab Content -->
+                <div class="timeline-tab-content active" id="itinerary-tab">
+                    <div class="days-container" id="days-container">
+                        <!-- Days will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Grid Tab Content -->
+                <div class="timeline-tab-content" id="grid-tab">
+                    <div class="grid-container" id="grid-container">
+                        <!-- Grid cards will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Map Tab Content -->
+                <div class="timeline-tab-content" id="map-tab">
+                    <div class="map-day-selector">
+                        <label>Show day:</label>
+                        <select id="map-day-select" onchange="updateMapForDay()">
+                            <option value="all">All Days</option>
+                        </select>
+                    </div>
+                    <div class="map-container" id="trip-map">
+                        <div class="map-loading" id="map-loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Loading map...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ideas Pile -->
+                <div class="ideas-pile">
+                    <div class="ideas-header">
+                        <h4><i class="fas fa-lightbulb"></i> Ideas Pile</h4>
+                        <span class="ideas-count" id="ideas-count">0 items</span>
+                    </div>
+                    <div class="ideas-list" id="ideas-list">
+                        <div class="ideas-empty">
+                            <p>Drag items here or add from chat suggestions</p>
+                        </div>
+                    </div>
+                    <div class="ideas-actions">
+                        <button class="btn-add-idea" id="add-idea-btn">
+                            <i class="fas fa-plus"></i> Add Idea
+                        </button>
+                        <button class="btn-upload-plan" id="upload-plan-btn">
+                            <i class="fas fa-file-upload"></i> Upload Plan
+                        </button>
+                    </div>
+                    <input type="file" id="plan-file-input" accept=".pdf,.txt,.png,.jpg,.jpeg,.html,.eml" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Chat Sidebar -->
+            <aside class="editor-sidebar">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-compass"></i> Trip Assistant</h3>
+                    <p>Ask for recommendations</p>
+                </div>
+
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be added here -->
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="quick-suggestions">
+                        <span class="suggestion-chip">Restaurants nearby</span>
+                        <span class="suggestion-chip">Top attractions</span>
+                        <span class="suggestion-chip">Local tips</span>
+                    </div>
+                    <div class="chat-input-wrapper">
+                        <textarea
+                            id="chat-input"
+                            class="chat-input"
+                            placeholder="Ask about places, activities..."
+                            rows="1"
+                        ></textarea>
+                        <button id="chat-send-btn" class="chat-send-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div class="modal-overlay hidden" id="add-item-modal">
+        <div class="modal-content modal-small">
+            <button class="modal-close" id="close-item-modal">&times;</button>
+            <h3>Add Item</h3>
+
+            <form id="add-item-form">
+                <div class="form-group">
+                    <label for="item-title">Title <span class="required">*</span></label>
+                    <input type="text" id="item-title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="item-category">Category</label>
+                    <select id="item-category">
+                        <option value="activity">Activity</option>
+                        <option value="meal">Meal / Restaurant</option>
+                        <option value="hotel">Hotel / Lodging</option>
+                        <option value="attraction">Attraction</option>
+                        <option value="transport">Transport</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="item-time">Time</label>
+                    <input type="time" id="item-time" step="900">
+                </div>
+
+                <div class="form-group">
+                    <label for="item-location">Location</label>
+                    <input type="text" id="item-location" placeholder="City, Address...">
+                </div>
+
+                <div class="form-group">
+                    <label for="item-notes">Notes</label>
+                    <textarea id="item-notes" rows="2" placeholder="Additional details..."></textarea>
+                </div>
+
+                <input type="hidden" id="item-target-day">
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-item-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Trip link from URL - check for both 'link' and 'edit' parameters
+        var params = new URLSearchParams(window.location.search);
+        var tripLink = params.get('link') || params.get('edit');
+    </script>
+    <script src="/static/js/create.js?v=17"></script>
+</body>
+</html>

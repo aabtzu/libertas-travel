@@ -96,6 +96,11 @@ def init_db():
                 ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE
             """)
 
+            # Add is_draft column if it doesn't exist
+            cursor.execute("""
+                ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_draft BOOLEAN DEFAULT FALSE
+            """)
+
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_trips_user_id ON trips(user_id)
             """)
@@ -133,6 +138,12 @@ def init_db():
             # Add is_public column if it doesn't exist (for existing databases)
             try:
                 cursor.execute("ALTER TABLE trips ADD COLUMN is_public INTEGER DEFAULT 0")
+            except:
+                pass  # Column already exists
+
+            # Add is_draft column if it doesn't exist
+            try:
+                cursor.execute("ALTER TABLE trips ADD COLUMN is_draft INTEGER DEFAULT 0")
             except:
                 pass  # Column already exists
 
@@ -254,14 +265,14 @@ def get_user_trips(user_id: int) -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         if USE_POSTGRES:
             cursor.execute("""
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
                 FROM trips WHERE user_id = %s ORDER BY created_at DESC
             """, (user_id,))
-            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'is_public']
+            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'is_public', 'is_draft', 'itinerary_data']
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
         else:
             cursor.execute("""
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
                 FROM trips WHERE user_id = ? ORDER BY created_at DESC
             """, (user_id,))
             return [dict(row) for row in cursor.fetchall()]
@@ -327,19 +338,19 @@ def get_trip_by_link(user_id: int, link: str) -> Optional[Dict[str, Any]]:
         cursor = conn.cursor()
         if USE_POSTGRES:
             cursor.execute("""
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, start_date, end_date
                 FROM trips WHERE user_id = %s AND link = %s
             """, (user_id, link))
             row = cursor.fetchone()
             if row:
-                columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'itinerary_data']
+                columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'itinerary_data', 'is_draft', 'start_date', 'end_date']
                 trip = dict(zip(columns, row))
                 if trip['itinerary_data']:
                     trip['itinerary_data'] = trip['itinerary_data']  # Already parsed by psycopg2 for JSONB
                 return trip
         else:
             cursor.execute("""
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, start_date, end_date
                 FROM trips WHERE user_id = ? AND link = ?
             """, (user_id, link))
             row = cursor.fetchone()
@@ -499,7 +510,7 @@ def get_public_trips(exclude_user_id: Optional[int] = None) -> List[Dict[str, An
             if exclude_user_id:
                 cursor.execute("""
                     SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
-                           t.map_status, t.map_error, u.username as owner_username
+                           t.map_status, t.map_error, u.username as owner_username, t.itinerary_data
                     FROM trips t
                     JOIN users u ON t.user_id = u.id
                     WHERE t.is_public = TRUE AND t.user_id != %s
@@ -508,19 +519,19 @@ def get_public_trips(exclude_user_id: Optional[int] = None) -> List[Dict[str, An
             else:
                 cursor.execute("""
                     SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
-                           t.map_status, t.map_error, u.username as owner_username
+                           t.map_status, t.map_error, u.username as owner_username, t.itinerary_data
                     FROM trips t
                     JOIN users u ON t.user_id = u.id
                     WHERE t.is_public = TRUE
                     ORDER BY t.created_at DESC
                 """)
-            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'owner_username']
+            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'owner_username', 'itinerary_data']
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
         else:
             if exclude_user_id:
                 cursor.execute("""
                     SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
-                           t.map_status, t.map_error, u.username as owner_username
+                           t.map_status, t.map_error, u.username as owner_username, t.itinerary_data
                     FROM trips t
                     JOIN users u ON t.user_id = u.id
                     WHERE t.is_public = 1 AND t.user_id != ?
@@ -529,13 +540,179 @@ def get_public_trips(exclude_user_id: Optional[int] = None) -> List[Dict[str, An
             else:
                 cursor.execute("""
                     SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
-                           t.map_status, t.map_error, u.username as owner_username
+                           t.map_status, t.map_error, u.username as owner_username, t.itinerary_data
                     FROM trips t
                     JOIN users u ON t.user_id = u.id
                     WHERE t.is_public = 1
                     ORDER BY t.created_at DESC
                 """)
             return [dict(row) for row in cursor.fetchall()]
+
+
+# ============ Draft Trip Functions ============
+
+def create_draft_trip(user_id: int, title: str, start_date: Optional[str] = None,
+                      end_date: Optional[str] = None, num_days: Optional[int] = None) -> Optional[Dict[str, Any]]:
+    """Create a new draft trip. Returns the trip data with link or None if failed."""
+    import re
+
+    # Generate link from title
+    slug = title.lower()
+    slug = re.sub(r'[^a-z0-9]+', '_', slug)
+    slug = re.sub(r'_+', '_', slug).strip('_')
+    link = f"{slug}.html"
+
+    # Format dates string
+    dates = None
+    if start_date and end_date:
+        dates = f"{start_date} - {end_date}"
+    elif start_date:
+        dates = start_date
+
+    # Calculate days if dates provided
+    if not num_days and start_date and end_date:
+        from datetime import datetime
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            end = datetime.strptime(end_date, "%Y-%m-%d")
+            num_days = (end - start).days + 1
+        except:
+            pass
+
+    trip_data = {
+        "title": title,
+        "link": link,
+        "dates": dates,
+        "days": num_days,
+        "locations": 0,
+        "activities": 0,
+        "map_status": "pending",
+    }
+
+    itinerary_data = {
+        "title": title,
+        "items": [],
+        "start_date": start_date,
+        "end_date": end_date,
+        "travelers": []
+    }
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        try:
+            itinerary_json = json.dumps(itinerary_data)
+
+            if USE_POSTGRES:
+                cursor.execute("""
+                    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+                    RETURNING id
+                """, (
+                    user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json
+                ))
+                trip_id = cursor.fetchone()[0]
+            else:
+                cursor.execute("""
+                    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                """, (
+                    user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json
+                ))
+                trip_id = cursor.lastrowid
+
+            return {
+                "id": trip_id,
+                "link": link,
+                "title": title,
+                "dates": dates,
+                "days": num_days,
+                "itinerary_data": itinerary_data
+            }
+        except Exception as e:
+            print(f"[DB] Error creating draft trip: {e}")
+            return None
+
+
+def get_draft_trips(user_id: int) -> List[Dict[str, Any]]:
+    """Get all draft trips for a user."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute("""
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
+                FROM trips WHERE user_id = %s AND is_draft = TRUE ORDER BY created_at DESC
+            """, (user_id,))
+            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'is_public']
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        else:
+            cursor.execute("""
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
+                FROM trips WHERE user_id = ? AND is_draft = 1 ORDER BY created_at DESC
+            """, (user_id,))
+            return [dict(row) for row in cursor.fetchall()]
+
+
+def update_trip_itinerary_data(user_id: int, link: str, itinerary_data: Dict) -> bool:
+    """Update a trip's itinerary_data (for auto-save)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        try:
+            itinerary_json = json.dumps(itinerary_data)
+
+            # Also update counts from itinerary_data
+            items = itinerary_data.get('items', [])
+            locations = len(set(
+                item.get('location', {}).get('name')
+                for item in items
+                if item.get('location') and item.get('location', {}).get('name')
+            ))
+            activities = len(items)
+
+            if USE_POSTGRES:
+                cursor.execute("""
+                    UPDATE trips SET itinerary_data = %s, locations = %s, activities = %s
+                    WHERE user_id = %s AND link = %s
+                """, (itinerary_json, locations, activities, user_id, link))
+            else:
+                cursor.execute("""
+                    UPDATE trips SET itinerary_data = ?, locations = ?, activities = ?
+                    WHERE user_id = ? AND link = ?
+                """, (itinerary_json, locations, activities, user_id, link))
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"[DB] Error updating trip itinerary: {e}")
+            return False
+
+
+def publish_draft(user_id: int, link: str) -> bool:
+    """Publish a draft trip (set is_draft=False)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute("""
+                UPDATE trips SET is_draft = FALSE
+                WHERE user_id = %s AND link = %s
+            """, (user_id, link))
+        else:
+            cursor.execute("""
+                UPDATE trips SET is_draft = 0
+                WHERE user_id = ? AND link = ?
+            """, (user_id, link))
+        return cursor.rowcount > 0
+
+
+def add_item_to_trip(user_id: int, link: str, item: Dict) -> bool:
+    """Add an item to a trip's itinerary_data."""
+    trip = get_trip_by_link(user_id, link)
+    if not trip:
+        return False
+
+    itinerary_data = trip.get('itinerary_data') or {"title": trip["title"], "items": [], "travelers": []}
+    if 'items' not in itinerary_data:
+        itinerary_data['items'] = []
+
+    itinerary_data['items'].append(item)
+    return update_trip_itinerary_data(user_id, link, itinerary_data)
 
 
 # Initialize database on import

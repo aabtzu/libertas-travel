@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import json
+import calendar
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional, Union
 import html as html_module
@@ -11,300 +13,7 @@ import html as html_module
 from .models import Itinerary, ItineraryItem
 from .mapper import ItineraryMapper
 from .summarizer import ItinerarySummarizer
-from .templates import get_static_css, get_static_js, get_nav_html
-
-
-TRIP_PAGE_TEMPLATE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title} - Libertas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-{main_css}
-
-/* Google Maps container */
-#google-map {{
-    width: 100%;
-    height: 100%;
-    min-height: 500px;
-}}
-#map-tab {{
-    position: relative;
-}}
-/* Map loading overlay */
-.map-loading-overlay {{
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(245, 245, 245, 0.95);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}}
-.map-loading-overlay.hidden {{
-    display: none;
-}}
-.map-loading-spinner {{
-    width: 50px;
-    height: 50px;
-    border: 4px solid #e0e0e0;
-    border-top-color: #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}}
-@keyframes spin {{
-    to {{ transform: rotate(360deg); }}
-}}
-.map-loading-text {{
-    margin-top: 20px;
-    font-size: 1.1rem;
-    color: #666;
-}}
-.map-loading-subtext {{
-    margin-top: 8px;
-    font-size: 0.9rem;
-    color: #999;
-}}
-.map-status-ready {{
-    color: #27ae60;
-}}
-.map-status-error {{
-    color: #e74c3c;
-}}
-/* Map legend */
-.map-legend {{
-    position: absolute;
-    bottom: 30px;
-    left: 10px;
-    background: white;
-    padding: 14px 18px;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    font-size: 15px;
-    z-index: 100;
-    max-width: 180px;
-}}
-.map-legend h4 {{
-    margin: 0 0 12px 0;
-    font-size: 16px;
-    color: #333;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 8px;
-}}
-.legend-item {{
-    display: flex;
-    align-items: center;
-    margin: 8px 0;
-}}
-.legend-dot {{
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    margin-right: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    border: 2px solid white;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}}
-.legend-dot i {{
-    font-size: 11px;
-    color: white;
-}}
-.legend-label {{
-    color: #444;
-    font-size: 15px;
-}}
-    </style>
-</head>
-<body>
-    {nav_html}
-
-    <div class="trip-header">
-        <h1><i class="fas fa-plane"></i> {title}</h1>
-        <div class="meta">{meta_info}</div>
-    </div>
-
-    <div class="tabs">
-        <div class="tab active" onclick="switchTab('summary')">
-            <i class="fas fa-list-alt"></i> Summary
-        </div>
-        <div class="tab" onclick="switchTab('map')" id="map-tab-btn">
-            <i class="fas fa-map-marked-alt"></i> Map <span id="map-status-badge"></span>
-        </div>
-    </div>
-
-    <div id="summary-tab" class="tab-content active">
-        <div class="summary-container">
-            {summary_html}
-        </div>
-    </div>
-
-    <div id="map-tab" class="tab-content">
-        <div class="map-loading-overlay" id="map-loading">
-            <div class="map-loading-spinner"></div>
-            <div class="map-loading-text">Generating map...</div>
-            <div class="map-loading-subtext">Geocoding locations, this may take a minute</div>
-        </div>
-        <div id="google-map"></div>
-        <div class="map-legend" id="map-legend">
-            <h4>Legend</h4>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#EA4335;"><i class="fas fa-plane"></i></div>
-                <span class="legend-label">Flight</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#4285F4;"><i class="fas fa-bed"></i></div>
-                <span class="legend-label">Hotel</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#34A853;"><i class="fas fa-star"></i></div>
-                <span class="legend-label">Activity</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#FF9800;"><i class="fas fa-utensils"></i></div>
-                <span class="legend-label">Meal</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-dot" style="background:#757575;"><i class="fas fa-car"></i></div>
-                <span class="legend-label">Transport</span>
-            </div>
-        </div>
-    </div>
-
-    <script>
-{main_js}
-
-// Google Maps data
-var mapData = {map_data_json};
-
-// Initialize Google Map
-var map = null;
-var markers = [];
-var infoWindow = null;
-
-function initMap() {{
-    var mapLoading = document.getElementById('map-loading');
-
-    if (!mapData || mapData.error) {{
-        if (mapLoading) {{
-            mapLoading.innerHTML = '<div class="map-status-error"><i class="fas fa-exclamation-triangle"></i></div>' +
-                '<div class="map-loading-text map-status-error">Map not available</div>' +
-                '<div class="map-loading-subtext">' + (mapData.error || 'No location data') + '</div>';
-        }}
-        return;
-    }}
-
-    // Create map with mapId for AdvancedMarkerElement support
-    map = new google.maps.Map(document.getElementById('google-map'), {{
-        center: mapData.center,
-        zoom: mapData.zoom,
-        mapId: 'DEMO_MAP_ID',
-        mapTypeControl: true,
-        mapTypeControlOptions: {{
-            style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-            position: google.maps.ControlPosition.TOP_RIGHT
-        }},
-        fullscreenControl: true,
-        streetViewControl: false,
-    }});
-
-    // Create info window
-    infoWindow = new google.maps.InfoWindow();
-
-    // Category icon mapping (using Font Awesome class names)
-    var categoryIcons = {{
-        'flight': 'fa-plane',
-        'hotel': 'fa-bed',
-        'lodging': 'fa-bed',
-        'meal': 'fa-utensils',
-        'restaurant': 'fa-utensils',
-        'activity': 'fa-star',
-        'attraction': 'fa-star',
-        'transport': 'fa-car',
-        'other': 'fa-map-marker-alt'
-    }};
-
-    // Add markers with category icons using custom HTML
-    mapData.markers.forEach(function(markerData, index) {{
-        var iconClass = categoryIcons[markerData.category] || 'fa-map-marker-alt';
-
-        // Create custom marker element
-        var markerDiv = document.createElement('div');
-        markerDiv.style.cssText = 'width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer; background-color: ' + markerData.color + ';';
-        markerDiv.innerHTML = '<i class="fas ' + iconClass + '" style="color: white; font-size: 12px;"></i>';
-
-        var marker = new google.maps.marker.AdvancedMarkerElement({{
-            position: markerData.position,
-            map: map,
-            title: markerData.title,
-            content: markerDiv
-        }});
-
-        marker.addListener('click', function() {{
-            infoWindow.setContent(markerData.info);
-            infoWindow.open(map, marker);
-        }});
-
-        markers.push(marker);
-    }});
-
-    // Hide loading overlay
-    if (mapLoading) mapLoading.classList.add('hidden');
-}}
-
-// Map status polling - only poll if map is pending/processing
-(function() {{
-    var tripLink = window.location.pathname.split('/').pop();
-    var mapLoading = document.getElementById('map-loading');
-    var mapBadge = document.getElementById('map-status-badge');
-    var pollInterval = null;
-    var wasNotReady = false;
-
-    function checkMapStatus() {{
-        fetch('/api/map-status?link=' + encodeURIComponent(tripLink))
-            .then(function(r) {{ return r.json(); }})
-            .then(function(data) {{
-                if (data.map_status === 'ready') {{
-                    if (mapBadge) mapBadge.innerHTML = '';
-                    if (pollInterval) clearInterval(pollInterval);
-                    if (wasNotReady) {{
-                        window.location.reload();
-                    }}
-                }} else if (data.map_status === 'error') {{
-                    if (mapLoading) {{
-                        mapLoading.innerHTML = '<div class="map-status-error"><i class="fas fa-exclamation-triangle"></i></div>' +
-                            '<div class="map-loading-text map-status-error">Map generation failed</div>' +
-                            '<div class="map-loading-subtext">' + (data.map_error || 'Unknown error') + '</div>';
-                    }}
-                    if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-exclamation-circle" style="color:#e74c3c;margin-left:5px;"></i>';
-                    if (pollInterval) clearInterval(pollInterval);
-                }} else if (data.map_status === 'pending' || data.map_status === 'processing') {{
-                    wasNotReady = true;
-                    if (mapLoading) mapLoading.classList.remove('hidden');
-                    if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#667eea;margin-left:5px;"></i>';
-                }}
-            }})
-            .catch(function(err) {{
-                console.log('Map status check failed:', err);
-            }});
-    }}
-
-    checkMapStatus();
-    pollInterval = setInterval(checkMapStatus, 5000);
-}})();
-    </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key={google_maps_api_key}&libraries=marker&callback=initMap"></script>
-</body>
-</html>
-"""
+from .templates import get_nav_html, get_template
 
 
 class ItineraryWebView:
@@ -373,19 +82,21 @@ class ItineraryWebView:
 
         meta_info = " • ".join(meta_parts)
 
-        # Get Google Maps API key
-        google_maps_api_key = self.api_key or os.environ.get("GOOGLE_MAPS_API_KEY", "")
+        # Generate column view HTML
+        column_html = self._build_column_html(itinerary)
+
+        # Generate calendar view HTML
+        calendar_html = self._build_calendar_html(itinerary)
 
         # Build the full HTML
-        full_html = TRIP_PAGE_TEMPLATE.format(
-            main_css=get_static_css("main.css"),
+        full_html = get_template("trip.html").format(
             nav_html=get_nav_html("trips"),
-            main_js=get_static_js("main.js"),
             title=html_module.escape(itinerary.title),
             meta_info=html_module.escape(meta_info),
             summary_html=summary_html,
+            column_html=column_html,
+            calendar_html=calendar_html,
             map_data_json=json.dumps(map_data),
-            google_maps_api_key=google_maps_api_key,
         )
 
         output_path.write_text(full_html)
@@ -426,10 +137,10 @@ class ItineraryWebView:
                     time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
 
                 category = item.category or "other"
-                category_label = self._get_category_label(category)
+                category_icon = self._get_category_html(category)
 
                 lines.append('<div class="activity">')
-                lines.append(f'<span class="activity-category {category}">{category_label}</span>')
+                lines.append(f'<span class="activity-category {category}">{category_icon}</span>')
                 if time_str:
                     lines.append(f'<span class="activity-time">{time_str}</span>')
                 else:
@@ -437,8 +148,10 @@ class ItineraryWebView:
 
                 title = item.title or "Untitled"
                 location = item.location.name or "Unknown location"
+                lines.append('<div class="activity-info">')
                 lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
                 lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
+                lines.append('</div>')
                 lines.append('</div>')
 
             lines.append('</div>')
@@ -453,10 +166,10 @@ class ItineraryWebView:
                     time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
 
                 category = item.category or "other"
-                category_label = self._get_category_label(category)
+                category_icon = self._get_category_html(category)
 
                 lines.append('<div class="activity">')
-                lines.append(f'<span class="activity-category {category}">{category_label}</span>')
+                lines.append(f'<span class="activity-category {category}">{category_icon}</span>')
                 if time_str:
                     lines.append(f'<span class="activity-time">{time_str}</span>')
                 else:
@@ -464,8 +177,10 @@ class ItineraryWebView:
 
                 title = item.title or "Untitled"
                 location = item.location.name or "Unknown location"
+                lines.append('<div class="activity-info">')
                 lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
                 lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
+                lines.append('</div>')
                 lines.append('</div>')
             lines.append('</div>')
 
@@ -496,3 +211,343 @@ class ItineraryWebView:
             "other": "Other",
         }
         return labels.get(category.lower(), category.title())
+
+    def _get_category_icon(self, category: str) -> str:
+        """Get Font Awesome icon class for a category."""
+        icons = {
+            "flight": "fa-plane",
+            "hotel": "fa-bed",
+            "lodging": "fa-bed",
+            "activity": "fa-star",
+            "attraction": "fa-landmark",
+            "transport": "fa-car",
+            "meal": "fa-utensils",
+            "home": "fa-home",
+            "other": "fa-calendar-day",
+        }
+        return icons.get(category.lower(), "fa-calendar-day")
+
+    def _get_category_html(self, category: str) -> str:
+        """Get icon-based HTML for a category badge."""
+        icon = self._get_category_icon(category)
+        return f'<i class="fas {icon}"></i>'
+
+    def _build_column_html(self, itinerary: Itinerary) -> str:
+        """Build an HTML table view with columns for Travel, Lodging, Activity, Night Stay, Notes."""
+        lines = [
+            '<div class="column-table-wrapper">',
+            '<table class="column-table">',
+            '<thead><tr>',
+            '<th>Day</th>',
+            '<th>Travel</th>',
+            '<th>Activity</th>',
+            '<th>Night Stay</th>',
+            '<th>Notes</th>',
+            '</tr></thead>',
+            '<tbody>'
+        ]
+
+        # Group items by day
+        items_by_day: dict[int, list[ItineraryItem]] = {}
+        for item in itinerary.items:
+            if item.day_number:
+                if item.day_number not in items_by_day:
+                    items_by_day[item.day_number] = []
+                items_by_day[item.day_number].append(item)
+
+        # Track night stay for carry-forward
+        last_night_stay: str | None = None
+        sorted_days = sorted(items_by_day.keys())
+        last_day = sorted_days[-1] if sorted_days else 0
+
+        # Render each day as a row
+        for day_num in sorted_days:
+            items = items_by_day[day_num]
+
+            # Categorize items
+            travel_items = []
+            lodging_items = []
+            activity_items = []
+            notes_items = []
+            has_flight = False
+
+            for item in items:
+                cat = (item.category or "other").lower()
+                if cat == "flight":
+                    travel_items.append(item)
+                    has_flight = True
+                elif cat == "transport":
+                    travel_items.append(item)
+                elif cat in ("hotel", "lodging"):
+                    lodging_items.append(item)
+                elif cat in ("activity", "attraction", "meal"):
+                    activity_items.append(item)
+                else:
+                    notes_items.append(item)
+
+            # Determine night stay for this day
+            current_night_stay: str | None = None
+            is_carried = False
+            if lodging_items:
+                # Use the last lodging item as the night stay
+                # Prefer title (hotel name) over location.name (city)
+                last_lodging = lodging_items[-1]
+                if last_lodging.title:
+                    current_night_stay = last_lodging.title
+                elif last_lodging.location and last_lodging.location.name:
+                    current_night_stay = last_lodging.location.name
+                last_night_stay = current_night_stay
+            elif last_night_stay:
+                # Only carry forward if:
+                # - Not the last day of the trip
+                # - No flight on this day (implies flying home)
+                is_last_day = (day_num == last_day)
+                if not is_last_day and not has_flight:
+                    current_night_stay = last_night_stay
+                    is_carried = True
+
+            # Get date string
+            date_str = ""
+            if items and items[0].date:
+                date_str = items[0].date.strftime("%b %d")
+
+            lines.append('<tr>')
+
+            # Day column
+            day_label = f"Day {day_num}"
+            if date_str:
+                day_label += f"<br><small>{date_str}</small>"
+            lines.append(f'<td style="font-weight:600;white-space:nowrap;">{day_label}</td>')
+
+            # Travel column
+            lines.append('<td>')
+            for item in travel_items:
+                lines.append(self._format_column_item(item))
+            lines.append('</td>')
+
+            # Activity column (includes meals)
+            lines.append('<td>')
+            for item in activity_items:
+                lines.append(self._format_column_item(item))
+            lines.append('</td>')
+
+            # Night Stay column
+            lines.append('<td>')
+            if current_night_stay:
+                carried_class = " night-stay-carried" if is_carried else ""
+                lines.append(f'<div class="night-stay{carried_class}">')
+                lines.append(f'<i class="fas fa-bed"></i>{html_module.escape(current_night_stay)}')
+                lines.append('</div>')
+            lines.append('</td>')
+
+            # Notes column
+            lines.append('<td>')
+            for item in notes_items:
+                lines.append(self._format_column_item(item))
+            lines.append('</td>')
+
+            lines.append('</tr>')
+
+        lines.append('</tbody></table>')
+        lines.append('</div>')  # Close column-table-wrapper
+        return "\n".join(lines)
+
+    def _format_column_item(self, item: ItineraryItem) -> str:
+        """Format a single item for the column view."""
+        category = (item.category or "other").lower()
+        icon = self._get_category_icon(category)
+        parts = [f'<div class="column-item {category}">']
+
+        # Build display text - combine title and location smartly
+        title = item.title or "Untitled"
+        location_name = item.location.name if item.location else None
+
+        # Check if title already contains the location info or vice versa
+        title_lower = title.lower()
+        show_location = False
+        short_location = None
+
+        if location_name:
+            loc_lower = location_name.lower()
+            # Extract just the city (first part before comma)
+            city = location_name.split(',')[0].strip()
+            city_lower = city.lower()
+
+            # Only show location if it adds info not in the title
+            if city_lower not in title_lower and loc_lower not in title_lower:
+                # Location adds new info - show just the city
+                short_location = city
+                show_location = True
+            elif title_lower in city_lower or city_lower in title_lower:
+                # Title and location are basically the same thing
+                # Just show title with city context if different
+                loc_parts = location_name.split(',')
+                if len(loc_parts) > 1:
+                    # Add just the region/country for context
+                    short_location = loc_parts[1].strip()
+                    show_location = True
+
+        # Display title with icon
+        parts.append(f'<div class="column-item-title"><i class="fas {icon} column-item-icon"></i> {html_module.escape(title)}</div>')
+
+        # Display location only if it adds value
+        if show_location and short_location:
+            parts.append(f'<div class="column-item-location" style="display:block;margin-top:4px;">{html_module.escape(short_location)}</div>')
+
+        parts.append('</div>')
+        return "\n".join(parts)
+
+    def _build_calendar_html(self, itinerary: Itinerary) -> str:
+        """Build a calendar view HTML showing trip days with activities."""
+        if not itinerary.start_date or not itinerary.end_date:
+            return '''
+            <div class="calendar-empty">
+                <i class="fas fa-calendar-times"></i>
+                <h3>No dates available</h3>
+                <p>This itinerary doesn't have date information for a calendar view.</p>
+            </div>
+            '''
+
+        # Group items by date
+        items_by_date = itinerary.items_by_date()
+
+        # Get the range of months to display
+        start_date = itinerary.start_date
+        end_date = itinerary.end_date
+
+        lines = ['<div class="calendar-view">']
+
+        # Generate calendar for each month in the trip
+        current_month = date(start_date.year, start_date.month, 1)
+        end_month = date(end_date.year, end_date.month, 1)
+
+        while current_month <= end_month:
+            lines.append(self._build_month_calendar(
+                current_month.year,
+                current_month.month,
+                start_date,
+                end_date,
+                items_by_date
+            ))
+
+            # Move to next month
+            if current_month.month == 12:
+                current_month = date(current_month.year + 1, 1, 1)
+            else:
+                current_month = date(current_month.year, current_month.month + 1, 1)
+
+        lines.append('</div>')
+        return "\n".join(lines)
+
+    def _build_month_calendar(
+        self,
+        year: int,
+        month: int,
+        trip_start: date,
+        trip_end: date,
+        items_by_date: dict[date, list[ItineraryItem]]
+    ) -> str:
+        """Build a single month calendar grid."""
+        month_name = calendar.month_name[month]
+        cal = calendar.Calendar(firstweekday=6)  # Start on Sunday
+
+        lines = [
+            f'<div class="calendar-month">',
+            f'<h3 class="calendar-month-title">{month_name} {year}</h3>',
+            '<div class="calendar-grid">',
+            '<div class="calendar-header">',
+            '<div class="calendar-day-name">Sun</div>',
+            '<div class="calendar-day-name">Mon</div>',
+            '<div class="calendar-day-name">Tue</div>',
+            '<div class="calendar-day-name">Wed</div>',
+            '<div class="calendar-day-name">Thu</div>',
+            '<div class="calendar-day-name">Fri</div>',
+            '<div class="calendar-day-name">Sat</div>',
+            '</div>',
+            '<div class="calendar-body">'
+        ]
+
+        for week in cal.monthdatescalendar(year, month):
+            lines.append('<div class="calendar-week">')
+            for day_date in week:
+                is_trip_day = trip_start <= day_date <= trip_end
+                is_current_month = day_date.month == month
+                items = items_by_date.get(day_date, [])
+
+                # Determine CSS classes
+                classes = ['calendar-day']
+                if not is_current_month:
+                    classes.append('other-month')
+                if is_trip_day:
+                    classes.append('trip-day')
+                if day_date == trip_start:
+                    classes.append('trip-start')
+                if day_date == trip_end:
+                    classes.append('trip-end')
+
+                lines.append(f'<div class="{" ".join(classes)}">')
+                lines.append(f'<div class="calendar-day-number">{day_date.day}</div>')
+
+                if is_trip_day and items:
+                    lines.append('<div class="calendar-day-items">')
+                    for item in items[:3]:  # Show max 3 items
+                        category = (item.category or 'other').lower()
+                        title = item.title or 'Activity'
+                        full_title = html_module.escape(title)
+                        # Truncate long titles for display
+                        display_title = title
+                        if len(display_title) > 25:
+                            display_title = display_title[:22] + '...'
+                        # Build tooltip data
+                        time_str = ''
+                        if item.start_time:
+                            time_str = item.start_time.strftime('%I:%M %p').lstrip('0')
+                            if item.end_time:
+                                time_str += f' - {item.end_time.strftime("%I:%M %p").lstrip("0")}'
+                        loc = item.location
+                        if loc:
+                            location = html_module.escape(str(loc.name) if hasattr(loc, 'name') else str(loc))
+                        else:
+                            location = ''
+                        lines.append(
+                            f'<div class="calendar-item {category}" '
+                            f'data-title="{full_title}" '
+                            f'data-time="{time_str}" '
+                            f'data-location="{location}" '
+                            f'data-category="{category}">'
+                            f'{html_module.escape(display_title)}</div>'
+                        )
+                    if len(items) > 3:
+                        # Build JSON data for hidden items
+                        hidden_items = []
+                        for item in items[3:]:
+                            hi_category = (item.category or 'other').lower()
+                            hi_title = item.title or 'Activity'
+                            hi_time = ''
+                            if item.start_time:
+                                hi_time = item.start_time.strftime('%I:%M %p').lstrip('0')
+                                if item.end_time:
+                                    hi_time += f' - {item.end_time.strftime("%I:%M %p").lstrip("0")}'
+                            hi_loc = item.location
+                            hi_location = ''
+                            if hi_loc:
+                                hi_location = str(hi_loc.name) if hasattr(hi_loc, 'name') else str(hi_loc)
+                            hidden_items.append({
+                                'title': hi_title,
+                                'time': hi_time,
+                                'location': hi_location,
+                                'category': hi_category
+                            })
+                        hidden_json = html_module.escape(json.dumps(hidden_items))
+                        lines.append(
+                            f'<div class="calendar-item-more" data-hidden-items="{hidden_json}">+{len(items) - 3} more</div>'
+                        )
+                    lines.append('</div>')
+
+                lines.append('</div>')
+            lines.append('</div>')
+
+        lines.append('</div>')  # calendar-body
+        lines.append('</div>')  # calendar-grid
+        lines.append('</div>')  # calendar-month
+        return "\n".join(lines)

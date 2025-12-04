@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Libertas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/login.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <i class="fas fa-feather-alt brand-icon"></i>
+                <h1>LIBERTAS</h1>
+                <p class="tagline">Create Your Account</p>
+            </div>
+
+            <div class="login-error" id="register-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="error-message">Registration failed</span>
+            </div>
+
+            <div class="login-success" id="register-success" style="display:none; background: #d4edda; color: #155724; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <i class="fas fa-check-circle"></i>
+                <span>Account created! Redirecting to login...</span>
+            </div>
+
+            <form class="login-form" id="register-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required minlength="3" autocomplete="username" autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required minlength="6" autocomplete="new-password">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required minlength="6" autocomplete="new-password">
+                </div>
+
+                <button type="submit" class="login-btn">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>Already have an account? <a href="/login.html">Sign in</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/register.js"></script>
+</body>
+</html>

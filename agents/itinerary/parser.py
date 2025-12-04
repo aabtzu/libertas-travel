@@ -60,7 +60,7 @@ Return a JSON object with this exact structure:
     "travelers": ["list of traveler names"],
     "items": [
         {
-            "title": "Activity/event title",
+            "title": "Activity/event title - for hotels, use the ACTUAL HOTEL NAME (e.g. 'Taj Palace' not 'Hotel stay')",
             "location_name": "Place name with region for geocoding (e.g. 'Seward, Alaska' not just 'Seward')",
             "location_address": "Full address if available",
             "location_type": "hotel|restaurant|attraction|airport|train_station|home|other",
@@ -82,6 +82,7 @@ Important:
 - Be precise with dates and times
 - ALWAYS include the state/region/country with location names for accurate geocoding (e.g. "Homer, Alaska" not just "Homer")
 - Mark home/departure locations with is_home_location: true (these are typically the origin city at start/end of trip)
+- For HOTELS/ACCOMMODATIONS: Extract the ACTUAL hotel name (e.g. "Taj Palace", "ITC Mughal", "Marriott") NOT generic descriptions like "Hotel stay in Delhi". The hotel name should go in the "title" field.
 - If information is not available, use null
 - Ensure the JSON is valid
 

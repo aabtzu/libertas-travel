@@ -3,46 +3,19 @@
 .trips-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 40px;
-}
-
-.trips-header-content {
-    max-width: 1000px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    padding: 60px 40px;
+    text-align: center;
 }
 
 .trips-header h1 {
-    font-size: 2rem;
-    margin-bottom: 6px;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
     font-weight: 600;
 }
 
 .trips-header p {
-    font-size: 1rem;
+    font-size: 1.1rem;
     opacity: 0.9;
-    margin: 0;
-}
-
-.new-trip-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: white;
-    color: #667eea;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.new-trip-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .trips-container {
@@ -51,7 +24,7 @@
     padding: 40px;
 }
 
-/* ==================== View Tabs (matching Create Trip style) ==================== */
+/* ==================== View Toggle ==================== */
 .trips-header-row {
     display: flex;
     justify-content: space-between;
@@ -65,6 +38,7 @@
     margin: 0;
 }
 
+/* View Tabs (matching Create Trip style) */
 .trips-view-tabs {
     display: flex;
     gap: 4px;
@@ -110,6 +84,35 @@
 
 .trips-view-content.active {
     display: block;
+}
+
+/* Legacy view toggle (deprecated) */
+.view-toggle {
+    display: flex;
+    gap: 4px;
+    background: #f0f0f0;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.view-toggle-btn {
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.view-toggle-btn:hover {
+    color: #333;
+}
+
+.view-toggle-btn.active {
+    background: white;
+    color: #667eea;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* ==================== Grid View ==================== */
@@ -752,66 +755,22 @@
     color: white;
 }
 
-/* Public badge in list view - smaller and repositioned */
+/* Public badge in list view - positioned at top left corner of tile */
 .trips-list .public-badge {
-    position: static;
-    margin-left: 8px;
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    margin-left: 0;
     padding: 2px 6px;
     font-size: 0.65rem;
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    vertical-align: middle;
+    z-index: 5;
 }
 
 .trips-list .public-badge i {
     font-size: 0.6rem;
-}
-
-/* Draft badge on trip card */
-.draft-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(255, 152, 0, 0.9);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    z-index: 10;
-}
-
-.draft-badge i {
-    font-size: 0.65rem;
-}
-
-/* Draft card styling */
-.trip-card-wrapper.is-draft .trip-card {
-    border: 2px dashed #ff9800;
-}
-
-.trip-card-wrapper.is-draft .trip-card:hover {
-    border-color: #f57c00;
-}
-
-/* Draft badge in list view */
-.trips-list .draft-badge {
-    position: static;
-    margin-left: 8px;
-    padding: 2px 8px;
-    font-size: 0.65rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    vertical-align: middle;
-}
-
-.trips-list .draft-badge i {
-    font-size: 0.55rem;
 }
 
 /* ==================== Share Modal ==================== */
@@ -1030,12 +989,10 @@
 
 /* ==================== Map View ==================== */
 .trips-map-container {
-    width: 100%;
     height: 500px;
+    background: #f5f5f5;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
-    background: #f0f0f0;
     position: relative;
 }
 
@@ -1047,7 +1004,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     color: #666;
 }
 
@@ -1060,11 +1017,7 @@
     display: none;
 }
 
-/* Map popup styling */
-.trip-map-popup {
-    min-width: 200px;
-}
-
+/* Leaflet map popup styling */
 .trip-map-popup h4 {
     margin: 0 0 8px 0;
     color: #333;
@@ -1072,29 +1025,18 @@
 }
 
 .trip-map-popup p {
-    margin: 4px 0;
+    margin: 0 0 8px 0;
     color: #666;
     font-size: 0.85rem;
 }
 
 .trip-map-popup a {
-    display: inline-block;
-    margin-top: 8px;
     color: #667eea;
     text-decoration: none;
+    font-size: 0.85rem;
     font-weight: 500;
 }
 
 .trip-map-popup a:hover {
     text-decoration: underline;
-}
-
-/* ==================== Trip Stats Icons (for cards) ==================== */
-.trip-stats-icons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #f0f0f0;
 }

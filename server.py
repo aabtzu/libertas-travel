@@ -17,7 +17,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from agents.itinerary.parser import ItineraryParser
 from agents.itinerary.web_view import ItineraryWebView
-from agents.itinerary.templates import generate_trips_page, generate_about_page, generate_home_page, generate_login_page, generate_register_page
+from agents.itinerary.templates import generate_trips_page
+from agents.common.templates import generate_about_page, generate_home_page, generate_login_page, generate_register_page, get_nav_html
+from agents.explore.templates import generate_explore_page
+from agents.create import handler as create_handler
+import csv
 
 # Import authentication and database
 import auth
@@ -29,6 +33,12 @@ import geocoding_worker
 # Allow OUTPUT_DIR to be configured via environment variable (for Render persistent disk)
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent / "output"))
 TRIPS_DATA_FILE = OUTPUT_DIR / "trips_data.json"
+
+# Travel recommendations data (from travel_recs project)
+TRAVEL_RECS_CSV = Path(os.environ.get("TRAVEL_RECS_CSV", Path.home() / "repos" / "travel_recs" / "data" / "restaurants_master.csv"))
+
+# Cache for venues data
+_venues_cache = None
 
 
 def convert_google_drive_url(url: str) -> tuple[str, str]:
@@ -192,6 +202,45 @@ def save_trips_data(trips: list[dict]) -> None:
         json.dump(trips, f, indent=2)
 
 
+def load_venues() -> list[dict]:
+    """Load venues from travel_recs CSV file."""
+    global _venues_cache
+    if _venues_cache is not None:
+        return _venues_cache
+
+    if not TRAVEL_RECS_CSV.exists():
+        print(f"Warning: Travel recs CSV not found at {TRAVEL_RECS_CSV}")
+        return []
+
+    venues = []
+    with open(TRAVEL_RECS_CSV, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            # Convert empty strings to None for consistency
+            venue = {
+                "name": row.get("name", ""),
+                "city": row.get("city", ""),
+                "state": row.get("state", ""),
+                "country": row.get("country", ""),
+                "address": row.get("address", ""),
+                "latitude": row.get("latitude", ""),
+                "longitude": row.get("longitude", ""),
+                "venue_type": row.get("venue_type", ""),
+                "cuisine_type": row.get("cuisine_type", ""),
+                "michelin_stars": int(row.get("michelin_stars", 0) or 0),
+                "google_maps_link": row.get("google_maps_link", ""),
+                "website": row.get("website", ""),
+                "description": row.get("description", ""),
+                "collection": row.get("collection", ""),
+                "notes": row.get("notes", ""),
+            }
+            venues.append(venue)
+
+    _venues_cache = venues
+    print(f"Loaded {len(venues)} venues from {TRAVEL_RECS_CSV}")
+    return venues
+
+
 def regenerate_trips_page(user_id: int = None) -> None:
     """Regenerate the trips.html page with current trips data.
 
@@ -277,6 +326,32 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.serve_register_page()
             return
 
+        # Serve static files (CSS, JS) - public, no auth required
+        if path.startswith("/static/"):
+            self.serve_static_file(path)
+            return
+
+        # Home page and About page - public, no auth required
+        if path == "/" or path == "/index.html":
+            self.serve_home_page()
+            return
+
+        if path == "/about.html" or path == "/about":
+            self.serve_about_page()
+            return
+
+        # Explore page - public, no auth required
+        if path == "/explore.html" or path == "/explore":
+            self.serve_explore_page()
+            return
+
+        # Create page - requires auth
+        if path == "/create.html" or path == "/create":
+            if not self.require_auth():
+                return
+            self.serve_create_page()
+            return
+
         # API debug endpoint
         if path == "/api/debug":
             self.handle_debug()
@@ -294,6 +369,22 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         # Serve trips.html dynamically (user-specific)
         if path == "/trips.html" or path == "/trips":
             self.serve_trips_page()
+            return
+
+        # API endpoint for explore venues
+        if path == "/api/explore/venues":
+            self.handle_explore_venues()
+            return
+
+        # API endpoint for trip data (for create/edit)
+        if path.startswith("/api/trips/") and path.endswith("/data"):
+            link = path[len("/api/trips/"):-len("/data")]
+            self.handle_get_trip_data(link)
+            return
+
+        # Serve trip HTML files from output folder with updated navigation
+        if path.endswith(".html") and not path.startswith("/api/"):
+            self.serve_trip_html(path)
             return
 
         # Let parent class handle static files
@@ -342,6 +433,325 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         self.send_header('Content-Length', len(html.encode()))
         self.end_headers()
         self.wfile.write(html.encode())
+
+    def serve_home_page(self):
+        """Serve the home page (public - no auth required)."""
+        html = generate_home_page()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(html.encode()))
+        self.end_headers()
+        self.wfile.write(html.encode())
+
+    def serve_about_page(self):
+        """Serve the about page (public - no auth required)."""
+        html = generate_about_page()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(html.encode()))
+        self.end_headers()
+        self.wfile.write(html.encode())
+
+    def serve_explore_page(self):
+        """Serve the explore page."""
+        # Get Google Maps API key from environment
+        google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
+        html = generate_explore_page(google_maps_api_key)
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(html.encode()))
+        self.end_headers()
+        self.wfile.write(html.encode())
+
+    def serve_create_page(self):
+        """Serve the create trip page."""
+        # Read the template
+        template_path = Path(__file__).parent / "agents" / "create" / "templates" / "create.html"
+        if not template_path.exists():
+            self.send_error(404, "Create page template not found")
+            return
+
+        html = template_path.read_text()
+        html = html.format(nav_html=get_nav_html(""))
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(html.encode()))
+        self.end_headers()
+        self.wfile.write(html.encode())
+
+    def handle_get_trip_data(self, link: str):
+        """Get trip data for the create/edit page."""
+        user_id = self.get_current_user_id()
+        result, status = create_handler.get_trip_data_handler(user_id, link)
+        if status == 200:
+            self.send_json_response(result)
+        else:
+            self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def serve_trip_html(self, path: str):
+        """Serve trip HTML files with updated navigation injected."""
+        # Security: prevent directory traversal
+        if ".." in path:
+            self.send_error(403, "Forbidden")
+            return
+
+        # Remove leading slash and look in output folder
+        filename = path.lstrip("/")
+        file_path = OUTPUT_DIR / filename
+
+        # Check if file exists
+        if not file_path.exists() or not file_path.is_file():
+            self.send_error(404, "File not found")
+            return
+
+        # Read the HTML content
+        html = file_path.read_text()
+
+        # Inject current navigation by replacing the old nav
+        # Match the nav element and its contents
+        nav_pattern = r'<nav class="libertas-nav">.*?</nav>\s*<script>\s*function logout\(\).*?</script>'
+        new_nav = get_nav_html("")
+        html = re.sub(nav_pattern, new_nav, html, flags=re.DOTALL)
+
+        # Send the response
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(html.encode()))
+        self.end_headers()
+        self.wfile.write(html.encode())
+
+    def serve_static_file(self, path: str):
+        """Serve static files (CSS, JS) from the static directory."""
+        # Security: only allow files within static directory
+        # Remove /static/ prefix
+        relative_path = path[8:]  # len("/static/") = 8
+
+        # Prevent directory traversal attacks
+        if ".." in relative_path:
+            self.send_error(403, "Forbidden")
+            return
+
+        # Build full path to static file
+        static_dir = Path(__file__).parent / "static"
+        file_path = static_dir / relative_path
+
+        # Check if file exists
+        if not file_path.exists() or not file_path.is_file():
+            self.send_error(404, "File not found")
+            return
+
+        # Determine content type
+        suffix = file_path.suffix.lower()
+        content_types = {
+            ".css": "text/css",
+            ".js": "application/javascript",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".svg": "image/svg+xml",
+            ".ico": "image/x-icon",
+        }
+        content_type = content_types.get(suffix, "application/octet-stream")
+
+        # Read and serve file
+        try:
+            with open(file_path, "rb") as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", len(content))
+            self.end_headers()
+            self.wfile.write(content)
+        except IOError:
+            self.send_error(500, "Error reading file")
+
+    def handle_explore_venues(self):
+        """Return all venues from travel_recs."""
+        venues = load_venues()
+        self.send_json_response(venues)
+
+    def handle_explore_chat(self):
+        """Handle chat messages for explore feature with Claude LLM."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        message = data.get('message', '').strip()
+        history = data.get('history', [])
+
+        if not message:
+            self.send_json_error("No message provided")
+            return
+
+        # Load venues
+        venues = load_venues()
+
+        # Build venue summary for context
+        venue_types = {}
+        cities = {}
+        states = {}
+        countries = {}
+        for v in venues:
+            vt = v.get('venue_type', 'Other')
+            venue_types[vt] = venue_types.get(vt, 0) + 1
+            if v.get('city'):
+                cities[v['city']] = cities.get(v['city'], 0) + 1
+            if v.get('state'):
+                states[v['state']] = states.get(v['state'], 0) + 1
+            if v.get('country'):
+                countries[v['country']] = countries.get(v['country'], 0) + 1
+
+        # Call Claude API to process the message
+        import anthropic
+
+        try:
+            client = anthropic.Anthropic()
+
+            system_prompt = f"""You are a helpful travel assistant for Libertas, a travel planning app.
+You have access to a curated database of {len(venues)} venues across {len(countries)} countries.
+
+Available venue types: {', '.join(f"{k} ({v})" for k, v in sorted(venue_types.items(), key=lambda x: -x[1])[:10])}
+
+Top cities: {', '.join(f"{k} ({v})" for k, v in sorted(cities.items(), key=lambda x: -x[1])[:15])}
+
+States/Regions (for US trips): {', '.join(f"{k} ({v})" for k, v in sorted(states.items(), key=lambda x: -x[1])[:20] if k)}
+
+Countries: {', '.join(sorted(countries.keys()))}
+
+When the user asks about places, restaurants, bars, hotels, or other venues:
+1. Analyze their request to understand what they're looking for
+2. Search through the venues to find relevant matches
+3. Return a helpful response with your recommendations
+
+IMPORTANT - Route/Trip Queries:
+When users ask about "trips from X to Y" or "road trip from X to Y" or similar route-based queries:
+- Think about the geographic route between those locations
+- Include venues from intermediate stops along the way, not just the endpoints
+- For example, "SF to Alaska" should include places in Oregon, Washington, Vancouver, etc.
+- For example, "NYC to Miami" should include places in DC, the Carolinas, Georgia, etc.
+- Organize the results geographically from start to finish when possible
+
+To return venue results to display on the map, include a JSON block in your response like this:
+```json
+{{"venues": ["venue_name_1", "venue_name_2", ...]}}
+```
+
+The venue names must match exactly from the database. Include up to 30 venues maximum for route queries, 20 for regular searches.
+
+If the user is just chatting or asking general questions (not searching for venues), respond conversationally without the JSON block.
+
+Keep responses concise and direct. Avoid flowery language, clichés, or poetic phrases like "the journey becomes the destination". Just give practical info about the places."""
+
+            # Build messages from history
+            messages = []
+            for h in history[-10:]:  # Last 10 messages
+                role = h.get('role', 'user')
+                if role in ['user', 'assistant']:
+                    messages.append({"role": role, "content": h.get('content', '')})
+
+            messages.append({"role": "user", "content": message})
+
+            # Also pass venue data in the current message context for searching
+            venue_context = "Here are all venues in the database:\n\n"
+            for v in venues:
+                venue_context += f"- {v['name']}"
+                if v.get('city'):
+                    venue_context += f", {v['city']}"
+                if v.get('state'):
+                    venue_context += f", {v['state']}"
+                if v.get('country'):
+                    venue_context += f", {v['country']}"
+                if v.get('venue_type'):
+                    venue_context += f" ({v['venue_type']})"
+                if v.get('cuisine_type'):
+                    venue_context += f" - {v['cuisine_type']}"
+                if v.get('michelin_stars'):
+                    venue_context += f" ⭐{v['michelin_stars']} Michelin"
+                venue_context += "\n"
+
+            # Add venue list to the user message
+            messages[-1]["content"] = f"{message}\n\n---\n{venue_context}"
+
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=2000,
+                system=system_prompt,
+                messages=messages
+            )
+
+            assistant_response = response.content[0].text
+
+            # Extract venue names from JSON block if present
+            matched_venues = []
+            import re
+            json_match = re.search(r'```json\s*(\{.*?\})\s*```', assistant_response, re.DOTALL)
+            if json_match:
+                try:
+                    venue_data = json.loads(json_match.group(1))
+                    venue_names = venue_data.get('venues', [])
+
+                    # Match venue names to actual venue objects
+                    for name in venue_names:
+                        for v in venues:
+                            if v['name'].lower() == name.lower():
+                                matched_venues.append(v)
+                                break
+
+                    # Remove JSON block from response text
+                    assistant_response = re.sub(r'```json\s*\{.*?\}\s*```', '', assistant_response, flags=re.DOTALL).strip()
+                except json.JSONDecodeError:
+                    pass
+
+            self.send_json_response({
+                "response": assistant_response,
+                "venues": matched_venues,
+            })
+
+        except anthropic.APIError as e:
+            # Fallback to simple search if Claude API fails
+            print(f"Claude API error: {e}")
+            matched_venues = self.simple_venue_search(message, venues)
+
+            if matched_venues:
+                response_text = f"I found {len(matched_venues)} places matching your search:"
+            else:
+                response_text = "I couldn't find any places matching your search. Try being more specific about the location or type of venue."
+
+            self.send_json_response({
+                "response": response_text,
+                "venues": matched_venues,
+            })
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json_error(str(e))
+
+    def simple_venue_search(self, query: str, venues: list) -> list:
+        """Simple keyword-based venue search as fallback."""
+        query_lower = query.lower()
+        words = query_lower.split()
+
+        matches = []
+        for v in venues:
+            score = 0
+            searchable = f"{v.get('name', '')} {v.get('city', '')} {v.get('country', '')} {v.get('venue_type', '')} {v.get('cuisine_type', '')}".lower()
+
+            for word in words:
+                if len(word) > 2 and word in searchable:
+                    score += 1
+
+            if score > 0:
+                matches.append((score, v))
+
+        matches.sort(key=lambda x: -x[0])
+        return [v for _, v in matches[:20]]
 
     def handle_debug(self):
         """Return debug info about disk and environment."""
@@ -459,6 +869,23 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.handle_toggle_public()
         elif self.path == "/api/users":
             self.handle_get_users()
+        elif self.path == "/api/explore/chat":
+            self.handle_explore_chat()
+        elif self.path == "/api/trips/create":
+            self.handle_create_trip()
+        elif self.path == "/api/create/chat":
+            self.handle_create_chat()
+        elif self.path == "/api/create/upload-plan":
+            self.handle_upload_plan()
+        elif self.path.startswith("/api/trips/") and self.path.endswith("/save"):
+            link = self.path[len("/api/trips/"):-len("/save")]
+            self.handle_save_trip(link)
+        elif self.path.startswith("/api/trips/") and self.path.endswith("/publish"):
+            link = self.path[len("/api/trips/"):-len("/publish")]
+            self.handle_publish_trip(link)
+        elif self.path.startswith("/api/trips/") and self.path.endswith("/items"):
+            link = self.path[len("/api/trips/"):-len("/items")]
+            self.handle_add_trip_item(link)
         else:
             self.send_error(404, "Not Found")
 
@@ -671,6 +1098,133 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             import traceback
             traceback.print_exc()
             self.send_json_error(str(e))
+
+    def handle_create_trip(self):
+        """Handle creating a new draft trip."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        user_id = self.get_current_user_id()
+        result, status = create_handler.create_trip_handler(user_id, data)
+        if status == 200:
+            self.send_json_response(result)
+        else:
+            self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def handle_save_trip(self, link: str):
+        """Handle auto-saving trip itinerary data."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        user_id = self.get_current_user_id()
+        result, status = create_handler.save_trip_handler(user_id, link, data)
+        if status == 200:
+            self.send_json_response(result)
+        else:
+            self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def handle_publish_trip(self, link: str):
+        """Handle publishing a draft trip."""
+        # Consume any request body
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length > 0:
+            self.rfile.read(content_length)
+
+        user_id = self.get_current_user_id()
+        result, status = create_handler.publish_trip_handler(user_id, link)
+        if status == 200:
+            self.send_json_response(result)
+        else:
+            self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def handle_add_trip_item(self, link: str):
+        """Handle adding an item to a trip's ideas pile."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        user_id = self.get_current_user_id()
+        result, status = create_handler.add_item_to_trip_handler(user_id, link, data)
+        if status == 200:
+            self.send_json_response(result)
+        else:
+            self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def handle_create_chat(self):
+        """Handle LLM chat for create trip page."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError:
+            self.send_json_error("Invalid JSON in request body")
+            return
+
+        user_id = self.get_current_user_id()
+        result, status = create_handler.create_chat_handler(user_id, data)
+        if status == 200:
+            self.send_json_response(result)
+        else:
+            self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def handle_upload_plan(self):
+        """Handle file upload for plan/reservation parsing."""
+        import cgi
+        import tempfile
+
+        try:
+            content_type = self.headers.get('Content-Type', '')
+            if not content_type.startswith('multipart/form-data'):
+                self.send_json_error("Expected multipart/form-data")
+                return
+
+            # Parse multipart data
+            form = cgi.FieldStorage(
+                fp=self.rfile,
+                headers=self.headers,
+                environ={
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': content_type,
+                }
+            )
+
+            if 'file' not in form:
+                self.send_json_error("No file provided")
+                return
+
+            file_item = form['file']
+            filename = file_item.filename
+            file_data = file_item.file.read()
+
+            # Get file extension
+            ext = filename.lower().split('.')[-1] if '.' in filename else ''
+
+            user_id = self.get_current_user_id()
+            result, status = create_handler.upload_plan_handler(user_id, filename, file_data, ext)
+
+            if status == 200:
+                self.send_json_response(result)
+            else:
+                self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json_error(f"Upload error: {str(e)}")
 
     def handle_delete_trip(self):
         """Delete a trip by its link."""

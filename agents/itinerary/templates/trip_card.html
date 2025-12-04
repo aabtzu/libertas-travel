@@ -1,0 +1,35 @@
+            <div class="trip-card-wrapper{draft_class}" data-link="{link}" data-is-draft="{is_draft}">
+                {public_badge}{draft_badge}
+                <a href="{card_link}" class="trip-card">
+                    <div class="trip-card-image" style="background: {gradient};">
+                        <i class="fas fa-{icon}"></i>
+                        <span class="trip-card-region">{region}</span>
+                    </div>
+                    <div class="trip-card-content">
+                        <div class="trip-card-title">{title}</div>
+                        <div class="trip-card-meta">
+                            <span><i class="fas fa-calendar"></i> {dates}</span>
+                        </div>
+                        <div class="trip-stats-icons">
+                            <span class="category-stat cat-days" title="Days">
+                                <i class="fas fa-calendar-alt"></i> {days}
+                            </span>
+                            {category_stats}
+                        </div>
+                    </div>
+                </a>
+                <div class="trip-card-actions">
+                    <button class="trip-action-btn share-btn" title="Share trip" data-link="{link}" data-title="{title}">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="trip-action-btn public-btn {public_class}" title="{public_title}" data-link="{link}" data-public="{is_public}">
+                        <i class="fas fa-{public_icon}"></i>
+                    </button>
+                    <button class="trip-action-btn edit-btn" title="Edit trip" data-link="{link}" data-title="{title}" data-dates="{dates}" data-days="{days}" data-locations="{locations}" data-activities="{activities}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="trip-action-btn delete-btn" title="Delete trip" data-link="{link}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>

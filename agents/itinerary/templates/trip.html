@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} - Libertas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="/static/css/main.css?v=5">
+    <link rel="stylesheet" href="/static/css/trip.css?v=6">
+</head>
+<body>
+    {nav_html}
+
+    <div class="trip-header">
+        <h1><i class="fas fa-plane"></i> {title}</h1>
+        <div class="meta">{meta_info}</div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('list')">
+            <i class="fas fa-list"></i> List
+        </div>
+        <div class="tab" onclick="switchTab('grid')">
+            <i class="fas fa-th"></i> Grid
+        </div>
+        <div class="tab" onclick="switchTab('map')" id="map-tab-btn">
+            <i class="fas fa-map-marked-alt"></i> Map <span id="map-status-badge"></span>
+        </div>
+        <div class="tab" onclick="switchTab('calendar')">
+            <i class="fas fa-calendar-alt"></i> Calendar
+        </div>
+    </div>
+
+    <div id="list-tab" class="tab-content active">
+        <div class="summary-container">
+            {summary_html}
+        </div>
+    </div>
+
+    <div id="grid-tab" class="tab-content">
+        <div class="summary-container">
+            {column_html}
+        </div>
+    </div>
+
+    <div id="calendar-tab" class="tab-content">
+        <div class="calendar-container">
+            {calendar_html}
+        </div>
+    </div>
+
+    <div id="map-tab" class="tab-content">
+        <div class="map-loading-overlay" id="map-loading">
+            <div class="map-loading-spinner"></div>
+            <div class="map-loading-text">Generating map...</div>
+            <div class="map-loading-subtext">Geocoding locations, this may take a minute</div>
+        </div>
+        <div id="leaflet-map"></div>
+        <div class="map-legend" id="map-legend">
+            <h4>Legend</h4>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#EA4335;"><i class="fas fa-plane"></i></div>
+                <span class="legend-label">Flight</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#4285F4;"><i class="fas fa-bed"></i></div>
+                <span class="legend-label">Hotel</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#34A853;"><i class="fas fa-star"></i></div>
+                <span class="legend-label">Activity</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#FF9800;"><i class="fas fa-utensils"></i></div>
+                <span class="legend-label">Meal</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#757575;"><i class="fas fa-car"></i></div>
+                <span class="legend-label">Transport</span>
+            </div>
+        </div>
+    </div>
+
+    <script>var mapData = {map_data_json};</script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/trip.js"></script>
+</body>
+</html>

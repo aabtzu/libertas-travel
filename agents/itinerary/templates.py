@@ -1,347 +1,67 @@
-"""Shared HTML templates and components for Libertas."""
+"""Trip-specific HTML templates for Libertas Itinerary agent."""
 
+import json
 from pathlib import Path
+from typing import Optional, Union
 
-# Path to static files and templates
+# Import shared components from common
+from agents.common.templates import (
+    get_static_css as common_get_static_css,
+    get_static_js as common_get_static_js,
+    get_nav_html,
+)
+
+# Category icons mapping (shared with frontend)
+CATEGORY_ICONS = {
+    'meal': 'fa-utensils',
+    'hotel': 'fa-bed',
+    'lodging': 'fa-bed',
+    'transport': 'fa-car',
+    'flight': 'fa-plane',
+    'activity': 'fa-star',
+    'attraction': 'fa-landmark',
+    'other': 'fa-calendar-day',
+}
+
+# Path to itinerary-specific static files and templates
 STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
 def get_static_css(filename: str) -> str:
-    """Read a CSS file from the static directory."""
+    """Read a CSS file from itinerary static directory, falling back to common."""
     css_path = STATIC_DIR / "css" / filename
     if css_path.exists():
         return css_path.read_text()
-    return ""
+    # Fall back to common static directory
+    return common_get_static_css(filename)
 
 
 def get_static_js(filename: str) -> str:
-    """Read a JS file from the static directory."""
+    """Read a JS file from itinerary static directory, falling back to common."""
     js_path = STATIC_DIR / "js" / filename
     if js_path.exists():
         return js_path.read_text()
-    return ""
+    # Fall back to common static directory
+    return common_get_static_js(filename)
 
 
 def get_template(filename: str) -> str:
-    """Read an HTML template file."""
+    """Read an HTML template file from itinerary templates directory."""
     template_path = TEMPLATES_DIR / filename
     if template_path.exists():
         return template_path.read_text()
     return ""
 
 
-def get_nav_html(active_page: str = "") -> str:
-    """Get navigation HTML with the specified page marked as active."""
-    return NAV_HTML.format(
-        home_active="active" if active_page == "home" else "",
-        trips_active="active" if active_page == "trips" else "",
-        about_active="active" if active_page == "about" else "",
-    )
+def _get_trip_card_template() -> str:
+    """Get the trip card template from external file."""
+    return get_template("trip_card.html")
 
 
-NAV_HTML = """
-<nav class="libertas-nav">
-    <a href="index.html" class="brand">
-        <i class="fas fa-feather-alt brand-icon"></i>
-        <div>
-            <div class="brand-name">LIBERTAS</div>
-            <div class="brand-tagline">Travel freely</div>
-        </div>
-    </a>
-    <div class="nav-links">
-        <a href="index.html" class="nav-link {home_active}"><i class="fas fa-home"></i> Home</a>
-        <a href="trips.html" class="nav-link {trips_active}"><i class="fas fa-route"></i> My Trips</a>
-        <a href="about.html" class="nav-link {about_active}"><i class="fas fa-scroll"></i> About</a>
-        <a href="#" class="nav-link logout-link" onclick="logout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
-    </div>
-</nav>
-<script>
-function logout() {{
-    fetch('/api/logout', {{ method: 'POST' }})
-        .then(function() {{ window.location.href = '/login.html'; }})
-        .catch(function() {{ window.location.href = '/login.html'; }});
-}}
-</script>
-"""
-
-
-ABOUT_PAGE_TEMPLATE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About - Libertas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-{main_css}
-
-{about_css}
-    </style>
-</head>
-<body>
-    {nav_html}
-
-    <div class="about-hero">
-        <h1>LIBERTAS</h1>
-        <p class="subtitle">An agentic travel companion inspired by the Roman gods</p>
-    </div>
-
-    <div class="about-content">
-        <div class="about-section">
-            <h2><i class="fas fa-scroll"></i> The Inspiration</h2>
-            <p>
-                In ancient Rome, travelers would invoke the protection of <span class="latin">Abeona</span> and
-                <span class="latin">Adeona</span> — twin goddesses who watched over journeys. Abeona
-                (from <span class="latin">abeo</span>, "I depart") guarded those setting out, while Adeona
-                (from <span class="latin">adeo</span>, "I return") ensured their safe homecoming.
-            </p>
-            <p>
-                According to the Roman author Varro, statues of these goddesses stood alongside
-                <span class="latin">Libertas</span>, the goddess of freedom, on the Aventine Hill — signifying
-                that true liberty includes the freedom to journey forth and return as one wishes.
-            </p>
-
-            <div class="deity-cards">
-                <div class="deity-card abeona">
-                    <div class="icon"><i class="fas fa-plane-departure"></i></div>
-                    <h3>Abeona</h3>
-                    <div class="latin-name">"She who goes forth"</div>
-                    <p>Goddess of outward journeys, protecting travelers as they depart and children taking their first steps into the world.</p>
-                </div>
-                <div class="deity-card adeona">
-                    <div class="icon"><i class="fas fa-plane-arrival"></i></div>
-                    <h3>Adeona</h3>
-                    <div class="latin-name">"She who returns"</div>
-                    <p>Goddess of safe returns, watching over travelers as they journey home and ensuring reunions with loved ones.</p>
-                </div>
-                <div class="deity-card libertas">
-                    <div class="icon"><i class="fas fa-feather-alt"></i></div>
-                    <h3>Libertas</h3>
-                    <div class="latin-name">"Freedom"</div>
-                    <p>Goddess of liberty, whose presence with Abeona and Adeona symbolizes the freedom to travel as one pleases.</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="quote-box">
-            <blockquote>
-                "The statues of Abeona and Adeona accompanied the statue of Libertas,
-                signifying that freedom could go and return as she wished."
-            </blockquote>
-            <cite>— Marcus Terentius Varro, Antiquitates rerum divinarum</cite>
-        </div>
-
-        <div class="about-section">
-            <h2><i class="fas fa-robot"></i> What is Libertas?</h2>
-            <p>
-                Libertas is an agentic travel solution — a collection of intelligent agents that help you
-                plan, organize, and visualize your journeys. Like the Roman deities who watched over
-                travelers, our agents work together to ensure smooth travels.
-            </p>
-
-            <div class="features-grid">
-                <div class="feature">
-                    <i class="fas fa-file-import"></i>
-                    <div class="feature-text">
-                        <h4>Import Itineraries</h4>
-                        <p>Parse existing trip plans from PDFs and spreadsheets</p>
-                    </div>
-                </div>
-                <div class="feature">
-                    <i class="fas fa-brain"></i>
-                    <div class="feature-text">
-                        <h4>AI-Powered</h4>
-                        <p>Intelligent extraction of dates, locations, and activities</p>
-                    </div>
-                </div>
-                <div class="feature">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <div class="feature-text">
-                        <h4>Visual Maps</h4>
-                        <p>Interactive maps showing your complete journey</p>
-                    </div>
-                </div>
-                <div class="feature">
-                    <i class="fas fa-list-alt"></i>
-                    <div class="feature-text">
-                        <h4>Smart Summaries</h4>
-                        <p>Clear, organized views of your travel plans</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="about-section">
-            <h2><i class="fas fa-code"></i> Open Source</h2>
-            <p>
-                Libertas is built with Python and uses Claude AI for intelligent document parsing.
-                The project is designed to be modular, with specialized agents for different aspects
-                of travel planning — itineraries, maps, and more to come.
-            </p>
-        </div>
-    </div>
-
-    <script>
-{main_js}
-    </script>
-</body>
-</html>
-"""
-
-
-def generate_about_page() -> str:
-    """Generate the About page HTML with embedded CSS/JS."""
-    template = get_template("about.html")
-    return template.format(
-        main_css=get_static_css("main.css"),
-        about_css=get_static_css("about.css"),
-        nav_html=get_nav_html("about"),
-        main_js=get_static_js("main.js"),
-    )
-
-
-TRIPS_PAGE_TEMPLATE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Trips - Libertas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-{main_css}
-
-{trips_css}
-    </style>
-</head>
-<body>
-    {nav_html}
-
-    <div class="trips-header">
-        <h1><i class="fas fa-route"></i> My Trips</h1>
-        <p>Your travel adventures, organized and visualized</p>
-    </div>
-
-    <div class="trips-container">
-        <div class="upload-section">
-            <div class="upload-area" id="upload-area">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <h3>Import a Trip</h3>
-                <p>Drag and drop your itinerary file here, or click to browse</p>
-                <button class="upload-btn">
-                    <i class="fas fa-folder-open"></i> Choose File
-                </button>
-                <p class="supported-formats">Supported: PDF, Excel, HTML (save TripIt pages as HTML)</p>
-                <input type="file" id="upload-input" class="upload-input" accept=".pdf,.xlsx,.xls,.html,.htm">
-            </div>
-
-            <div class="url-import-section">
-                <div class="url-divider">
-                    <span>or import from URL</span>
-                </div>
-                <div class="url-input-wrapper">
-                    <input type="text" id="url-input" class="url-input" placeholder="Paste Google Drive link...">
-                    <button id="url-submit" class="url-submit-btn">
-                        <i class="fas fa-link"></i> Import
-                    </button>
-                </div>
-                <p class="url-hint">Supports Google Drive, TripIt, and other itinerary pages or direct file links</p>
-            </div>
-
-            <div id="upload-status" class="upload-status"></div>
-        </div>
-
-        <div class="trips-grid">
-{trip_cards}
-        </div>
-    </div>
-
-    <script>
-{main_js}
-
-{upload_js}
-    </script>
-</body>
-</html>
-"""
-
-TRIP_CARD_TEMPLATE = """
-            <div class="trip-card-wrapper" data-link="{link}">
-                <a href="{link}" class="trip-card">
-                    <div class="trip-card-image" style="background: {gradient};">
-                        <i class="fas fa-{icon}"></i>
-                        <span class="trip-card-region">{region}</span>
-                        {public_badge}
-                    </div>
-                    <div class="trip-card-content">
-                        <div class="trip-card-title">{title}</div>
-                        <div class="trip-card-meta">
-                            <span><i class="fas fa-calendar"></i> {dates}</span>
-                        </div>
-                        <div class="trip-card-stats">
-                            <div class="trip-stat">
-                                <div class="trip-stat-value">{days}</div>
-                                <div class="trip-stat-label">Days</div>
-                            </div>
-                            <div class="trip-stat">
-                                <div class="trip-stat-value">{locations}</div>
-                                <div class="trip-stat-label">Locations</div>
-                            </div>
-                            <div class="trip-stat">
-                                <div class="trip-stat-value">{activities}</div>
-                                <div class="trip-stat-label">Activities</div>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-                <div class="trip-card-actions">
-                    <button class="trip-action-btn share-btn" title="Share trip" data-link="{link}" data-title="{title}">
-                        <i class="fas fa-share-alt"></i>
-                    </button>
-                    <button class="trip-action-btn public-btn {public_class}" title="{public_title}" data-link="{link}" data-public="{is_public}">
-                        <i class="fas fa-{public_icon}"></i>
-                    </button>
-                    <button class="trip-action-btn edit-btn" title="Edit trip" data-link="{link}" data-title="{title}" data-dates="{dates}" data-days="{days}" data-locations="{locations}" data-activities="{activities}">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="trip-action-btn delete-btn" title="Delete trip" data-link="{link}">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-"""
-
-PUBLIC_TRIP_CARD_TEMPLATE = """
-            <div class="trip-card-wrapper public-trip" data-link="{link}">
-                <a href="{link}" class="trip-card">
-                    <div class="trip-card-image" style="background: {gradient};">
-                        <i class="fas fa-{icon}"></i>
-                        <span class="trip-card-region">{region}</span>
-                    </div>
-                    <div class="trip-card-content">
-                        <div class="trip-card-title">{title}</div>
-                        <div class="trip-card-meta">
-                            <span><i class="fas fa-calendar"></i> {dates}</span>
-                            <span class="trip-owner"><i class="fas fa-user"></i> {owner_username}</span>
-                        </div>
-                        <div class="trip-card-stats">
-                            <div class="trip-stat">
-                                <div class="trip-stat-value">{days}</div>
-                                <div class="trip-stat-label">Days</div>
-                            </div>
-                            <div class="trip-stat">
-                                <div class="trip-stat-value">{locations}</div>
-                                <div class="trip-stat-label">Locations</div>
-                            </div>
-                            <div class="trip-stat">
-                                <div class="trip-stat-value">{activities}</div>
-                                <div class="trip-stat-label">Activities</div>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-"""
+def _get_public_trip_card_template() -> str:
+    """Get the public trip card template from external file."""
+    return get_template("public_trip_card.html")
 
 # Destination-specific background images (using Unsplash for free images)
 DESTINATION_IMAGES = {
@@ -407,7 +127,7 @@ def get_region_icon(title: str) -> str:
         return "mountain"
     elif any(x in title_lower for x in ["asia", "vietnam", "cambodia", "thailand", "japan", "china", "singapore"]):
         return "torii-gate"
-    elif any(x in title_lower for x in ["europe", "france", "italy", "spain", "germany", "uk"]):
+    elif any(x in title_lower for x in ["europe", "france", "italy", "spain", "germany", "uk", "rome"]):
         return "landmark"
     elif any(x in title_lower for x in ["africa", "safari", "kenya", "tanzania"]):
         return "globe-africa"
@@ -427,10 +147,95 @@ def get_region_name(title: str) -> str:
         return "Alaska"
     elif "vietnam" in title_lower or "cambodia" in title_lower:
         return "Southeast Asia"
-    elif "europe" in title_lower:
+    elif any(x in title_lower for x in ["europe", "rome", "italy"]):
         return "Europe"
     # Default: use first part of title
     return title.split()[0] if title else "Trip"
+
+
+def extract_category_counts(itinerary_data: Optional[Union[str, dict]]) -> dict:
+    """Extract category counts from itinerary_data JSON.
+
+    Returns dict with category names as keys and counts as values.
+    """
+    if not itinerary_data:
+        return {}
+
+    try:
+        if isinstance(itinerary_data, str):
+            data = json.loads(itinerary_data)
+        else:
+            data = itinerary_data
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+    counts = {}
+
+    # Count items in days
+    for day in data.get('days', []):
+        for item in day.get('items', []):
+            category = item.get('category', 'other')
+            counts[category] = counts.get(category, 0) + 1
+
+    # Count items in ideas pile
+    for item in data.get('ideas', []):
+        category = item.get('category', 'other')
+        counts[category] = counts.get(category, 0) + 1
+
+    return counts
+
+
+def generate_category_stats_html(
+    category_counts: dict,
+    locations: int = 0,
+    activities: int = 0
+) -> str:
+    """Generate HTML for category stats icons.
+
+    If category_counts is empty, falls back to locations/activities numbers.
+    """
+    # Category display order
+    DISPLAY_ORDER = ['attraction', 'activity', 'meal', 'hotel', 'transport', 'flight', 'other']
+
+    # Category tooltips
+    TOOLTIPS = {
+        'meal': 'Meals',
+        'hotel': 'Hotels',
+        'lodging': 'Lodging',
+        'transport': 'Transport',
+        'flight': 'Flights',
+        'activity': 'Activities',
+        'attraction': 'Attractions',
+        'other': 'Other',
+    }
+
+    if category_counts:
+        # Use category breakdown
+        html_parts = []
+        for cat in DISPLAY_ORDER:
+            count = category_counts.get(cat, 0)
+            if count > 0:
+                icon = CATEGORY_ICONS.get(cat, 'fa-calendar-day')
+                tooltip = TOOLTIPS.get(cat, cat.title())
+                html_parts.append(
+                    f'<span class="category-stat cat-{cat}" title="{tooltip}">'
+                    f'<i class="fas {icon}"></i> {count}</span>'
+                )
+        return '\n                            '.join(html_parts)
+    else:
+        # Fallback to locations/activities
+        html_parts = []
+        if locations > 0:
+            html_parts.append(
+                f'<span class="category-stat cat-locations" title="Locations">'
+                f'<i class="fas fa-map-marker-alt"></i> {locations}</span>'
+            )
+        if activities > 0:
+            html_parts.append(
+                f'<span class="category-stat cat-activity" title="Activities">'
+                f'<i class="fas fa-star"></i> {activities}</span>'
+            )
+        return '\n                            '.join(html_parts)
 
 
 def generate_trip_card(
@@ -441,7 +246,9 @@ def generate_trip_card(
     locations: int,
     activities: int,
     index: int = 0,
-    is_public: bool = False
+    is_public: bool = False,
+    is_draft: bool = False,
+    itinerary_data: Optional[Union[str, dict]] = None
 ) -> str:
     """Generate HTML for a single trip card."""
     # Use gradient colors (light colors with icon look good)
@@ -455,8 +262,18 @@ def generate_trip_card(
     public_icon = 'globe' if is_public else 'lock'
     public_title = 'Make private' if is_public else 'Make public'
 
-    return TRIP_CARD_TEMPLATE.format(
+    # Draft settings - drafts link to create/edit page
+    draft_badge = '<span class="draft-badge"><i class="fas fa-pencil-alt"></i> Draft</span>' if is_draft else ''
+    draft_class = ' is-draft' if is_draft else ''
+    card_link = f'/create.html?edit={link}' if is_draft else link
+
+    # Generate category stats (icons with counts)
+    category_counts = extract_category_counts(itinerary_data)
+    category_stats = generate_category_stats_html(category_counts, locations, activities)
+
+    return _get_trip_card_template().format(
         link=link,
+        card_link=card_link,
         gradient=gradient,
         icon=icon,
         region=region,
@@ -465,11 +282,15 @@ def generate_trip_card(
         days=days,
         locations=locations,
         activities=activities,
+        category_stats=category_stats,
         public_badge=public_badge,
         public_class=public_class,
         public_icon=public_icon,
         public_title=public_title,
         is_public='true' if is_public else 'false',
+        draft_badge=draft_badge,
+        draft_class=draft_class,
+        is_draft='true' if is_draft else 'false',
     )
 
 
@@ -481,14 +302,19 @@ def generate_public_trip_card(
     locations: int,
     activities: int,
     owner_username: str,
-    index: int = 0
+    index: int = 0,
+    itinerary_data: Optional[Union[str, dict]] = None
 ) -> str:
     """Generate HTML for a public trip card (from another user)."""
     gradient = TRIP_GRADIENTS[index % len(TRIP_GRADIENTS)]
     icon = get_region_icon(title)
     region = get_region_name(title)
 
-    return PUBLIC_TRIP_CARD_TEMPLATE.format(
+    # Generate category stats (icons with counts)
+    category_counts = extract_category_counts(itinerary_data)
+    category_stats = generate_category_stats_html(category_counts, locations, activities)
+
+    return _get_public_trip_card_template().format(
         link=link,
         gradient=gradient,
         icon=icon,
@@ -499,6 +325,7 @@ def generate_public_trip_card(
         locations=locations,
         activities=activities,
         owner_username=owner_username,
+        category_stats=category_stats,
     )
 
 
@@ -517,9 +344,12 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         try:
             # Ensure all required fields have defaults
             is_public = trip.get("is_public", False)
+            is_draft = trip.get("is_draft", False)
             # Handle SQLite integer (1/0) vs PostgreSQL boolean
             if isinstance(is_public, int):
                 is_public = bool(is_public)
+            if isinstance(is_draft, int):
+                is_draft = bool(is_draft)
             card = generate_trip_card(
                 title=trip.get("title", "Untitled Trip"),
                 link=trip.get("link", "#"),
@@ -529,6 +359,8 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
                 activities=trip.get("activities", 0) or 0,
                 index=i,
                 is_public=is_public,
+                is_draft=is_draft,
+                itinerary_data=trip.get("itinerary_data"),
             )
             trip_cards_list.append(card)
         except Exception as e:
@@ -551,6 +383,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
                     activities=trip.get("activities", 0) or 0,
                     owner_username=trip.get("owner_username", "Unknown"),
                     index=i,
+                    itinerary_data=trip.get("itinerary_data"),
                 )
                 public_cards_list.append(card)
             except Exception as e:
@@ -570,331 +403,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
 
     template = get_template("trips.html")
     return template.format(
-        main_css=get_static_css("main.css"),
-        trips_css=get_static_css("trips.css"),
         nav_html=get_nav_html("trips"),
-        main_js=get_static_js("main.js"),
-        upload_js=get_static_js("upload.js"),
         trip_cards=trip_cards,
         public_trips_section=public_trips_section,
-    )
-
-
-HOME_PAGE_TEMPLATE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Libertas - Travel Freely</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-{main_css}
-
-{home_css}
-    </style>
-</head>
-<body>
-    {nav_html}
-
-    <div class="home-hero">
-        <div class="home-hero-content">
-            <i class="fas fa-feather-alt brand-icon"></i>
-            <h1>LIBERTAS</h1>
-            <p class="tagline">Travel Freely</p>
-            <p class="subtitle">An agentic travel companion inspired by the Roman gods</p>
-        </div>
-    </div>
-
-    <div class="home-content">
-        <div class="features-heading">
-            <h2>Your Journey Starts Here</h2>
-            <p>Powerful tools to plan, organize, and visualize your travels</p>
-        </div>
-
-        <div class="home-grid">
-            <a href="trips.html" class="home-card">
-                <div class="home-card-icon purple">
-                    <i class="fas fa-route"></i>
-                </div>
-                <div class="home-card-content">
-                    <h3>My Trips</h3>
-                    <p>View and manage your travel itineraries. Import trips from PDFs and spreadsheets, see interactive maps, and get organized summaries.</p>
-                </div>
-            </a>
-
-            <a href="about.html" class="home-card">
-                <div class="home-card-icon blue">
-                    <i class="fas fa-scroll"></i>
-                </div>
-                <div class="home-card-content">
-                    <h3>About</h3>
-                    <p>Learn about Libertas and the Roman deities of travel — Abeona, Adeona, and Libertas — who inspire this project.</p>
-                </div>
-            </a>
-
-            <div class="home-card disabled">
-                <div class="home-card-icon green">
-                    <i class="fas fa-compass"></i>
-                </div>
-                <div class="home-card-content">
-                    <h3>Explore <span class="coming-soon-badge">Coming Soon</span></h3>
-                    <p>Discover destinations, find inspiration, and explore curated travel recommendations powered by AI.</p>
-                </div>
-            </div>
-
-            <div class="home-card disabled">
-                <div class="home-card-icon orange">
-                    <i class="fas fa-magic"></i>
-                </div>
-                <div class="home-card-content">
-                    <h3>Create Trip <span class="coming-soon-badge">Coming Soon</span></h3>
-                    <p>Build a new itinerary from scratch with AI assistance. Just tell us where you want to go and we'll help plan the details.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="home-quote">
-        <blockquote>
-            "The statues of Abeona and Adeona accompanied the statue of Libertas,
-            signifying that freedom could go and return as she wished."
-        </blockquote>
-        <cite>— Marcus Terentius Varro</cite>
-    </div>
-
-    <script>
-{main_js}
-    </script>
-</body>
-</html>
-"""
-
-
-def generate_home_page() -> str:
-    """Generate the Home page HTML."""
-    template = get_template("home.html")
-    return template.format(
-        main_css=get_static_css("main.css"),
-        home_css=get_static_css("home.css"),
-        nav_html=get_nav_html("home"),
-        main_js=get_static_js("main.js"),
-    )
-
-
-LOGIN_PAGE_TEMPLATE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Libertas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-{main_css}
-
-{login_css}
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <div class="login-box">
-            <div class="login-header">
-                <i class="fas fa-feather-alt brand-icon"></i>
-                <h1>LIBERTAS</h1>
-                <p class="tagline">Travel Freely</p>
-            </div>
-
-            <div class="login-error" id="login-error">
-                <i class="fas fa-exclamation-circle"></i>
-                <span id="error-message">Invalid username or password</span>
-            </div>
-
-            <form class="login-form" id="login-form" method="POST" action="/api/login">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required autocomplete="username" autofocus>
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required autocomplete="current-password">
-                </div>
-
-                <button type="submit" class="login-btn">
-                    <i class="fas fa-sign-in-alt"></i> Sign In
-                </button>
-            </form>
-
-            <div class="login-footer">
-                <p>Don't have an account? <a href="/register.html">Create one</a></p>
-            </div>
-        </div>
-    </div>
-
-    <script>
-    document.getElementById('login-form').addEventListener('submit', async function(e) {{
-        e.preventDefault();
-
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        const errorDiv = document.getElementById('login-error');
-        const errorMsg = document.getElementById('error-message');
-
-        try {{
-            const response = await fetch('/api/login', {{
-                method: 'POST',
-                headers: {{
-                    'Content-Type': 'application/json',
-                }},
-                body: JSON.stringify({{ username, password }}),
-            }});
-
-            const data = await response.json();
-
-            if (data.success) {{
-                // Redirect to the original page or home
-                const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
-                window.location.href = redirect;
-            }} else {{
-                errorMsg.textContent = data.error || 'Invalid username or password';
-                errorDiv.classList.add('show');
-            }}
-        }} catch (err) {{
-            errorMsg.textContent = 'Connection error. Please try again.';
-            errorDiv.classList.add('show');
-        }}
-    }});
-    </script>
-</body>
-</html>
-"""
-
-
-def generate_login_page() -> str:
-    """Generate the Login page HTML."""
-    return LOGIN_PAGE_TEMPLATE.format(
-        main_css=get_static_css("main.css"),
-        login_css=get_static_css("login.css"),
-    )
-
-
-REGISTER_PAGE_TEMPLATE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Libertas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-{main_css}
-
-{login_css}
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <div class="login-box">
-            <div class="login-header">
-                <i class="fas fa-feather-alt brand-icon"></i>
-                <h1>LIBERTAS</h1>
-                <p class="tagline">Create Your Account</p>
-            </div>
-
-            <div class="login-error" id="register-error">
-                <i class="fas fa-exclamation-circle"></i>
-                <span id="error-message">Registration failed</span>
-            </div>
-
-            <div class="login-success" id="register-success" style="display:none; background: #d4edda; color: #155724; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
-                <i class="fas fa-check-circle"></i>
-                <span>Account created! Redirecting to login...</span>
-            </div>
-
-            <form class="login-form" id="register-form">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required minlength="3" autocomplete="username" autofocus>
-                </div>
-
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required autocomplete="email">
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required minlength="6" autocomplete="new-password">
-                </div>
-
-                <div class="form-group">
-                    <label for="confirm-password">Confirm Password</label>
-                    <input type="password" id="confirm-password" name="confirm-password" required minlength="6" autocomplete="new-password">
-                </div>
-
-                <button type="submit" class="login-btn">
-                    <i class="fas fa-user-plus"></i> Create Account
-                </button>
-            </form>
-
-            <div class="login-footer">
-                <p>Already have an account? <a href="/login.html">Sign in</a></p>
-            </div>
-        </div>
-    </div>
-
-    <script>
-    document.getElementById('register-form').addEventListener('submit', async function(e) {{
-        e.preventDefault();
-
-        const username = document.getElementById('username').value;
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirm-password').value;
-        const errorDiv = document.getElementById('register-error');
-        const successDiv = document.getElementById('register-success');
-        const errorMsg = document.getElementById('error-message');
-
-        // Client-side validation
-        if (password !== confirmPassword) {{
-            errorMsg.textContent = 'Passwords do not match';
-            errorDiv.classList.add('show');
-            return;
-        }}
-
-        try {{
-            const response = await fetch('/api/register', {{
-                method: 'POST',
-                headers: {{
-                    'Content-Type': 'application/json',
-                }},
-                body: JSON.stringify({{ username, email, password }}),
-            }});
-
-            const data = await response.json();
-
-            if (data.success) {{
-                errorDiv.classList.remove('show');
-                successDiv.style.display = 'block';
-                setTimeout(function() {{
-                    window.location.href = '/login.html';
-                }}, 2000);
-            }} else {{
-                errorMsg.textContent = data.error || 'Registration failed';
-                errorDiv.classList.add('show');
-            }}
-        }} catch (err) {{
-            errorMsg.textContent = 'Connection error. Please try again.';
-            errorDiv.classList.add('show');
-        }}
-    }});
-    </script>
-</body>
-</html>
-"""
-
-
-def generate_register_page() -> str:
-    """Generate the Register page HTML."""
-    return REGISTER_PAGE_TEMPLATE.format(
-        main_css=get_static_css("main.css"),
-        login_css=get_static_css("login.css"),
     )
