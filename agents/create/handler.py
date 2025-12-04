@@ -532,6 +532,18 @@ def _parse_json_trip(file_data: bytes) -> List[Dict[str, Any]]:
                 if isinstance(item, dict):
                     items.append(_normalize_item(item))
 
+    # Smart day assignment: if no items have dates but some have times,
+    # this is likely a single-day itinerary - assign all to Day 1
+    has_any_date = any(item.get('date') for item in items)
+    has_any_time = any(item.get('time') for item in items)
+    has_any_day = any(item.get('day') for item in items)
+
+    if not has_any_date and not has_any_day and has_any_time:
+        # Looks like a single-day itinerary without explicit dates
+        # Assign all items to Day 1
+        for item in items:
+            item['day'] = 1
+
     return items
 
 
