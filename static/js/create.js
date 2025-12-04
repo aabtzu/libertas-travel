@@ -922,7 +922,7 @@ async function handlePlanUpload(e) {
 
     } catch (error) {
         console.error('Upload error:', error);
-        addChatMessage('assistant', `Failed to upload "${file.name}". Please check your connection and try again.`);
+        addChatMessage('assistant', `Failed to upload "${file.name}". Error: ${error.message || error}`);
     } finally {
         // Reset button
         uploadBtn.disabled = false;
