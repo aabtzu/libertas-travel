@@ -572,7 +572,23 @@ def create_draft_trip(user_id: int, title: str, start_date: Optional[str] = None
     slug = title.lower()
     slug = re.sub(r'[^a-z0-9]+', '_', slug)
     slug = re.sub(r'_+', '_', slug).strip('_')
-    link = f"{slug}.html"
+    base_link = f"{slug}.html"
+
+    # Check for existing trips with this link and find a unique one
+    link = base_link
+    with get_db() as conn:
+        cursor = conn.cursor()
+        counter = 1
+        while True:
+            if USE_POSTGRES:
+                cursor.execute("SELECT COUNT(*) FROM trips WHERE user_id = %s AND link = %s", (user_id, link))
+            else:
+                cursor.execute("SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?", (user_id, link))
+            count = cursor.fetchone()[0]
+            if count == 0:
+                break
+            counter += 1
+            link = f"{slug}_{counter}.html"
 
     # Format dates string
     dates = None
