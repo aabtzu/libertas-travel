@@ -830,7 +830,7 @@ async function handlePlanUpload(e) {
                     notes: item.notes || null
                 };
 
-                // Try to find matching day by date
+                // Try to find matching day by date or day number
                 let placed = false;
                 if (item.date) {
                     const dayIndex = currentTrip.days.findIndex(day => day.date === item.date);
@@ -846,7 +846,35 @@ async function handlePlanUpload(e) {
                     }
                 }
 
-                // If no date match, add to Ideas pile
+                // Try to place by day number if not placed by date
+                if (!placed && item.day !== undefined && item.day !== null) {
+                    let dayIndex = currentTrip.days.findIndex(day => day.day_number === item.day);
+
+                    // If day doesn't exist, create it (and any days before it)
+                    if (dayIndex === -1 && item.day > 0) {
+                        // Ensure we have all days up to the requested day
+                        while (currentTrip.days.length < item.day) {
+                            currentTrip.days.push({
+                                day_number: currentTrip.days.length + 1,
+                                date: null,
+                                items: []
+                            });
+                        }
+                        dayIndex = currentTrip.days.findIndex(day => day.day_number === item.day);
+                    }
+
+                    if (dayIndex !== -1) {
+                        if (!currentTrip.days[dayIndex].items) {
+                            currentTrip.days[dayIndex].items = [];
+                        }
+                        currentTrip.days[dayIndex].items.push(newItem);
+                        placed = true;
+                        addedToDay++;
+                        placementDetails.push(`- **${item.title}** → Day ${item.day}`);
+                    }
+                }
+
+                // If no date/day match, add to Ideas pile
                 if (!placed) {
                     newItem.date = item.date || null; // Keep date in ideas for reference
                     currentTrip.ideas.push(newItem);
