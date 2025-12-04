@@ -408,6 +408,325 @@ def _parse_suggested_items(response_text: str) -> List[Dict[str, Any]]:
     return items
 
 
+def _parse_ics_file(file_data: bytes) -> List[Dict[str, Any]]:
+    """Parse ICS calendar file to extract travel events.
+
+    Returns list of items with title, category, date, time, location, notes.
+    """
+    try:
+        content = file_data.decode('utf-8')
+    except UnicodeDecodeError:
+        content = file_data.decode('latin-1')
+
+    items = []
+    current_event = {}
+    in_event = False
+
+    lines = content.replace('\r\n ', '').replace('\r\n\t', '').split('\r\n')
+    if len(lines) == 1:
+        lines = content.replace('\n ', '').replace('\n\t', '').split('\n')
+
+    for line in lines:
+        line = line.strip()
+        if line == 'BEGIN:VEVENT':
+            in_event = True
+            current_event = {}
+        elif line == 'END:VEVENT':
+            if current_event.get('title'):
+                # Determine category from summary/description
+                title = current_event.get('title', '').lower()
+                description = current_event.get('notes', '').lower()
+                combined = f"{title} {description}"
+
+                category = 'activity'
+                if any(w in combined for w in ['flight', 'airline', 'airport', 'terminal']):
+                    category = 'flight'
+                elif any(w in combined for w in ['train', 'bus', 'car rental', 'uber', 'taxi', 'transfer']):
+                    category = 'transport'
+                elif any(w in combined for w in ['hotel', 'hostel', 'airbnb', 'accommodation', 'check-in', 'check in', 'stay']):
+                    category = 'hotel'
+                elif any(w in combined for w in ['restaurant', 'dinner', 'lunch', 'breakfast', 'cafe', 'brunch', 'reservation']):
+                    category = 'meal'
+                elif any(w in combined for w in ['museum', 'tour', 'visit', 'cathedral', 'palace', 'gallery']):
+                    category = 'attraction'
+
+                current_event['category'] = category
+                items.append(current_event)
+            in_event = False
+        elif in_event:
+            if line.startswith('SUMMARY:'):
+                current_event['title'] = line[8:].strip()
+            elif line.startswith('DTSTART'):
+                # Parse date/time
+                value = line.split(':', 1)[-1]
+                if 'T' in value:
+                    # Has time component
+                    date_part = value[:8]
+                    time_part = value[9:13] if len(value) > 12 else None
+                    try:
+                        current_event['date'] = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}"
+                        if time_part:
+                            current_event['time'] = f"{time_part[:2]}:{time_part[2:4]}"
+                    except:
+                        pass
+                else:
+                    # Date only
+                    try:
+                        current_event['date'] = f"{value[:4]}-{value[4:6]}-{value[6:8]}"
+                    except:
+                        pass
+            elif line.startswith('LOCATION:'):
+                current_event['location'] = line[9:].strip()
+            elif line.startswith('DESCRIPTION:'):
+                desc = line[12:].strip()
+                # Unescape ICS format
+                desc = desc.replace('\\n', '\n').replace('\\,', ',').replace('\\;', ';')
+                current_event['notes'] = desc[:500]  # Limit notes length
+
+    return items
+
+
+def _parse_json_trip(file_data: bytes) -> List[Dict[str, Any]]:
+    """Parse JSON file that might contain trip data.
+
+    Handles various JSON formats:
+    - Our own itinerary format with items array
+    - Array of events
+    - TripIt-style JSON exports
+    """
+    try:
+        content = file_data.decode('utf-8')
+    except UnicodeDecodeError:
+        content = file_data.decode('latin-1')
+
+    data = json.loads(content)
+    items = []
+
+    # Handle different JSON structures
+    if isinstance(data, list):
+        # Direct array of items
+        for item in data:
+            if isinstance(item, dict):
+                items.append(_normalize_item(item))
+    elif isinstance(data, dict):
+        # Check for our itinerary format
+        if 'items' in data:
+            for item in data.get('items', []):
+                if isinstance(item, dict):
+                    items.append(_normalize_item(item))
+        # Check for days array
+        elif 'days' in data:
+            for day in data.get('days', []):
+                day_num = day.get('day_number') or day.get('day')
+                day_date = day.get('date')
+                for item in day.get('items', []):
+                    normalized = _normalize_item(item)
+                    if day_num and not normalized.get('day'):
+                        normalized['day'] = day_num
+                    if day_date and not normalized.get('date'):
+                        normalized['date'] = day_date
+                    items.append(normalized)
+        # Check for events array (common export format)
+        elif 'events' in data:
+            for item in data.get('events', []):
+                if isinstance(item, dict):
+                    items.append(_normalize_item(item))
+
+    return items
+
+
+def _normalize_item(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize an item dict to our expected format."""
+    normalized = {}
+
+    # Title can be in various fields
+    normalized['title'] = (
+        item.get('title') or
+        item.get('name') or
+        item.get('summary') or
+        item.get('event') or
+        'Untitled'
+    )
+
+    # Category normalization
+    cat = (item.get('category') or item.get('type') or '').lower()
+    if cat in ['flight', 'air', 'plane']:
+        normalized['category'] = 'flight'
+    elif cat in ['train', 'bus', 'car', 'transport', 'transportation', 'transfer']:
+        normalized['category'] = 'transport'
+    elif cat in ['hotel', 'accommodation', 'lodging', 'stay', 'hostel']:
+        normalized['category'] = 'hotel'
+    elif cat in ['meal', 'restaurant', 'food', 'dining', 'breakfast', 'lunch', 'dinner']:
+        normalized['category'] = 'meal'
+    elif cat in ['attraction', 'sightseeing', 'museum', 'tour']:
+        normalized['category'] = 'attraction'
+    elif cat in ['activity', 'event']:
+        normalized['category'] = 'activity'
+    else:
+        normalized['category'] = cat or 'activity'
+
+    # Date handling
+    date = item.get('date') or item.get('start_date') or item.get('startDate')
+    if date:
+        # Try to parse various date formats
+        if isinstance(date, str):
+            # Already in ISO format
+            if len(date) >= 10 and date[4] == '-':
+                normalized['date'] = date[:10]
+            # Try common formats
+            else:
+                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%B %d, %Y']:
+                    try:
+                        parsed = datetime.strptime(date[:10], fmt)
+                        normalized['date'] = parsed.strftime('%Y-%m-%d')
+                        break
+                    except:
+                        pass
+
+    # Time handling
+    time = item.get('time') or item.get('start_time') or item.get('startTime')
+    if time:
+        if isinstance(time, str):
+            # Handle HH:MM format
+            if ':' in time and len(time) >= 5:
+                normalized['time'] = time[:5]
+            # Handle HHMM format
+            elif len(time) == 4 and time.isdigit():
+                normalized['time'] = f"{time[:2]}:{time[2:]}"
+
+    # Location
+    loc = item.get('location')
+    if isinstance(loc, dict):
+        normalized['location'] = loc.get('name') or loc.get('address') or loc.get('city')
+    elif isinstance(loc, str):
+        normalized['location'] = loc
+    elif item.get('city'):
+        normalized['location'] = item.get('city')
+    elif item.get('address'):
+        normalized['location'] = item.get('address')
+
+    # Notes
+    notes = item.get('notes') or item.get('description') or item.get('details')
+    if notes:
+        normalized['notes'] = str(notes)[:500]
+
+    # Day number if present
+    if item.get('day') or item.get('day_number'):
+        normalized['day'] = item.get('day') or item.get('day_number')
+
+    return normalized
+
+
+def _parse_excel_to_text(file_data: bytes, ext: str) -> str:
+    """Parse Excel file and convert to text table for LLM processing.
+
+    Returns a text representation of the spreadsheet.
+    """
+    from io import BytesIO
+
+    try:
+        import openpyxl
+    except ImportError:
+        raise ImportError("openpyxl not installed")
+
+    text_parts = []
+
+    if ext == 'xlsx':
+        wb = openpyxl.load_workbook(BytesIO(file_data), data_only=True)
+
+        for sheet_name in wb.sheetnames:
+            sheet = wb[sheet_name]
+            text_parts.append(f"=== Sheet: {sheet_name} ===\n")
+
+            rows = list(sheet.iter_rows(values_only=True))
+            if not rows:
+                continue
+
+            # Find the header row (first non-empty row)
+            header_row = None
+            for i, row in enumerate(rows):
+                if any(cell is not None for cell in row):
+                    header_row = i
+                    break
+
+            if header_row is None:
+                continue
+
+            # Convert to text table
+            for row in rows[header_row:]:
+                row_text = []
+                for cell in row:
+                    if cell is not None:
+                        row_text.append(str(cell))
+                    else:
+                        row_text.append('')
+                if any(row_text):  # Skip empty rows
+                    text_parts.append(' | '.join(row_text))
+
+            text_parts.append('')  # Blank line between sheets
+
+        wb.close()
+    elif ext == 'xls':
+        # For .xls files, try xlrd
+        try:
+            import xlrd
+            wb = xlrd.open_workbook(file_contents=file_data)
+
+            for sheet_name in wb.sheet_names():
+                sheet = wb.sheet_by_name(sheet_name)
+                text_parts.append(f"=== Sheet: {sheet_name} ===\n")
+
+                for row_idx in range(sheet.nrows):
+                    row_text = []
+                    for col_idx in range(sheet.ncols):
+                        cell = sheet.cell_value(row_idx, col_idx)
+                        row_text.append(str(cell) if cell else '')
+                    if any(row_text):
+                        text_parts.append(' | '.join(row_text))
+
+                text_parts.append('')
+        except ImportError:
+            # Fall back to openpyxl's xlrd compatibility
+            raise ImportError("xlrd not installed for .xls files")
+
+    return '\n'.join(text_parts)
+
+
+def _parse_word_to_text(file_data: bytes, ext: str) -> str:
+    """Parse Word document and extract text for LLM processing.
+
+    Returns the text content of the document.
+    """
+    from io import BytesIO
+
+    if ext == 'docx':
+        try:
+            from docx import Document
+        except ImportError:
+            raise ImportError("python-docx not installed")
+
+        doc = Document(BytesIO(file_data))
+        text_parts = []
+
+        for para in doc.paragraphs:
+            if para.text.strip():
+                text_parts.append(para.text)
+
+        # Also extract tables
+        for table in doc.tables:
+            text_parts.append('\n--- Table ---')
+            for row in table.rows:
+                row_text = [cell.text.strip() for cell in row.cells]
+                text_parts.append(' | '.join(row_text))
+
+        return '\n'.join(text_parts)
+
+    elif ext == 'doc':
+        # .doc files are harder - try antiword or textract
+        # For now, return error suggesting conversion
+        raise ValueError("Legacy .doc format not supported. Please save as .docx")
+
+
 def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str) -> Dict[str, Any]:
     """Handle uploaded file and extract trip items using LLM.
 
@@ -421,12 +740,15 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
         Extracted items or error
     """
     import base64
+    from io import BytesIO
 
     # Determine how to process the file
     content_for_llm = None
     image_data = None
+    media_type = None
+    pre_parsed_items = None  # For formats we can parse directly
 
-    if ext in ['txt', 'html', 'eml']:
+    if ext in ['txt', 'html', 'htm', 'eml']:
         # Text-based files - decode as text
         try:
             content_for_llm = file_data.decode('utf-8')
@@ -437,6 +759,58 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
         # Image files - send as base64 to vision model
         image_data = base64.standard_b64encode(file_data).decode('utf-8')
         media_type = f"image/{ext}" if ext != 'jpg' else 'image/jpeg'
+
+    elif ext == 'ics':
+        # ICS calendar files - parse directly
+        try:
+            pre_parsed_items = _parse_ics_file(file_data)
+            if pre_parsed_items:
+                return {
+                    'success': True,
+                    'items': pre_parsed_items,
+                    'filename': filename
+                }, 200
+        except Exception as e:
+            # Fall back to LLM parsing if direct parse fails
+            try:
+                content_for_llm = file_data.decode('utf-8')
+            except UnicodeDecodeError:
+                content_for_llm = file_data.decode('latin-1')
+
+    elif ext == 'json':
+        # JSON files - try to parse as trip data
+        try:
+            pre_parsed_items = _parse_json_trip(file_data)
+            if pre_parsed_items:
+                return {
+                    'success': True,
+                    'items': pre_parsed_items,
+                    'filename': filename
+                }, 200
+        except Exception as e:
+            # Fall back to LLM parsing
+            try:
+                content_for_llm = file_data.decode('utf-8')
+            except UnicodeDecodeError:
+                return {'error': 'Invalid JSON file encoding'}, 400
+
+    elif ext in ['xlsx', 'xls']:
+        # Excel files - extract as text table
+        try:
+            content_for_llm = _parse_excel_to_text(file_data, ext)
+        except ImportError:
+            return {'error': 'Excel processing not available. Please install openpyxl: pip install openpyxl'}, 500
+        except Exception as e:
+            return {'error': f'Error reading Excel file: {str(e)}'}, 400
+
+    elif ext in ['docx', 'doc']:
+        # Word documents - extract text
+        try:
+            content_for_llm = _parse_word_to_text(file_data, ext)
+        except ImportError:
+            return {'error': 'Word document processing not available. Please install python-docx: pip install python-docx'}, 500
+        except Exception as e:
+            return {'error': f'Error reading Word document: {str(e)}'}, 400
 
     elif ext == 'pdf':
         # PDF files - try to extract text, or use vision for scanned PDFs
