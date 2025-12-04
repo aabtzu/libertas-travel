@@ -338,19 +338,25 @@ def get_trip_by_link(user_id: int, link: str) -> Optional[Dict[str, Any]]:
         cursor = conn.cursor()
         if USE_POSTGRES:
             cursor.execute("""
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, start_date, end_date
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
                 FROM trips WHERE user_id = %s AND link = %s
             """, (user_id, link))
             row = cursor.fetchone()
             if row:
-                columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'itinerary_data', 'is_draft', 'start_date', 'end_date']
+                columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'itinerary_data', 'is_draft']
                 trip = dict(zip(columns, row))
                 if trip['itinerary_data']:
                     trip['itinerary_data'] = trip['itinerary_data']  # Already parsed by psycopg2 for JSONB
+                    # Extract start_date and end_date from itinerary_data for convenience
+                    trip['start_date'] = trip['itinerary_data'].get('start_date')
+                    trip['end_date'] = trip['itinerary_data'].get('end_date')
+                else:
+                    trip['start_date'] = None
+                    trip['end_date'] = None
                 return trip
         else:
             cursor.execute("""
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, start_date, end_date
+                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
                 FROM trips WHERE user_id = ? AND link = ?
             """, (user_id, link))
             row = cursor.fetchone()
@@ -358,6 +364,12 @@ def get_trip_by_link(user_id: int, link: str) -> Optional[Dict[str, Any]]:
                 trip = dict(row)
                 if trip['itinerary_data']:
                     trip['itinerary_data'] = json.loads(trip['itinerary_data'])
+                    # Extract start_date and end_date from itinerary_data for convenience
+                    trip['start_date'] = trip['itinerary_data'].get('start_date')
+                    trip['end_date'] = trip['itinerary_data'].get('end_date')
+                else:
+                    trip['start_date'] = None
+                    trip['end_date'] = None
                 return trip
         return None
 
@@ -626,6 +638,9 @@ def create_draft_trip(user_id: int, title: str, start_date: Optional[str] = None
                 "title": title,
                 "dates": dates,
                 "days": num_days,
+                "start_date": start_date,
+                "end_date": end_date,
+                "is_draft": True,
                 "itinerary_data": itinerary_data
             }
         except Exception as e:
