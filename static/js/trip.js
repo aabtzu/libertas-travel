@@ -8,6 +8,19 @@ function exportTrip() {
     window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/export';
 }
 
+// Ensure Export button exists (for trips generated before template update)
+(function() {
+    var headerContent = document.querySelector('.trip-header-content');
+    if (headerContent && !headerContent.querySelector('.export-btn')) {
+        var btn = document.createElement('button');
+        btn.className = 'export-btn';
+        btn.onclick = exportTrip;
+        btn.title = 'Download trip data as JSON';
+        btn.innerHTML = '<i class="fas fa-download"></i> Export';
+        headerContent.appendChild(btn);
+    }
+})();
+
 // Tab switching
 function switchTab(tabName) {
     // Remove active class from all tabs and content
