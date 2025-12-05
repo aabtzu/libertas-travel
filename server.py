@@ -1523,10 +1523,82 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                 import time
                 start_time = time.time()
 
-                # Check if it's an HTML file - parse differently
+                # Check file type
                 is_html_file = suffix.lower() in ['.html', '.htm']
+                is_json_file = suffix.lower() == '.json'
 
-                # Parse the itinerary
+                # Handle JSON import (exported trip data)
+                if is_json_file:
+                    print(f"[UPLOAD] Importing JSON trip data...")
+                    try:
+                        import_data = json.loads(file_data.decode('utf-8'))
+                    except json.JSONDecodeError as e:
+                        self.send_json_error(f"Invalid JSON file: {e}")
+                        return
+
+                    # Check if it's an exported trip format
+                    if 'itinerary_data' not in import_data and 'days' not in import_data:
+                        self.send_json_error("JSON file is not a valid trip export")
+                        return
+
+                    # Get itinerary_data (either directly or from export wrapper)
+                    itinerary_data = import_data.get('itinerary_data') or import_data
+                    title = itinerary_data.get('title') or import_data.get('title', 'Imported Trip')
+
+                    # Generate HTML from itinerary_data
+                    slug = slugify(title)
+                    output_file = f"{slug}.html"
+
+                    # Convert itinerary_data to Itinerary object for HTML generation
+                    trip_for_html = {'itinerary_data': itinerary_data, 'title': title}
+                    from agents.create.handler import _convert_to_itinerary
+                    itinerary = _convert_to_itinerary(trip_for_html)
+
+                    if not itinerary or not itinerary.items:
+                        self.send_json_error("Could not parse trip data from JSON")
+                        return
+
+                    web_view = ItineraryWebView()
+                    web_view.generate(itinerary, OUTPUT_DIR / output_file, use_ai_summary=False, skip_geocoding=True)
+                    print(f"[UPLOAD] Generated HTML: {output_file}")
+
+                    # Count stats
+                    locations = set()
+                    for item in itinerary.items:
+                        if item.location.name and not item.is_home_location:
+                            locations.add(item.location.name.split(',')[0])
+
+                    # Build trip data
+                    trip_data = {
+                        "title": title,
+                        "link": output_file,
+                        "dates": self.format_dates(itinerary),
+                        "days": itinerary.duration_days or len(set(item.day_number for item in itinerary.items if item.day_number)),
+                        "locations": len(locations),
+                        "activities": len(itinerary.items),
+                        "map_status": "pending",
+                        "itinerary_data": itinerary_data,
+                        "is_public": import_data.get('is_public', False),
+                    }
+
+                    # Add trip to database
+                    user_id = self.get_current_user_id()
+                    db.add_trip(user_id, trip_data)
+                    print(f"[UPLOAD] Saved trip for user {user_id}")
+
+                    # Queue geocoding
+                    geocoding_worker.queue_geocoding(output_file, itinerary)
+
+                    # Clean up and respond
+                    os.unlink(tmp_path)
+                    self.send_json_response({
+                        "success": True,
+                        "title": title,
+                        "link": output_file,
+                    })
+                    return
+
+                # Parse the itinerary (PDF, Excel, HTML)
                 print(f"[UPLOAD] Step 1: Parsing file...")
                 parser = ItineraryParser()
 
