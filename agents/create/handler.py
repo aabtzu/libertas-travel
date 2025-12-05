@@ -451,13 +451,21 @@ def _parse_ics_file(file_data: bytes) -> List[Dict[str, Any]]:
                     category = 'attraction'
 
                 current_event['category'] = category
+
+                # Use UTC time as fallback if no local time was extracted from description
+                if not current_event.get('time') and current_event.get('_utc_time'):
+                    current_event['time'] = current_event['_utc_time']
+
+                # Clean up internal field
+                current_event.pop('_utc_time', None)
+
                 items.append(current_event)
             in_event = False
         elif in_event:
             if line.startswith('SUMMARY:'):
                 current_event['title'] = line[8:].strip()
             elif line.startswith('DTSTART'):
-                # Parse date/time
+                # Parse date/time - store raw value, may be overridden by description
                 value = line.split(':', 1)[-1]
                 if 'T' in value:
                     # Has time component
@@ -466,7 +474,8 @@ def _parse_ics_file(file_data: bytes) -> List[Dict[str, Any]]:
                     try:
                         current_event['date'] = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}"
                         if time_part:
-                            current_event['time'] = f"{time_part[:2]}:{time_part[2:4]}"
+                            # Store UTC time as fallback - may be overridden by local time from description
+                            current_event['_utc_time'] = f"{time_part[:2]}:{time_part[2:4]}"
                     except:
                         pass
                 else:
@@ -482,6 +491,15 @@ def _parse_ics_file(file_data: bytes) -> List[Dict[str, Any]]:
                 # Unescape ICS format
                 desc = desc.replace('\\n', '\n').replace('\\,', ',').replace('\\;', ';')
                 current_event['notes'] = desc[:500]  # Limit notes length
+
+                # Extract local departure time from description (more accurate than UTC)
+                # Look for patterns like "Departure time: 10:15" or "Departs: 10:15"
+                import re
+                time_match = re.search(r'(?:Departure time|Departs?):\s*(\d{1,2}):(\d{2})', desc, re.IGNORECASE)
+                if time_match:
+                    hour = int(time_match.group(1))
+                    minute = time_match.group(2)
+                    current_event['time'] = f"{hour:02d}:{minute}"
 
     return items
 
