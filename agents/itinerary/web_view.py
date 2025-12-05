@@ -390,9 +390,14 @@ class ItineraryWebView:
         # Display title with icon
         parts.append(f'<div class="column-item-title"><i class="fas {icon} column-item-icon"></i> {html_module.escape(title)}</div>')
 
+        # Display time if available
+        if item.start_time:
+            time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
+            parts.append(f'<div class="column-item-time"><i class="fas fa-clock"></i> {time_str}</div>')
+
         # Display location only if it adds value
         if show_location and short_location:
-            parts.append(f'<div class="column-item-location" style="display:block;margin-top:4px;">{html_module.escape(short_location)}</div>')
+            parts.append(f'<div class="column-item-location"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</div>')
 
         parts.append('</div>')
         return "\n".join(parts)
