@@ -382,6 +382,12 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.handle_get_trip_data(link)
             return
 
+        # API endpoint for trip export (download JSON)
+        if path.startswith("/api/trips/") and path.endswith("/export"):
+            link = path[len("/api/trips/"):-len("/export")]
+            self.handle_export_trip(link)
+            return
+
         # Serve trip HTML files from output folder with updated navigation
         if path.endswith(".html") and not path.startswith("/api/"):
             self.serve_trip_html(path)
@@ -486,6 +492,27 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         result, status = create_handler.get_trip_data_handler(user_id, link)
         if status == 200:
             self.send_json_response(result)
+        else:
+            self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def handle_export_trip(self, link: str):
+        """Export trip data as downloadable JSON."""
+        user_id = self.get_current_user_id()
+        result, status = create_handler.export_trip_handler(user_id, link)
+        if status == 200:
+            export_data = result.get('export', {})
+            title = export_data.get('title', 'trip')
+            # Sanitize filename
+            safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')
+            filename = f"{safe_title}_export.json"
+
+            json_bytes = json.dumps(export_data, indent=2).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('Content-Length', len(json_bytes))
+            self.end_headers()
+            self.wfile.write(json_bytes)
         else:
             self.send_json_error(result.get('error', 'Unknown error'), status=status)
 
@@ -1413,9 +1440,9 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
 
             # Check for valid file extension
             suffix = Path(filename).suffix.lower()
-            valid_extensions = ['.pdf', '.xlsx', '.xls', '.html', '.htm']
+            valid_extensions = ['.pdf', '.xlsx', '.xls', '.html', '.htm', '.json']
             if suffix not in valid_extensions:
-                self.send_json_error(f"Invalid file type '{suffix}'. Supported: PDF, Excel, HTML")
+                self.send_json_error(f"Invalid file type '{suffix}'. Supported: PDF, Excel, HTML, JSON")
                 return
 
             # Save to temp file

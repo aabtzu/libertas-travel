@@ -1,6 +1,13 @@
 /* Trip Page JavaScript - Libertas */
 /* This file can be edited directly - no need to regenerate HTML */
 
+// Export trip as JSON
+function exportTrip() {
+    var tripLink = window.location.pathname.split('/').pop();
+    // The export endpoint returns a file download
+    window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/export';
+}
+
 // Tab switching
 function switchTab(tabName) {
     // Remove active class from all tabs and content

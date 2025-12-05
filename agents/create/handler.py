@@ -265,6 +265,37 @@ def get_trip_data_handler(user_id: int, link: str) -> Dict[str, Any]:
         return {'error': 'Trip not found'}, 404
 
 
+def export_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
+    """Export trip data as downloadable JSON.
+
+    Args:
+        user_id: The user's ID
+        link: The trip's unique link
+
+    Returns:
+        Trip data for export or error
+    """
+    trip = db.get_trip_by_link(user_id, link)
+
+    if not trip:
+        return {'error': 'Trip not found'}, 404
+
+    # Build export data with all relevant fields
+    export_data = {
+        'export_version': '1.0',
+        'exported_at': datetime.now().isoformat(),
+        'title': trip.get('title', 'Untitled Trip'),
+        'dates': trip.get('dates'),
+        'days': trip.get('days'),
+        'locations': trip.get('locations'),
+        'activities': trip.get('activities'),
+        'itinerary_data': trip.get('itinerary_data'),
+        'is_public': trip.get('is_public', False),
+    }
+
+    return {'success': True, 'export': export_data}, 200
+
+
 def add_item_to_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """Add an item to trip's ideas pile.
 
@@ -663,6 +694,7 @@ def _parse_json_trip(file_data: bytes) -> List[Dict[str, Any]]:
     """Parse JSON file that might contain trip data.
 
     Handles various JSON formats:
+    - Our own export format with itinerary_data
     - Our own itinerary format with items array
     - Array of events
     - TripIt-style JSON exports
@@ -682,8 +714,25 @@ def _parse_json_trip(file_data: bytes) -> List[Dict[str, Any]]:
             if isinstance(item, dict):
                 items.append(_normalize_item(item))
     elif isinstance(data, dict):
+        # Check for our export format (has export_version and itinerary_data)
+        if 'export_version' in data and 'itinerary_data' in data:
+            itinerary_data = data.get('itinerary_data', {})
+            # Process days from itinerary_data
+            for day in itinerary_data.get('days', []):
+                day_num = day.get('day_number') or day.get('day')
+                day_date = day.get('date')
+                for item in day.get('items', []):
+                    normalized = _normalize_item(item)
+                    if day_num and not normalized.get('day'):
+                        normalized['day'] = day_num
+                    if day_date and not normalized.get('date'):
+                        normalized['date'] = day_date
+                    items.append(normalized)
+            # Process ideas pile
+            for item in itinerary_data.get('ideas', []):
+                items.append(_normalize_item(item))
         # Check for our itinerary format
-        if 'items' in data:
+        elif 'items' in data:
             for item in data.get('items', []):
                 if isinstance(item, dict):
                     items.append(_normalize_item(item))
@@ -699,6 +748,9 @@ def _parse_json_trip(file_data: bytes) -> List[Dict[str, Any]]:
                     if day_date and not normalized.get('date'):
                         normalized['date'] = day_date
                     items.append(normalized)
+        # Check for itinerary_data without export_version (just in case)
+        elif 'itinerary_data' in data:
+            return _parse_json_trip(json.dumps(data['itinerary_data']).encode())
         # Check for events array (common export format)
         elif 'events' in data:
             for item in data.get('events', []):

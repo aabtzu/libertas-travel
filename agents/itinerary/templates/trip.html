@@ -14,8 +14,15 @@
     {nav_html}
 
     <div class="trip-header">
-        <h1><i class="fas fa-plane"></i> {title}</h1>
-        <div class="meta">{meta_info}</div>
+        <div class="trip-header-content">
+            <div>
+                <h1><i class="fas fa-plane"></i> {title}</h1>
+                <div class="meta">{meta_info}</div>
+            </div>
+            <button class="export-btn" onclick="exportTrip()" title="Download trip data as JSON">
+                <i class="fas fa-download"></i> Export
+            </button>
+        </div>
     </div>
 
     <div class="tabs">
