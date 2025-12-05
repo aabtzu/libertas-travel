@@ -10,14 +10,18 @@ function exportTrip() {
 
 // Ensure Export button exists (for trips generated before template update)
 (function() {
-    var headerContent = document.querySelector('.trip-header-content');
-    if (headerContent && !headerContent.querySelector('.export-btn')) {
+    // Check if button already exists
+    if (document.querySelector('.export-btn')) return;
+
+    // Try new structure first, then old structure
+    var container = document.querySelector('.trip-header-content') || document.querySelector('.trip-header');
+    if (container) {
         var btn = document.createElement('button');
         btn.className = 'export-btn';
         btn.onclick = exportTrip;
         btn.title = 'Download trip data as JSON';
         btn.innerHTML = '<i class="fas fa-download"></i> Export';
-        headerContent.appendChild(btn);
+        container.appendChild(btn);
     }
 })();
 

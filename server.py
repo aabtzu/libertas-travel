@@ -41,6 +41,64 @@ TRAVEL_RECS_CSV = Path(os.environ.get("TRAVEL_RECS_CSV", Path.home() / "repos" /
 _venues_cache = None
 
 
+def itinerary_to_data(itinerary) -> dict:
+    """Convert a parsed Itinerary object to itinerary_data format for database storage.
+
+    This format groups items by day number and is used for export/import.
+    """
+    from collections import defaultdict
+
+    # Group items by day number
+    days_dict = defaultdict(list)
+    ideas = []
+
+    for item in itinerary.items:
+        if item.is_home_location:
+            continue  # Skip home locations
+
+        item_data = {
+            'title': item.title,
+            'category': item.category or 'activity',
+            'location': item.location.name if item.location else '',
+            'time': item.start_time.strftime('%H:%M') if item.start_time else None,
+            'notes': item.notes or item.description,
+        }
+
+        if item.day_number:
+            days_dict[item.day_number].append({
+                **item_data,
+                'date': item.date.isoformat() if item.date else None,
+            })
+        else:
+            ideas.append(item_data)
+
+    # Build days array
+    days = []
+    for day_num in sorted(days_dict.keys()):
+        day_items = days_dict[day_num]
+        day_date = None
+        # Get date from first item with a date
+        for di in day_items:
+            if di.get('date'):
+                day_date = di['date']
+                break
+
+        days.append({
+            'day_number': day_num,
+            'date': day_date,
+            'items': day_items,
+        })
+
+    return {
+        'title': itinerary.title,
+        'start_date': itinerary.start_date.isoformat() if itinerary.start_date else None,
+        'end_date': itinerary.end_date.isoformat() if itinerary.end_date else None,
+        'travelers': itinerary.travelers or [],
+        'days': days,
+        'ideas': ideas,
+    }
+
+
 def convert_google_drive_url(url: str) -> tuple[str, str]:
     """Convert Google Drive sharing URL to direct download URL.
 
@@ -1497,7 +1555,7 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                     if item.location.name and not item.is_home_location:
                         locations.add(item.location.name.split(',')[0])
 
-                # Build trip data
+                # Build trip data with full itinerary for export
                 trip_data = {
                     "title": itinerary.title,
                     "link": output_file,
@@ -1506,6 +1564,7 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                     "locations": len(locations),
                     "activities": len(itinerary.items),
                     "map_status": "pending",  # Map will be generated async
+                    "itinerary_data": itinerary_to_data(itinerary),  # Full data for export
                 }
 
                 # Add trip to database for current user
@@ -1633,7 +1692,7 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                 if item.location.name and not item.is_home_location:
                     locations.add(item.location.name.split(',')[0])
 
-            # Build trip data
+            # Build trip data with full itinerary for export
             trip_data = {
                 "title": itinerary.title,
                 "link": output_file,
@@ -1642,6 +1701,7 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                 "locations": len(locations),
                 "activities": len(itinerary.items),
                 "map_status": "pending",  # Map will be generated async
+                "itinerary_data": itinerary_to_data(itinerary),  # Full data for export
             }
 
             # Add trip to database for current user

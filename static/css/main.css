@@ -86,12 +86,22 @@ body {
     color: white;
     padding: 20px 40px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: relative;
 }
 
 .trip-header-content {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
+}
+
+/* Position export button for old-style headers (no trip-header-content wrapper) */
+.trip-header > .export-btn {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .trip-header h1 {
