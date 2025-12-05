@@ -69,9 +69,45 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
     success = db.update_trip_itinerary_data(user_id, link, itinerary_data)
 
     if success:
+        # If trip is already published (not a draft), regenerate HTML
+        trip = db.get_trip_by_link(user_id, link)
+        if trip and not trip.get('is_draft', True):
+            _generate_trip_html(trip, link)
+
         return {'success': True, 'saved_at': datetime.now().isoformat()}, 200
     else:
         return {'error': 'Failed to save trip'}, 500
+
+
+def _generate_trip_html(trip: Dict[str, Any], link: str) -> bool:
+    """Generate HTML file for a trip.
+
+    Args:
+        trip: Trip data from database
+        link: The trip's link (filename)
+
+    Returns:
+        True if successful, False otherwise
+    """
+    import os
+    from pathlib import Path
+
+    try:
+        itinerary = _convert_to_itinerary(trip)
+        if itinerary and itinerary.items:
+            from agents.itinerary.web_view import ItineraryWebView
+
+            OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
+            web_view = ItineraryWebView()
+            web_view.generate(itinerary, OUTPUT_DIR / link, use_ai_summary=False, skip_geocoding=True)
+            print(f"Generated HTML for trip: {link}")
+            return True
+    except Exception as e:
+        print(f"Warning: Could not generate trip HTML: {e}")
+        import traceback
+        traceback.print_exc()
+
+    return False
 
 
 def publish_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
@@ -84,28 +120,13 @@ def publish_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
     Returns:
         Success or error response
     """
-    import os
-    from pathlib import Path
-
     # Get the trip data first
     trip = db.get_trip_by_link(user_id, link)
     if not trip:
         return {'error': 'Trip not found'}, 404
 
     # Generate the HTML file from itinerary_data
-    try:
-        itinerary = _convert_to_itinerary(trip)
-        if itinerary and itinerary.items:
-            from agents.itinerary.web_view import ItineraryWebView
-
-            OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
-            web_view = ItineraryWebView()
-            web_view.generate(itinerary, OUTPUT_DIR / link, use_ai_summary=False, skip_geocoding=True)
-    except Exception as e:
-        print(f"Warning: Could not generate trip HTML: {e}")
-        import traceback
-        traceback.print_exc()
-        # Continue with publish even if HTML generation fails
+    _generate_trip_html(trip, link)
 
     # Update database to mark as published
     success = db.publish_draft(user_id, link)

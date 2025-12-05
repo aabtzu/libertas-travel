@@ -1742,30 +1742,70 @@ function renderGrid() {
 }
 
 /**
- * Format items for a column cell
+ * Format items for a column cell (shared formatting with list view)
  */
 function formatColumnItems(items, isNotes = false) {
     if (items.length === 0) {
         return '<span class="column-empty">-</span>';
     }
 
-    return items.map(item => {
-        const cat = (item.category || 'other').toLowerCase();
-        const icon = getCategoryIcon(cat);
+    return items.map(item => renderItemCard(item, { showNotes: isNotes, compact: true })).join('');
+}
+
+/**
+ * Shared item card renderer - used by both list and grid views
+ */
+function renderItemCard(item, options = {}) {
+    const { showNotes = false, compact = false, dayIndex = null, itemIndex = null, draggable = false } = options;
+    const cat = (item.category || 'other').toLowerCase();
+    const iconClass = getItemIcon(item);
+    const timeStr = item.time ? formatTime12Hour(item.time) : '';
+    const locationStr = item.location || '';
+
+    if (compact) {
+        // Compact mode for grid view
         let html = `<div class="column-item ${cat}">`;
-        html += `<div class="column-item-title"><i class="fas ${icon} column-item-icon"></i> ${escapeHtml(item.title)}</div>`;
-        if (item.time) {
-            html += `<div class="column-item-time"><i class="fas fa-clock"></i> ${item.time}</div>`;
+        html += `<div class="column-item-title"><i class="fas ${iconClass} column-item-icon"></i> ${escapeHtml(item.title)}</div>`;
+        if (timeStr) {
+            html += `<div class="column-item-time"><i class="fas fa-clock"></i> ${timeStr}</div>`;
         }
-        if (item.location && !isNotes) {
-            html += `<div class="column-item-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(item.location)}</div>`;
+        if (locationStr && !showNotes) {
+            html += `<div class="column-item-location"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(locationStr)}</div>`;
         }
-        if (item.notes && isNotes) {
+        if (item.notes && showNotes) {
             html += `<div class="column-item-notes">${escapeHtml(item.notes)}</div>`;
         }
         html += '</div>';
         return html;
-    }).join('');
+    }
+
+    // Full mode for list view
+    const draggableAttr = draggable ? 'draggable="true"' : '';
+    const dataAttrs = dayIndex !== null ? `data-day-index="${dayIndex}" data-item-index="${itemIndex}"` : '';
+
+    return `
+        <div class="item-card ${cat}" ${dataAttrs} ${draggableAttr}>
+            <div class="item-icon ${cat}">
+                <i class="fas ${iconClass}"></i>
+            </div>
+            <div class="item-content">
+                <div class="item-title">${escapeHtml(item.title)}</div>
+                <div class="item-meta">
+                    ${timeStr ? `<span><i class="fas fa-clock"></i> ${timeStr}</span>` : ''}
+                    ${locationStr ? `<span><i class="fas fa-map-marker-alt"></i> ${locationStr}</span>` : ''}
+                </div>
+            </div>
+            ${dayIndex !== null ? `
+            <div class="item-actions">
+                <button onclick="editItem(${dayIndex}, ${itemIndex})" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="deleteItem(${dayIndex}, ${itemIndex})" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>` : ''}
+        </div>
+    `;
 }
 
 /**
