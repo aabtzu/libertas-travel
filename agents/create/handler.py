@@ -75,7 +75,7 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
 
 
 def publish_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
-    """Publish a draft trip (set is_draft=False).
+    """Publish a draft trip (set is_draft=False) and generate HTML.
 
     Args:
         user_id: The user's ID
@@ -84,12 +84,146 @@ def publish_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
     Returns:
         Success or error response
     """
+    import os
+    from pathlib import Path
+
+    # Get the trip data first
+    trip = db.get_trip_by_link(user_id, link)
+    if not trip:
+        return {'error': 'Trip not found'}, 404
+
+    # Generate the HTML file from itinerary_data
+    try:
+        itinerary = _convert_to_itinerary(trip)
+        if itinerary and itinerary.items:
+            from agents.itinerary.web_view import ItineraryWebView
+
+            OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
+            web_view = ItineraryWebView()
+            web_view.generate(itinerary, OUTPUT_DIR / link, use_ai_summary=False, skip_geocoding=True)
+    except Exception as e:
+        print(f"Warning: Could not generate trip HTML: {e}")
+        import traceback
+        traceback.print_exc()
+        # Continue with publish even if HTML generation fails
+
+    # Update database to mark as published
     success = db.publish_draft(user_id, link)
 
     if success:
         return {'success': True}, 200
     else:
         return {'error': 'Failed to publish trip'}, 500
+
+
+def _convert_to_itinerary(trip: Dict[str, Any]):
+    """Convert trip data from database to Itinerary object for HTML generation."""
+    from datetime import datetime, date, time
+    from agents.itinerary.models import Itinerary, ItineraryItem, Location
+
+    itinerary_data = trip.get('itinerary_data') or {}
+
+    # Get title
+    title = itinerary_data.get('title') or trip.get('title', 'Untitled Trip')
+
+    # Collect all items from days and ideas
+    items = []
+
+    # Process days
+    days = itinerary_data.get('days', [])
+    for day in days:
+        day_number = day.get('day_number')
+        day_date_str = day.get('date')
+        day_date = None
+        if day_date_str:
+            try:
+                day_date = datetime.strptime(day_date_str, '%Y-%m-%d').date()
+            except:
+                pass
+
+        for item_data in day.get('items', []):
+            item = _create_itinerary_item(item_data, day_number, day_date)
+            if item:
+                items.append(item)
+
+    # Process ideas pile (items without dates)
+    ideas = itinerary_data.get('ideas', [])
+    for item_data in ideas:
+        item = _create_itinerary_item(item_data, None, None)
+        if item:
+            items.append(item)
+
+    # Get start/end dates
+    start_date = None
+    end_date = None
+    if itinerary_data.get('start_date'):
+        try:
+            start_date = datetime.strptime(itinerary_data['start_date'], '%Y-%m-%d').date()
+        except:
+            pass
+    if itinerary_data.get('end_date'):
+        try:
+            end_date = datetime.strptime(itinerary_data['end_date'], '%Y-%m-%d').date()
+        except:
+            pass
+
+    return Itinerary(
+        title=title,
+        items=items,
+        start_date=start_date,
+        end_date=end_date,
+        travelers=itinerary_data.get('travelers', []),
+        source_file=None
+    )
+
+
+def _create_itinerary_item(item_data: Dict[str, Any], day_number: Optional[int], day_date) -> Optional:
+    """Create an ItineraryItem from create trip item data."""
+    from datetime import datetime, time
+    from agents.itinerary.models import ItineraryItem, Location
+
+    if not item_data.get('title'):
+        return None
+
+    # Parse location
+    location_data = item_data.get('location', '')
+    if isinstance(location_data, dict):
+        location_name = location_data.get('name', '') or location_data.get('city', '')
+    else:
+        location_name = str(location_data) if location_data else ''
+
+    location = Location(
+        name=location_name,
+        address=None,
+        location_type=item_data.get('category')
+    )
+
+    # Parse time
+    start_time = None
+    time_str = item_data.get('time')
+    if time_str and isinstance(time_str, str) and ':' in time_str:
+        try:
+            parts = time_str.split(':')
+            start_time = time(int(parts[0]), int(parts[1]))
+        except:
+            pass
+
+    # Map category
+    category = item_data.get('category', 'activity')
+
+    return ItineraryItem(
+        title=item_data.get('title', 'Untitled'),
+        location=location,
+        date=day_date,
+        start_time=start_time,
+        end_time=None,
+        description=item_data.get('notes'),
+        category=category,
+        confirmation_number=None,
+        notes=item_data.get('notes'),
+        day_number=day_number,
+        is_home_location=False
+    )
 
 
 def get_trip_data_handler(user_id: int, link: str) -> Dict[str, Any]:

@@ -1183,32 +1183,28 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
 
     def handle_upload_plan(self):
         """Handle file upload for plan/reservation parsing."""
-        import cgi
-        import tempfile
-
         try:
             content_type = self.headers.get('Content-Type', '')
             if not content_type.startswith('multipart/form-data'):
                 self.send_json_error("Expected multipart/form-data")
                 return
 
-            # Parse multipart data
-            form = cgi.FieldStorage(
-                fp=self.rfile,
-                headers=self.headers,
-                environ={
-                    'REQUEST_METHOD': 'POST',
-                    'CONTENT_TYPE': content_type,
-                }
-            )
+            # Get boundary from content type
+            if 'boundary=' not in content_type:
+                self.send_json_error("Missing boundary in multipart/form-data")
+                return
+            boundary = content_type.split('boundary=')[1]
 
-            if 'file' not in form:
+            # Read content
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+
+            # Parse multipart data using existing method
+            file_data, filename = self.parse_multipart(body, boundary)
+
+            if not file_data or not filename:
                 self.send_json_error("No file provided")
                 return
-
-            file_item = form['file']
-            filename = file_item.filename
-            file_data = file_item.file.read()
 
             # Get file extension
             ext = filename.lower().split('.')[-1] if '.' in filename else ''

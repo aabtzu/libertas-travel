@@ -204,7 +204,8 @@ async function handleCreateTrip(e) {
                 start_date: data.trip.start_date,
                 end_date: data.trip.end_date,
                 days: [],
-                ideas: []
+                ideas: [],
+                chatHistory: []
             };
 
             // Initialize days if dates are set
