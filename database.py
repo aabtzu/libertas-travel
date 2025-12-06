@@ -390,6 +390,38 @@ def update_trip_map_status(user_id: int, link: str, status: str, error: Optional
             """, (status, error, user_id, link))
 
 
+def get_pending_geocoding_trips() -> List[Dict[str, Any]]:
+    """Get all trips with pending or processing map status that need geocoding.
+
+    Used on startup to recover stale geocoding tasks after server restart.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute("""
+                SELECT link, itinerary_data
+                FROM trips
+                WHERE map_status IN ('pending', 'processing')
+                AND itinerary_data IS NOT NULL
+            """)
+            rows = cursor.fetchall()
+            return [{'link': row[0], 'itinerary_data': row[1]} for row in rows]
+        else:
+            cursor.execute("""
+                SELECT link, itinerary_data
+                FROM trips
+                WHERE map_status IN ('pending', 'processing')
+                AND itinerary_data IS NOT NULL
+            """)
+            rows = cursor.fetchall()
+            result = []
+            for row in rows:
+                itinerary_data = json.loads(row['itinerary_data']) if row['itinerary_data'] else None
+                if itinerary_data:
+                    result.append({'link': row['link'], 'itinerary_data': itinerary_data})
+            return result
+
+
 def update_trip(user_id: int, link: str, updates: Dict[str, Any]) -> bool:
     """Update a trip's fields (title, dates, days, locations, activities)."""
     if not updates:

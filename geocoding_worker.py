@@ -210,6 +210,86 @@ def start_worker():
         _worker_thread.start()
         print("[GEOCODING] Background worker thread started")
 
+        # Recover stale pending tasks on startup
+        recover_stale_tasks()
+
+
+def recover_stale_tasks():
+    """Re-queue any trips stuck in pending/processing status after server restart."""
+    try:
+        pending_trips = db.get_pending_geocoding_trips()
+        if pending_trips:
+            print(f"[GEOCODING] Recovering {len(pending_trips)} stale geocoding tasks")
+            for trip in pending_trips:
+                link = trip['link']
+                itinerary_data = trip['itinerary_data']
+                # Convert itinerary_data format to worker format
+                worker_data = _convert_itinerary_data_to_worker_format(itinerary_data)
+                if worker_data:
+                    _geocoding_queue.put((link, worker_data))
+                    print(f"[GEOCODING] Re-queued: {link}")
+    except Exception as e:
+        print(f"[GEOCODING] Error recovering stale tasks: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def _convert_itinerary_data_to_worker_format(itinerary_data):
+    """Convert itinerary_data from database format to worker format."""
+    if not itinerary_data:
+        return None
+
+    # The database stores in a different format than the worker expects
+    # Convert from {days: [{items: [...]}]} to {items: [...]}
+    items = []
+    for day in itinerary_data.get('days', []):
+        day_date = day.get('date')
+        day_number = day.get('day_number')
+        for item in day.get('items', []):
+            items.append({
+                "title": item.get('title'),
+                "description": item.get('notes'),
+                "category": item.get('category'),
+                "day_number": day_number,
+                "date": day_date,
+                "start_time": item.get('time'),
+                "end_time": None,
+                "location_name": item.get('location'),
+                "location_address": None,
+                "location_lat": None,
+                "location_lon": None,
+                "confirmation_number": None,
+                "notes": item.get('notes'),
+                "is_home_location": False,
+            })
+
+    # Add ideas (items without dates)
+    for item in itinerary_data.get('ideas', []):
+        items.append({
+            "title": item.get('title'),
+            "description": item.get('notes'),
+            "category": item.get('category'),
+            "day_number": None,
+            "date": None,
+            "start_time": item.get('time'),
+            "end_time": None,
+            "location_name": item.get('location'),
+            "location_address": None,
+            "location_lat": None,
+            "location_lon": None,
+            "confirmation_number": None,
+            "notes": item.get('notes'),
+            "is_home_location": False,
+        })
+
+    return {
+        "title": itinerary_data.get('title', 'Untitled Trip'),
+        "start_date": itinerary_data.get('start_date'),
+        "end_date": itinerary_data.get('end_date'),
+        "travelers": itinerary_data.get('travelers', []),
+        "items": items,
+    }
+
 
 def get_queue_size():
     """Get the number of pending geocoding tasks."""

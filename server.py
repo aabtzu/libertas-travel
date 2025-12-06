@@ -1909,6 +1909,9 @@ def run_server(port: int = 8000):
     # Ensure default admin user exists
     auth.ensure_default_user()
 
+    # Start geocoding worker (also recovers stale pending tasks from database)
+    geocoding_worker.start_worker()
+
     # Bind to 0.0.0.0 for cloud deployment (Render, etc.)
     server = HTTPServer(('0.0.0.0', port), LibertasHandler)
 
