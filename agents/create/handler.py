@@ -432,6 +432,14 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         # Also parse any suggested items (for suggestions without add)
         suggested_items = _parse_suggested_items(display_text)
 
+        # Debug logging
+        print(f"[CREATE CHAT] Response text length: {len(display_text)}")
+        print(f"[CREATE CHAT] Parsed suggested items: {len(suggested_items)}")
+        if suggested_items:
+            print(f"[CREATE CHAT] First item: {suggested_items[0]}")
+        else:
+            print(f"[CREATE CHAT] Response preview: {display_text[:500]}")
+
         return {
             'success': True,
             'response': display_text,
@@ -492,6 +500,20 @@ def _build_venue_chat_prompt(trip_context: Dict[str, Any]) -> str:
             day_date = day.get('date', 'TBD')
             day_reference += f"\n  - Day {day_num} ({day_date})"
 
+    # Build list of existing item titles for deduplication
+    existing_titles = set()
+    for day in days:
+        for item in day.get('items', []):
+            title = item.get('title', '').lower().strip()
+            if title:
+                existing_titles.add(title)
+    for item in ideas:
+        title = item.get('title', '').lower().strip()
+        if title:
+            existing_titles.add(title)
+
+    existing_list = "\n".join(f"  - {t}" for t in sorted(existing_titles)) if existing_titles else "  (none yet)"
+
     prompt = f"""You are a helpful travel planning assistant for Libertas, a travel itinerary app.
 
 You have the ability to add items directly to the user's itinerary using the add_to_itinerary tool.
@@ -502,23 +524,39 @@ Current trip context:
 {itinerary_context}
 {day_reference}
 
-## ADDING ITEMS TO THE ITINERARY
+## CRITICAL: AVOID DUPLICATES
 
-When the user asks you to ADD, include, schedule, book, or plan something:
-1. Use the add_to_itinerary tool to add the item(s)
-2. Provide a brief confirmation in your text response
+The user already has these items in their trip (DO NOT suggest or add these again):
+{existing_list}
+
+When the user asks for "other", "more", "different", or "alternative" options, you MUST suggest DIFFERENT places than those listed above. Never re-suggest items already in the trip.
+
+## WHEN TO USE THE add_to_itinerary TOOL
+
+ONLY use the tool when the user EXPLICITLY asks to ADD something. Look for these exact words:
+- "add this", "add these", "put this in my trip", "include this", "book this"
+
+DO NOT use the tool when the user asks for:
+- "suggestions", "recommend", "ideas", "options", "what are some", "tell me about"
+- These are ASKING FOR INFORMATION, not asking you to add anything!
 
 Categories: meal, hotel, activity, attraction, transport, other
 Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
 Time: 24-hour format like "14:30" (optional)
 
-## SUGGESTING (when NOT asked to add)
+## SUGGESTING (default behavior)
 
-When recommending options without being asked to add:
-1. **Venue Name** - Description and why it's worth visiting.
+When the user asks for suggestions, recommendations, ideas, or options - DO NOT use the tool!
+Instead, respond with this EXACT format so they can choose what to add:
 
-Use the user's itinerary context to:
-- Avoid suggesting places already added
+1. **Venue Name** - Brief description and why it's worth visiting.
+2. **Another Venue** - Its description here.
+
+The user will see "Add to Ideas" buttons under each suggestion and can choose which ones to add.
+
+Guidelines:
+- NEVER suggest places already in the user's itinerary (see list above)
+- When asked for alternatives, suggest DIFFERENT venues
 - Suggest complementary activities nearby
 - Help fill gaps in their schedule
 """
@@ -563,26 +601,47 @@ def _parse_suggested_items(response_text: str) -> List[Dict[str, Any]]:
     Returns a list of items that can be added to the trip.
     """
     items = []
-
-    # Look for numbered items with bold names like "1. **Name**"
     import re
-    pattern = r'\d+\.\s+\*\*([^*]+)\*\*\s*[-–—]?\s*(.+?)(?=\n\d+\.|\n\n|$)'
-    matches = re.findall(pattern, response_text, re.DOTALL)
 
-    for name, description in matches:
-        name = name.strip()
-        description = description.strip()
+    # Pattern 1: Numbered items with bold names like "1. **Name** - description"
+    pattern1 = r'\d+\.\s+\*\*([^*]+)\*\*\s*[-–—:]?\s*(.+?)(?=\n\d+\.|\n\n|$)'
+    matches = re.findall(pattern1, response_text, re.DOTALL)
+
+    # Pattern 2: Bullet points with bold names like "- **Name** - description"
+    if not matches:
+        pattern2 = r'[-•]\s+\*\*([^*]+)\*\*\s*[-–—:]?\s*(.+?)(?=\n[-•]|\n\n|$)'
+        matches = re.findall(pattern2, response_text, re.DOTALL)
+
+    # Pattern 3: Just bold names on their own line "**Name**"
+    if not matches:
+        pattern3 = r'\*\*([^*]+)\*\*\s*[-–—:]?\s*([^\n*]+)?'
+        matches = re.findall(pattern3, response_text)
+
+    # Pattern 4: Plain text "Name - description" on separate lines (no bold)
+    if not matches:
+        # Look for lines that start with a capitalized word followed by " - " and description
+        pattern4 = r'^([A-Z][A-Za-z\s&\']+?)\s*[-–—]\s*(.+?)$'
+        matches = re.findall(pattern4, response_text, re.MULTILINE)
+        # Filter out lines that are too long (likely regular sentences, not names)
+        matches = [(m[0].strip(), m[1].strip()) for m in matches if len(m[0].strip()) < 50]
+
+    for match in matches:
+        name = match[0].strip() if match[0] else ''
+        description = match[1].strip() if len(match) > 1 and match[1] else ''
+
+        if not name:
+            continue
 
         # Try to determine category from keywords
         category = 'activity'
-        desc_lower = description.lower()
-        if any(word in desc_lower for word in ['restaurant', 'cafe', 'bakery', 'deli', 'trattoria', 'food', 'cuisine', 'dishes']):
+        combined_lower = (name + ' ' + description).lower()
+        if any(word in combined_lower for word in ['restaurant', 'cafe', 'bakery', 'deli', 'trattoria', 'food', 'cuisine', 'dishes', 'dining', 'bistro']):
             category = 'meal'
-        elif any(word in desc_lower for word in ['hotel', 'hostel', 'stay', 'accommodation', 'rooms']):
+        elif any(word in combined_lower for word in ['hotel', 'hostel', 'stay', 'accommodation', 'rooms', 'inn', 'lodge']):
             category = 'hotel'
-        elif any(word in desc_lower for word in ['museum', 'gallery', 'cathedral', 'church', 'monument', 'palace', 'castle']):
+        elif any(word in combined_lower for word in ['museum', 'gallery', 'cathedral', 'church', 'monument', 'palace', 'castle', 'theater', 'theatre', 'opera', 'concert hall']):
             category = 'attraction'
-        elif any(word in desc_lower for word in ['hike', 'trail', 'tour', 'trek', 'walk']):
+        elif any(word in combined_lower for word in ['hike', 'trail', 'tour', 'trek', 'walk', 'cycling']):
             category = 'activity'
 
         items.append({
