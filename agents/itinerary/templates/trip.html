@@ -19,6 +19,9 @@
                 <h1><i class="fas fa-plane"></i> {title}</h1>
                 <div class="meta">{meta_info}</div>
             </div>
+            <button class="export-btn" onclick="regenerateMap()" title="Regenerate map with fresh geocoding">
+                <i class="fas fa-sync-alt"></i> Regen Map
+            </button>
             <button class="export-btn" onclick="exportTrip()" title="Download trip data as JSON">
                 <i class="fas fa-download"></i> Export
             </button>
@@ -93,6 +96,6 @@
     <script>var mapData = {map_data_json};</script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="/static/js/main.js"></script>
-    <script src="/static/js/trip.js?v=2"></script>
+    <script src="/static/js/trip.js?v=3"></script>
 </body>
 </html>

@@ -8,6 +8,38 @@ function exportTrip() {
     window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/export';
 }
 
+// Regenerate map with fresh geocoding
+function regenerateMap() {
+    var tripLink = window.location.pathname.split('/').pop();
+    var btn = event.target.closest('button');
+    var originalHTML = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Regenerating...';
+
+    fetch('/api/retry-geocoding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: tripLink })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // Reload page to show new map
+            window.location.reload();
+        } else {
+            alert('Failed to regenerate map: ' + (data.error || 'Unknown error'));
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        }
+    })
+    .catch(function(err) {
+        alert('Error regenerating map: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    });
+}
+
 // Ensure Export button exists (for trips generated before template update)
 (function() {
     // Check if button already exists
