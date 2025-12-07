@@ -603,10 +603,28 @@
     border-radius: 8px;
     margin-bottom: 8px;
     border-left: 4px solid #667eea;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.item-card:hover {
+    background: #f0f1f3;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Allow text selection in content area */
+.item-card .item-content {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}
+
+/* Drag handle on the icon */
+.item-card .item-icon {
     cursor: grab;
 }
 
-.item-card:active {
+.item-card .item-icon:active {
     cursor: grabbing;
 }
 
@@ -906,18 +924,93 @@
     margin-bottom: 8px;
 }
 
-.btn-add-to-ideas {
+.btn-add-to-ideas,
+.btn-add-to-itinerary {
     font-size: 0.85rem;
     padding: 6px 12px;
-    background: #f39c12;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
-.btn-add-to-ideas:hover {
-    background: #e67e22;
+.btn-add-to-ideas:hover,
+.btn-add-to-itinerary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.btn-add-to-ideas.added,
+.btn-add-to-itinerary.added {
+    background: #27ae60;
+    cursor: default;
+}
+
+.btn-add-to-ideas:disabled,
+.btn-add-to-itinerary:disabled {
+    opacity: 0.7;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Suggestion buttons container */
+.suggestion-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* Day picker popup */
+.day-picker-popup {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.day-picker-header {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+}
+
+.day-picker-list {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.day-picker-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: white;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+}
+
+.day-picker-option:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+}
+
+.day-picker-option strong {
+    color: #333;
+}
+
+.day-picker-option span {
+    color: #888;
+    font-size: 0.8rem;
 }
 
 /* Typing indicator */
@@ -1038,11 +1131,12 @@
 }
 
 /* ==================== Drag and Drop ==================== */
-.item-card[draggable="true"] {
+/* Drag handle is on the icon, not the whole card */
+.item-card[draggable="true"] .item-icon {
     cursor: grab;
 }
 
-.item-card[draggable="true"]:active {
+.item-card[draggable="true"] .item-icon:active {
     cursor: grabbing;
 }
 

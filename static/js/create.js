@@ -584,6 +584,109 @@ function deleteDay(index) {
 }
 
 /**
+ * Show day picker dialog for adding item to itinerary
+ */
+function showDayPickerDialog(item, triggerButton) {
+    // If no days exist, prompt to create a day first
+    if (currentTrip.days.length === 0) {
+        alert('Please add at least one day to your trip first.');
+        return;
+    }
+
+    // Create popup menu for day selection
+    const existing = document.querySelector('.day-picker-popup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.className = 'day-picker-popup';
+
+    const header = document.createElement('div');
+    header.className = 'day-picker-header';
+    header.textContent = 'Add to which day?';
+    popup.appendChild(header);
+
+    const dayList = document.createElement('div');
+    dayList.className = 'day-picker-list';
+
+    currentTrip.days.forEach((day, index) => {
+        const dayOption = document.createElement('button');
+        dayOption.className = 'day-picker-option';
+        const dateStr = day.date ? formatDate(day.date) : 'Date TBD';
+        dayOption.innerHTML = `<strong>Day ${day.day_number}</strong><span>${dateStr}</span>`;
+        dayOption.addEventListener('click', () => {
+            addItemToDay(item, index);
+            popup.remove();
+            triggerButton.innerHTML = '<i class="fas fa-check"></i> Added!';
+            triggerButton.disabled = true;
+            triggerButton.classList.add('added');
+        });
+        dayList.appendChild(dayOption);
+    });
+
+    popup.appendChild(dayList);
+
+    // Position popup near button
+    document.body.appendChild(popup);
+    const btnRect = triggerButton.getBoundingClientRect();
+    popup.style.position = 'fixed';
+    popup.style.top = `${btnRect.bottom + 5}px`;
+    popup.style.left = `${btnRect.left}px`;
+
+    // Ensure popup is within viewport
+    const popupRect = popup.getBoundingClientRect();
+    if (popupRect.right > window.innerWidth) {
+        popup.style.left = `${window.innerWidth - popupRect.width - 10}px`;
+    }
+    if (popupRect.bottom > window.innerHeight) {
+        popup.style.top = `${btnRect.top - popupRect.height - 5}px`;
+    }
+
+    // Close on click outside
+    const closeHandler = (e) => {
+        if (!popup.contains(e.target) && e.target !== triggerButton) {
+            popup.remove();
+            document.removeEventListener('click', closeHandler);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
+}
+
+/**
+ * Add item to a specific day
+ */
+function addItemToDay(item, dayIndex) {
+    if (dayIndex < 0 || dayIndex >= currentTrip.days.length) return false;
+
+    // Check for duplicates
+    const newTitle = (item.title || '').toLowerCase().trim();
+    if (newTitle) {
+        const isDuplicate = currentTrip.days.some(day =>
+            (day.items || []).some(existing => (existing.title || '').toLowerCase().trim() === newTitle)
+        );
+        if (isDuplicate) {
+            console.log('Duplicate item not added:', item.title);
+            return false;
+        }
+    }
+
+    if (!currentTrip.days[dayIndex].items) {
+        currentTrip.days[dayIndex].items = [];
+    }
+
+    currentTrip.days[dayIndex].items.push({
+        title: item.title,
+        category: item.category || 'activity',
+        location: item.location || null,
+        notes: item.notes || null,
+        time: null
+    });
+
+    renderDays();
+    triggerAutoSave();
+    return true;
+}
+
+/**
  * Show add item modal
  */
 function showAddItemModal(targetDayIndex) {
@@ -773,11 +876,36 @@ function deleteIdea(index) {
 
 /**
  * Add item to ideas pile (used by chat)
+ * Returns true if added, false if duplicate
  */
 function addToIdeas(item) {
+    // Check for duplicates before adding
+    const newTitle = (item.title || '').toLowerCase().trim();
+    if (newTitle) {
+        // Check against ideas
+        const isDuplicateInIdeas = currentTrip.ideas.some(
+            existing => (existing.title || '').toLowerCase().trim() === newTitle
+        );
+        if (isDuplicateInIdeas) {
+            console.log('Duplicate item not added (already in ideas):', item.title);
+            return false;
+        }
+        // Check against day items
+        const isDuplicateInDays = currentTrip.days.some(day =>
+            (day.items || []).some(
+                existing => (existing.title || '').toLowerCase().trim() === newTitle
+            )
+        );
+        if (isDuplicateInDays) {
+            console.log('Duplicate item not added (already in a day):', item.title);
+            return false;
+        }
+    }
+
     currentTrip.ideas.push(item);
     renderIdeas();
     triggerAutoSave();
+    return true;
 }
 
 // ==================== Plan Upload ====================
@@ -1090,8 +1218,14 @@ async function sendChatMessage() {
                 processAddItems(data.add_items);
             }
 
-            // Add response with suggested items
-            addChatMessage('assistant', data.response, data.suggested_items);
+            // Filter suggested items to exclude duplicates
+            let suggestedItems = data.suggested_items || [];
+            if (suggestedItems.length > 0) {
+                suggestedItems = suggestedItems.filter(item => !isDuplicateItem(item.title));
+            }
+
+            // Add response with suggested items (filtered)
+            addChatMessage('assistant', data.response, suggestedItems);
         } else {
             // Show specific error message
             const errorMsg = data.error || 'Unknown error occurred';
@@ -1110,12 +1244,36 @@ async function sendChatMessage() {
 }
 
 /**
+ * Check if an item is a duplicate (exists in ideas or days)
+ */
+function isDuplicateItem(title) {
+    const normalizedTitle = (title || '').toLowerCase().trim();
+    if (!normalizedTitle) return false;
+
+    // Check ideas
+    if (currentTrip.ideas.some(existing => (existing.title || '').toLowerCase().trim() === normalizedTitle)) {
+        return true;
+    }
+    // Check days
+    return currentTrip.days.some(day =>
+        (day.items || []).some(existing => (existing.title || '').toLowerCase().trim() === normalizedTitle)
+    );
+}
+
+/**
  * Process items to add from chat (from add_items in response)
  */
 function processAddItems(items) {
     if (!items || items.length === 0) return;
 
+    let addedCount = 0;
     items.forEach(item => {
+        // Check for duplicates before adding
+        if (isDuplicateItem(item.title)) {
+            console.log('Duplicate item skipped in processAddItems:', item.title);
+            return;
+        }
+
         const newItem = {
             title: item.title || 'Untitled',
             category: item.category || 'activity',
@@ -1152,20 +1310,25 @@ function processAddItems(items) {
                     // No time, add to end
                     currentTrip.days[dayIndex].items.push(newItem);
                 }
+                addedCount++;
             } else {
                 // Day doesn't exist, add to ideas
                 currentTrip.ideas.push(newItem);
+                addedCount++;
             }
         } else {
             // No day specified, add to ideas pile
             currentTrip.ideas.push(newItem);
+            addedCount++;
         }
     });
 
-    // Re-render and save
-    renderDays();
-    renderIdeas();
-    triggerAutoSave();
+    // Re-render and save only if something was added
+    if (addedCount > 0) {
+        renderDays();
+        renderIdeas();
+        triggerAutoSave();
+    }
 }
 
 /**
@@ -1185,24 +1348,92 @@ function addChatMessage(role, content, suggestedItems = [], saveToHistory = true
 
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
-    bubble.innerHTML = formatMessageContent(content);
 
-    // Add suggested items with "Add to Ideas" buttons
+    // If there are suggested items, strip out their descriptions from content
+    let displayContent = content;
     if (suggestedItems && suggestedItems.length > 0) {
+        // Remove paragraphs that start with any suggested item title
         suggestedItems.forEach(item => {
+            if (item.title) {
+                // Escape special regex characters in title
+                const escapedTitle = item.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // Remove "Title - description" or "**Title** - description" paragraphs
+                const patterns = [
+                    new RegExp(`\\n\\*\\*${escapedTitle}\\*\\*[^\\n]*`, 'gi'),
+                    new RegExp(`\\n${escapedTitle}\\s*[-–—:]\\s*[^\\n]*`, 'gi'),
+                    new RegExp(`\\n\\d+\\.\\s*\\*\\*${escapedTitle}\\*\\*[^\\n]*`, 'gi'),
+                    new RegExp(`\\n\\d+\\.\\s*${escapedTitle}[^\\n]*`, 'gi'),
+                    new RegExp(`\\n[-•*]\\s*\\*\\*${escapedTitle}\\*\\*[^\\n]*`, 'gi'),
+                    new RegExp(`\\n[-•*]\\s*${escapedTitle}[^\\n]*`, 'gi'),
+                ];
+                patterns.forEach(pattern => {
+                    displayContent = displayContent.replace(pattern, '');
+                });
+            }
+        });
+        // Clean up extra newlines
+        displayContent = displayContent.replace(/\n{3,}/g, '\n\n').trim();
+    }
+    bubble.innerHTML = formatMessageContent(displayContent);
+
+    // Add suggested items as cards with action buttons
+    if (suggestedItems && suggestedItems.length > 0) {
+        const suggestionsContainer = document.createElement('div');
+        suggestionsContainer.className = 'suggestions-container';
+
+        suggestedItems.forEach((item, index) => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'suggestion-item';
-            itemDiv.innerHTML = `
-                <div class="suggestion-item-header">
-                    <span class="suggestion-item-title">${escapeHtml(item.title)}</span>
-                </div>
-                ${item.notes ? `<div class="suggestion-item-notes">${escapeHtml(item.notes)}</div>` : ''}
-                <button class="btn-add-to-ideas" onclick='addToIdeas(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
-                    <i class="fas fa-plus"></i> Add to Ideas
-                </button>
-            `;
-            bubble.appendChild(itemDiv);
+
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'suggestion-item-header';
+            headerDiv.innerHTML = `<span class="suggestion-item-title">${escapeHtml(item.title)}</span>`;
+            itemDiv.appendChild(headerDiv);
+
+            if (item.notes) {
+                const notesDiv = document.createElement('div');
+                notesDiv.className = 'suggestion-item-notes';
+                notesDiv.textContent = item.notes;
+                itemDiv.appendChild(notesDiv);
+            }
+
+            // Button container for multiple buttons
+            const btnContainer = document.createElement('div');
+            btnContainer.className = 'suggestion-buttons';
+
+            // Add to Ideas button
+            const btnIdeas = document.createElement('button');
+            btnIdeas.className = 'btn-add-to-ideas';
+            btnIdeas.innerHTML = '<i class="fas fa-lightbulb"></i> Ideas';
+            btnIdeas.title = 'Add to Ideas pile';
+            btnIdeas.addEventListener('click', () => {
+                const added = addToIdeas(item);
+                if (added) {
+                    btnIdeas.innerHTML = '<i class="fas fa-check"></i> Added!';
+                    btnIdeas.disabled = true;
+                    btnIdeas.classList.add('added');
+                } else {
+                    btnIdeas.innerHTML = '<i class="fas fa-times"></i> Exists';
+                    btnIdeas.disabled = true;
+                }
+            });
+            btnContainer.appendChild(btnIdeas);
+
+            // Add to Itinerary button (with day picker)
+            const btnItinerary = document.createElement('button');
+            btnItinerary.className = 'btn-add-to-itinerary';
+            btnItinerary.innerHTML = '<i class="fas fa-calendar-plus"></i> Add to Day';
+            btnItinerary.title = 'Add to a specific day';
+            btnItinerary.addEventListener('click', () => {
+                showDayPickerDialog(item, btnItinerary);
+            });
+            btnContainer.appendChild(btnItinerary);
+
+            itemDiv.appendChild(btnContainer);
+            suggestionsContainer.appendChild(itemDiv);
         });
+
+        bubble.appendChild(suggestionsContainer);
     }
 
     messageDiv.appendChild(avatar);
@@ -1382,6 +1613,22 @@ function setupIdeaDragHandlers() {
 
         item.addEventListener('dragstart', handleDragStart);
         item.addEventListener('dragend', handleDragEnd);
+
+        // Click on icon to edit (allows text selection on content)
+        const icon = item.querySelector('.item-icon');
+        if (icon) {
+            icon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                editIdea(index);
+            });
+        }
+
+        // Double-click anywhere on card to edit
+        item.addEventListener('dblclick', (e) => {
+            // Don't trigger if clicking buttons
+            if (e.target.closest('.item-actions')) return;
+            editIdea(index);
+        });
     });
 }
 
@@ -1393,6 +1640,26 @@ function setupDayItemDragHandlers() {
     dayItems.forEach(item => {
         item.addEventListener('dragstart', handleDragStart);
         item.addEventListener('dragend', handleDragEnd);
+
+        // Click on icon to edit (allows text selection on content)
+        const icon = item.querySelector('.item-icon');
+        if (icon) {
+            icon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const dayIndex = parseInt(item.dataset.dayIndex);
+                const itemIndex = parseInt(item.dataset.itemIndex);
+                editItem(dayIndex, itemIndex);
+            });
+        }
+
+        // Double-click anywhere on card to edit
+        item.addEventListener('dblclick', (e) => {
+            // Don't trigger if clicking buttons
+            if (e.target.closest('.item-actions')) return;
+            const dayIndex = parseInt(item.dataset.dayIndex);
+            const itemIndex = parseInt(item.dataset.itemIndex);
+            editItem(dayIndex, itemIndex);
+        });
     });
 }
 
