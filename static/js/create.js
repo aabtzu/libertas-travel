@@ -2135,7 +2135,7 @@ function formatDateShort(dateStr) {
 /**
  * Initialize the Leaflet map
  */
-function initializeMap() {
+async function initializeMap() {
     const mapContainer = document.getElementById('trip-map');
     const mapLoading = document.getElementById('map-loading');
 
@@ -2147,12 +2147,21 @@ function initializeMap() {
         return;
     }
 
-    // Default center (will be overridden by markers)
-    const defaultCenter = [43.7696, 11.2558]; // Florence
-    const defaultZoom = 13;
+    // Try to get initial center from trip destination
+    let initialCenter = [20, 0]; // World view fallback
+    let initialZoom = 2;
+
+    const tripDestination = extractDestinationFromTrip();
+    if (tripDestination) {
+        const coords = await geocodeLocation(tripDestination);
+        if (coords) {
+            initialCenter = [coords.lat, coords.lng];
+            initialZoom = 12;
+        }
+    }
 
     // Create map
-    tripMap = L.map('trip-map').setView(defaultCenter, defaultZoom);
+    tripMap = L.map('trip-map').setView(initialCenter, initialZoom);
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
