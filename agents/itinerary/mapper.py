@@ -67,36 +67,101 @@ class ItineraryMapper:
         return itinerary
 
     def _get_region_hint(self, itinerary: Itinerary) -> str:
-        """Extract a region hint from the itinerary for biasing geocoding."""
-        # Look for country/region in title or locations
+        """Extract a region hint from the itinerary using LLM for accuracy."""
+        # Collect context for the LLM
+        context_parts = []
+        if itinerary.title:
+            context_parts.append(f"Trip title: {itinerary.title}")
+
+        # Get non-flight items (flights often have origin city)
+        non_flight_items = [item for item in itinerary.items if item.category != 'flight'][:15]
+        if non_flight_items:
+            items_text = []
+            for item in non_flight_items:
+                loc = item.location.name if item.location else ""
+                items_text.append(f"- {item.title}" + (f" ({loc})" if loc else ""))
+            context_parts.append("Activities/Places:\n" + "\n".join(items_text))
+
+        if not context_parts:
+            return ""
+
+        # Try LLM extraction
+        try:
+            region = self._extract_destination_with_llm("\n\n".join(context_parts))
+            if region:
+                print(f"[GEOCODING] LLM extracted destination: {region}")
+                return region
+        except Exception as e:
+            print(f"[GEOCODING] LLM extraction failed: {e}")
+
+        # Fallback to simple pattern matching
+        return self._get_region_hint_fallback(itinerary)
+
+    def _extract_destination_with_llm(self, context: str) -> str:
+        """Use LLM to extract the primary destination from trip context."""
+        import anthropic
+
+        client = anthropic.Anthropic()
+
+        prompt = f"""Based on this trip information, identify the PRIMARY DESTINATION city and country.
+Ignore origin/departure locations (like home airports). Focus on where the traveler is actually visiting.
+
+{context}
+
+Respond with ONLY the destination in format: "City, Country" (e.g., "Vienna, Austria" or "Tokyo, Japan").
+If multiple destinations, pick the main one. If unclear, respond with just the country."""
+
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=50,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        result = response.content[0].text.strip()
+        # Clean up response - remove quotes, periods, etc.
+        result = result.strip('"\'.')
+        return result if result and len(result) < 100 else ""
+
+    def _get_region_hint_fallback(self, itinerary: Itinerary) -> str:
+        """Fallback pattern matching for region extraction."""
         regions = []
         if itinerary.title:
             regions.append(itinerary.title)
-        for item in itinerary.items[:10]:  # Check first 10 items
+        for item in itinerary.items[:10]:
             if item.location.name:
                 regions.append(item.location.name)
 
-        # Common region patterns
         region_text = " ".join(regions).lower()
-        if "italy" in region_text or "venice" in region_text or "rome" in region_text:
-            return "Italy"
-        elif "france" in region_text or "paris" in region_text:
-            return "France"
-        elif "spain" in region_text or "barcelona" in region_text:
-            return "Spain"
-        elif "india" in region_text or "delhi" in region_text or "jaipur" in region_text:
-            return "India"
-        elif "japan" in region_text or "tokyo" in region_text:
-            return "Japan"
-        elif "uk" in region_text or "london" in region_text or "england" in region_text:
-            return "United Kingdom"
-        elif "germany" in region_text or "berlin" in region_text:
-            return "Germany"
+
+        # Common patterns
+        patterns = [
+            (["austria", "vienna", "wien", "salzburg"], "Austria"),
+            (["slovakia", "bratislava"], "Slovakia"),
+            (["italy", "venice", "florence", "milan", "naples"], "Italy"),
+            (["france", "paris", "lyon", "nice"], "France"),
+            (["spain", "barcelona", "madrid", "seville"], "Spain"),
+            (["germany", "berlin", "munich", "frankfurt"], "Germany"),
+            (["uk", "london", "england", "scotland", "edinburgh"], "United Kingdom"),
+            (["japan", "tokyo", "kyoto", "osaka"], "Japan"),
+            (["india", "delhi", "mumbai", "jaipur"], "India"),
+            (["switzerland", "zurich", "geneva", "bern"], "Switzerland"),
+            (["netherlands", "amsterdam", "rotterdam"], "Netherlands"),
+            (["czech", "prague"], "Czech Republic"),
+            (["hungary", "budapest"], "Hungary"),
+            (["greece", "athens", "santorini"], "Greece"),
+            (["portugal", "lisbon", "porto"], "Portugal"),
+        ]
+
+        for keywords, country in patterns:
+            if any(kw in region_text for kw in keywords):
+                return country
+
         return ""
 
     def _geocode_item(self, item, region_hint: str = "") -> None:
         """Geocode an item using its title and location info."""
         location = item.location
+        is_flight = item.category == 'flight'
 
         # Build smart queries - use item title (actual place name) + location context
         queries = []
@@ -105,8 +170,26 @@ class ItineraryMapper:
         if location.address:
             queries.append(location.address)
 
+        # For flights, try to geocode the airport specifically
+        if is_flight and location.name:
+            loc_name = location.name
+            import re
+
+            # Extract city from location like "Vienna (Vienna International, Terminal 3)"
+            match = re.match(r'^([^(]+)', loc_name)
+            city = match.group(1).strip() if match else loc_name.split()[0]
+
+            # Add explicit airport queries first (most reliable)
+            queries.append(f"{city} International Airport")
+
+            # Also try the full location with Airport appended if not present
+            if 'airport' not in loc_name.lower():
+                queries.append(f"{loc_name} Airport")
+
+            queries.append(loc_name)
+
         # Use item title with location context (e.g., "Sina Centurion Palace Venice Italy")
-        if item.title and location.name:
+        elif item.title and location.name:
             # Don't add location if title already contains it
             if location.name.lower() not in item.title.lower():
                 queries.append(f"{item.title}, {location.name}")
@@ -117,8 +200,10 @@ class ItineraryMapper:
                 queries.append(f"{item.title}, {region_hint}")
             queries.append(item.title)
 
-        # Fall back to just location name
+        # Fall back to just location name with region hint
         if location.name:
+            if region_hint and region_hint.lower() not in location.name.lower():
+                queries.append(f"{location.name}, {region_hint}")
             queries.append(location.name)
 
         for query in queries:
@@ -182,8 +267,63 @@ class ItineraryMapper:
             "Germany": "de",
             "USA": "us",
             "United States": "us",
+            "Austria": "at",
+            "Slovakia": "sk",
+            "Switzerland": "ch",
+            "Netherlands": "nl",
+            "Czech Republic": "cz",
+            "Hungary": "hu",
+            "Greece": "gr",
+            "Portugal": "pt",
         }
         return codes.get(region, "")
+
+    def _is_origin_flight(self, item, destination: str) -> bool:
+        """Check if an item is a flight from the origin/home city (not the destination).
+
+        We want to EXCLUDE flights that depart from home (e.g., FCO-VIE when going to Vienna)
+        We want to INCLUDE flights that depart from destination (e.g., VIE-FCO returning home)
+        """
+        if item.category != 'flight':
+            return False
+
+        if not destination:
+            return False
+
+        dest_lower = destination.lower()
+        location = (item.location.name or '').lower()
+        title = (item.title or '').lower()
+
+        # If location contains the destination city/country, KEEP it (not an origin flight)
+        if dest_lower in location:
+            return False
+
+        # Check for destination-related terms in location
+        dest_terms = {
+            'vienna': ['vienna', 'wien', 'vie'],
+            'austria': ['austria', 'vienna', 'wien', 'vie'],
+            'bratislava': ['bratislava', 'bts'],
+            'slovakia': ['slovakia', 'bratislava'],
+        }
+        for dest_key, terms in dest_terms.items():
+            if dest_key in dest_lower:
+                for term in terms:
+                    if term in location:
+                        return False  # Location is at destination, keep it
+
+        # Common home/origin airports - filter these OUT
+        home_airports = ['fco', 'fiumicino', 'jfk', 'lax', 'sfo', 'ord', 'lhr', 'cdg', 'ewr']
+        for home in home_airports:
+            if home in location:
+                return True  # This is a home airport flight, filter it
+
+        # Common home cities - filter these OUT
+        home_cities = ['rome', 'new york', 'los angeles', 'san francisco', 'chicago', 'london', 'paris']
+        for city in home_cities:
+            if city in location:
+                return True  # This is from a home city, filter it
+
+        return False
 
     def create_map_data(self, itinerary: Itinerary) -> dict:
         """Create map data structure for Google Maps.
@@ -197,11 +337,16 @@ class ItineraryMapper:
         # Ensure locations are geocoded
         self.geocode_locations(itinerary)
 
-        # Get locations with coordinates, excluding home locations
+        # Get the destination region to identify origin flights
+        destination = self._get_region_hint(itinerary)
+
+        # Get locations with coordinates, excluding home locations and origin flights
         locations_with_coords = [
             (item, item.location)
             for item in itinerary.items
-            if item.location.has_coordinates and not item.is_home_location
+            if item.location.has_coordinates
+            and not item.is_home_location
+            and not self._is_origin_flight(item, destination)
         ]
 
         if not locations_with_coords:
@@ -272,10 +417,11 @@ class ItineraryMapper:
         """Build HTML content for a Google Maps info window."""
         import urllib.parse
 
+        location_name = item.location.name or item.title
         lines = [
             f'<div style="font-family: Arial, sans-serif; max-width: 320px; font-size: 15px;">',
             f'<h4 style="margin: 0 0 10px 0; color: #1a73e8; font-size: 17px;">{idx}. {html.escape(item.title)}</h4>',
-            f'<p style="margin: 0 0 6px 0; font-weight: bold; font-size: 15px;">{html.escape(item.location.name)}</p>',
+            f'<p style="margin: 0 0 6px 0; font-weight: bold; font-size: 15px;">{html.escape(location_name)}</p>',
         ]
 
         if item.date:
@@ -304,9 +450,9 @@ class ItineraryMapper:
         lines.append('<div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee;">')
 
         # Google Maps link - search by place name for better results
-        query = urllib.parse.quote(f"{item.title} {item.location.name}")
+        query = urllib.parse.quote(f"{item.title} {location_name}")
         maps_url = f"https://www.google.com/maps/search/?api=1&query={query}"
-        maps_link_text = html.escape(item.location.name[:30]) + ("..." if len(item.location.name) > 30 else "")
+        maps_link_text = html.escape(location_name[:30]) + ("..." if len(location_name) > 30 else "")
         lines.append(f'<a href="{maps_url}" target="_blank" style="display: block; margin-bottom: 8px; color: #1a73e8; text-decoration: none; font-size: 14px;"><i class="fas fa-map-marker-alt" style="margin-right: 6px;"></i>{maps_link_text}</a>')
 
         # Website link (for hotels, restaurants, activities)
@@ -316,7 +462,7 @@ class ItineraryMapper:
                 website_link = item.website_url
             else:
                 # Fall back to DuckDuckGo's "I'm Feeling Ducky" redirect
-                search_query = urllib.parse.quote(f"{item.title} {item.location.name} official site")
+                search_query = urllib.parse.quote(f"{item.title} {location_name} official site")
                 website_link = f"https://duckduckgo.com/?q=\\{search_query}"
             lines.append(f'<a href="{website_link}" target="_blank" style="display: block; color: #1a73e8; text-decoration: none; font-size: 14px;"><i class="fas fa-globe" style="margin-right: 6px;"></i>Website</a>')
 

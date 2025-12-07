@@ -35,9 +35,18 @@ function switchTab(tabName) {
     document.querySelector('.tab[onclick*="' + tabName + '"]').classList.add('active');
     document.getElementById(tabName + '-tab').classList.add('active');
 
-    // Invalidate map size when switching to map tab (Leaflet needs this)
+    // Invalidate map size and fit bounds when switching to map tab (Leaflet needs this)
     if (tabName === 'map' && window.leafletMap) {
-        setTimeout(function() { window.leafletMap.invalidateSize(); }, 100);
+        setTimeout(function() {
+            window.leafletMap.invalidateSize();
+            // Re-fit bounds after size is recalculated
+            if (markers.length > 1) {
+                var group = L.featureGroup(markers);
+                window.leafletMap.fitBounds(group.getBounds().pad(0.1), { maxZoom: 15 });
+            } else if (markers.length === 1) {
+                window.leafletMap.setView(markers[0].getLatLng(), 14);
+            }
+        }, 100);
     }
 }
 
@@ -103,7 +112,9 @@ function initMap() {
     // Fit bounds to show all markers
     if (markers.length > 1) {
         var group = L.featureGroup(markers);
-        leafletMap.fitBounds(group.getBounds().pad(0.1));
+        leafletMap.fitBounds(group.getBounds().pad(0.1), { maxZoom: 15 });
+    } else if (markers.length === 1) {
+        leafletMap.setView(markers[0].getLatLng(), 14);
     }
 
     // Hide loading overlay
