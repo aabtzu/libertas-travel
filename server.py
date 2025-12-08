@@ -963,13 +963,13 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
         elif self.path == "/api/create/upload-plan":
             self.handle_upload_plan()
         elif self.path.startswith("/api/trips/") and self.path.endswith("/save"):
-            link = self.path[len("/api/trips/"):-len("/save")]
+            link = self.path[len("/api/trips/"):-len("/save")].rstrip('/')
             self.handle_save_trip(link)
         elif self.path.startswith("/api/trips/") and self.path.endswith("/publish"):
-            link = self.path[len("/api/trips/"):-len("/publish")]
+            link = self.path[len("/api/trips/"):-len("/publish")].rstrip('/')
             self.handle_publish_trip(link)
         elif self.path.startswith("/api/trips/") and self.path.endswith("/items"):
-            link = self.path[len("/api/trips/"):-len("/items")]
+            link = self.path[len("/api/trips/"):-len("/items")].rstrip('/')
             self.handle_add_trip_item(link)
         else:
             self.send_error(404, "Not Found")
