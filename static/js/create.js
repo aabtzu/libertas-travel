@@ -457,7 +457,23 @@ function renderDays() {
 }
 
 /**
- * Render items for a day (in user-arranged order via drag-and-drop)
+ * Sort day items by time (timed items first in chronological order, then untimed)
+ */
+function sortDayItemsByTime(dayIndex) {
+    if (!currentTrip.days[dayIndex] || !currentTrip.days[dayIndex].items) return;
+    const items = currentTrip.days[dayIndex].items;
+    if (items.length > 1) {
+        items.sort((a, b) => {
+            if (a.time && !b.time) return -1;
+            if (!a.time && b.time) return 1;
+            if (a.time && b.time) return a.time.localeCompare(b.time);
+            return 0;
+        });
+    }
+}
+
+/**
+ * Render items for a day (sorted by time)
  */
 function renderDayItems(items, dayIndex) {
     if (!items || items.length === 0) {
@@ -729,6 +745,7 @@ function handleAddItem(e) {
             currentTrip.days[dayIndex].items = [];
         }
         currentTrip.days[dayIndex].items.push(item);
+        sortDayItemsByTime(dayIndex);
         renderDays();
     }
 
@@ -784,6 +801,7 @@ function editItem(dayIndex, itemIndex) {
         };
 
         hideAddItemModal();
+        sortDayItemsByTime(dayIndex);
         renderDays();
         triggerAutoSave();
 
@@ -1325,6 +1343,8 @@ function processAddItems(items) {
 
     // Re-render and save only if something was added
     if (addedCount > 0) {
+        // Sort all days by time
+        currentTrip.days.forEach((day, index) => sortDayItemsByTime(index));
         renderDays();
         renderIdeas();
         triggerAutoSave();
@@ -2206,8 +2226,26 @@ async function updateMapForDay() {
         }
     }
 
-    // Filter items with locations
-    const itemsWithLocation = itemsToShow.filter(item => item.location || item.title);
+    // Get destination context from trip title or items
+    const tripDestination = extractDestinationFromTrip();
+
+    // Filter items with locations, excluding origin/return flights
+    const itemsWithLocation = itemsToShow.filter(item => {
+        if (!item.location && !item.title) return false;
+
+        // Exclude flights that are departures from home/origin
+        if (item.category === 'flight') {
+            const loc = (item.location || '').toLowerCase();
+            const title = (item.title || '').toLowerCase();
+            // Skip if it's a departure flight (location is origin airport)
+            // Common patterns: "FCO", "Rome (Fiumicino)", airport codes
+            if (isOriginAirport(loc, title, tripDestination)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
 
     if (itemsWithLocation.length === 0) {
         showNoLocationsMessage();
@@ -2216,9 +2254,6 @@ async function updateMapForDay() {
 
     // Geocode and add markers
     const bounds = [];
-
-    // Get destination context from trip title or first item with explicit location
-    const tripDestination = extractDestinationFromTrip();
 
     // Build geo queries and geocode in parallel for faster loading
     const geocodePromises = itemsWithLocation.map(async (item) => {
@@ -2252,29 +2287,13 @@ async function updateMapForDay() {
  * Extract destination/city from trip context
  */
 function extractDestinationFromTrip() {
-    // First, try to find a city from items with explicit locations
-    const allItems = [];
-    currentTrip.days.forEach(day => {
-        (day.items || []).forEach(item => {
-            if (item.location) allItems.push(item.location);
-        });
-    });
-
-    // Look for common city patterns in locations
     const cityPatterns = ['Florence', 'Rome', 'Venice', 'Milan', 'Naples', 'Paris',
         'London', 'Barcelona', 'Madrid', 'Amsterdam', 'Berlin', 'Vienna', 'Prague',
         'Lisbon', 'Dublin', 'Edinburgh', 'Athens', 'Istanbul', 'Tokyo', 'Kyoto',
-        'New York', 'Los Angeles', 'San Francisco', 'Chicago', 'Boston', 'Seattle'];
+        'New York', 'Los Angeles', 'San Francisco', 'Chicago', 'Boston', 'Seattle',
+        'Bratislava', 'Budapest', 'Munich', 'Salzburg', 'Zurich', 'Geneva'];
 
-    for (const loc of allItems) {
-        for (const city of cityPatterns) {
-            if (loc.toLowerCase().includes(city.toLowerCase())) {
-                return city;
-            }
-        }
-    }
-
-    // Try extracting from trip title
+    // First, try extracting from trip title (most reliable)
     const title = currentTrip.title || '';
     for (const city of cityPatterns) {
         if (title.toLowerCase().includes(city.toLowerCase())) {
@@ -2282,8 +2301,63 @@ function extractDestinationFromTrip() {
         }
     }
 
-    // Return trip title as fallback (might contain destination info)
+    // Count city mentions in non-flight items (skip flights as they include origin)
+    const cityCounts = {};
+    currentTrip.days.forEach(day => {
+        (day.items || []).forEach(item => {
+            // Skip flights - they often have origin city
+            if (item.category === 'flight') return;
+
+            const loc = (item.location || '').toLowerCase();
+            for (const city of cityPatterns) {
+                if (loc.includes(city.toLowerCase())) {
+                    cityCounts[city] = (cityCounts[city] || 0) + 1;
+                }
+            }
+        });
+    });
+
+    // Return most mentioned city
+    const sorted = Object.entries(cityCounts).sort((a, b) => b[1] - a[1]);
+    if (sorted.length > 0) {
+        return sorted[0][0];
+    }
+
+    // Return trip title as fallback
     return title;
+}
+
+/**
+ * Check if a location is an origin/home airport (not part of destination)
+ */
+function isOriginAirport(location, title, destination) {
+    if (!destination) return false;
+
+    const destLower = destination.toLowerCase();
+
+    // Common home/origin cities to exclude
+    const homeCities = ['rome', 'fiumicino', 'fco', 'jfk', 'lax', 'sfo', 'ord', 'lhr', 'cdg'];
+
+    // If destination is in the location, it's not an origin airport
+    if (location.includes(destLower)) return false;
+
+    // Check if location contains home city patterns
+    for (const home of homeCities) {
+        if (location.includes(home) && !destLower.includes(home)) {
+            return true;
+        }
+    }
+
+    // Check flight title patterns like "FCO - VIE" - first part is origin
+    const flightMatch = title.match(/([a-z]{3})\s*[-–]\s*([a-z]{3})/i);
+    if (flightMatch) {
+        const origin = flightMatch[1].toLowerCase();
+        const dest = flightMatch[2].toLowerCase();
+        // If location matches origin airport, exclude it
+        if (location.includes(origin)) return true;
+    }
+
+    return false;
 }
 
 /**
@@ -2293,27 +2367,44 @@ function buildGeoQuery(item, destination) {
     const location = item.location || '';
     const title = item.title || '';
 
-    // If location already contains a city/country, use it directly
-    if (location && (location.includes(',') || location.length > 30)) {
+    // If location has a full address (with comma or long), use it directly
+    if (location && location.includes(',') && location.length > 20) {
         return location;
     }
 
-    // If location exists but is short (just a place name), add destination
-    if (location && destination) {
-        // Check if destination is already in location
-        if (!location.toLowerCase().includes(destination.toLowerCase())) {
+    // For items with location, add destination context if not already present
+    if (location) {
+        const locLower = location.toLowerCase();
+        const destLower = (destination || '').toLowerCase();
+
+        // Skip adding context if location already has the destination
+        if (destLower && locLower.includes(destLower)) {
+            return location;
+        }
+
+        // Skip adding context if location looks like a full address
+        if (location.match(/\d+.*\d{4,}/)) {  // Has numbers like street address + postal code
+            return location;
+        }
+
+        // Add destination context
+        if (destination) {
             return `${location}, ${destination}`;
         }
         return location;
     }
 
-    // Use title with destination context
+    // Use title with destination context for items without location
     if (title && destination) {
+        // Skip generic titles
+        if (title.toLowerCase().includes('stay') || title.toLowerCase().includes('flight')) {
+            return destination;
+        }
         return `${title}, ${destination}`;
     }
 
     // Fallback
-    return location || title;
+    return location || title || destination;
 }
 
 /**
