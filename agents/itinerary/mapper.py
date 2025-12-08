@@ -159,38 +159,26 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         return ""
 
     def _get_region_hint_fallback(self, itinerary: Itinerary) -> str:
-        """Fallback pattern matching for region extraction."""
-        regions = []
-        if itinerary.title:
-            regions.append(itinerary.title)
-        for item in itinerary.items[:10]:
-            if item.location.name:
-                regions.append(item.location.name)
+        """Fallback when LLM extraction fails - try simpler LLM call with just the title."""
+        if not itinerary.title:
+            return ""
 
-        region_text = " ".join(regions).lower()
+        try:
+            import anthropic
+            client = anthropic.Anthropic()
 
-        # Common patterns
-        patterns = [
-            (["austria", "vienna", "wien", "salzburg"], "Austria"),
-            (["slovakia", "bratislava"], "Slovakia"),
-            (["italy", "venice", "florence", "milan", "naples"], "Italy"),
-            (["france", "paris", "lyon", "nice"], "France"),
-            (["spain", "barcelona", "madrid", "seville"], "Spain"),
-            (["germany", "berlin", "munich", "frankfurt"], "Germany"),
-            (["uk", "london", "england", "scotland", "edinburgh"], "United Kingdom"),
-            (["japan", "tokyo", "kyoto", "osaka"], "Japan"),
-            (["india", "delhi", "mumbai", "jaipur"], "India"),
-            (["switzerland", "zurich", "geneva", "bern"], "Switzerland"),
-            (["netherlands", "amsterdam", "rotterdam"], "Netherlands"),
-            (["czech", "prague"], "Czech Republic"),
-            (["hungary", "budapest"], "Hungary"),
-            (["greece", "athens", "santorini"], "Greece"),
-            (["portugal", "lisbon", "porto"], "Portugal"),
-        ]
+            response = client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=30,
+                messages=[{"role": "user", "content": f"What country is this trip to? '{itinerary.title}'. Reply with ONLY the country name, or 'UNKNOWN' if unclear."}]
+            )
 
-        for keywords, country in patterns:
-            if any(kw in region_text for kw in keywords):
-                return country
+            result = response.content[0].text.strip()
+            if result and 'UNKNOWN' not in result.upper() and len(result) < 50:
+                print(f"[GEOCODING] Fallback resolved region: {result}")
+                return result
+        except Exception as e:
+            print(f"[GEOCODING] Fallback region extraction failed: {e}")
 
         return ""
 
