@@ -94,9 +94,11 @@ function initMap() {
     if (mapLoading) mapLoading.classList.add('hidden');
 }
 
-// Calendar item popup - using event delegation
+// Item popup - using event delegation for calendar items (click) and column items (double-click)
+// Uses shared item-detail.js for popup display
+
 document.addEventListener('click', function(event) {
-    // Handle "+N more" click
+    // Handle "+N more" click in calendar
     var moreElement = event.target.closest('.calendar-item-more');
     if (moreElement && moreElement.hasAttribute('data-hidden-items')) {
         event.stopPropagation();
@@ -104,101 +106,33 @@ document.addEventListener('click', function(event) {
         return;
     }
 
-    var element = event.target.closest('.calendar-item');
-    if (element && element.hasAttribute('data-title')) {
+    // Handle calendar item click
+    var calendarItem = event.target.closest('.calendar-item');
+    if (calendarItem && calendarItem.hasAttribute('data-title')) {
         event.stopPropagation();
-        showCalendarItemPopup(element, event);
+        showItemDetailPopup(calendarItem, event);
     }
 });
 
-function showCalendarItemPopup(element, event) {
-    // Remove any existing popup
-    hideCalendarItemPopup();
-
-    // Get data from element
-    var title = element.getAttribute('data-title') || 'Activity';
-    var time = element.getAttribute('data-time') || '';
-    var location = element.getAttribute('data-location') || '';
-    var category = element.getAttribute('data-category') || 'other';
-
-    // Category icon mapping
-    var categoryIcons = {
-        'flight': 'fa-plane',
-        'hotel': 'fa-bed',
-        'lodging': 'fa-bed',
-        'meal': 'fa-utensils',
-        'restaurant': 'fa-utensils',
-        'activity': 'fa-star',
-        'attraction': 'fa-landmark',
-        'transport': 'fa-car',
-        'other': 'fa-calendar-day'
-    };
-    var iconClass = categoryIcons[category] || 'fa-calendar-day';
-
-    // Create overlay
-    var overlay = document.createElement('div');
-    overlay.className = 'calendar-popup-overlay';
-    overlay.onclick = hideCalendarItemPopup;
-    document.body.appendChild(overlay);
-
-    // Create popup
-    var popup = document.createElement('div');
-    popup.className = 'calendar-item-popup';
-    popup.id = 'calendar-popup';
-
-    var detailsHtml = '';
-    if (time) {
-        detailsHtml += '<div class="popup-detail"><i class="fas fa-clock"></i><span>' + time + '</span></div>';
+// Double-click on column items to show detail popup
+document.addEventListener('dblclick', function(event) {
+    var columnItem = event.target.closest('.column-item');
+    if (columnItem && columnItem.hasAttribute('data-title')) {
+        event.stopPropagation();
+        showItemDetailPopup(columnItem, event);
     }
-    if (location) {
-        detailsHtml += '<div class="popup-detail"><i class="fas fa-map-marker-alt"></i><span>' + location + '</span></div>';
-    }
+});
 
-    popup.innerHTML =
-        '<button class="popup-close" onclick="hideCalendarItemPopup()">&times;</button>' +
-        '<div class="popup-header">' +
-            '<div class="popup-icon ' + category + '"><i class="fas ' + iconClass + '"></i></div>' +
-            '<div class="popup-title">' + title + '</div>' +
-        '</div>' +
-        (detailsHtml ? '<div class="popup-details">' + detailsHtml + '</div>' : '');
-
-    document.body.appendChild(popup);
-
-    // Position popup near the clicked element
-    var rect = element.getBoundingClientRect();
-    var popupRect = popup.getBoundingClientRect();
-
-    var left = rect.left + rect.width / 2 - popupRect.width / 2;
-    var top = rect.bottom + 8;
-
-    // Keep within viewport
-    if (left < 10) left = 10;
-    if (left + popupRect.width > window.innerWidth - 10) {
-        left = window.innerWidth - popupRect.width - 10;
-    }
-    if (top + popupRect.height > window.innerHeight - 10) {
-        top = rect.top - popupRect.height - 8;
-    }
-
-    popup.style.left = left + 'px';
-    popup.style.top = top + 'px';
-}
-
-function hideCalendarItemPopup() {
-    var popup = document.getElementById('calendar-popup');
-    if (popup) popup.remove();
-    var overlay = document.querySelector('.calendar-popup-overlay');
-    if (overlay) overlay.remove();
-}
+// Store hidden items data for click handling
+var _hiddenItemsData = [];
 
 function showCalendarMorePopup(element) {
     // Remove any existing popup
-    hideCalendarItemPopup();
+    hideItemDetailPopup();
 
     // Parse hidden items data
-    var hiddenItems = [];
     try {
-        hiddenItems = JSON.parse(element.getAttribute('data-hidden-items'));
+        _hiddenItemsData = JSON.parse(element.getAttribute('data-hidden-items'));
     } catch (e) {
         console.error('Failed to parse hidden items:', e);
         return;
@@ -219,41 +153,54 @@ function showCalendarMorePopup(element) {
 
     // Create overlay
     var overlay = document.createElement('div');
-    overlay.className = 'calendar-popup-overlay';
-    overlay.onclick = hideCalendarItemPopup;
+    overlay.className = 'item-detail-overlay';
+    overlay.onclick = hideItemDetailPopup;
     document.body.appendChild(overlay);
 
     // Create popup
     var popup = document.createElement('div');
-    popup.className = 'calendar-item-popup calendar-more-popup';
-    popup.id = 'calendar-popup';
+    popup.className = 'item-detail-popup calendar-more-popup';
+    popup.id = 'item-detail-popup';
 
     var itemsHtml = '<div class="more-items-list">';
-    hiddenItems.forEach(function(item) {
+    _hiddenItemsData.forEach(function(item, index) {
         var iconClass = categoryIcons[item.category] || 'fa-calendar-day';
         var detailParts = [];
         if (item.time) detailParts.push(item.time);
         if (item.location) detailParts.push(item.location);
         var detail = detailParts.join(' • ');
 
-        itemsHtml += '<div class="more-item">' +
+        // Make items clickable to show detail
+        itemsHtml += '<div class="more-item" data-hidden-index="' + index + '" style="cursor:pointer;">' +
             '<div class="more-item-icon ' + item.category + '"><i class="fas ' + iconClass + '"></i></div>' +
             '<div class="more-item-content">' +
-                '<div class="more-item-title">' + item.title + '</div>' +
-                (detail ? '<div class="more-item-detail">' + detail + '</div>' : '') +
+                '<div class="more-item-title">' + _escapeHtmlTrip(item.title) + '</div>' +
+                (detail ? '<div class="more-item-detail">' + _escapeHtmlTrip(detail) + '</div>' : '') +
+                (item.website ? '<div class="more-item-link"><i class="fas fa-globe"></i></div>' : '') +
             '</div>' +
         '</div>';
     });
     itemsHtml += '</div>';
 
     popup.innerHTML =
-        '<button class="popup-close" onclick="hideCalendarItemPopup()">&times;</button>' +
+        '<button class="popup-close" onclick="hideItemDetailPopup()">&times;</button>' +
         '<div class="popup-header">' +
             '<div class="popup-title">More Activities</div>' +
         '</div>' +
         itemsHtml;
 
     document.body.appendChild(popup);
+
+    // Add click handlers for items in the list
+    popup.querySelectorAll('.more-item[data-hidden-index]').forEach(function(itemEl) {
+        itemEl.addEventListener('click', function(e) {
+            var idx = parseInt(itemEl.getAttribute('data-hidden-index'));
+            var itemData = _hiddenItemsData[idx];
+            if (itemData) {
+                showItemDetailFromData(itemData, itemEl);
+            }
+        });
+    });
 
     // Position popup near the clicked element (account for scroll)
     var rect = element.getBoundingClientRect();
@@ -277,10 +224,18 @@ function showCalendarMorePopup(element) {
     popup.style.top = top + 'px';
 }
 
-// Close popup on escape key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') hideCalendarItemPopup();
-});
+// Helper to escape HTML
+function _escapeHtmlTrip(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Legacy function name for compatibility
+function hideCalendarItemPopup() {
+    hideItemDetailPopup();
+}
 
 // Map status polling - only poll if map is pending/processing
 (function() {

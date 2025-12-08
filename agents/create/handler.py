@@ -243,7 +243,8 @@ def _create_itinerary_item(item_data: Dict[str, Any], day_number: Optional[int],
         confirmation_number=None,
         notes=item_data.get('notes'),
         day_number=day_number,
-        is_home_location=False
+        is_home_location=False,
+        website_url=item_data.get('website')
     )
 
 

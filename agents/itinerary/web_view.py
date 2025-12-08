@@ -356,7 +356,27 @@ class ItineraryWebView:
         """Format a single item for the column view."""
         category = (item.category or "other").lower()
         icon = self._get_category_icon(category)
-        parts = [f'<div class="column-item {category}">']
+
+        # Build data attributes for detail popup
+        full_title = html_module.escape(item.title or 'Activity')
+        time_str = ''
+        if item.start_time:
+            time_str = item.start_time.strftime('%I:%M %p').lstrip('0')
+            if item.end_time:
+                time_str += f' - {item.end_time.strftime("%I:%M %p").lstrip("0")}'
+        loc_name = ''
+        if item.location and item.location.name:
+            loc_name = html_module.escape(item.location.name)
+        website = html_module.escape(item.website_url) if item.website_url else ''
+        notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+
+        parts = [f'<div class="column-item {category}" '
+                 f'data-title="{full_title}" '
+                 f'data-time="{time_str}" '
+                 f'data-location="{loc_name}" '
+                 f'data-category="{category}" '
+                 f'data-website="{website}" '
+                 f'data-notes="{notes}">']
 
         # Build display text - combine title and location smartly
         title = item.title or "Untitled"
@@ -514,12 +534,16 @@ class ItineraryWebView:
                             location = html_module.escape(str(loc.name) if hasattr(loc, 'name') else str(loc))
                         else:
                             location = ''
+                        website = html_module.escape(item.website_url) if item.website_url else ''
+                        notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
                         lines.append(
                             f'<div class="calendar-item {category}" '
                             f'data-title="{full_title}" '
                             f'data-time="{time_str}" '
                             f'data-location="{location}" '
-                            f'data-category="{category}">'
+                            f'data-category="{category}" '
+                            f'data-website="{website}" '
+                            f'data-notes="{notes}">'
                             f'{html_module.escape(display_title)}</div>'
                         )
                     if len(items) > 3:
@@ -541,7 +565,9 @@ class ItineraryWebView:
                                 'title': hi_title,
                                 'time': hi_time,
                                 'location': hi_location,
-                                'category': hi_category
+                                'category': hi_category,
+                                'website': item.website_url or '',
+                                'notes': (item.notes or item.description or '')[:200]
                             })
                         hidden_json = html_module.escape(json.dumps(hidden_items))
                         lines.append(
