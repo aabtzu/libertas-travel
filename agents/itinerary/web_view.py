@@ -141,7 +141,7 @@ class ItineraryWebView:
 
                 # Build data attributes for popup
                 title = item.title or "Untitled"
-                location = item.location.name if item.location else "Unknown location"
+                location = (item.location.name if item.location and item.location.name else "") or ""
                 website = html_module.escape(item.website_url) if item.website_url else ''
                 notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
 
@@ -180,7 +180,7 @@ class ItineraryWebView:
 
                 # Build data attributes for popup
                 title = item.title or "Untitled"
-                location = item.location.name if item.location else "Unknown location"
+                location = (item.location.name if item.location and item.location.name else "") or ""
                 website = html_module.escape(item.website_url) if item.website_url else ''
                 notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
 

@@ -37,6 +37,8 @@ class ItineraryMapper:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("GOOGLE_MAPS_API_KEY", "")
         self._geocode_failures = 0
+        self._cached_region_hint = None  # Cache region hint to avoid duplicate LLM calls
+        self._cached_region_itinerary_id = None  # Track which itinerary the cache is for
 
     def geocode_locations(self, itinerary: Itinerary) -> Itinerary:
         """Add coordinates to all locations in the itinerary using Google Geocoding API."""
@@ -68,6 +70,11 @@ class ItineraryMapper:
 
     def _get_region_hint(self, itinerary: Itinerary) -> str:
         """Extract a region hint from the itinerary using LLM for accuracy."""
+        # Check cache first - use itinerary title as cache key
+        cache_key = id(itinerary)
+        if self._cached_region_itinerary_id == cache_key and self._cached_region_hint is not None:
+            return self._cached_region_hint
+
         # Collect context for the LLM
         context_parts = []
         if itinerary.title:
@@ -83,6 +90,8 @@ class ItineraryMapper:
             context_parts.append("Activities/Places:\n" + "\n".join(items_text))
 
         if not context_parts:
+            self._cached_region_hint = ""
+            self._cached_region_itinerary_id = cache_key
             return ""
 
         # Try LLM extraction
@@ -90,12 +99,17 @@ class ItineraryMapper:
             region = self._extract_destination_with_llm("\n\n".join(context_parts))
             if region:
                 print(f"[GEOCODING] LLM extracted destination: {region}")
+                self._cached_region_hint = region
+                self._cached_region_itinerary_id = cache_key
                 return region
         except Exception as e:
             print(f"[GEOCODING] LLM extraction failed: {e}")
 
         # Fallback to simple pattern matching
-        return self._get_region_hint_fallback(itinerary)
+        result = self._get_region_hint_fallback(itinerary)
+        self._cached_region_hint = result
+        self._cached_region_itinerary_id = cache_key
+        return result
 
     def _extract_destination_with_llm(self, context: str) -> str:
         """Use LLM to extract the primary destination from trip context."""
