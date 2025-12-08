@@ -114,28 +114,50 @@ function initMap() {
 
     // Hide loading overlay
     if (mapLoading) mapLoading.classList.add('hidden');
+
+    // Fix Leaflet size calculation for hidden containers
+    setTimeout(function() {
+        map.invalidateSize();
+    }, 100);
 }
 
-// Initialize map when switching to map tab
-document.addEventListener('DOMContentLoaded', function() {
-    // Only initialize if map data has markers
-    if (mapData && mapData.markers && mapData.markers.length > 0) {
-        // Initialize immediately if map tab is active, otherwise wait for tab switch
-        var mapTab = document.getElementById('map-tab');
-        if (mapTab && mapTab.classList.contains('active')) {
-            setTimeout(initMap, 100);
+// Initialize map when map tab becomes visible
+(function() {
+    var mapInitialized = false;
+
+    function tryInitMap() {
+        if (mapInitialized) return;
+        if (mapData && mapData.markers && mapData.markers.length > 0 && !mapData.error) {
+            mapInitialized = true;
+            initMap();
+        } else if (mapData && mapData.error) {
+            // Show error message
+            var mapLoading = document.getElementById('map-loading');
+            if (mapLoading) {
+                mapLoading.innerHTML = '<div class="map-status-error"><i class="fas fa-exclamation-triangle"></i></div>' +
+                    '<div class="map-loading-text map-status-error">Map not available</div>' +
+                    '<div class="map-loading-subtext">' + mapData.error + '</div>';
+            }
         }
     }
-});
 
-// Also initialize when map tab is clicked
-var originalSwitchTab = window.switchTab;
-window.switchTab = function(tabName) {
-    originalSwitchTab(tabName);
-    if (tabName === 'map' && !map && mapData && mapData.markers && mapData.markers.length > 0) {
-        setTimeout(initMap, 100);
-    }
-};
+    // Override switchTab to init map when map tab is selected
+    var _originalSwitchTab = switchTab;
+    switchTab = function(tabName) {
+        _originalSwitchTab(tabName);
+        if (tabName === 'map') {
+            setTimeout(tryInitMap, 50);
+        }
+    };
+
+    // Also check on page load if map tab is active
+    document.addEventListener('DOMContentLoaded', function() {
+        var mapTabContent = document.getElementById('map-tab');
+        if (mapTabContent && mapTabContent.classList.contains('active')) {
+            setTimeout(tryInitMap, 100);
+        }
+    });
+})();
 
 // Item popup - using event delegation for calendar items (click) and column items (double-click)
 // Uses shared item-detail.js for popup display
