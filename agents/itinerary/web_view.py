@@ -139,15 +139,25 @@ class ItineraryWebView:
                 category = item.category or "other"
                 category_icon = self._get_category_html(category)
 
-                lines.append('<div class="activity">')
+                # Build data attributes for popup
+                title = item.title or "Untitled"
+                location = item.location.name if item.location else "Unknown location"
+                website = html_module.escape(item.website_url) if item.website_url else ''
+                notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+
+                lines.append(f'<div class="activity" '
+                            f'data-title="{html_module.escape(title)}" '
+                            f'data-time="{time_str}" '
+                            f'data-location="{html_module.escape(location)}" '
+                            f'data-category="{category}" '
+                            f'data-website="{website}" '
+                            f'data-notes="{notes}">')
                 lines.append(f'<span class="activity-category {category}">{category_icon}</span>')
                 if time_str:
                     lines.append(f'<span class="activity-time">{time_str}</span>')
                 else:
                     lines.append('<span class="activity-time"></span>')
 
-                title = item.title or "Untitled"
-                location = item.location.name or "Unknown location"
                 lines.append('<div class="activity-info">')
                 lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
                 lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
@@ -168,15 +178,25 @@ class ItineraryWebView:
                 category = item.category or "other"
                 category_icon = self._get_category_html(category)
 
-                lines.append('<div class="activity">')
+                # Build data attributes for popup
+                title = item.title or "Untitled"
+                location = item.location.name if item.location else "Unknown location"
+                website = html_module.escape(item.website_url) if item.website_url else ''
+                notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+
+                lines.append(f'<div class="activity" '
+                            f'data-title="{html_module.escape(title)}" '
+                            f'data-time="{time_str}" '
+                            f'data-location="{html_module.escape(location)}" '
+                            f'data-category="{category}" '
+                            f'data-website="{website}" '
+                            f'data-notes="{notes}">')
                 lines.append(f'<span class="activity-category {category}">{category_icon}</span>')
                 if time_str:
                     lines.append(f'<span class="activity-time">{time_str}</span>')
                 else:
                     lines.append('<span class="activity-time"></span>')
 
-                title = item.title or "Untitled"
-                location = item.location.name or "Unknown location"
                 lines.append('<div class="activity-info">')
                 lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
                 lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
@@ -257,6 +277,7 @@ class ItineraryWebView:
 
         # Track night stay for carry-forward
         last_night_stay: str | None = None
+        last_night_stay_item = None  # Track the item for data attributes
         sorted_days = sorted(items_by_day.keys())
         last_day = sorted_days[-1] if sorted_days else 0
 
@@ -287,16 +308,18 @@ class ItineraryWebView:
 
             # Determine night stay for this day
             current_night_stay: str | None = None
+            current_night_stay_item = None  # Track the actual item for data attributes
             is_carried = False
             if lodging_items:
                 # Use the last lodging item as the night stay
                 # Prefer title (hotel name) over location.name (city)
-                last_lodging = lodging_items[-1]
-                if last_lodging.title:
-                    current_night_stay = last_lodging.title
-                elif last_lodging.location and last_lodging.location.name:
-                    current_night_stay = last_lodging.location.name
+                current_night_stay_item = lodging_items[-1]
+                if current_night_stay_item.title:
+                    current_night_stay = current_night_stay_item.title
+                elif current_night_stay_item.location and current_night_stay_item.location.name:
+                    current_night_stay = current_night_stay_item.location.name
                 last_night_stay = current_night_stay
+                last_night_stay_item = current_night_stay_item
             elif last_night_stay:
                 # Only carry forward if:
                 # - Not the last day of the trip
@@ -304,6 +327,7 @@ class ItineraryWebView:
                 is_last_day = (day_num == last_day)
                 if not is_last_day and not has_flight:
                     current_night_stay = last_night_stay
+                    current_night_stay_item = last_night_stay_item
                     is_carried = True
 
             # Get date string
@@ -333,9 +357,25 @@ class ItineraryWebView:
 
             # Night Stay column
             lines.append('<td>')
-            if current_night_stay:
+            if current_night_stay and current_night_stay_item:
                 carried_class = " night-stay-carried" if is_carried else ""
-                lines.append(f'<div class="night-stay{carried_class}">')
+                # Build data attributes for popup
+                item = current_night_stay_item
+                title = html_module.escape(item.title or current_night_stay)
+                time_str = ''
+                if item.start_time:
+                    time_str = item.start_time.strftime('%I:%M %p').lstrip('0')
+                loc_name = html_module.escape(item.location.name) if item.location and item.location.name else ''
+                website = html_module.escape(item.website_url) if item.website_url else ''
+                notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+
+                lines.append(f'<div class="night-stay{carried_class}" '
+                            f'data-title="{title}" '
+                            f'data-time="{time_str}" '
+                            f'data-location="{loc_name}" '
+                            f'data-category="hotel" '
+                            f'data-website="{website}" '
+                            f'data-notes="{notes}">')
                 lines.append(f'<i class="fas fa-bed"></i>{html_module.escape(current_night_stay)}')
                 lines.append('</div>')
             lines.append('</td>')

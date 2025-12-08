@@ -673,13 +673,17 @@
     line-height: 1.4;
 }
 
-/* Column item clickable styles */
-.column-item {
+/* Column item, night-stay, and activity clickable styles */
+.column-item,
+.night-stay[data-title],
+.activity[data-title] {
     cursor: pointer;
     transition: background 0.15s ease;
 }
 
-.column-item:hover {
+.column-item:hover,
+.night-stay[data-title]:hover,
+.activity[data-title]:hover {
     background: rgba(102, 126, 234, 0.08);
 }
 

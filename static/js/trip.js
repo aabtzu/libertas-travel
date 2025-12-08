@@ -8,55 +8,6 @@ function exportTrip() {
     window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/export';
 }
 
-// Regenerate map with fresh geocoding
-function regenerateMap() {
-    var tripLink = window.location.pathname.split('/').pop();
-    var btn = event.target.closest('button');
-    var originalHTML = btn.innerHTML;
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Regenerating...';
-
-    fetch('/api/retry-geocoding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ link: tripLink })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            // Reload page to show new map
-            window.location.reload();
-        } else {
-            alert('Failed to regenerate map: ' + (data.error || 'Unknown error'));
-            btn.disabled = false;
-            btn.innerHTML = originalHTML;
-        }
-    })
-    .catch(function(err) {
-        alert('Error regenerating map: ' + err.message);
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
-    });
-}
-
-// Ensure Export button exists (for trips generated before template update)
-(function() {
-    // Check if button already exists
-    if (document.querySelector('.export-btn')) return;
-
-    // Try new structure first, then old structure
-    var container = document.querySelector('.trip-header-content') || document.querySelector('.trip-header');
-    if (container) {
-        var btn = document.createElement('button');
-        btn.className = 'export-btn';
-        btn.onclick = exportTrip;
-        btn.title = 'Download trip data as JSON';
-        btn.innerHTML = '<i class="fas fa-download"></i> Export';
-        container.appendChild(btn);
-    }
-})();
-
 // Tab switching
 function switchTab(tabName) {
     // Remove active class from all tabs and content
@@ -66,25 +17,12 @@ function switchTab(tabName) {
     // Add active class to selected tab and content
     document.querySelector('.tab[onclick*="' + tabName + '"]').classList.add('active');
     document.getElementById(tabName + '-tab').classList.add('active');
-
-    // Invalidate map size and fit bounds when switching to map tab (Leaflet needs this)
-    if (tabName === 'map' && window.leafletMap) {
-        setTimeout(function() {
-            window.leafletMap.invalidateSize();
-            // Re-fit bounds after size is recalculated
-            if (markers.length > 1) {
-                var group = L.featureGroup(markers);
-                window.leafletMap.fitBounds(group.getBounds().pad(0.1), { maxZoom: 15 });
-            } else if (markers.length === 1) {
-                window.leafletMap.setView(markers[0].getLatLng(), 14);
-            }
-        }, 100);
-    }
 }
 
-// Initialize Leaflet Map
-var leafletMap = null;
+// Initialize Google Map
+var map = null;
 var markers = [];
+var infoWindow = null;
 
 function initMap() {
     var mapLoading = document.getElementById('map-loading');
@@ -98,17 +36,24 @@ function initMap() {
         return;
     }
 
-    // Create Leaflet map
-    leafletMap = L.map('leaflet-map').setView([mapData.center.lat, mapData.center.lng], mapData.zoom);
-    window.leafletMap = leafletMap;
+    // Create map with mapId for AdvancedMarkerElement support
+    map = new google.maps.Map(document.getElementById('google-map'), {
+        center: mapData.center,
+        zoom: mapData.zoom,
+        mapId: 'DEMO_MAP_ID',
+        mapTypeControl: true,
+        mapTypeControlOptions: {
+            style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+            position: google.maps.ControlPosition.TOP_RIGHT
+        },
+        fullscreenControl: true,
+        streetViewControl: false,
+    });
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(leafletMap);
+    // Create info window
+    infoWindow = new google.maps.InfoWindow();
 
-    // Category icon mapping
+    // Category icon mapping (using Font Awesome class names)
     var categoryIcons = {
         'flight': 'fa-plane',
         'hotel': 'fa-bed',
@@ -121,58 +66,39 @@ function initMap() {
         'other': 'fa-map-marker-alt'
     };
 
-    // Add markers with custom icons
-    mapData.markers.forEach(function(markerData) {
+    // Add markers with category icons using custom HTML
+    mapData.markers.forEach(function(markerData, index) {
         var iconClass = categoryIcons[markerData.category] || 'fa-map-marker-alt';
 
-        // Create custom divIcon for Leaflet
-        var customIcon = L.divIcon({
-            className: 'leaflet-custom-marker',
-            html: '<div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);background-color:' + markerData.color + ';"><i class="fas ' + iconClass + '" style="color:white;font-size:12px;"></i></div>',
-            iconSize: [28, 28],
-            iconAnchor: [14, 14],
-            popupAnchor: [0, -14]
+        // Create custom marker element
+        var markerDiv = document.createElement('div');
+        markerDiv.style.cssText = 'width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer; background-color: ' + markerData.color + ';';
+        markerDiv.innerHTML = '<i class="fas ' + iconClass + '" style="color: white; font-size: 12px;"></i>';
+
+        var marker = new google.maps.marker.AdvancedMarkerElement({
+            position: markerData.position,
+            map: map,
+            title: markerData.title,
+            content: markerDiv
         });
 
-        var marker = L.marker([markerData.position.lat, markerData.position.lng], { icon: customIcon })
-            .addTo(leafletMap)
-            .bindPopup(markerData.info);
+        marker.addListener('click', function() {
+            infoWindow.setContent(markerData.info);
+            infoWindow.open(map, marker);
+        });
 
         markers.push(marker);
     });
-
-    // Fit bounds to show all markers
-    if (markers.length > 1) {
-        var group = L.featureGroup(markers);
-        leafletMap.fitBounds(group.getBounds().pad(0.1), { maxZoom: 15 });
-    } else if (markers.length === 1) {
-        leafletMap.setView(markers[0].getLatLng(), 14);
-    }
 
     // Hide loading overlay
     if (mapLoading) mapLoading.classList.add('hidden');
 }
 
-// Initialize map when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Wait for Leaflet to be ready
-    if (typeof L !== 'undefined' && typeof mapData !== 'undefined') {
-        initMap();
-    } else {
-        // Retry after a short delay if Leaflet isn't ready yet
-        setTimeout(function() {
-            if (typeof L !== 'undefined' && typeof mapData !== 'undefined') {
-                initMap();
-            } else {
-                console.error('Leaflet or mapData not available');
-            }
-        }, 500);
-    }
-});
+// Item popup - using event delegation for calendar items (click) and column items (double-click)
+// Uses shared item-detail.js for popup display
 
-// Calendar item popup - using event delegation
 document.addEventListener('click', function(event) {
-    // Handle "+N more" click
+    // Handle "+N more" click in calendar
     var moreElement = event.target.closest('.calendar-item-more');
     if (moreElement && moreElement.hasAttribute('data-hidden-items')) {
         event.stopPropagation();
@@ -180,101 +106,48 @@ document.addEventListener('click', function(event) {
         return;
     }
 
-    var element = event.target.closest('.calendar-item');
-    if (element && element.hasAttribute('data-title')) {
+    // Handle calendar item click
+    var calendarItem = event.target.closest('.calendar-item');
+    if (calendarItem && calendarItem.hasAttribute('data-title')) {
         event.stopPropagation();
-        showCalendarItemPopup(element, event);
+        showItemDetailPopup(calendarItem, event);
     }
 });
 
-function showCalendarItemPopup(element, event) {
-    // Remove any existing popup
-    hideCalendarItemPopup();
-
-    // Get data from element
-    var title = element.getAttribute('data-title') || 'Activity';
-    var time = element.getAttribute('data-time') || '';
-    var location = element.getAttribute('data-location') || '';
-    var category = element.getAttribute('data-category') || 'other';
-
-    // Category icon mapping
-    var categoryIcons = {
-        'flight': 'fa-plane',
-        'hotel': 'fa-bed',
-        'lodging': 'fa-bed',
-        'meal': 'fa-utensils',
-        'restaurant': 'fa-utensils',
-        'activity': 'fa-star',
-        'attraction': 'fa-landmark',
-        'transport': 'fa-car',
-        'other': 'fa-calendar-day'
-    };
-    var iconClass = categoryIcons[category] || 'fa-calendar-day';
-
-    // Create overlay
-    var overlay = document.createElement('div');
-    overlay.className = 'calendar-popup-overlay';
-    overlay.onclick = hideCalendarItemPopup;
-    document.body.appendChild(overlay);
-
-    // Create popup
-    var popup = document.createElement('div');
-    popup.className = 'calendar-item-popup';
-    popup.id = 'calendar-popup';
-
-    var detailsHtml = '';
-    if (time) {
-        detailsHtml += '<div class="popup-detail"><i class="fas fa-clock"></i><span>' + time + '</span></div>';
+// Double-click on column items, night-stay, or activity items to show detail popup
+document.addEventListener('dblclick', function(event) {
+    // Grid view items
+    var columnItem = event.target.closest('.column-item');
+    if (columnItem && columnItem.hasAttribute('data-title')) {
+        event.stopPropagation();
+        showItemDetailPopup(columnItem, event);
+        return;
     }
-    if (location) {
-        detailsHtml += '<div class="popup-detail"><i class="fas fa-map-marker-alt"></i><span>' + location + '</span></div>';
+    // Grid view night stay
+    var nightStay = event.target.closest('.night-stay');
+    if (nightStay && nightStay.hasAttribute('data-title')) {
+        event.stopPropagation();
+        showItemDetailPopup(nightStay, event);
+        return;
     }
-
-    popup.innerHTML =
-        '<button class="popup-close" onclick="hideCalendarItemPopup()">&times;</button>' +
-        '<div class="popup-header">' +
-            '<div class="popup-icon ' + category + '"><i class="fas ' + iconClass + '"></i></div>' +
-            '<div class="popup-title">' + title + '</div>' +
-        '</div>' +
-        (detailsHtml ? '<div class="popup-details">' + detailsHtml + '</div>' : '');
-
-    document.body.appendChild(popup);
-
-    // Position popup near the clicked element
-    var rect = element.getBoundingClientRect();
-    var popupRect = popup.getBoundingClientRect();
-
-    var left = rect.left + rect.width / 2 - popupRect.width / 2;
-    var top = rect.bottom + 8;
-
-    // Keep within viewport
-    if (left < 10) left = 10;
-    if (left + popupRect.width > window.innerWidth - 10) {
-        left = window.innerWidth - popupRect.width - 10;
+    // List view items
+    var activityItem = event.target.closest('.activity');
+    if (activityItem && activityItem.hasAttribute('data-title')) {
+        event.stopPropagation();
+        showItemDetailPopup(activityItem, event);
     }
-    if (top + popupRect.height > window.innerHeight - 10) {
-        top = rect.top - popupRect.height - 8;
-    }
+});
 
-    popup.style.left = left + 'px';
-    popup.style.top = top + 'px';
-}
-
-function hideCalendarItemPopup() {
-    var popup = document.getElementById('calendar-popup');
-    if (popup) popup.remove();
-    var overlay = document.querySelector('.calendar-popup-overlay');
-    if (overlay) overlay.remove();
-}
+// Store hidden items data for click handling
+var _hiddenItemsData = [];
 
 function showCalendarMorePopup(element) {
     // Remove any existing popup
-    hideCalendarItemPopup();
+    hideItemDetailPopup();
 
     // Parse hidden items data
-    var hiddenItems = [];
     try {
-        hiddenItems = JSON.parse(element.getAttribute('data-hidden-items'));
+        _hiddenItemsData = JSON.parse(element.getAttribute('data-hidden-items'));
     } catch (e) {
         console.error('Failed to parse hidden items:', e);
         return;
@@ -295,41 +168,54 @@ function showCalendarMorePopup(element) {
 
     // Create overlay
     var overlay = document.createElement('div');
-    overlay.className = 'calendar-popup-overlay';
-    overlay.onclick = hideCalendarItemPopup;
+    overlay.className = 'item-detail-overlay';
+    overlay.onclick = hideItemDetailPopup;
     document.body.appendChild(overlay);
 
     // Create popup
     var popup = document.createElement('div');
-    popup.className = 'calendar-item-popup calendar-more-popup';
-    popup.id = 'calendar-popup';
+    popup.className = 'item-detail-popup calendar-more-popup';
+    popup.id = 'item-detail-popup';
 
     var itemsHtml = '<div class="more-items-list">';
-    hiddenItems.forEach(function(item) {
+    _hiddenItemsData.forEach(function(item, index) {
         var iconClass = categoryIcons[item.category] || 'fa-calendar-day';
         var detailParts = [];
         if (item.time) detailParts.push(item.time);
         if (item.location) detailParts.push(item.location);
         var detail = detailParts.join(' • ');
 
-        itemsHtml += '<div class="more-item">' +
+        // Make items clickable to show detail
+        itemsHtml += '<div class="more-item" data-hidden-index="' + index + '" style="cursor:pointer;">' +
             '<div class="more-item-icon ' + item.category + '"><i class="fas ' + iconClass + '"></i></div>' +
             '<div class="more-item-content">' +
-                '<div class="more-item-title">' + item.title + '</div>' +
-                (detail ? '<div class="more-item-detail">' + detail + '</div>' : '') +
+                '<div class="more-item-title">' + _escapeHtmlTrip(item.title) + '</div>' +
+                (detail ? '<div class="more-item-detail">' + _escapeHtmlTrip(detail) + '</div>' : '') +
+                (item.website ? '<div class="more-item-link"><i class="fas fa-globe"></i></div>' : '') +
             '</div>' +
         '</div>';
     });
     itemsHtml += '</div>';
 
     popup.innerHTML =
-        '<button class="popup-close" onclick="hideCalendarItemPopup()">&times;</button>' +
+        '<button class="popup-close" onclick="hideItemDetailPopup()">&times;</button>' +
         '<div class="popup-header">' +
             '<div class="popup-title">More Activities</div>' +
         '</div>' +
         itemsHtml;
 
     document.body.appendChild(popup);
+
+    // Add click handlers for items in the list
+    popup.querySelectorAll('.more-item[data-hidden-index]').forEach(function(itemEl) {
+        itemEl.addEventListener('click', function(e) {
+            var idx = parseInt(itemEl.getAttribute('data-hidden-index'));
+            var itemData = _hiddenItemsData[idx];
+            if (itemData) {
+                showItemDetailFromData(itemData, itemEl);
+            }
+        });
+    });
 
     // Position popup near the clicked element (account for scroll)
     var rect = element.getBoundingClientRect();
@@ -353,10 +239,18 @@ function showCalendarMorePopup(element) {
     popup.style.top = top + 'px';
 }
 
-// Close popup on escape key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') hideCalendarItemPopup();
-});
+// Helper to escape HTML
+function _escapeHtmlTrip(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Legacy function name for compatibility
+function hideCalendarItemPopup() {
+    hideItemDetailPopup();
+}
 
 // Map status polling - only poll if map is pending/processing
 (function() {

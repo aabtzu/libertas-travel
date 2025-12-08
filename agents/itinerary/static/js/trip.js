@@ -114,12 +114,27 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// Double-click on column items to show detail popup
+// Double-click on column items, night-stay, or activity items to show detail popup
 document.addEventListener('dblclick', function(event) {
+    // Grid view items
     var columnItem = event.target.closest('.column-item');
     if (columnItem && columnItem.hasAttribute('data-title')) {
         event.stopPropagation();
         showItemDetailPopup(columnItem, event);
+        return;
+    }
+    // Grid view night stay
+    var nightStay = event.target.closest('.night-stay');
+    if (nightStay && nightStay.hasAttribute('data-title')) {
+        event.stopPropagation();
+        showItemDetailPopup(nightStay, event);
+        return;
+    }
+    // List view items
+    var activityItem = event.target.closest('.activity');
+    if (activityItem && activityItem.hasAttribute('data-title')) {
+        event.stopPropagation();
+        showItemDetailPopup(activityItem, event);
     }
 });
 

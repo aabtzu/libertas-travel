@@ -1,17 +1,11 @@
 /* Trip Page Styles - Libertas */
 /* This file can be edited directly - no need to regenerate HTML */
 
-/* ==================== Leaflet Map ==================== */
-#leaflet-map {
+/* ==================== Google Maps ==================== */
+#google-map {
     width: 100%;
     height: 100%;
     min-height: 500px;
-}
-
-/* Remove default background from custom markers */
-.leaflet-custom-marker {
-    background: none;
-    border: none;
 }
 
 #map-tab {
@@ -252,7 +246,6 @@
     color: #333;
 }
 
-/* Grid view icons (matching create.css colors) */
 .column-item-icon {
     font-size: 0.9rem;
     opacity: 0.85;
@@ -265,7 +258,7 @@
 .column-item.activity .column-item-icon,
 .column-item.attraction .column-item-icon { color: #2e7d32; }
 .column-item.meal .column-item-icon { color: #c2185b; }
-.column-item.other .column-item-icon { color: #607d8b; }
+.column-item.other .column-item-icon { color: #616161; }
 
 .column-item-location {
     display: block;
@@ -636,4 +629,72 @@
 
 .calendar-empty p {
     color: #999;
+}
+
+/* Shared Item Detail Popup - works with item-detail.js */
+.item-detail-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.item-detail-popup {
+    position: absolute;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    z-index: 1001;
+    min-width: 280px;
+    max-width: 400px;
+}
+
+.item-detail-popup .popup-detail a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.item-detail-popup .popup-detail a:hover {
+    text-decoration: underline;
+}
+
+.item-detail-popup .popup-notes {
+    align-items: flex-start;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+}
+
+.item-detail-popup .popup-notes span {
+    line-height: 1.4;
+}
+
+/* Column item, night-stay, and activity clickable styles */
+.column-item,
+.night-stay[data-title],
+.activity[data-title] {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.column-item:hover,
+.night-stay[data-title]:hover,
+.activity[data-title]:hover {
+    background: rgba(102, 126, 234, 0.08);
+}
+
+/* More items link indicator */
+.more-item-link {
+    color: #667eea;
+    font-size: 0.75rem;
+    margin-top: 2px;
+}
+
+.more-item:hover {
+    background: rgba(102, 126, 234, 0.08);
+    border-radius: 6px;
 }

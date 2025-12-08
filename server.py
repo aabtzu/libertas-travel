@@ -581,8 +581,10 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.send_error(403, "Forbidden")
             return
 
-        # Remove leading slash and look in output folder
+        # Remove leading slash and /trip/ prefix, look in output folder
         filename = path.lstrip("/")
+        if filename.startswith("trip/"):
+            filename = filename[5:]  # Remove "trip/" prefix
         file_path = OUTPUT_DIR / filename
 
         # Check if file exists
