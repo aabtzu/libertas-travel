@@ -439,9 +439,10 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         # Debug logging
         print(f"[CREATE CHAT] Response text length: {len(display_text)}")
         print(f"[CREATE CHAT] Parsed suggested items: {len(suggested_items)}")
-        if suggested_items:
-            print(f"[CREATE CHAT] First item: {suggested_items[0]}")
-        else:
+        for i, item in enumerate(suggested_items[:5]):  # Show first 5 items
+            website_status = f"website={item.get('website', 'NONE')}"
+            print(f"[CREATE CHAT] Item {i+1}: {item.get('title', 'NO TITLE')} - {website_status}")
+        if not suggested_items:
             print(f"[CREATE CHAT] Response preview: {display_text[:500]}")
 
         return {
@@ -640,15 +641,17 @@ def _parse_suggested_items(response_text: str) -> List[Dict[str, Any]]:
 
         # Extract website URL from markdown format [text](url) or plain URL
         website = None
-        url_pattern = r'\[(?:Website|Site|Link|Official)\]\((https?://[^\)]+)\)'
-        url_match = re.search(url_pattern, description, re.IGNORECASE)
+
+        # Pattern 1: Any markdown link format [any text](url)
+        any_link_pattern = r'\[([^\]]+)\]\((https?://[^\)]+)\)'
+        url_match = re.search(any_link_pattern, description)
         if url_match:
-            website = url_match.group(1)
-            # Remove the URL from description
-            description = re.sub(url_pattern, '', description, flags=re.IGNORECASE).strip()
+            website = url_match.group(2)  # Group 2 is the URL
+            # Remove the markdown link from description
+            description = re.sub(any_link_pattern, '', description).strip()
         else:
-            # Try plain URL at end of description
-            plain_url = r'(https?://[^\s\)]+)\s*$'
+            # Pattern 2: Plain URL anywhere in the text (not just at end)
+            plain_url = r'(https?://[^\s\)\]]+)'
             plain_match = re.search(plain_url, description)
             if plain_match:
                 website = plain_match.group(1)

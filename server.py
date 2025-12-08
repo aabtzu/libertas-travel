@@ -1045,7 +1045,7 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
         self.wfile.write(json.dumps({"success": True}).encode())
 
     def handle_retry_geocoding(self):
-        """Retry geocoding for a trip that failed."""
+        """Retry geocoding for a trip - regenerate map with fresh geocoding."""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
@@ -1067,21 +1067,36 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
             self.send_json_error("Trip not found")
             return
 
-        # Read the existing HTML file and extract itinerary data to re-geocode
-        html_path = OUTPUT_DIR / link
-        if not html_path.exists():
-            self.send_json_error("Trip HTML file not found")
+        # Get itinerary_data from database
+        itinerary_data = trip.get('itinerary_data')
+        if not itinerary_data:
+            self.send_json_error("No itinerary data available for this trip")
             return
 
-        # Reset status to pending
-        db.update_trip_map_status(user_id, link, "pending", None)
+        # Parse itinerary_data if it's a string
+        if isinstance(itinerary_data, str):
+            try:
+                itinerary_data = json.loads(itinerary_data)
+            except:
+                self.send_json_error("Invalid itinerary data format")
+                return
 
-        # For now, just regenerate the map from scratch using the existing page content
-        # This requires parsing the summary HTML back to an itinerary - complex
-        # Instead, we'll set to pending and let the user re-upload if needed
+        # Convert to Itinerary object
+        from agents.create.handler import _convert_to_itinerary
+        trip_for_convert = {'itinerary_data': itinerary_data, 'title': trip.get('title', 'Trip')}
+        itinerary = _convert_to_itinerary(trip_for_convert)
+
+        if not itinerary:
+            self.send_json_error("Could not parse itinerary data")
+            return
+
+        # Reset status to pending and queue for geocoding
+        db.update_trip_map_status(user_id, link, "pending", None)
+        geocoding_worker.queue_geocoding(link, itinerary)
+
         self.send_json_response({
             "success": True,
-            "message": "Map status reset to pending. Please re-import the trip to regenerate the map.",
+            "message": "Map regeneration queued. Please refresh the page in a few moments.",
         })
 
     def handle_get_users(self):
@@ -1577,13 +1592,12 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                         "locations": len(locations),
                         "activities": len(itinerary.items),
                         "map_status": "pending",
-                        "itinerary_data": itinerary_data,
                         "is_public": import_data.get('is_public', False),
                     }
 
-                    # Add trip to database
+                    # Add trip to database (itinerary_data passed separately)
                     user_id = self.get_current_user_id()
-                    db.add_trip(user_id, trip_data)
+                    db.add_trip(user_id, trip_data, itinerary_data)
                     print(f"[UPLOAD] Saved trip for user {user_id}")
 
                     # Queue geocoding
@@ -1659,8 +1673,9 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                 })
 
             finally:
-                # Clean up temp file
-                os.unlink(tmp_path)
+                # Clean up temp file if it still exists
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
 
         except Exception as e:
             import traceback
