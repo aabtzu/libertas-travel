@@ -485,6 +485,7 @@ function renderDayItems(items, dayIndex) {
         const iconClass = getItemIcon(item);
         const timeStr = item.time ? `<span><i class="fas fa-clock"></i> ${formatTime12Hour(item.time)}</span>` : '';
         const locationStr = item.location ? `<span><i class="fas fa-map-marker-alt"></i> ${item.location}</span>` : '';
+        const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
 
         return `
             <div class="item-card ${item.category || 'other'}" data-day-index="${dayIndex}" data-item-index="${index}" draggable="true">
@@ -492,7 +493,7 @@ function renderDayItems(items, dayIndex) {
                     <i class="fas ${iconClass}"></i>
                 </div>
                 <div class="item-content">
-                    <div class="item-title">${escapeHtml(item.title)}</div>
+                    <div class="item-title">${escapeHtml(item.title)} ${websiteStr}</div>
                     <div class="item-meta">
                         ${timeStr}
                         ${locationStr}
@@ -528,6 +529,7 @@ function renderIdeas() {
 
     container.innerHTML = currentTrip.ideas.map((item, index) => {
         const iconClass = getItemIcon(item);
+        const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
 
         return `
             <div class="item-card ${item.category || 'other'}" data-idea-index="${index}" draggable="true">
@@ -535,7 +537,7 @@ function renderIdeas() {
                     <i class="fas ${iconClass}"></i>
                 </div>
                 <div class="item-content">
-                    <div class="item-title">${escapeHtml(item.title)}</div>
+                    <div class="item-title">${escapeHtml(item.title)} ${websiteStr}</div>
                     ${item.notes ? `<div class="item-meta">${escapeHtml(item.notes.substring(0, 50))}...</div>` : ''}
                 </div>
                 <div class="item-actions">
@@ -693,6 +695,7 @@ function addItemToDay(item, dayIndex) {
         title: item.title,
         category: item.category || 'activity',
         location: item.location || null,
+        website: item.website || null,
         notes: item.notes || null,
         time: null
     });
@@ -731,6 +734,7 @@ function handleAddItem(e) {
         category: document.getElementById('item-category').value,
         time: document.getElementById('item-time').value || null,
         location: document.getElementById('item-location').value.trim() || null,
+        website: document.getElementById('item-website').value.trim() || null,
         notes: document.getElementById('item-notes').value.trim() || null
     };
 
@@ -774,6 +778,7 @@ function editItem(dayIndex, itemIndex) {
     document.getElementById('item-category').value = item.category || 'activity';
     document.getElementById('item-time').value = item.time || '';
     document.getElementById('item-location').value = item.location || '';
+    document.getElementById('item-website').value = item.website || '';
     document.getElementById('item-notes').value = item.notes || '';
     document.getElementById('item-target-day').value = dayIndex;
 
@@ -797,6 +802,7 @@ function editItem(dayIndex, itemIndex) {
             category: document.getElementById('item-category').value,
             time: document.getElementById('item-time').value || null,
             location: document.getElementById('item-location').value.trim() || null,
+            website: document.getElementById('item-website').value.trim() || null,
             notes: document.getElementById('item-notes').value.trim() || null
         };
 
@@ -842,6 +848,7 @@ function editIdea(ideaIndex) {
     document.getElementById('item-category').value = item.category || 'activity';
     document.getElementById('item-time').value = item.time || '';
     document.getElementById('item-location').value = item.location || '';
+    document.getElementById('item-website').value = item.website || '';
     document.getElementById('item-notes').value = item.notes || '';
     document.getElementById('item-target-day').value = 'ideas';
 
@@ -865,6 +872,7 @@ function editIdea(ideaIndex) {
             category: document.getElementById('item-category').value,
             time: document.getElementById('item-time').value || null,
             location: document.getElementById('item-location').value.trim() || null,
+            website: document.getElementById('item-website').value.trim() || null,
             notes: document.getElementById('item-notes').value.trim() || null
         };
 
@@ -1296,6 +1304,7 @@ function processAddItems(items) {
             title: item.title || 'Untitled',
             category: item.category || 'activity',
             location: item.location || '',
+            website: item.website || null,
             notes: item.notes || '',
             time: item.time || null
         };
@@ -1407,7 +1416,10 @@ function addChatMessage(role, content, suggestedItems = [], saveToHistory = true
 
             const headerDiv = document.createElement('div');
             headerDiv.className = 'suggestion-item-header';
-            headerDiv.innerHTML = `<span class="suggestion-item-title">${escapeHtml(item.title)}</span>`;
+            const websiteLink = item.website
+                ? ` <a href="${escapeHtml(item.website)}" target="_blank" class="suggestion-website-link" title="Visit website"><i class="fas fa-external-link-alt"></i></a>`
+                : '';
+            headerDiv.innerHTML = `<span class="suggestion-item-title">${escapeHtml(item.title)}${websiteLink}</span>`;
             itemDiv.appendChild(headerDiv);
 
             if (item.notes) {

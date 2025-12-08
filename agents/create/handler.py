@@ -392,6 +392,10 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
                                 "time": {
                                     "type": "string",
                                     "description": "Time in 24-hour format like '14:30' (optional)"
+                                },
+                                "website": {
+                                    "type": "string",
+                                    "description": "Official website URL for the place (e.g., https://example.com)"
                                 }
                             },
                             "required": ["title", "category"]
@@ -543,15 +547,17 @@ DO NOT use the tool when the user asks for:
 Categories: meal, hotel, activity, attraction, transport, other
 Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
 Time: 24-hour format like "14:30" (optional)
+Website: Include the official website URL when available
 
 ## SUGGESTING (default behavior)
 
 When the user asks for suggestions, recommendations, ideas, or options - DO NOT use the tool!
 Instead, respond with this EXACT format so they can choose what to add:
 
-1. **Venue Name** - Brief description and why it's worth visiting.
-2. **Another Venue** - Its description here.
+1. **Venue Name** - Brief description and why it's worth visiting. [Website](https://example.com)
+2. **Another Venue** - Its description here. [Website](https://their-site.com)
 
+IMPORTANT: Always include a website link for each suggestion when you know the official URL.
 The user will see "Add to Ideas" buttons under each suggestion and can choose which ones to add.
 
 Guidelines:
@@ -632,6 +638,25 @@ def _parse_suggested_items(response_text: str) -> List[Dict[str, Any]]:
         if not name:
             continue
 
+        # Extract website URL from markdown format [text](url) or plain URL
+        website = None
+        url_pattern = r'\[(?:Website|Site|Link|Official)\]\((https?://[^\)]+)\)'
+        url_match = re.search(url_pattern, description, re.IGNORECASE)
+        if url_match:
+            website = url_match.group(1)
+            # Remove the URL from description
+            description = re.sub(url_pattern, '', description, flags=re.IGNORECASE).strip()
+        else:
+            # Try plain URL at end of description
+            plain_url = r'(https?://[^\s\)]+)\s*$'
+            plain_match = re.search(plain_url, description)
+            if plain_match:
+                website = plain_match.group(1)
+                description = re.sub(plain_url, '', description).strip()
+
+        # Clean up trailing punctuation from description
+        description = description.rstrip(' .-–—')
+
         # Try to determine category from keywords
         category = 'activity'
         combined_lower = (name + ' ' + description).lower()
@@ -644,11 +669,15 @@ def _parse_suggested_items(response_text: str) -> List[Dict[str, Any]]:
         elif any(word in combined_lower for word in ['hike', 'trail', 'tour', 'trek', 'walk', 'cycling']):
             category = 'activity'
 
-        items.append({
+        item = {
             'title': name,
             'category': category,
             'notes': description[:200] if len(description) > 200 else description
-        })
+        }
+        if website:
+            item['website'] = website
+
+        items.append(item)
 
     return items
 
