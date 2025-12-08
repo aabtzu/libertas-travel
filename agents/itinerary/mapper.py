@@ -122,6 +122,42 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         result = result.strip('"\'.')
         return result if result and len(result) < 100 else ""
 
+    # Cache for IATA code lookups to avoid repeated LLM calls
+    _iata_cache: dict = {}
+
+    def _resolve_iata_code(self, iata: str) -> str:
+        """Use LLM to resolve an IATA airport code to full airport name for geocoding."""
+        # Check cache first
+        if iata in self._iata_cache:
+            return self._iata_cache[iata]
+
+        # Skip common non-airport 3-letter words
+        skip_words = {'THE', 'AND', 'FOR', 'DAY', 'VIA', 'NON', 'ONE', 'TWO', 'NEW', 'OLD'}
+        if iata in skip_words:
+            self._iata_cache[iata] = ""
+            return ""
+
+        try:
+            import anthropic
+            client = anthropic.Anthropic()
+
+            response = client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=50,
+                messages=[{"role": "user", "content": f"What airport has IATA code {iata}? Reply with ONLY the airport name and city, e.g. 'Munich Airport, Germany' or 'NONE' if not a valid airport code."}]
+            )
+
+            result = response.content[0].text.strip()
+            if result and 'NONE' not in result.upper() and len(result) < 100:
+                self._iata_cache[iata] = result
+                print(f"[GEOCODING] Resolved IATA {iata} -> {result}")
+                return result
+        except Exception as e:
+            print(f"[GEOCODING] Failed to resolve IATA {iata}: {e}")
+
+        self._iata_cache[iata] = ""
+        return ""
+
     def _get_region_hint_fallback(self, itinerary: Itinerary) -> str:
         """Fallback pattern matching for region extraction."""
         regions = []
@@ -174,59 +210,16 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         if is_flight:
             import re
 
-            # Common IATA codes to full airport names (for reliable geocoding)
-            iata_to_airport = {
-                'MUC': 'Munich Airport Germany',
-                'VIE': 'Vienna International Airport Austria',
-                'FCO': 'Rome Fiumicino Airport Italy',
-                'CDG': 'Paris Charles de Gaulle Airport France',
-                'LHR': 'London Heathrow Airport UK',
-                'JFK': 'John F Kennedy International Airport New York',
-                'LAX': 'Los Angeles International Airport',
-                'SFO': 'San Francisco International Airport',
-                'ORD': 'Chicago O\'Hare International Airport',
-                'FRA': 'Frankfurt Airport Germany',
-                'AMS': 'Amsterdam Schiphol Airport Netherlands',
-                'ZRH': 'Zurich Airport Switzerland',
-                'BCN': 'Barcelona El Prat Airport Spain',
-                'MAD': 'Madrid Barajas Airport Spain',
-                'LIS': 'Lisbon Airport Portugal',
-                'ATH': 'Athens International Airport Greece',
-                'IST': 'Istanbul Airport Turkey',
-                'DXB': 'Dubai International Airport UAE',
-                'SIN': 'Singapore Changi Airport',
-                'HND': 'Tokyo Haneda Airport Japan',
-                'NRT': 'Tokyo Narita Airport Japan',
-                'ICN': 'Seoul Incheon Airport South Korea',
-                'BKK': 'Bangkok Suvarnabhumi Airport Thailand',
-                'DEL': 'Delhi Indira Gandhi Airport India',
-                'BOM': 'Mumbai Airport India',
-                'SYD': 'Sydney Airport Australia',
-                'MEL': 'Melbourne Airport Australia',
-                'EWR': 'Newark Liberty Airport New Jersey',
-                'BOS': 'Boston Logan Airport',
-                'SEA': 'Seattle Tacoma Airport',
-                'DEN': 'Denver International Airport',
-                'MIA': 'Miami International Airport',
-                'YYZ': 'Toronto Pearson Airport Canada',
-                'YVR': 'Vancouver Airport Canada',
-            }
-
-            # Try to extract IATA code from title or location
+            # Try to extract IATA code from title or location and resolve via LLM
             text_to_search = f"{item.title} {location.name or ''}"
-            iata_match = re.search(r'\b([A-Z]{3})\b', text_to_search)
-            if iata_match:
-                iata = iata_match.group(1)
-                if iata in iata_to_airport:
-                    queries.append(iata_to_airport[iata])
 
-            # Also check for IATA codes in format "XXX-YYY" (flight routes)
-            route_match = re.search(r'\b([A-Z]{3})\s*[-–]\s*([A-Z]{3})\b', text_to_search)
-            if route_match:
-                # For departure airport (first code), add if it's the location we're geocoding
-                dep_iata = route_match.group(1)
-                if dep_iata in iata_to_airport:
-                    queries.append(iata_to_airport[dep_iata])
+            # Look for IATA codes (3 uppercase letters)
+            iata_codes = re.findall(r'\b([A-Z]{3})\b', text_to_search)
+            for iata in iata_codes:
+                airport_name = self._resolve_iata_code(iata)
+                if airport_name:
+                    queries.append(airport_name)
+                    break  # Use first valid airport found
 
             if location.name:
                 loc_name = location.name
