@@ -384,13 +384,15 @@ async function loadTrip(link) {
             updateEditorUI();
             hideCreateDialog();
 
-            // Hide publish button if already published
+            // Change publish button text for already-published trips
             const publishBtn = document.getElementById('publish-btn');
             if (publishBtn) {
                 if (!trip.is_draft) {
-                    publishBtn.style.display = 'none';
+                    publishBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Republish';
+                    publishBtn.title = 'Regenerate trip HTML with latest changes';
                 } else {
-                    publishBtn.style.display = '';
+                    publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Publish';
+                    publishBtn.title = '';
                 }
             }
 
@@ -1655,12 +1657,17 @@ function previewTrip() {
 }
 
 /**
- * Publish the trip (convert from draft)
+ * Publish the trip (convert from draft, or republish existing)
  */
 async function publishTrip() {
     if (!currentTrip.link) return;
 
-    if (!confirm('Publish this trip? It will be visible in your trips list.')) return;
+    const isRepublish = !currentTrip.is_draft;
+    const confirmMsg = isRepublish
+        ? 'Republish this trip? This will regenerate the trip page with your latest changes.'
+        : 'Publish this trip? It will be visible in your trips list.';
+
+    if (!confirm(confirmMsg)) return;
 
     try {
         // Save first
@@ -1674,8 +1681,14 @@ async function publishTrip() {
         const data = await response.json();
 
         if (data.success) {
-            alert('Trip published successfully!');
-            window.location.href = '/trips.html';
+            const successMsg = isRepublish ? 'Trip republished successfully!' : 'Trip published successfully!';
+            alert(successMsg);
+            if (isRepublish) {
+                // For republish, open the trip view to see changes
+                window.open(`/trip/${currentTrip.link}`, '_blank');
+            } else {
+                window.location.href = '/trips.html';
+            }
         } else {
             alert(data.error || 'Failed to publish trip');
         }
