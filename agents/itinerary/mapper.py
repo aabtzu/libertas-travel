@@ -171,22 +171,77 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
             queries.append(location.address)
 
         # For flights, try to geocode the airport specifically
-        if is_flight and location.name:
-            loc_name = location.name
+        if is_flight:
             import re
 
-            # Extract city from location like "Vienna (Vienna International, Terminal 3)"
-            match = re.match(r'^([^(]+)', loc_name)
-            city = match.group(1).strip() if match else loc_name.split()[0]
+            # Common IATA codes to full airport names (for reliable geocoding)
+            iata_to_airport = {
+                'MUC': 'Munich Airport Germany',
+                'VIE': 'Vienna International Airport Austria',
+                'FCO': 'Rome Fiumicino Airport Italy',
+                'CDG': 'Paris Charles de Gaulle Airport France',
+                'LHR': 'London Heathrow Airport UK',
+                'JFK': 'John F Kennedy International Airport New York',
+                'LAX': 'Los Angeles International Airport',
+                'SFO': 'San Francisco International Airport',
+                'ORD': 'Chicago O\'Hare International Airport',
+                'FRA': 'Frankfurt Airport Germany',
+                'AMS': 'Amsterdam Schiphol Airport Netherlands',
+                'ZRH': 'Zurich Airport Switzerland',
+                'BCN': 'Barcelona El Prat Airport Spain',
+                'MAD': 'Madrid Barajas Airport Spain',
+                'LIS': 'Lisbon Airport Portugal',
+                'ATH': 'Athens International Airport Greece',
+                'IST': 'Istanbul Airport Turkey',
+                'DXB': 'Dubai International Airport UAE',
+                'SIN': 'Singapore Changi Airport',
+                'HND': 'Tokyo Haneda Airport Japan',
+                'NRT': 'Tokyo Narita Airport Japan',
+                'ICN': 'Seoul Incheon Airport South Korea',
+                'BKK': 'Bangkok Suvarnabhumi Airport Thailand',
+                'DEL': 'Delhi Indira Gandhi Airport India',
+                'BOM': 'Mumbai Airport India',
+                'SYD': 'Sydney Airport Australia',
+                'MEL': 'Melbourne Airport Australia',
+                'EWR': 'Newark Liberty Airport New Jersey',
+                'BOS': 'Boston Logan Airport',
+                'SEA': 'Seattle Tacoma Airport',
+                'DEN': 'Denver International Airport',
+                'MIA': 'Miami International Airport',
+                'YYZ': 'Toronto Pearson Airport Canada',
+                'YVR': 'Vancouver Airport Canada',
+            }
 
-            # Add explicit airport queries first (most reliable)
-            queries.append(f"{city} International Airport")
+            # Try to extract IATA code from title or location
+            text_to_search = f"{item.title} {location.name or ''}"
+            iata_match = re.search(r'\b([A-Z]{3})\b', text_to_search)
+            if iata_match:
+                iata = iata_match.group(1)
+                if iata in iata_to_airport:
+                    queries.append(iata_to_airport[iata])
 
-            # Also try the full location with Airport appended if not present
-            if 'airport' not in loc_name.lower():
-                queries.append(f"{loc_name} Airport")
+            # Also check for IATA codes in format "XXX-YYY" (flight routes)
+            route_match = re.search(r'\b([A-Z]{3})\s*[-–]\s*([A-Z]{3})\b', text_to_search)
+            if route_match:
+                # For departure airport (first code), add if it's the location we're geocoding
+                dep_iata = route_match.group(1)
+                if dep_iata in iata_to_airport:
+                    queries.append(iata_to_airport[dep_iata])
 
-            queries.append(loc_name)
+            if location.name:
+                loc_name = location.name
+                # Extract city from location like "Vienna (Vienna International, Terminal 3)"
+                match = re.match(r'^([^(]+)', loc_name)
+                city = match.group(1).strip() if match else loc_name.split()[0]
+
+                # Add explicit airport queries
+                queries.append(f"{city} International Airport")
+                queries.append(f"{city} Airport")
+
+                if 'airport' not in loc_name.lower():
+                    queries.append(f"{loc_name} Airport")
+
+                queries.append(loc_name)
 
         # Use item title with location context (e.g., "Sina Centurion Palace Venice Italy")
         elif item.title and location.name:
