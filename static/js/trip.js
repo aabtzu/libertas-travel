@@ -8,6 +8,41 @@ function exportTrip() {
     window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/export';
 }
 
+// Regenerate map with fresh geocoding
+function regenerateMap() {
+    var tripLink = window.location.pathname.split('/').pop();
+
+    // Show loading state
+    var mapLoading = document.getElementById('map-loading');
+    if (mapLoading) {
+        mapLoading.classList.remove('hidden');
+        mapLoading.innerHTML = '<div class="map-loading-spinner"></div>' +
+            '<div class="map-loading-text">Regenerating map...</div>' +
+            '<div class="map-loading-subtext">This may take a minute</div>';
+    }
+
+    fetch('/api/retry-geocoding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: tripLink })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // Poll for completion then reload
+            var badge = document.getElementById('map-status-badge');
+            if (badge) badge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#667eea;margin-left:5px;"></i>';
+        } else {
+            alert('Failed to regenerate map: ' + (data.error || 'Unknown error'));
+            if (mapLoading) mapLoading.classList.add('hidden');
+        }
+    })
+    .catch(function(err) {
+        alert('Failed to regenerate map: ' + err);
+        if (mapLoading) mapLoading.classList.add('hidden');
+    });
+}
+
 // Tab switching
 function switchTab(tabName) {
     // Remove active class from all tabs and content
@@ -19,13 +54,13 @@ function switchTab(tabName) {
     document.getElementById(tabName + '-tab').classList.add('active');
 }
 
-// Initialize Google Map
+// Initialize Leaflet Map
 var map = null;
 var markers = [];
-var infoWindow = null;
 
 function initMap() {
     var mapLoading = document.getElementById('map-loading');
+    var mapContainer = document.getElementById('leaflet-map');
 
     if (!mapData || mapData.error) {
         if (mapLoading) {
@@ -36,24 +71,15 @@ function initMap() {
         return;
     }
 
-    // Create map with mapId for AdvancedMarkerElement support
-    map = new google.maps.Map(document.getElementById('google-map'), {
-        center: mapData.center,
-        zoom: mapData.zoom,
-        mapId: 'DEMO_MAP_ID',
-        mapTypeControl: true,
-        mapTypeControlOptions: {
-            style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-            position: google.maps.ControlPosition.TOP_RIGHT
-        },
-        fullscreenControl: true,
-        streetViewControl: false,
-    });
+    // Create Leaflet map
+    map = L.map('leaflet-map').setView([mapData.center.lat, mapData.center.lng], mapData.zoom);
 
-    // Create info window
-    infoWindow = new google.maps.InfoWindow();
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-    // Category icon mapping (using Font Awesome class names)
+    // Category icon mapping
     var categoryIcons = {
         'flight': 'fa-plane',
         'hotel': 'fa-bed',
@@ -61,31 +87,27 @@ function initMap() {
         'meal': 'fa-utensils',
         'restaurant': 'fa-utensils',
         'activity': 'fa-star',
-        'attraction': 'fa-star',
+        'attraction': 'fa-landmark',
         'transport': 'fa-car',
         'other': 'fa-map-marker-alt'
     };
 
-    // Add markers with category icons using custom HTML
+    // Add markers with category icons
     mapData.markers.forEach(function(markerData, index) {
         var iconClass = categoryIcons[markerData.category] || 'fa-map-marker-alt';
 
-        // Create custom marker element
-        var markerDiv = document.createElement('div');
-        markerDiv.style.cssText = 'width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer; background-color: ' + markerData.color + ';';
-        markerDiv.innerHTML = '<i class="fas ' + iconClass + '" style="color: white; font-size: 12px;"></i>';
-
-        var marker = new google.maps.marker.AdvancedMarkerElement({
-            position: markerData.position,
-            map: map,
-            title: markerData.title,
-            content: markerDiv
+        // Create custom div icon for Leaflet
+        var icon = L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); background-color: ' + markerData.color + ';"><i class="fas ' + iconClass + '" style="color: white; font-size: 12px;"></i></div>',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+            popupAnchor: [0, -14]
         });
 
-        marker.addListener('click', function() {
-            infoWindow.setContent(markerData.info);
-            infoWindow.open(map, marker);
-        });
+        var marker = L.marker([markerData.position.lat, markerData.position.lng], { icon: icon })
+            .addTo(map)
+            .bindPopup(markerData.info, { maxWidth: 350 });
 
         markers.push(marker);
     });
@@ -93,6 +115,27 @@ function initMap() {
     // Hide loading overlay
     if (mapLoading) mapLoading.classList.add('hidden');
 }
+
+// Initialize map when switching to map tab
+document.addEventListener('DOMContentLoaded', function() {
+    // Only initialize if map data has markers
+    if (mapData && mapData.markers && mapData.markers.length > 0) {
+        // Initialize immediately if map tab is active, otherwise wait for tab switch
+        var mapTab = document.getElementById('map-tab');
+        if (mapTab && mapTab.classList.contains('active')) {
+            setTimeout(initMap, 100);
+        }
+    }
+});
+
+// Also initialize when map tab is clicked
+var originalSwitchTab = window.switchTab;
+window.switchTab = function(tabName) {
+    originalSwitchTab(tabName);
+    if (tabName === 'map' && !map && mapData && mapData.markers && mapData.markers.length > 0) {
+        setTimeout(initMap, 100);
+    }
+};
 
 // Item popup - using event delegation for calendar items (click) and column items (double-click)
 // Uses shared item-detail.js for popup display
