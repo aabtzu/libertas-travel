@@ -8,6 +8,12 @@ function exportTrip() {
     window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/export';
 }
 
+// Edit trip - navigate to create page with trip loaded
+function editTrip() {
+    var tripLink = window.location.pathname.split('/').pop();
+    window.location.href = '/create.html?edit=' + encodeURIComponent(tripLink);
+}
+
 // Regenerate map with fresh geocoding
 function regenerateMap() {
     var tripLink = window.location.pathname.split('/').pop();
