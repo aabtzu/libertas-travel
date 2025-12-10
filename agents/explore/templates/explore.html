@@ -6,9 +6,8 @@
     <title>Explore - Libertas</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=7">
     <style>
-{main_css}
-
 {explore_css}
     </style>
 </head>
@@ -45,8 +44,11 @@
         </main>
 
         <!-- Sidebar Chat -->
-        <aside class="explore-sidebar">
+        <aside class="explore-sidebar mobile-sidebar" id="explore-sidebar">
             <div class="sidebar-header">
+                <button class="mobile-close-btn" id="explore-sidebar-close" aria-label="Close chat">
+                    <i class="fas fa-times"></i>
+                </button>
                 <h2><i class="fas fa-compass"></i> Explore Destinations</h2>
                 <p>Chat with me to discover amazing places</p>
             </div>
@@ -74,8 +76,16 @@
                 </div>
             </div>
         </aside>
+        <!-- Mobile sidebar overlay -->
+        <div class="mobile-sidebar-overlay" id="explore-sidebar-overlay"></div>
     </div>
 
+    <!-- Mobile FAB for chat -->
+    <button class="mobile-fab" id="explore-chat-fab" aria-label="Open chat">
+        <i class="fas fa-comments"></i>
+    </button>
+
+    <script src="/static/js/main.js?v=2"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key={google_maps_api_key}&libraries=marker&callback=initMap" async defer></script>
     <script>
 {explore_js}

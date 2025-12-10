@@ -1068,3 +1068,169 @@
 .trip-map-popup a:hover {
     text-decoration: underline;
 }
+
+/* ==================== Mobile Responsive ==================== */
+@media (max-width: 768px) {
+    /* Header */
+    .trips-header {
+        padding: 30px 20px;
+    }
+
+    .trips-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .trips-header p {
+        font-size: 0.95rem;
+    }
+
+    .new-trip-btn {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+
+    /* Container */
+    .trips-container {
+        padding: 20px 16px;
+    }
+
+    /* View tabs - scrollable */
+    .trips-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .trips-view-tabs {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .trips-tab {
+        flex: 1;
+        justify-content: center;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+
+    /* Hide tab text on small screens, show icons only */
+    .trips-tab span {
+        display: none;
+    }
+
+    /* Grid view - single column */
+    .trips-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    /* List view - stack vertically like cards */
+    .trips-list .trip-card {
+        flex-direction: column;
+    }
+
+    .trips-list .trip-card-image {
+        width: 100%;
+        min-width: 100%;
+        height: 120px;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .trips-list .trip-card-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .trips-list .trip-card-title {
+        min-width: auto;
+        font-size: 1rem;
+    }
+
+    .trips-list .trip-card-stats {
+        width: 100%;
+        justify-content: space-around;
+    }
+
+    .trips-list .trip-card-actions {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding-right: 0;
+    }
+
+    /* Upload area */
+    .upload-section {
+        max-width: 100%;
+    }
+
+    .upload-area {
+        padding: 16px;
+    }
+
+    .upload-area i {
+        font-size: 1.5rem;
+    }
+
+    .upload-area h3 {
+        font-size: 0.95rem;
+    }
+
+    /* URL import */
+    .url-input-wrapper {
+        flex-direction: column;
+    }
+
+    .url-submit-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Map view */
+    .trips-map-container {
+        height: 350px;
+    }
+
+    /* Action buttons - always visible on mobile */
+    .trip-card-actions {
+        opacity: 1;
+    }
+
+    .trip-action-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+
+    /* Modal */
+    .modal-dialog,
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        margin: 16px;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .trips-header {
+        padding: 24px 16px;
+    }
+
+    .trips-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .trips-tab {
+        padding: 8px 10px;
+    }
+
+    .trip-stat-value {
+        font-size: 1.2rem;
+    }
+
+    .trip-stat-label {
+        font-size: 0.7rem;
+    }
+}

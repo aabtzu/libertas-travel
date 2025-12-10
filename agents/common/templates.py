@@ -51,7 +51,10 @@ NAV_HTML = """
             <div class="brand-tagline">Travel freely</div>
         </div>
     </a>
-    <div class="nav-links">
+    <button class="nav-hamburger" id="nav-hamburger" aria-label="Toggle navigation">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="nav-links" id="nav-links">
         <a href="/" class="nav-link {home_active}"><i class="fas fa-home"></i> Home</a>
         <a href="/trips.html" class="nav-link {trips_active}"><i class="fas fa-route"></i> My Trips</a>
         <a href="/create.html" class="nav-link {create_active}"><i class="fas fa-plus-circle"></i> Create</a>
@@ -59,6 +62,7 @@ NAV_HTML = """
         <a href="/about.html" class="nav-link {about_active}"><i class="fas fa-scroll"></i> About</a>
         <a href="#" class="nav-link logout-link" onclick="logout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
+    <div class="nav-overlay" id="nav-overlay"></div>
 </nav>
 <script>
 function logout() {{

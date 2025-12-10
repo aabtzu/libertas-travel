@@ -3,10 +3,7 @@
 from pathlib import Path
 
 # Import shared components from common
-from agents.common.templates import (
-    get_static_css as common_get_static_css,
-    get_nav_html,
-)
+from agents.common.templates import get_nav_html
 
 # Path to explore static files and templates
 STATIC_DIR = Path(__file__).parent / "static"
@@ -41,7 +38,6 @@ def generate_explore_page(google_maps_api_key: str = "") -> str:
     """Generate the Explore page HTML."""
     template = get_template("explore.html")
     return template.format(
-        main_css=common_get_static_css("main.css"),
         explore_css=get_static_css("explore.css"),
         nav_html=get_nav_html("explore"),
         explore_js=get_static_js("explore.js"),

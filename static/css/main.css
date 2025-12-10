@@ -333,3 +333,279 @@ body {
     height: 100%;
     border: none;
 }
+
+/* ==================== Hamburger Menu ==================== */
+.nav-hamburger {
+    display: none;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 8px;
+    margin-left: auto;
+    z-index: 1001;
+}
+
+.nav-hamburger:hover {
+    color: #f0c674;
+}
+
+.nav-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+.nav-overlay.visible {
+    display: block;
+}
+
+/* ==================== Mobile Navigation ==================== */
+@media (max-width: 768px) {
+    .libertas-nav {
+        padding: 0 16px;
+    }
+
+    .nav-hamburger {
+        display: block;
+    }
+
+    .nav-links {
+        position: fixed;
+        top: 0;
+        right: -280px;
+        width: 280px;
+        height: 100vh;
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        flex-direction: column;
+        padding: 80px 20px 20px;
+        gap: 0;
+        z-index: 1000;
+        transition: right 0.3s ease;
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .nav-links.open {
+        right: 0;
+    }
+
+    .nav-link {
+        padding: 16px 20px;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        width: 100%;
+    }
+
+    .nav-link:hover {
+        background: rgba(240, 198, 116, 0.1);
+    }
+
+    .nav-link.active {
+        background: rgba(240, 198, 116, 0.15);
+    }
+
+    /* Trip header responsive */
+    .trip-header {
+        padding: 15px 16px;
+    }
+
+    .trip-header h1 {
+        font-size: 1.4rem;
+    }
+
+    .trip-header .meta {
+        font-size: 0.85rem;
+    }
+
+    .trip-header > .export-btn {
+        right: 16px;
+    }
+
+    .header-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .export-btn {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
+
+    /* Tabs responsive */
+    .tabs {
+        padding: 0 16px;
+        overflow-x: auto;
+    }
+
+    .tab {
+        padding: 12px 16px;
+        white-space: nowrap;
+        font-size: 0.9rem;
+    }
+
+    /* Summary container responsive */
+    #summary-tab {
+        padding: 20px 16px;
+    }
+
+    .summary-container {
+        padding: 20px;
+    }
+
+    .day-card {
+        padding: 12px 16px;
+    }
+}
+
+/* ==================== Shared Mobile Components ==================== */
+/* These reusable classes work across all pages */
+
+/* Mobile Floating Action Button */
+.mobile-fab {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    z-index: 999;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mobile-fab:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+}
+
+.mobile-fab:active {
+    transform: scale(0.95);
+}
+
+.mobile-fab.hidden {
+    display: none !important;
+}
+
+/* Mobile Slide-in Sidebar */
+.mobile-sidebar {
+    transition: transform 0.3s ease;
+}
+
+.mobile-sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.mobile-sidebar-overlay.visible {
+    display: block;
+}
+
+/* Close button for mobile sidebars */
+.mobile-close-btn {
+    display: none;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.mobile-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ==================== Mobile Breakpoint Styles ==================== */
+@media (max-width: 768px) {
+    /* Show mobile FAB */
+    .mobile-fab {
+        display: flex;
+    }
+
+    /* Show close buttons */
+    .mobile-close-btn {
+        display: flex;
+    }
+
+    /* Generic mobile sidebar behavior - slides in from right */
+    .mobile-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: auto !important;
+        width: 100% !important;
+        max-width: 380px !important;
+        height: 100vh !important;
+        z-index: 1001 !important;
+        transform: translateX(100%);
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .mobile-sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Prevent body scroll when sidebar open */
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+    /* Full-width containers on mobile */
+    .mobile-full-width {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    /* Stack flex containers vertically */
+    .mobile-stack {
+        flex-direction: column !important;
+    }
+
+    /* Hide on mobile */
+    .mobile-hidden {
+        display: none !important;
+    }
+
+    /* Show only on mobile */
+    .desktop-only {
+        display: none !important;
+    }
+}
+
+/* Show only on desktop */
+@media (min-width: 769px) {
+    .mobile-only {
+        display: none !important;
+    }
+}

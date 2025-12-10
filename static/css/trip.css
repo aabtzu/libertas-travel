@@ -704,3 +704,143 @@
     background: rgba(102, 126, 234, 0.08);
     border-radius: 6px;
 }
+
+/* ==================== Mobile Responsive ==================== */
+@media (max-width: 768px) {
+    /* Trip header - stack on mobile */
+    .trip-header {
+        padding: 12px 16px;
+    }
+
+    .trip-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .trip-header h1 {
+        font-size: 1.2rem;
+    }
+
+    .trip-header .meta {
+        font-size: 0.8rem;
+    }
+
+    /* Header buttons - icon-only on mobile */
+    .header-actions {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .header-actions .export-btn {
+        flex: 1;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        justify-content: center;
+    }
+
+    /* Hide button text on small screens, show only icon */
+    .header-actions .export-btn span,
+    .header-actions .export-btn:not(:has(span)) {
+        /* Keep icons visible */
+    }
+
+    /* Tabs - scrollable on mobile */
+    .tabs {
+        padding: 0 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tab {
+        padding: 12px 14px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .tab i {
+        margin-right: 4px;
+    }
+
+    /* Summary content */
+    #list-tab,
+    #grid-tab,
+    #calendar-tab {
+        padding: 16px;
+    }
+
+    .summary-container {
+        padding: 16px;
+    }
+
+    .day-card {
+        padding: 12px;
+        margin: 12px 0;
+    }
+
+    /* Grid view */
+    #grid-tab {
+        padding: 16px;
+    }
+
+    .column-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .column-table {
+        min-width: 600px;
+    }
+
+    /* Calendar */
+    .calendar-container {
+        padding: 16px;
+    }
+
+    .calendar-month {
+        min-width: 100%;
+        padding: 12px;
+    }
+
+    .calendar-day {
+        min-height: 60px;
+    }
+
+    /* Map legend */
+    .map-legend {
+        bottom: 10px;
+        left: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+        max-width: 150px;
+    }
+
+    .legend-dot {
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+    }
+
+    .legend-dot i {
+        font-size: 9px;
+    }
+}
+
+/* Extra small screens - icon only buttons */
+@media (max-width: 480px) {
+    .header-actions .export-btn {
+        padding: 10px;
+        min-width: 44px;
+    }
+
+    /* Hide text, show only icons */
+    .header-actions .export-btn {
+        font-size: 0;
+    }
+
+    .header-actions .export-btn i {
+        font-size: 1rem;
+        margin: 0;
+    }
+}

@@ -105,6 +105,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     initChat();
     initMap();
 
+    // Initialize mobile sidebar (uses shared function from main.js)
+    if (typeof initMobileSidebar === 'function') {
+        initMobileSidebar({
+            sidebarId: 'explore-sidebar',
+            fabId: 'explore-chat-fab',
+            overlayId: 'explore-sidebar-overlay',
+            closeBtnId: 'explore-sidebar-close'
+        });
+    }
+
     // Check for saved state
     const hasState = loadState();
     if (hasState) {

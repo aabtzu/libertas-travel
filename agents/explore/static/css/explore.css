@@ -514,25 +514,40 @@
 @media (max-width: 768px) {
     .explore-container {
         flex-direction: column;
+        height: calc(100vh - 60px);
     }
 
+    /* Hide sidebar on mobile - shown via FAB */
     .explore-sidebar {
-        width: 100%;
-        min-width: 100%;
-        height: 50vh;
+        display: flex;
+        flex-direction: column;
         border-left: none;
-        border-top: 1px solid #e0e0e0;
-        order: 1;
+        background: white;
     }
 
+    /* Main content takes full height */
     .explore-main {
-        order: 0;
-        height: 50vh;
+        flex: 1;
+        height: 100%;
     }
 
     .explore-map-container {
-        height: 200px;
+        height: 40%;
         min-height: 200px;
+    }
+
+    .explore-results {
+        padding: 16px;
+    }
+
+    .venue-cards {
+        grid-template-columns: 1fr;
+    }
+
+    /* Sidebar header needs relative positioning for close button */
+    .sidebar-header {
+        position: relative;
+        padding-right: 50px;
     }
 }
 
