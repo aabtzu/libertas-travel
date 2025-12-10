@@ -373,8 +373,13 @@ def regenerate_all_trip_html(user_id: int = None) -> dict:
                 needs_update = False
                 update_data = {}
 
-                # Fix dates if missing or invalid
-                if not current_dates or current_dates in ('Date unknown', 'None', ''):
+                # Fix dates if missing, invalid, or in wrong format (date range like "2025-12-09 - 2025-12-09")
+                needs_date_fix = (
+                    not current_dates or
+                    current_dates in ('Date unknown', 'None', '') or
+                    ' - ' in current_dates  # Date range format needs reformatting
+                )
+                if needs_date_fix:
                     start_date = get_trip_start_date(itinerary_data)
                     if start_date:
                         formatted_date = format_trip_date(start_date)
