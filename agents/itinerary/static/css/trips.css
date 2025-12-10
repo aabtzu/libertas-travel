@@ -30,19 +30,22 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: white;
-    color: #667eea;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
+    background: #fff;
+    color: #5a4fcf;
+    padding: 14px 28px;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
     text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .new-trip-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    background: #f8f8ff;
 }
 
 .trips-container {
