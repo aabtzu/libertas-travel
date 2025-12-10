@@ -1,8 +1,21 @@
 """Trip-specific HTML templates for Libertas Itinerary agent."""
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
+
+
+def format_trip_date(date_str: Optional[str]) -> str:
+    """Format a date string as 'Mon YYYY' (e.g., 'Dec 2025')."""
+    if not date_str:
+        return "Date unknown"
+    try:
+        # Parse ISO format date (YYYY-MM-DD)
+        dt = datetime.strptime(date_str[:10], "%Y-%m-%d")
+        return dt.strftime("%b %Y")
+    except (ValueError, TypeError):
+        return "Date unknown"
 
 # Import shared components from common
 from agents.common.templates import (
@@ -350,10 +363,21 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
                 is_public = bool(is_public)
             if isinstance(is_draft, int):
                 is_draft = bool(is_draft)
+
+            # Format date as "Mon YYYY" using start_date from itinerary_data
+            itinerary_data = trip.get("itinerary_data") or {}
+            if isinstance(itinerary_data, str):
+                try:
+                    itinerary_data = json.loads(itinerary_data)
+                except:
+                    itinerary_data = {}
+            start_date = itinerary_data.get("start_date") or trip.get("start_date")
+            formatted_date = format_trip_date(start_date)
+
             card = generate_trip_card(
                 title=trip.get("title", "Untitled Trip"),
                 link=trip.get("link", "#"),
-                dates=trip.get("dates", "Date unknown"),
+                dates=formatted_date,
                 days=trip.get("days", 0) or 0,
                 locations=trip.get("locations", 0) or 0,
                 activities=trip.get("activities", 0) or 0,
@@ -374,10 +398,20 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         public_cards_list = []
         for i, trip in enumerate(public_trips):
             try:
+                # Format date as "Mon YYYY" using start_date from itinerary_data
+                pub_itinerary_data = trip.get("itinerary_data") or {}
+                if isinstance(pub_itinerary_data, str):
+                    try:
+                        pub_itinerary_data = json.loads(pub_itinerary_data)
+                    except:
+                        pub_itinerary_data = {}
+                pub_start_date = pub_itinerary_data.get("start_date") or trip.get("start_date")
+                pub_formatted_date = format_trip_date(pub_start_date)
+
                 card = generate_public_trip_card(
                     title=trip.get("title", "Untitled Trip"),
                     link=trip.get("link", "#"),
-                    dates=trip.get("dates", "Date unknown"),
+                    dates=pub_formatted_date,
                     days=trip.get("days", 0) or 0,
                     locations=trip.get("locations", 0) or 0,
                     activities=trip.get("activities", 0) or 0,
