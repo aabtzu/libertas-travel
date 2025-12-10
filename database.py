@@ -399,16 +399,16 @@ def get_pending_geocoding_trips() -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         if USE_POSTGRES:
             cursor.execute("""
-                SELECT link, itinerary_data
+                SELECT link, itinerary_data, title
                 FROM trips
                 WHERE map_status IN ('pending', 'processing')
                 AND itinerary_data IS NOT NULL
             """)
             rows = cursor.fetchall()
-            return [{'link': row[0], 'itinerary_data': row[1]} for row in rows]
+            return [{'link': row[0], 'itinerary_data': row[1], 'title': row[2]} for row in rows]
         else:
             cursor.execute("""
-                SELECT link, itinerary_data
+                SELECT link, itinerary_data, title
                 FROM trips
                 WHERE map_status IN ('pending', 'processing')
                 AND itinerary_data IS NOT NULL
@@ -418,7 +418,7 @@ def get_pending_geocoding_trips() -> List[Dict[str, Any]]:
             for row in rows:
                 itinerary_data = json.loads(row['itinerary_data']) if row['itinerary_data'] else None
                 if itinerary_data:
-                    result.append({'link': row['link'], 'itinerary_data': itinerary_data})
+                    result.append({'link': row['link'], 'itinerary_data': itinerary_data, 'title': row['title']})
             return result
 
 

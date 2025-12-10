@@ -223,8 +223,9 @@ def recover_stale_tasks():
             for trip in pending_trips:
                 link = trip['link']
                 itinerary_data = trip['itinerary_data']
+                trip_title = trip.get('title', 'Untitled Trip')
                 # Convert itinerary_data format to worker format
-                worker_data = _convert_itinerary_data_to_worker_format(itinerary_data)
+                worker_data = _convert_itinerary_data_to_worker_format(itinerary_data, trip_title)
                 if worker_data:
                     _geocoding_queue.put((link, worker_data))
                     print(f"[GEOCODING] Re-queued: {link}")
@@ -234,7 +235,7 @@ def recover_stale_tasks():
         traceback.print_exc()
 
 
-def _convert_itinerary_data_to_worker_format(itinerary_data):
+def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
     """Convert itinerary_data from database format to worker format."""
     if not itinerary_data:
         return None
@@ -282,8 +283,11 @@ def _convert_itinerary_data_to_worker_format(itinerary_data):
             "is_home_location": False,
         })
 
+    # Use trip_title from DB if itinerary_data doesn't have title
+    title = itinerary_data.get('title') or trip_title or 'Untitled Trip'
+
     return {
-        "title": itinerary_data.get('title', 'Untitled Trip'),
+        "title": title,
         "start_date": itinerary_data.get('start_date'),
         "end_date": itinerary_data.get('end_date'),
         "travelers": itinerary_data.get('travelers', []),
