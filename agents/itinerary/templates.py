@@ -382,7 +382,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
 
             # Get date display - prefer existing formatted dates, fall back to parsing start_date
             existing_dates = trip.get("dates", "")
-            if existing_dates and existing_dates != "Date unknown":
+            if existing_dates and existing_dates not in ("Date unknown", "None", ""):
                 formatted_date = existing_dates
             else:
                 # Try to format from start_date in itinerary_data
@@ -421,7 +421,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
             try:
                 # Get date display - prefer existing formatted dates, fall back to parsing start_date
                 pub_existing_dates = trip.get("dates", "")
-                if pub_existing_dates and pub_existing_dates != "Date unknown":
+                if pub_existing_dates and pub_existing_dates not in ("Date unknown", "None", ""):
                     pub_formatted_date = pub_existing_dates
                 else:
                     pub_itinerary_data = trip.get("itinerary_data") or {}
