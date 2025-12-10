@@ -1586,11 +1586,17 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                             locations.add(item.location.name.split(',')[0])
 
                     # Build trip data
+                    # Calculate days - try multiple sources
+                    days_count = (
+                        itinerary.duration_days or
+                        len(set(item.day_number for item in itinerary.items if item.day_number)) or
+                        len(itinerary_data.get('days', []))
+                    )
                     trip_data = {
                         "title": title,
                         "link": output_file,
                         "dates": self.format_dates(itinerary),
-                        "days": itinerary.duration_days or len(set(item.day_number for item in itinerary.items if item.day_number)),
+                        "days": days_count,
                         "locations": len(locations),
                         "activities": len(itinerary.items),
                         "map_status": "pending",
