@@ -317,6 +317,104 @@ def regenerate_trips_page(user_id: int = None) -> None:
         traceback.print_exc()
 
 
+def regenerate_all_trip_html(user_id: int = None) -> dict:
+    """Regenerate HTML for all trips from their itinerary_data.
+
+    Also fixes dates and days columns in the database.
+    Returns dict with success count and errors.
+    """
+    from agents.create.handler import _convert_to_itinerary
+    from agents.itinerary.templates import format_trip_date, get_trip_start_date
+
+    results = {"regenerated": 0, "errors": [], "skipped": 0, "db_updated": 0}
+
+    try:
+        if user_id is not None:
+            trips = db.get_user_trips(user_id)
+        else:
+            # Get all trips
+            trips = db.get_user_trips(1)  # Default user
+
+        for trip in trips:
+            link = trip.get('link', '')
+            title = trip.get('title', 'Unknown')
+            itinerary_data_raw = trip.get('itinerary_data')
+            current_dates = trip.get('dates', '')
+            current_days = trip.get('days', 0)
+
+            if not itinerary_data_raw or not link:
+                results["skipped"] += 1
+                print(f"[REGEN] Skipped {title}: no itinerary_data or link")
+                continue
+
+            try:
+                # Parse itinerary_data if string
+                if isinstance(itinerary_data_raw, str):
+                    itinerary_data = json.loads(itinerary_data_raw)
+                else:
+                    itinerary_data = itinerary_data_raw
+
+                # Convert to Itinerary object
+                trip_for_convert = {'itinerary_data': itinerary_data, 'title': title}
+                itinerary = _convert_to_itinerary(trip_for_convert)
+
+                if not itinerary or not itinerary.items:
+                    results["skipped"] += 1
+                    print(f"[REGEN] Skipped {title}: could not convert to itinerary")
+                    continue
+
+                # Regenerate HTML
+                web_view = ItineraryWebView()
+                web_view.generate(itinerary, OUTPUT_DIR / link, use_ai_summary=False, skip_geocoding=True)
+                results["regenerated"] += 1
+                print(f"[REGEN] Regenerated {link}")
+
+                # Fix dates and days in database if needed
+                needs_update = False
+                update_data = {}
+
+                # Fix dates if missing or invalid
+                if not current_dates or current_dates in ('Date unknown', 'None', ''):
+                    start_date = get_trip_start_date(itinerary_data)
+                    if start_date:
+                        formatted_date = format_trip_date(start_date)
+                        if formatted_date != 'Date unknown':
+                            update_data['dates'] = formatted_date
+                            needs_update = True
+
+                # Fix days count if missing
+                if not current_days or current_days == 0:
+                    days_count = (
+                        itinerary.duration_days or
+                        len(set(item.day_number for item in itinerary.items if item.day_number)) or
+                        len(itinerary_data.get('days', []))
+                    )
+                    if days_count > 0:
+                        update_data['days'] = days_count
+                        needs_update = True
+
+                # Update database if needed
+                if needs_update and user_id:
+                    db.update_trip(user_id, link, update_data)
+                    results["db_updated"] += 1
+                    print(f"[REGEN] Updated DB for {title}: {update_data}")
+
+            except Exception as e:
+                results["errors"].append(f"{title}: {str(e)}")
+                print(f"[REGEN] Error regenerating {title}: {e}")
+
+        # Also regenerate trips list page
+        regenerate_trips_page(user_id)
+
+    except Exception as e:
+        results["errors"].append(f"Fatal error: {str(e)}")
+        print(f"[REGEN] Fatal error: {e}")
+        import traceback
+        traceback.print_exc()
+
+    return results
+
+
 def slugify(text: str) -> str:
     """Convert text to URL-friendly slug."""
     text = text.lower()
@@ -973,6 +1071,8 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
         elif self.path.startswith("/api/trips/") and self.path.endswith("/items"):
             link = self.path[len("/api/trips/"):-len("/items")].rstrip('/')
             self.handle_add_trip_item(link)
+        elif self.path == "/api/regenerate-all-trips":
+            self.handle_regenerate_all_trips()
         else:
             self.send_error(404, "Not Found")
 
@@ -1045,6 +1145,21 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
         self.send_header('Set-Cookie', auth.get_logout_cookie_header())
         self.end_headers()
         self.wfile.write(json.dumps({"success": True}).encode())
+
+    def handle_regenerate_all_trips(self):
+        """Regenerate HTML for all trips from their itinerary_data."""
+        if not self.require_auth():
+            return
+
+        user_id = self.get_current_user_id()
+        results = regenerate_all_trip_html(user_id)
+
+        self.send_json_response({
+            "success": True,
+            "regenerated": results["regenerated"],
+            "skipped": results["skipped"],
+            "errors": results["errors"]
+        })
 
     def handle_retry_geocoding(self):
         """Retry geocoding for a trip - regenerate map with fresh geocoding."""
