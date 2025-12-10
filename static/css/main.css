@@ -138,6 +138,12 @@ body {
     transform: translateY(0);
 }
 
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
 .tabs {
     display: flex;
     background: white;
