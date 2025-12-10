@@ -20,6 +20,13 @@ env/
 *.swp
 *.swo
 
-# Output/data files (optional - uncomment if you don't want to track trips)
-# output/
-# data/
+# Output/data files - DO NOT COMMIT (contains API keys in HTML)
+output/
+data/
+
+# Database
+*.db
+
+# Environment files
+.env
+.env.*

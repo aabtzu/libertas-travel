@@ -9,9 +9,45 @@ function exportTrip() {
 }
 
 // Edit trip - navigate to create page with trip loaded
+// If user doesn't own the trip, copy it first
 function editTrip() {
     var tripLink = window.location.pathname.split('/').pop();
-    window.location.href = '/create.html?edit=' + encodeURIComponent(tripLink);
+
+    // First check if we can edit this trip directly
+    fetch('/api/trip/' + encodeURIComponent(tripLink) + '/can-edit')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.canEdit) {
+                // User owns the trip - edit directly
+                window.location.href = '/create.html?edit=' + encodeURIComponent(tripLink);
+            } else {
+                // User doesn't own - ask to copy first
+                if (confirm('This is a shared trip. Would you like to copy it to your trips before editing?')) {
+                    // Copy the trip first
+                    fetch('/api/copy-trip', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ link: tripLink })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(copyData) {
+                        if (copyData.success && copyData.new_link) {
+                            // Edit the copy
+                            window.location.href = '/create.html?edit=' + encodeURIComponent(copyData.new_link);
+                        } else {
+                            alert('Failed to copy trip: ' + (copyData.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(function(err) {
+                        alert('Failed to copy trip: ' + err);
+                    });
+                }
+            }
+        })
+        .catch(function(err) {
+            // If check fails, try to edit anyway (will fail server-side if not owner)
+            window.location.href = '/create.html?edit=' + encodeURIComponent(tripLink);
+        });
 }
 
 // Regenerate map with fresh geocoding

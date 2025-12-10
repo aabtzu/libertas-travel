@@ -778,5 +778,93 @@ def add_item_to_trip(user_id: int, link: str, item: Dict) -> bool:
     return update_trip_itinerary_data(user_id, link, itinerary_data)
 
 
+def copy_trip_by_link(link: str, target_user_id: int) -> Optional[Dict[str, Any]]:
+    """Copy any trip by link to a target user with a unique link.
+
+    Returns dict with new_link and trip_id, or None if failed.
+    """
+    import re
+
+    # Get the source trip (regardless of owner)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute("""
+                SELECT id, user_id, title, link, dates, days, locations, activities,
+                       map_status, map_error, itinerary_data
+                FROM trips WHERE link = %s
+            """, (link,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            columns = ['id', 'user_id', 'title', 'link', 'dates', 'days', 'locations',
+                      'activities', 'map_status', 'map_error', 'itinerary_data']
+            source_trip = dict(zip(columns, row))
+        else:
+            cursor.execute("""
+                SELECT id, user_id, title, link, dates, days, locations, activities,
+                       map_status, map_error, itinerary_data
+                FROM trips WHERE link = ?
+            """, (link,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            source_trip = dict(row)
+
+    # If target user owns this trip, they can edit directly (no copy needed)
+    if source_trip.get('user_id') == target_user_id:
+        return {"new_link": link, "trip_id": source_trip['id'], "was_copied": False}
+
+    # Generate a unique link for the target user
+    title = source_trip.get("title", "trip")
+    slug = title.lower()
+    slug = re.sub(r'[^a-z0-9]+', '_', slug)
+    slug = re.sub(r'_+', '_', slug).strip('_')
+    base_link = f"{slug}.html"
+
+    new_link = base_link
+    with get_db() as conn:
+        cursor = conn.cursor()
+        counter = 1
+        while True:
+            if USE_POSTGRES:
+                cursor.execute("SELECT COUNT(*) FROM trips WHERE user_id = %s AND link = %s",
+                             (target_user_id, new_link))
+            else:
+                cursor.execute("SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?",
+                             (target_user_id, new_link))
+            count = cursor.fetchone()[0]
+            if count == 0:
+                break
+            counter += 1
+            new_link = f"{slug}_{counter}.html"
+
+    # Parse itinerary_data if it's a string
+    itinerary_data = source_trip.get('itinerary_data')
+    if isinstance(itinerary_data, str):
+        import json
+        try:
+            itinerary_data = json.loads(itinerary_data)
+        except:
+            itinerary_data = None
+
+    # Create trip data for target user
+    trip_data = {
+        "title": source_trip.get("title"),
+        "link": new_link,
+        "dates": source_trip.get("dates"),
+        "days": source_trip.get("days"),
+        "locations": source_trip.get("locations"),
+        "activities": source_trip.get("activities"),
+        "map_status": source_trip.get("map_status", "ready"),
+    }
+
+    # Add to target user
+    trip_id = add_trip(target_user_id, trip_data, itinerary_data)
+    if trip_id:
+        return {"new_link": new_link, "trip_id": trip_id, "was_copied": True}
+    return None
+
+
 # Initialize database on import
 init_db()

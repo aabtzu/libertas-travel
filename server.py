@@ -549,6 +549,12 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.handle_export_trip(link)
             return
 
+        # API endpoint to check if user can edit a trip (owns it)
+        if path.startswith("/api/trip/") and path.endswith("/can-edit"):
+            link = path[len("/api/trip/"):-len("/can-edit")]
+            self.handle_can_edit_trip(link)
+            return
+
         # Serve trip HTML files from output folder with updated navigation
         if path.endswith(".html") and not path.startswith("/api/"):
             self.serve_trip_html(path)
@@ -676,6 +682,18 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json_bytes)
         else:
             self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def handle_can_edit_trip(self, link: str):
+        """Check if current user can edit a trip (i.e., owns it)."""
+        user_id = self.get_current_user_id()
+        owner_id = db.get_trip_owner(link)
+
+        if owner_id is None:
+            self.send_json_error("Trip not found", status=404)
+            return
+
+        can_edit = (owner_id == user_id)
+        self.send_json_response({"canEdit": can_edit})
 
     def serve_trip_html(self, path: str):
         """Serve trip HTML files with updated navigation injected."""
@@ -1484,7 +1502,7 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
             self.send_json_error(str(e))
 
     def handle_copy_trip(self):
-        """Copy a trip for editing (placeholder for future new trip feature)."""
+        """Copy a trip to current user (for editing shared/public trips)."""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
@@ -1499,20 +1517,36 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                 self.send_json_error("No trip link provided")
                 return
 
-            # Find the trip for current user
             user_id = self.get_current_user_id()
-            trip = db.get_trip_by_link(user_id, link)
 
-            if not trip:
+            # Copy the trip to current user
+            result = db.copy_trip_by_link(link, user_id)
+
+            if not result:
                 self.send_json_error("Trip not found")
                 return
 
-            # For now, just return success with trip data
-            # Future: This will open the trip editor with the trip data pre-filled
+            new_link = result.get('new_link')
+            was_copied = result.get('was_copied', True)
+
+            # If it was actually copied (not owned by user), generate HTML
+            if was_copied and new_link:
+                # Get the new trip and generate HTML
+                new_trip = db.get_trip_by_link(user_id, new_link)
+                if new_trip and new_trip.get('itinerary_data'):
+                    from agents.create.handler import _convert_to_itinerary
+                    trip_for_html = {'itinerary_data': new_trip['itinerary_data'], 'title': new_trip['title']}
+                    itinerary = _convert_to_itinerary(trip_for_html)
+                    if itinerary and itinerary.items:
+                        web_view = ItineraryWebView()
+                        web_view.generate(itinerary, OUTPUT_DIR / new_link, use_ai_summary=False, skip_geocoding=True)
+                        print(f"[COPY] Generated HTML for copied trip: {new_link}")
+
             self.send_json_response({
                 "success": True,
-                "message": "Trip copied - editor coming soon!",
-                "trip": trip,
+                "new_link": new_link,
+                "was_copied": was_copied,
+                "message": "Trip copied to your trips" if was_copied else "You already own this trip",
             })
 
         except Exception as e:
