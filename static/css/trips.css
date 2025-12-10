@@ -16,6 +16,34 @@
 .trips-header p {
     font-size: 1.1rem;
     opacity: 0.9;
+    margin: 0;
+}
+
+.trips-header-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.new-trip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 15px rgba(238, 90, 36, 0.4);
+    border: none;
+    margin-top: 20px;
+}
+
+.new-trip-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 6px 25px rgba(238, 90, 36, 0.5);
 }
 
 .trips-container {
