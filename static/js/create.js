@@ -83,9 +83,54 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * Initialize mobile chat sidebar toggle
+ */
+function initMobileChatSidebar() {
+    const sidebar = document.getElementById('chat-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const fab = document.getElementById('mobile-chat-fab');
+    const closeBtn = document.getElementById('sidebar-close-btn');
+
+    if (!sidebar || !fab) return;
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay?.classList.add('visible');
+        fab?.classList.add('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent background scroll
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay?.classList.remove('visible');
+        fab?.classList.remove('hidden');
+        document.body.style.overflow = '';
+    }
+
+    // Open on FAB click
+    fab.addEventListener('click', openSidebar);
+
+    // Close on X button click
+    closeBtn?.addEventListener('click', closeSidebar);
+
+    // Close on overlay click
+    overlay?.addEventListener('click', closeSidebar);
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+            closeSidebar();
+        }
+    });
+}
+
+/**
  * Initialize event listeners
  */
 function initEventListeners() {
+    // Initialize mobile chat sidebar
+    initMobileChatSidebar();
+
     // Create trip form
     const createForm = document.getElementById('create-trip-form');
     if (createForm) {

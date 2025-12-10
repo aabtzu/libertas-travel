@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/static/css/main.css?v=4">
     <link rel="stylesheet" href="/static/css/categories.css">
-    <link rel="stylesheet" href="/static/css/create.css?v=14">
+    <link rel="stylesheet" href="/static/css/create.css?v=19">
 </head>
 <body>
     {nav_html}
@@ -158,10 +158,13 @@
             </div>
 
             <!-- Chat Sidebar -->
-            <aside class="editor-sidebar">
+            <aside class="editor-sidebar" id="chat-sidebar">
                 <div class="sidebar-header">
                     <h3><i class="fas fa-compass"></i> Trip Assistant</h3>
                     <p>Ask for recommendations</p>
+                    <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Close chat">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
                 <div class="chat-messages" id="chat-messages">
@@ -187,6 +190,9 @@
                     </div>
                 </div>
             </aside>
+
+            <!-- Mobile chat overlay -->
+            <div class="sidebar-overlay" id="sidebar-overlay"></div>
         </div>
     </div>
 
@@ -251,5 +257,10 @@
         var tripLink = params.get('link') || params.get('edit');
     </script>
     <script src="/static/js/create.js?v=29"></script>
+
+    <!-- Mobile floating chat button - must be direct child of body for position:fixed -->
+    <button class="mobile-chat-fab" id="mobile-chat-fab" aria-label="Open chat assistant">
+        <i class="fas fa-comments"></i>
+    </button>
 </body>
 </html>
