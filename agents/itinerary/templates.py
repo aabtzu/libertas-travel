@@ -17,6 +17,22 @@ def format_trip_date(date_str: Optional[str]) -> str:
     except (ValueError, TypeError):
         return "Date unknown"
 
+
+def get_trip_start_date(itinerary_data: dict) -> Optional[str]:
+    """Extract start date from itinerary_data, checking multiple locations."""
+    if not itinerary_data:
+        return None
+    # Check start_date field first
+    if itinerary_data.get("start_date"):
+        return itinerary_data["start_date"]
+    # Check first day's date
+    days = itinerary_data.get("days", [])
+    if days and len(days) > 0:
+        first_day = days[0]
+        if isinstance(first_day, dict) and first_day.get("date"):
+            return first_day["date"]
+    return None
+
 # Import shared components from common
 from agents.common.templates import (
     get_static_css as common_get_static_css,
@@ -364,15 +380,20 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
             if isinstance(is_draft, int):
                 is_draft = bool(is_draft)
 
-            # Format date as "Mon YYYY" using start_date from itinerary_data
-            itinerary_data = trip.get("itinerary_data") or {}
-            if isinstance(itinerary_data, str):
-                try:
-                    itinerary_data = json.loads(itinerary_data)
-                except:
-                    itinerary_data = {}
-            start_date = itinerary_data.get("start_date") or trip.get("start_date")
-            formatted_date = format_trip_date(start_date)
+            # Get date display - prefer existing formatted dates, fall back to parsing start_date
+            existing_dates = trip.get("dates", "")
+            if existing_dates and existing_dates != "Date unknown":
+                formatted_date = existing_dates
+            else:
+                # Try to format from start_date in itinerary_data
+                itinerary_data = trip.get("itinerary_data") or {}
+                if isinstance(itinerary_data, str):
+                    try:
+                        itinerary_data = json.loads(itinerary_data)
+                    except:
+                        itinerary_data = {}
+                start_date = get_trip_start_date(itinerary_data) or trip.get("start_date")
+                formatted_date = format_trip_date(start_date)
 
             card = generate_trip_card(
                 title=trip.get("title", "Untitled Trip"),
@@ -398,15 +419,19 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         public_cards_list = []
         for i, trip in enumerate(public_trips):
             try:
-                # Format date as "Mon YYYY" using start_date from itinerary_data
-                pub_itinerary_data = trip.get("itinerary_data") or {}
-                if isinstance(pub_itinerary_data, str):
-                    try:
-                        pub_itinerary_data = json.loads(pub_itinerary_data)
-                    except:
-                        pub_itinerary_data = {}
-                pub_start_date = pub_itinerary_data.get("start_date") or trip.get("start_date")
-                pub_formatted_date = format_trip_date(pub_start_date)
+                # Get date display - prefer existing formatted dates, fall back to parsing start_date
+                pub_existing_dates = trip.get("dates", "")
+                if pub_existing_dates and pub_existing_dates != "Date unknown":
+                    pub_formatted_date = pub_existing_dates
+                else:
+                    pub_itinerary_data = trip.get("itinerary_data") or {}
+                    if isinstance(pub_itinerary_data, str):
+                        try:
+                            pub_itinerary_data = json.loads(pub_itinerary_data)
+                        except:
+                            pub_itinerary_data = {}
+                    pub_start_date = get_trip_start_date(pub_itinerary_data) or trip.get("start_date")
+                    pub_formatted_date = format_trip_date(pub_start_date)
 
                 card = generate_public_trip_card(
                     title=trip.get("title", "Untitled Trip"),
