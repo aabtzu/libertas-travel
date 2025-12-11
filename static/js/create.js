@@ -17,6 +17,7 @@ let autoSaveTimer = null;
 
 // Category icons mapping
 const CATEGORY_ICONS = {
+    'travel': 'fa-plane',
     'flight': 'fa-plane',
     'transport': 'fa-car',
     'train': 'fa-train',
@@ -28,6 +29,42 @@ const CATEGORY_ICONS = {
     'attraction': 'fa-landmark',
     'other': 'fa-calendar-day'
 };
+
+// Valid category values for the dropdown
+const VALID_CATEGORIES = ['activity', 'meal', 'hotel', 'attraction', 'travel', 'other'];
+
+// Category normalization map (map aliases to valid values)
+const CATEGORY_MAP = {
+    'flight': 'travel',
+    'transport': 'travel',
+    'transportation': 'travel',
+    'train': 'travel',
+    'bus': 'travel',
+    'car': 'travel',
+    'air': 'travel',
+    'plane': 'travel',
+    'lodging': 'hotel',
+    'accommodation': 'hotel',
+    'stay': 'hotel',
+    'restaurant': 'meal',
+    'food': 'meal',
+    'dining': 'meal',
+    'sightseeing': 'attraction',
+    'museum': 'attraction',
+    'tour': 'attraction',
+    'event': 'activity'
+};
+
+/**
+ * Normalize a category value to one of the valid dropdown options
+ */
+function normalizeCategory(category) {
+    if (!category) return 'activity';
+    const cat = category.toLowerCase().trim();
+    if (VALID_CATEGORIES.includes(cat)) return cat;
+    if (CATEGORY_MAP[cat]) return CATEGORY_MAP[cat];
+    return 'other';
+}
 
 /**
  * Get the appropriate icon for an item based on category and content
@@ -633,7 +670,17 @@ function renderDayItems(items, dayIndex) {
     // Render items in array order - user can arrange via drag-and-drop
     return items.map((item, index) => {
         const iconClass = getItemIcon(item);
-        const timeStr = item.time ? `<span><i class="fas fa-clock"></i> ${formatTime12Hour(item.time)}</span>` : '';
+        let timeStr = '';
+        if (item.time) {
+            timeStr = formatTime12Hour(item.time);
+            if (item.end_time) {
+                const cat = (item.category || '').toLowerCase();
+                const isTravel = (cat === 'travel' || cat === 'flight' || cat === 'transport');
+                const separator = isTravel ? ' → ' : ' - ';
+                timeStr += separator + formatTime12Hour(item.end_time);
+            }
+            timeStr = `<span><i class="fas fa-clock"></i> ${timeStr}</span>`;
+        }
         const locationStr = item.location ? `<span><i class="fas fa-map-marker-alt"></i> ${item.location}</span>` : '';
         const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
 
@@ -847,7 +894,8 @@ function addItemToDay(item, dayIndex) {
         location: item.location || null,
         website: item.website || null,
         notes: item.notes || null,
-        time: null
+        time: item.time || null,
+        end_time: item.end_time || null
     });
 
     renderDays();
@@ -883,6 +931,7 @@ function handleAddItem(e) {
         title: document.getElementById('item-title').value.trim(),
         category: document.getElementById('item-category').value,
         time: document.getElementById('item-time').value || null,
+        end_time: document.getElementById('item-end-time').value || null,
         location: document.getElementById('item-location').value.trim() || null,
         website: document.getElementById('item-website').value.trim() || null,
         notes: document.getElementById('item-notes').value.trim() || null
@@ -923,15 +972,6 @@ function editItem(dayIndex, itemIndex) {
     const item = currentTrip.days[dayIndex].items[itemIndex];
     if (!item) return;
 
-    // Populate the add item modal with existing values
-    document.getElementById('item-title').value = item.title || '';
-    document.getElementById('item-category').value = item.category || 'activity';
-    document.getElementById('item-time').value = item.time || '';
-    document.getElementById('item-location').value = item.location || '';
-    document.getElementById('item-website').value = item.website || '';
-    document.getElementById('item-notes').value = item.notes || '';
-    document.getElementById('item-target-day').value = dayIndex;
-
     // Update modal title
     document.querySelector('#add-item-modal h3').textContent = 'Edit Item';
 
@@ -943,6 +983,16 @@ function editItem(dayIndex, itemIndex) {
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
 
+    // Populate form values AFTER cloning (cloneNode doesn't preserve programmatic select values)
+    document.getElementById('item-title').value = item.title || '';
+    document.getElementById('item-category').value = normalizeCategory(item.category);
+    document.getElementById('item-time').value = item.time || '';
+    document.getElementById('item-end-time').value = item.end_time || '';
+    document.getElementById('item-location').value = item.location || '';
+    document.getElementById('item-website').value = item.website || '';
+    document.getElementById('item-notes').value = item.notes || '';
+    document.getElementById('item-target-day').value = dayIndex;
+
     newForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
@@ -951,6 +1001,7 @@ function editItem(dayIndex, itemIndex) {
             title: document.getElementById('item-title').value.trim(),
             category: document.getElementById('item-category').value,
             time: document.getElementById('item-time').value || null,
+            end_time: document.getElementById('item-end-time').value || null,
             location: document.getElementById('item-location').value.trim() || null,
             website: document.getElementById('item-website').value.trim() || null,
             notes: document.getElementById('item-notes').value.trim() || null
@@ -993,15 +1044,6 @@ function editIdea(ideaIndex) {
     const item = currentTrip.ideas[ideaIndex];
     if (!item) return;
 
-    // Populate the modal with existing values
-    document.getElementById('item-title').value = item.title || '';
-    document.getElementById('item-category').value = item.category || 'activity';
-    document.getElementById('item-time').value = item.time || '';
-    document.getElementById('item-location').value = item.location || '';
-    document.getElementById('item-website').value = item.website || '';
-    document.getElementById('item-notes').value = item.notes || '';
-    document.getElementById('item-target-day').value = 'ideas';
-
     // Update modal title
     document.querySelector('#add-item-modal h3').textContent = 'Edit Idea';
 
@@ -1013,6 +1055,16 @@ function editIdea(ideaIndex) {
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
 
+    // Populate form values AFTER cloning (cloneNode doesn't preserve programmatic select values)
+    document.getElementById('item-title').value = item.title || '';
+    document.getElementById('item-category').value = normalizeCategory(item.category);
+    document.getElementById('item-time').value = item.time || '';
+    document.getElementById('item-end-time').value = item.end_time || '';
+    document.getElementById('item-location').value = item.location || '';
+    document.getElementById('item-website').value = item.website || '';
+    document.getElementById('item-notes').value = item.notes || '';
+    document.getElementById('item-target-day').value = 'ideas';
+
     newForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
@@ -1021,6 +1073,7 @@ function editIdea(ideaIndex) {
             title: document.getElementById('item-title').value.trim(),
             category: document.getElementById('item-category').value,
             time: document.getElementById('item-time').value || null,
+            end_time: document.getElementById('item-end-time').value || null,
             location: document.getElementById('item-location').value.trim() || null,
             website: document.getElementById('item-website').value.trim() || null,
             notes: document.getElementById('item-notes').value.trim() || null
@@ -1151,6 +1204,7 @@ function processUploadedItems(data, fileName) {
             title: item.title,
             category: item.category || 'other',
             time: item.time || null,
+            end_time: item.end_time || null,
             location: item.location || null,
             website: item.website || null,
             notes: item.notes || null
@@ -1452,7 +1506,8 @@ function processAddItems(items) {
             location: item.location || '',
             website: item.website || null,
             notes: item.notes || '',
-            time: item.time || null
+            time: item.time || null,
+            end_time: item.end_time || null
         };
 
         // Check if day is specified
@@ -2215,7 +2270,15 @@ function renderItemCard(item, options = {}) {
     const { showNotes = false, compact = false, dayIndex = null, itemIndex = null, draggable = false } = options;
     const cat = (item.category || 'other').toLowerCase();
     const iconClass = getItemIcon(item);
-    const timeStr = item.time ? formatTime12Hour(item.time) : '';
+    let timeStr = '';
+    if (item.time) {
+        timeStr = formatTime12Hour(item.time);
+        if (item.end_time) {
+            const isTravel = (cat === 'travel' || cat === 'flight' || cat === 'transport');
+            const separator = isTravel ? ' → ' : ' - ';
+            timeStr += separator + formatTime12Hour(item.end_time);
+        }
+    }
     const locationStr = item.location || '';
 
     if (compact) {

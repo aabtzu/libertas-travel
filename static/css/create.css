@@ -630,6 +630,7 @@
 
 .item-card.flight { border-left-color: #1565c0; }
 .item-card.transport { border-left-color: #e65100; }
+.item-card.travel { border-left-color: #1565c0; }
 .item-card.hotel, .item-card.lodging { border-left-color: #7b1fa2; }
 .item-card.activity, .item-card.attraction { border-left-color: #2e7d32; }
 .item-card.meal { border-left-color: #c2185b; }
@@ -649,6 +650,7 @@
 
 .item-icon.flight { background: #1565c0; }
 .item-icon.transport { background: #e65100; }
+.item-icon.travel { background: #1565c0; }
 .item-icon.hotel, .item-icon.lodging { background: #7b1fa2; }
 .item-icon.activity, .item-icon.attraction { background: #2e7d32; }
 .item-icon.meal { background: #c2185b; }

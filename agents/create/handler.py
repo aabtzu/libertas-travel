@@ -219,13 +219,23 @@ def _create_itinerary_item(item_data: Dict[str, Any], day_number: Optional[int],
         location_type=item_data.get('category')
     )
 
-    # Parse time
+    # Parse start time
     start_time = None
     time_str = item_data.get('time')
     if time_str and isinstance(time_str, str) and ':' in time_str:
         try:
             parts = time_str.split(':')
             start_time = time(int(parts[0]), int(parts[1]))
+        except:
+            pass
+
+    # Parse end time (for flights, trains, etc.)
+    end_time_obj = None
+    end_time_str = item_data.get('end_time')
+    if end_time_str and isinstance(end_time_str, str) and ':' in end_time_str:
+        try:
+            parts = end_time_str.split(':')
+            end_time_obj = time(int(parts[0]), int(parts[1]))
         except:
             pass
 
@@ -237,7 +247,7 @@ def _create_itinerary_item(item_data: Dict[str, Any], day_number: Optional[int],
         location=location,
         date=day_date,
         start_time=start_time,
-        end_time=None,
+        end_time=end_time_obj,
         description=item_data.get('notes'),
         category=category,
         confirmation_number=None,
@@ -923,6 +933,17 @@ def _normalize_item(item: Dict[str, Any]) -> Dict[str, Any]:
             elif len(time) == 4 and time.isdigit():
                 normalized['time'] = f"{time[:2]}:{time[2:]}"
 
+    # End time handling (for flights, trains, etc.)
+    end_time = item.get('end_time') or item.get('endTime') or item.get('arrival_time')
+    if end_time:
+        if isinstance(end_time, str):
+            # Handle HH:MM format
+            if ':' in end_time and len(end_time) >= 5:
+                normalized['end_time'] = end_time[:5]
+            # Handle HHMM format
+            elif len(end_time) == 4 and end_time.isdigit():
+                normalized['end_time'] = f"{end_time[:2]}:{end_time[2:]}"
+
     # Location
     loc = item.get('location')
     if isinstance(loc, dict):
@@ -1171,23 +1192,27 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
     system_prompt = """You are a travel document parser. Extract travel-related items from the uploaded document.
 
 For each item you find, extract:
-- title: A clear name for the item (e.g., "Train to Florence", "Hotel Duomo Firenze")
+- title: A clear name for the item (e.g., "LH 2416 MUC → ARN", "Hotel Duomo Firenze")
 - category: One of: flight, transport, hotel, meal, activity, attraction, other
 - date: The date if available (YYYY-MM-DD format)
-- time: The time if available (HH:MM format, 24-hour)
-- location: City or address
-- notes: Any additional relevant details (confirmation numbers, seat assignments, etc.)
+- time: Start/departure time (HH:MM format, 24-hour)
+- end_time: End/arrival time if available (HH:MM format, 24-hour) - IMPORTANT for flights and trains!
+- location: City or address (destination for flights/trains)
+- notes: Any additional relevant details (confirmation numbers, seat assignments, flight duration, etc.)
+
+For FLIGHTS and TRAINS: Always extract both departure time (time) and arrival time (end_time) if shown.
 
 Return your response as a JSON array of items. Example:
 ```json
 [
   {
-    "title": "Eurostar to Paris",
-    "category": "transport",
-    "date": "2024-06-15",
-    "time": "08:30",
-    "location": "London St Pancras",
-    "notes": "Booking ref: ABC123, Seat 42A, Car 5"
+    "title": "LH 2416 MUC → ARN",
+    "category": "flight",
+    "date": "2025-12-17",
+    "time": "12:10",
+    "end_time": "14:25",
+    "location": "Stockholm, Sweden",
+    "notes": "Lufthansa, Airbus A321, Economy, 2h 15m nonstop"
   }
 ]
 ```

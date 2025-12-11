@@ -215,14 +215,19 @@
                         <option value="meal">Meal / Restaurant</option>
                         <option value="hotel">Hotel / Lodging</option>
                         <option value="attraction">Attraction</option>
-                        <option value="transport">Transport</option>
+                        <option value="travel">Travel</option>
                         <option value="other">Other</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="item-time">Time</label>
+                    <label for="item-time">Start Time</label>
                     <input type="time" id="item-time" step="900">
+                </div>
+
+                <div class="form-group">
+                    <label for="item-end-time">End Time <span class="optional">(optional)</span></label>
+                    <input type="time" id="item-end-time" step="900">
                 </div>
 
                 <div class="form-group">
@@ -256,7 +261,7 @@
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=29"></script>
+    <script src="/static/js/create.js?v=32"></script>
 
     <!-- Mobile floating chat button - must be direct child of body for position:fixed -->
     <button class="mobile-chat-fab" id="mobile-chat-fab" aria-label="Open chat assistant">

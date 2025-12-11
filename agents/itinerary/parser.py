@@ -83,6 +83,9 @@ Important:
 - ALWAYS include the state/region/country with location names for accurate geocoding (e.g. "Homer, Alaska" not just "Homer")
 - Mark home/departure locations with is_home_location: true (these are typically the origin city at start/end of trip)
 - For HOTELS/ACCOMMODATIONS: Extract the ACTUAL hotel name (e.g. "Taj Palace", "ITC Mughal", "Marriott") NOT generic descriptions like "Hotel stay in Delhi". The hotel name should go in the "title" field.
+- For FLIGHTS: start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available. Title should include flight number and route (e.g. "UA 123 SFO → JFK")
+- For TRAINS: start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available.
+- For MEALS/RESERVATIONS: start_time is reservation time, end_time can be estimated end (e.g. +2 hours for dinner)
 - If information is not available, use null
 - Ensure the JSON is valid
 
