@@ -135,6 +135,10 @@ class ItineraryWebView:
                 time_str = ""
                 if item.start_time:
                     time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
+                    # For flights, show both departure and arrival times
+                    if item.category == "flight" and item.end_time:
+                        arr_time = item.end_time.strftime("%I:%M %p").lstrip("0")
+                        time_str = f"{time_str} → {arr_time}"
 
                 category = item.category or "other"
                 category_icon = self._get_category_html(category)
@@ -174,6 +178,10 @@ class ItineraryWebView:
                 time_str = ""
                 if item.start_time:
                     time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
+                    # For flights, show both departure and arrival times
+                    if item.category == "flight" and item.end_time:
+                        arr_time = item.end_time.strftime("%I:%M %p").lstrip("0")
+                        time_str = f"{time_str} → {arr_time}"
 
                 category = item.category or "other"
                 category_icon = self._get_category_html(category)
@@ -452,8 +460,12 @@ class ItineraryWebView:
 
         # Display time if available
         if item.start_time:
-            time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
-            parts.append(f'<div class="column-item-time"><i class="fas fa-clock"></i> {time_str}</div>')
+            time_display = item.start_time.strftime("%I:%M %p").lstrip("0")
+            # For flights, show both departure and arrival times
+            if category == "flight" and item.end_time:
+                arr_time = item.end_time.strftime("%I:%M %p").lstrip("0")
+                time_display = f"{time_display} → {arr_time}"
+            parts.append(f'<div class="column-item-time"><i class="fas fa-clock"></i> {time_display}</div>')
 
         # Display location only if it adds value
         if show_location and short_location:
