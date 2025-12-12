@@ -116,10 +116,8 @@ function initMap() {
     // Create Leaflet map
     map = L.map('leaflet-map').setView([mapData.center.lat, mapData.center.lng], mapData.zoom);
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    // Add tile layer from shared config
+    LibertasMap.addTileLayer(map);
 
     // Category icon mapping
     var categoryIcons = {

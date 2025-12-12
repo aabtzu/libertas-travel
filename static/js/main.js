@@ -1,6 +1,42 @@
 /* Libertas - Main JavaScript */
 
 /**
+ * Shared map configuration - single source of truth for all maps
+ */
+const LibertasMap = {
+    // Tile layer configuration
+    tiles: {
+        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        options: {
+            subdomains: 'abcd',
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }
+    },
+
+    /**
+     * Add the standard tile layer to a Leaflet map
+     * @param {L.Map} map - The Leaflet map instance
+     * @returns {L.TileLayer} The tile layer that was added
+     */
+    addTileLayer: function(map) {
+        return L.tileLayer(this.tiles.url, this.tiles.options).addTo(map);
+    },
+
+    /**
+     * Create a new Leaflet map with standard tiles
+     * @param {string|HTMLElement} container - The container element or ID
+     * @param {Object} options - Leaflet map options (center, zoom, etc.)
+     * @returns {L.Map} The created map instance
+     */
+    create: function(container, options) {
+        const map = L.map(container, options);
+        this.addTileLayer(map);
+        return map;
+    }
+};
+
+/**
  * Switch between tabs on the trip view page
  * @param {string} tabName - The name of the tab to switch to ('summary' or 'map')
  */

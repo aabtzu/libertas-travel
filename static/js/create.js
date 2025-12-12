@@ -2415,11 +2415,8 @@ async function initializeMap() {
     // Create map
     tripMap = L.map('trip-map').setView(initialCenter, initialZoom);
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(tripMap);
+    // Add tile layer from shared config
+    LibertasMap.addTileLayer(tripMap);
 
     // Hide loading and update markers
     if (mapLoading) mapLoading.classList.add('hidden');

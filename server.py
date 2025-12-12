@@ -34,8 +34,8 @@ import geocoding_worker
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent / "output"))
 TRIPS_DATA_FILE = OUTPUT_DIR / "trips_data.json"
 
-# Travel recommendations data (from travel_recs project)
-TRAVEL_RECS_CSV = Path(os.environ.get("TRAVEL_RECS_CSV", Path.home() / "repos" / "travel_recs" / "data" / "restaurants_master.csv"))
+# Travel recommendations data - seed CSV for initial import (in repo for deployment)
+VENUES_SEED_CSV = Path(__file__).parent / "data" / "venues_seed.csv"
 
 # Cache for venues data
 _venues_cache = None
@@ -261,42 +261,53 @@ def save_trips_data(trips: list[dict]) -> None:
 
 
 def load_venues() -> list[dict]:
-    """Load venues from travel_recs CSV file."""
+    """Load venues from database. Auto-imports from CSV if database is empty."""
     global _venues_cache
     if _venues_cache is not None:
         return _venues_cache
 
-    if not TRAVEL_RECS_CSV.exists():
-        print(f"Warning: Travel recs CSV not found at {TRAVEL_RECS_CSV}")
-        return []
+    # Check if venues exist in database
+    venue_count = db.get_venue_count()
 
-    venues = []
-    with open(TRAVEL_RECS_CSV, newline='', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            # Convert empty strings to None for consistency
-            venue = {
-                "name": row.get("name", ""),
-                "city": row.get("city", ""),
-                "state": row.get("state", ""),
-                "country": row.get("country", ""),
-                "address": row.get("address", ""),
-                "latitude": row.get("latitude", ""),
-                "longitude": row.get("longitude", ""),
-                "venue_type": row.get("venue_type", ""),
-                "cuisine_type": row.get("cuisine_type", ""),
-                "michelin_stars": int(row.get("michelin_stars", 0) or 0),
-                "google_maps_link": row.get("google_maps_link", ""),
-                "website": row.get("website", ""),
-                "description": row.get("description", ""),
-                "collection": row.get("collection", ""),
-                "notes": row.get("notes", ""),
-            }
-            venues.append(venue)
+    if venue_count == 0:
+        # Auto-import from seed CSV if database is empty
+        if VENUES_SEED_CSV.exists():
+            print(f"[Server] No venues in database, importing from {VENUES_SEED_CSV}...")
+            imported = db.import_venues_from_csv(str(VENUES_SEED_CSV), source="curated")
+            print(f"[Server] Imported {imported} venues from seed CSV")
+        else:
+            print(f"[Server] Warning: No venues in database and seed CSV not found at {VENUES_SEED_CSV}")
+            return []
 
-    _venues_cache = venues
-    print(f"Loaded {len(venues)} venues from {TRAVEL_RECS_CSV}")
-    return venues
+    # Load from database
+    venues = db.get_all_venues()
+
+    # Convert to expected format (ensure string fields are not None for frontend)
+    formatted_venues = []
+    for v in venues:
+        formatted_venues.append({
+            "id": v.get("id"),
+            "name": v.get("name") or "",
+            "city": v.get("city") or "",
+            "state": v.get("state") or "",
+            "country": v.get("country") or "",
+            "address": v.get("address") or "",
+            "latitude": v.get("latitude") or "",
+            "longitude": v.get("longitude") or "",
+            "venue_type": v.get("venue_type") or "",
+            "cuisine_type": v.get("cuisine_type") or "",
+            "michelin_stars": v.get("michelin_stars") or 0,
+            "google_maps_link": v.get("google_maps_link") or "",
+            "website": v.get("website") or "",
+            "description": v.get("description") or "",
+            "collection": v.get("collection") or "",
+            "notes": v.get("notes") or "",
+            "source": v.get("source") or "curated",
+        })
+
+    _venues_cache = formatted_venues
+    print(f"[Server] Loaded {len(formatted_venues)} venues from database")
+    return formatted_venues
 
 
 def regenerate_trips_page(user_id: int = None) -> None:
@@ -506,6 +517,11 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.serve_explore_page()
             return
 
+        # Explore API endpoints - public, no auth required
+        if path == "/api/explore/venues":
+            self.handle_explore_venues()
+            return
+
         # Create page - requires auth
         if path == "/create.html" or path == "/create":
             if not self.require_auth():
@@ -530,11 +546,6 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         # Serve trips.html dynamically (user-specific)
         if path == "/trips.html" or path == "/trips":
             self.serve_trips_page()
-            return
-
-        # API endpoint for explore venues
-        if path == "/api/explore/venues":
-            self.handle_explore_venues()
             return
 
         # API endpoint for trip data (for create/edit)
@@ -826,16 +837,16 @@ You have access to a curated database of {len(venues)} venues across {len(countr
 
 Available venue types: {', '.join(f"{k} ({v})" for k, v in sorted(venue_types.items(), key=lambda x: -x[1])[:10])}
 
-Top cities: {', '.join(f"{k} ({v})" for k, v in sorted(cities.items(), key=lambda x: -x[1])[:15])}
+Top cities: {', '.join(f"{k} ({v})" for k, v in sorted(cities.items(), key=lambda x: -x[1])[:20])}
 
-States/Regions (for US trips): {', '.join(f"{k} ({v})" for k, v in sorted(states.items(), key=lambda x: -x[1])[:20] if k)}
+States/Regions: {', '.join(f"{k} ({v})" for k, v in sorted(states.items(), key=lambda x: -x[1])[:30] if k)}
 
 Countries: {', '.join(sorted(countries.keys()))}
 
 When the user asks about places, restaurants, bars, hotels, or other venues:
-1. Analyze their request to understand what they're looking for
-2. Search through the venues to find relevant matches
-3. Return a helpful response with your recommendations
+1. Search through the FULL venue list provided below - it contains ALL venues in the database
+2. Return venues that match the user's criteria
+3. IMPORTANT: The summary stats above are just highlights - the full venue list below is the source of truth
 
 IMPORTANT - Route/Trip Queries:
 When users ask about "trips from X to Y" or "road trip from X to Y" or similar route-based queries:
@@ -1052,6 +1063,11 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
             self.handle_logout()
             return
 
+        # Explore chat - public, no auth required
+        if self.path == "/api/explore/chat":
+            self.handle_explore_chat()
+            return
+
         # Check authentication for all other POST endpoints
         if not self.is_authenticated():
             self.send_json_error("Authentication required", status=401)
@@ -1077,8 +1093,6 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
             self.handle_toggle_public()
         elif self.path == "/api/users":
             self.handle_get_users()
-        elif self.path == "/api/explore/chat":
-            self.handle_explore_chat()
         elif self.path == "/api/trips/create":
             self.handle_create_trip()
         elif self.path == "/api/create/chat":

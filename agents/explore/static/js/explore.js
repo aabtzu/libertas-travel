@@ -181,26 +181,29 @@ function initChat() {
 }
 
 /**
- * Initialize Google Map
+ * Initialize Leaflet Map
  */
 function initMap() {
     const mapContainer = document.getElementById('explore-map');
-    if (!mapContainer || typeof google === 'undefined') {
-        console.log('Map not initialized - waiting for Google Maps API');
+    if (!mapContainer || typeof L === 'undefined') {
+        console.log('Map not initialized - waiting for Leaflet');
         return;
     }
 
-    map = new google.maps.Map(mapContainer, {
-        center: { lat: 40.7128, lng: -74.0060 }, // NYC default
+    // Remove placeholder if present
+    const placeholder = mapContainer.querySelector('.map-placeholder');
+    if (placeholder) {
+        placeholder.style.display = 'none';
+    }
+
+    map = L.map(mapContainer, {
+        center: [40.7128, -74.0060], // NYC default
         zoom: 3,
-        mapId: 'explore_map',
-        gestureHandling: 'greedy',
-        disableDefaultUI: false,
-        zoomControl: true,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: true
+        zoomControl: true
     });
+
+    // Add tile layer from shared config
+    LibertasMap.addTileLayer(map);
 }
 
 /**
@@ -477,19 +480,24 @@ const MARKER_COLORS = {
 };
 
 /**
- * Create a colored marker pin element
+ * Create a colored Leaflet marker icon
  */
-function createColoredMarkerElement(color) {
-    const pin = document.createElement('div');
-    pin.style.width = '24px';
-    pin.style.height = '24px';
-    pin.style.borderRadius = '50% 50% 50% 0';
-    pin.style.background = color;
-    pin.style.transform = 'rotate(-45deg)';
-    pin.style.border = '2px solid white';
-    pin.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-    pin.style.cursor = 'pointer';
-    return pin;
+function createColoredMarkerIcon(color) {
+    return L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="
+            width: 24px;
+            height: 24px;
+            border-radius: 50% 50% 50% 0;
+            background: ${color};
+            transform: rotate(-45deg);
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        "></div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -24]
+    });
 }
 
 /**
@@ -509,46 +517,38 @@ function updateMap(venueList) {
 
     if (venuesWithCoords.length === 0) return;
 
-    // Create bounds
-    const bounds = new google.maps.LatLngBounds();
+    // Create bounds array for fitting
+    const boundsArray = [];
 
     // Add markers
     venuesWithCoords.forEach(venue => {
-        const position = { lat: parseFloat(venue.latitude), lng: parseFloat(venue.longitude) };
+        const lat = parseFloat(venue.latitude);
+        const lng = parseFloat(venue.longitude);
 
         // Get color for this venue type
         const color = MARKER_COLORS[venue.venue_type] || '#667eea';
 
-        // Create colored marker element
-        const markerElement = createColoredMarkerElement(color);
+        // Create marker with colored icon
+        const marker = L.marker([lat, lng], {
+            icon: createColoredMarkerIcon(color),
+            title: venue.name
+        }).addTo(map);
 
-        // Create marker with colored pin
-        const marker = new google.maps.marker.AdvancedMarkerElement({
-            map: map,
-            position: position,
-            title: venue.name,
-            content: markerElement
-        });
+        // Create popup content
+        marker.bindPopup(createInfoWindowContent(venue));
 
-        // Create info window
-        const infoWindow = new google.maps.InfoWindow({
-            content: createInfoWindowContent(venue)
-        });
-
-        marker.addListener('click', () => {
-            infoWindow.open(map, marker);
-        });
+        // Store venue reference for focusVenue
+        marker.venueData = venue;
 
         markers.push(marker);
-        bounds.extend(position);
+        boundsArray.push([lat, lng]);
     });
 
     // Fit map to bounds
-    if (venuesWithCoords.length === 1) {
-        map.setCenter(bounds.getCenter());
-        map.setZoom(14);
-    } else {
-        map.fitBounds(bounds, { padding: 50 });
+    if (boundsArray.length === 1) {
+        map.setView(boundsArray[0], 14);
+    } else if (boundsArray.length > 1) {
+        map.fitBounds(boundsArray, { padding: [50, 50] });
     }
 
     // Show legend with venue types
@@ -578,10 +578,17 @@ function createInfoWindowContent(venue) {
  * Clear all markers from map
  */
 function clearMap() {
-    markers.forEach(marker => marker.map = null);
+    markers.forEach(marker => {
+        if (map) {
+            map.removeLayer(marker);
+        }
+    });
     markers = [];
     hideMapLegend();
 }
+
+// Store legend control reference
+let legendControl = null;
 
 /**
  * Show map legend with venue types
@@ -589,6 +596,8 @@ function clearMap() {
 function showMapLegend(venueList) {
     // Remove existing legend
     hideMapLegend();
+
+    if (!map) return;
 
     // Get unique venue types from current results
     const venueTypes = [...new Set(venueList.map(v => v.venue_type).filter(t => t))];
@@ -611,40 +620,45 @@ function showMapLegend(venueList) {
         'Landmark': '#ff7043'
     };
 
-    // Create legend element
-    const legend = document.createElement('div');
-    legend.id = 'map-legend';
-    legend.className = 'map-legend';
+    // Create custom Leaflet control for legend
+    legendControl = L.control({ position: 'bottomleft' });
 
-    const legendItems = venueTypes.map(type => {
-        const color = legendColors[type] || '#667eea';
-        return `
-            <div class="map-legend-item">
-                <span class="map-legend-dot" style="background: ${color}"></span>
-                ${type}
-            </div>
+    legendControl.onAdd = function(map) {
+        const div = L.DomUtil.create('div', 'map-legend');
+        div.id = 'map-legend';
+
+        const legendItems = venueTypes.map(type => {
+            const color = legendColors[type] || '#667eea';
+            return `
+                <div class="map-legend-item">
+                    <span class="map-legend-dot" style="background: ${color}"></span>
+                    ${type}
+                </div>
+            `;
+        }).join('');
+
+        div.innerHTML = `
+            <div class="map-legend-title">Place Types</div>
+            <div class="map-legend-items">${legendItems}</div>
         `;
-    }).join('');
 
-    legend.innerHTML = `
-        <div class="map-legend-title">Place Types</div>
-        <div class="map-legend-items">${legendItems}</div>
-    `;
+        // Prevent map interactions when clicking on legend
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
 
-    // Add to map container
-    const mapContainer = document.querySelector('.explore-map-container');
-    if (mapContainer) {
-        mapContainer.appendChild(legend);
-    }
+        return div;
+    };
+
+    legendControl.addTo(map);
 }
 
 /**
  * Hide map legend
  */
 function hideMapLegend() {
-    const legend = document.getElementById('map-legend');
-    if (legend) {
-        legend.remove();
+    if (legendControl && map) {
+        map.removeControl(legendControl);
+        legendControl = null;
     }
 }
 
@@ -654,14 +668,14 @@ function hideMapLegend() {
 function focusVenue(venue) {
     if (!map || !venue.latitude || !venue.longitude) return;
 
-    const position = { lat: parseFloat(venue.latitude), lng: parseFloat(venue.longitude) };
-    map.setCenter(position);
-    map.setZoom(16);
+    const lat = parseFloat(venue.latitude);
+    const lng = parseFloat(venue.longitude);
+    map.setView([lat, lng], 16);
 
-    // Find and click the marker
-    const marker = markers.find(m => m.title === venue.name);
+    // Find and open the marker popup
+    const marker = markers.find(m => m.venueData && m.venueData.name === venue.name);
     if (marker) {
-        google.maps.event.trigger(marker, 'click');
+        marker.openPopup();
     }
 }
 
@@ -693,5 +707,5 @@ function openWebsite(venue) {
     }
 }
 
-// Export for Google Maps callback
+// Export initMap for manual initialization if needed
 window.initMap = initMap;
