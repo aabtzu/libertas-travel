@@ -256,12 +256,13 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/js/main.js?v=3"></script>
     <script>
         // Trip link from URL - check for both 'link' and 'edit' parameters
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=32"></script>
+    <script src="/static/js/create.js?v=33"></script>
 
     <!-- Mobile floating chat button - must be direct child of body for position:fixed -->
     <button class="mobile-chat-fab" id="mobile-chat-fab" aria-label="Open chat assistant">
