@@ -1038,6 +1038,33 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
             except Exception as e:
                 debug_info["trips_data_error"] = str(e)
 
+        # Venue database info
+        try:
+            # Check for reimport request
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            if params.get('reimport_venues'):
+                global _venues_cache
+                _venues_cache = None  # Clear cache
+                if VENUES_SEED_CSV.exists():
+                    imported = db.import_venues_from_csv(str(VENUES_SEED_CSV), source="curated")
+                    debug_info["reimport_result"] = f"Imported {imported} venues"
+                else:
+                    debug_info["reimport_result"] = "CSV not found"
+
+            venue_count = db.get_venue_count()
+            debug_info["venue_count"] = venue_count
+            debug_info["venues_seed_csv"] = str(VENUES_SEED_CSV)
+            debug_info["venues_seed_exists"] = VENUES_SEED_CSV.exists()
+
+            # Show venue distribution by state
+            if venue_count > 0:
+                stats = db.get_venue_stats()
+                debug_info["venues_by_state"] = dict(list(stats.get("by_state", {}).items())[:15])
+                debug_info["venues_by_country"] = stats.get("by_country", {})
+        except Exception as e:
+            debug_info["venue_error"] = str(e)
+
         self.send_json_response(debug_info)
 
     def handle_map_status(self):
