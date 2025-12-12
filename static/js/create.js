@@ -1358,28 +1358,24 @@ function updateSaveStatus(status) {
  */
 function initChat() {
     const input = document.getElementById('chat-input');
-    const sendBtn = document.getElementById('chat-send-btn');
 
-    sendBtn?.addEventListener('click', sendChatMessage);
-
-    input?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendChatMessage();
+    // Use shared chat utilities for history and cancel support
+    LibertasChat.init({
+        inputId: 'chat-input',
+        sendBtnId: 'chat-send-btn',
+        onSend: handleChatMessage,
+        onCancel: () => {
+            hideTypingIndicator();
+            addChatMessage('assistant', 'Request cancelled.');
         }
-    });
-
-    // Auto-resize textarea
-    input?.addEventListener('input', () => {
-        input.style.height = 'auto';
-        input.style.height = Math.min(input.scrollHeight, 120) + 'px';
     });
 
     // Quick suggestions
     document.querySelectorAll('.suggestion-chip').forEach(chip => {
         chip.addEventListener('click', () => {
             input.value = chip.textContent;
-            sendChatMessage();
+            // Trigger enter to let LibertasChat handle it
+            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
         });
     });
 }
@@ -1401,13 +1397,10 @@ I'll suggest places you can add to your itinerary!`;
 }
 
 /**
- * Send a chat message
+ * Handle a chat message (called by LibertasChat)
  */
-async function sendChatMessage() {
+async function handleChatMessage(message, abortController) {
     const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-
-    if (!message) return;
 
     addChatMessage('user', message);
     input.value = '';
@@ -1431,7 +1424,8 @@ async function sendChatMessage() {
                     days: currentTrip.days,
                     ideas: currentTrip.ideas
                 }
-            })
+            }),
+            signal: abortController.signal
         });
 
         hideTypingIndicator();
@@ -1464,6 +1458,9 @@ async function sendChatMessage() {
         }
     } catch (error) {
         hideTypingIndicator();
+        if (error.name === 'AbortError') {
+            throw error; // Re-throw to let LibertasChat handle it
+        }
         console.error('Chat error:', error);
         addChatMessage('assistant', 'Sorry, I couldn\'t connect to the server. Please check your connection and try again.');
     }

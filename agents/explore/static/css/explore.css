@@ -185,6 +185,14 @@
     cursor: not-allowed;
 }
 
+.chat-send-btn.cancel-mode {
+    background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+}
+
+.chat-send-btn.cancel-mode:hover {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+}
+
 /* Quick suggestions */
 .quick-suggestions {
     display: flex;

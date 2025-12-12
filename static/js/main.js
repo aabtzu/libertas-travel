@@ -1,6 +1,172 @@
 /* Libertas - Main JavaScript */
 
 /**
+ * Shared chat utilities - input history and cancel support
+ */
+const LibertasChat = {
+    // Per-instance state stored by input element ID
+    instances: {},
+
+    /**
+     * Initialize chat input with history and cancel support
+     * @param {Object} config - Configuration object
+     * @param {string} config.inputId - ID of the input/textarea element
+     * @param {string} config.sendBtnId - ID of the send button
+     * @param {Function} config.onSend - Callback when message is sent, receives (message, abortController)
+     * @param {Function} [config.onCancel] - Optional callback when request is cancelled
+     * @returns {Object} Chat instance with cancel() method
+     */
+    init: function(config) {
+        const input = document.getElementById(config.inputId);
+        const sendBtn = document.getElementById(config.sendBtnId);
+
+        if (!input || !sendBtn) {
+            console.warn('LibertasChat: Could not find input or send button');
+            return null;
+        }
+
+        // Initialize instance state
+        const instance = {
+            history: [],
+            historyIndex: -1,
+            currentInput: '',
+            abortController: null,
+            isLoading: false,
+            originalBtnHtml: sendBtn.innerHTML
+        };
+
+        this.instances[config.inputId] = instance;
+
+        // Send message handler
+        const sendMessage = async () => {
+            const message = input.value.trim();
+            if (!message || instance.isLoading) return;
+
+            // Add to history (avoid duplicates)
+            if (instance.history[instance.history.length - 1] !== message) {
+                instance.history.push(message);
+                // Keep last 50 messages
+                if (instance.history.length > 50) {
+                    instance.history.shift();
+                }
+            }
+            instance.historyIndex = instance.history.length;
+            instance.currentInput = '';
+
+            // Create abort controller for this request
+            instance.abortController = new AbortController();
+            instance.isLoading = true;
+
+            // Update button to show cancel
+            sendBtn.innerHTML = '<i class="fas fa-stop"></i>';
+            sendBtn.title = 'Cancel request';
+            sendBtn.classList.add('cancel-mode');
+
+            try {
+                await config.onSend(message, instance.abortController);
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Request cancelled by user');
+                    if (config.onCancel) config.onCancel();
+                } else {
+                    throw error;
+                }
+            } finally {
+                instance.isLoading = false;
+                instance.abortController = null;
+                sendBtn.innerHTML = instance.originalBtnHtml;
+                sendBtn.title = 'Send message';
+                sendBtn.classList.remove('cancel-mode');
+            }
+        };
+
+        // Cancel handler
+        const cancelRequest = () => {
+            if (instance.abortController) {
+                instance.abortController.abort();
+            }
+        };
+
+        // Button click - send or cancel
+        sendBtn.addEventListener('click', () => {
+            if (instance.isLoading) {
+                cancelRequest();
+            } else {
+                sendMessage();
+            }
+        });
+
+        // Keyboard handling
+        input.addEventListener('keydown', (e) => {
+            // Enter to send (without shift)
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!instance.isLoading) {
+                    sendMessage();
+                }
+                return;
+            }
+
+            // Escape to cancel
+            if (e.key === 'Escape' && instance.isLoading) {
+                e.preventDefault();
+                cancelRequest();
+                return;
+            }
+
+            // Up arrow for history
+            if (e.key === 'ArrowUp' && input.selectionStart === 0) {
+                e.preventDefault();
+                if (instance.history.length === 0) return;
+
+                // Save current input if starting to browse history
+                if (instance.historyIndex === instance.history.length) {
+                    instance.currentInput = input.value;
+                }
+
+                if (instance.historyIndex > 0) {
+                    instance.historyIndex--;
+                    input.value = instance.history[instance.historyIndex];
+                    // Move cursor to end
+                    setTimeout(() => input.setSelectionRange(input.value.length, input.value.length), 0);
+                }
+                return;
+            }
+
+            // Down arrow for history
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (instance.historyIndex < instance.history.length - 1) {
+                    instance.historyIndex++;
+                    input.value = instance.history[instance.historyIndex];
+                } else if (instance.historyIndex === instance.history.length - 1) {
+                    instance.historyIndex = instance.history.length;
+                    input.value = instance.currentInput;
+                }
+                // Move cursor to end
+                setTimeout(() => input.setSelectionRange(input.value.length, input.value.length), 0);
+                return;
+            }
+        });
+
+        // Auto-resize textarea
+        input.addEventListener('input', () => {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+            // Reset history index when typing
+            instance.historyIndex = instance.history.length;
+        });
+
+        // Return instance methods
+        return {
+            cancel: cancelRequest,
+            isLoading: () => instance.isLoading,
+            getHistory: () => [...instance.history]
+        };
+    }
+};
+
+/**
  * Shared map configuration - single source of truth for all maps
  */
 const LibertasMap = {
