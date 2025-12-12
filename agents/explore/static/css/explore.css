@@ -557,6 +557,11 @@
         position: relative;
         padding-right: 50px;
     }
+
+    /* Hide suggestions on mobile to make room for text input */
+    .quick-suggestions {
+        display: none;
+    }
 }
 
 /* ==================== Venue Type Colors ==================== */
