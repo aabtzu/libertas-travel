@@ -1361,40 +1361,67 @@ def get_venue_stats() -> Dict[str, Any]:
 
 
 def import_venues_from_csv(csv_path: str, source: str = "curated") -> int:
-    """Import venues from a CSV file. Returns count of imported venues."""
+    """Import venues from a CSV file using batch insert. Returns count of imported venues."""
     import csv
 
-    count = 0
+    # Read all rows first
+    rows = []
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # Map CSV columns to venue fields
-            venue_data = {
-                "name": row.get("name", "").strip(),
-                "venue_type": row.get("venue_type", "").strip() or None,
-                "city": row.get("city", "").strip() or None,
-                "state": row.get("state", "").strip() or None,
-                "country": row.get("country", "").strip() or None,
-                "address": row.get("address", "").strip() or None,
-                "latitude": float(row["latitude"]) if row.get("latitude") else None,
-                "longitude": float(row["longitude"]) if row.get("longitude") else None,
-                "website": row.get("website", "").strip() or None,
-                "google_maps_link": row.get("google_maps_link", "").strip() or None,
-                "notes": row.get("notes", "").strip() or None,
-                "description": row.get("description", "").strip() or None,
-                "cuisine_type": row.get("cuisine_type", "").strip() or None,
-                "michelin_stars": int(row["michelin_stars"]) if row.get("michelin_stars") else 0,
-                "chef": row.get("chef", "").strip() or None,
-                "collection": row.get("collection", "").strip() or None,
-                "source": source
-            }
+            name = row.get("name", "").strip()
+            if not name:
+                continue
+            rows.append((
+                name,
+                row.get("venue_type", "").strip() or None,
+                row.get("city", "").strip() or None,
+                row.get("state", "").strip() or None,
+                row.get("country", "").strip() or None,
+                row.get("address", "").strip() or None,
+                float(row["latitude"]) if row.get("latitude") else None,
+                float(row["longitude"]) if row.get("longitude") else None,
+                row.get("website", "").strip() or None,
+                row.get("google_maps_link", "").strip() or None,
+                row.get("notes", "").strip() or None,
+                row.get("description", "").strip() or None,
+                row.get("cuisine_type", "").strip() or None,
+                int(row["michelin_stars"]) if row.get("michelin_stars") else 0,
+                row.get("chef", "").strip() or None,
+                row.get("collection", "").strip() or None,
+                source
+            ))
 
-            if venue_data["name"]:  # Only import if name exists
-                if add_venue(venue_data):
-                    count += 1
+    if not rows:
+        return 0
 
-    print(f"[DB] Imported {count} venues from {csv_path}")
-    return count
+    # Batch insert with single connection
+    with get_db() as conn:
+        cursor = conn.cursor()
+        try:
+            if USE_POSTGRES:
+                cursor.executemany("""
+                    INSERT INTO venues (name, venue_type, city, state, country, address,
+                                       latitude, longitude, website, google_maps_link,
+                                       notes, description, cuisine_type, michelin_stars,
+                                       chef, collection, source)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, rows)
+            else:
+                cursor.executemany("""
+                    INSERT INTO venues (name, venue_type, city, state, country, address,
+                                       latitude, longitude, website, google_maps_link,
+                                       notes, description, cuisine_type, michelin_stars,
+                                       chef, collection, source)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, rows)
+            conn.commit()
+            count = len(rows)
+            print(f"[DB] Batch imported {count} venues from {csv_path}")
+            return count
+        except Exception as e:
+            print(f"[DB] Error batch importing venues: {e}")
+            return 0
 
 
 # Initialize database on import
