@@ -1029,14 +1029,18 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
         except Exception as e:
             debug_info["disk_space_error"] = str(e)
 
-        # Check trips data content
-        if TRIPS_DATA_FILE.exists():
-            try:
-                trips = load_trips_data()
-                debug_info["trips_count"] = len(trips)
-                debug_info["trips_titles"] = [t.get("title", "?") for t in trips[:5]]
-            except Exception as e:
-                debug_info["trips_data_error"] = str(e)
+        # Check trips from database
+        try:
+            with db.get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM trips")
+                trip_count = cursor.fetchone()[0]
+                debug_info["trips_count"] = trip_count
+
+                cursor.execute("SELECT title FROM trips ORDER BY created_at DESC LIMIT 10")
+                debug_info["trips_titles"] = [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            debug_info["trips_error"] = str(e)
 
         # Venue database info
         try:
