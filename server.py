@@ -1006,16 +1006,24 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
         except Exception as e:
             debug_info["disk_space_error"] = str(e)
 
-        # Check trips from database
+        # Check trips and users from database
         try:
             with db.get_db() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT COUNT(*) FROM trips")
-                trip_count = cursor.fetchone()[0]
-                debug_info["trips_count"] = trip_count
 
-                cursor.execute("SELECT title FROM trips ORDER BY created_at DESC LIMIT 10")
-                debug_info["trips_titles"] = [row[0] for row in cursor.fetchall()]
+                # User count
+                cursor.execute("SELECT COUNT(*) FROM users")
+                debug_info["users_count"] = cursor.fetchone()[0]
+
+                # Trip count and details
+                cursor.execute("SELECT COUNT(*) FROM trips")
+                debug_info["trips_count"] = cursor.fetchone()[0]
+
+                cursor.execute("SELECT id, user_id, title, link FROM trips ORDER BY created_at DESC LIMIT 10")
+                debug_info["trips"] = [
+                    {"id": row[0], "user_id": row[1], "title": row[2], "link": row[3]}
+                    for row in cursor.fetchall()
+                ]
         except Exception as e:
             debug_info["trips_error"] = str(e)
 
