@@ -884,7 +884,7 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                     venues_by_region[region] = []
                 venues_by_region[region].append(v)
 
-            # Build venue context organized by region
+            # Build venue context organized by region with rich details
             venue_context = "Here are all venues in the database, organized by state/region:\n\n"
             for region in sorted(venues_by_region.keys()):
                 region_venues = venues_by_region[region]
@@ -896,9 +896,18 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                     if v.get('venue_type'):
                         venue_context += f" ({v['venue_type']})"
                     if v.get('cuisine_type'):
-                        venue_context += f" - {v['cuisine_type']}"
+                        venue_context += f" [{v['cuisine_type']}]"
                     if v.get('michelin_stars'):
                         venue_context += f" ⭐{v['michelin_stars']} Michelin"
+                    if v.get('collection') and v['collection'] not in ('Saved', None):
+                        venue_context += f" #{v['collection']}"
+                    # Add description for smarter recommendations
+                    if v.get('description'):
+                        desc = v['description'][:150].replace('\n', ' ')
+                        venue_context += f" | {desc}"
+                    elif v.get('notes'):
+                        notes = v['notes'][:100].replace('\n', ' ')
+                        venue_context += f" | {notes}"
                     venue_context += "\n"
                 venue_context += "\n"
 
