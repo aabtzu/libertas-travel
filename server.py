@@ -876,22 +876,30 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
 
             messages.append({"role": "user", "content": message})
 
-            # Also pass venue data in the current message context for searching
-            venue_context = "Here are all venues in the database:\n\n"
+            # Organize venues by state/region for better route query support
+            venues_by_region = {}
             for v in venues:
-                venue_context += f"- {v['name']}"
-                if v.get('city'):
-                    venue_context += f", {v['city']}"
-                if v.get('state'):
-                    venue_context += f", {v['state']}"
-                if v.get('country'):
-                    venue_context += f", {v['country']}"
-                if v.get('venue_type'):
-                    venue_context += f" ({v['venue_type']})"
-                if v.get('cuisine_type'):
-                    venue_context += f" - {v['cuisine_type']}"
-                if v.get('michelin_stars'):
-                    venue_context += f" ⭐{v['michelin_stars']} Michelin"
+                region = v.get('state') or v.get('country') or 'Other'
+                if region not in venues_by_region:
+                    venues_by_region[region] = []
+                venues_by_region[region].append(v)
+
+            # Build venue context organized by region
+            venue_context = "Here are all venues in the database, organized by state/region:\n\n"
+            for region in sorted(venues_by_region.keys()):
+                region_venues = venues_by_region[region]
+                venue_context += f"=== {region} ({len(region_venues)} venues) ===\n"
+                for v in region_venues:
+                    venue_context += f"- {v['name']}"
+                    if v.get('city'):
+                        venue_context += f", {v['city']}"
+                    if v.get('venue_type'):
+                        venue_context += f" ({v['venue_type']})"
+                    if v.get('cuisine_type'):
+                        venue_context += f" - {v['cuisine_type']}"
+                    if v.get('michelin_stars'):
+                        venue_context += f" ⭐{v['michelin_stars']} Michelin"
+                    venue_context += "\n"
                 venue_context += "\n"
 
             # Add venue list to the user message
