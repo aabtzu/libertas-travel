@@ -1005,6 +1005,28 @@ def add_venue(venue_data: Dict[str, Any], created_by: Optional[int] = None) -> O
             return None
 
 
+def update_venue_coordinates(venue_id: int, latitude: float, longitude: float) -> bool:
+    """Update latitude and longitude for a venue."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        try:
+            if USE_POSTGRES:
+                cursor.execute(
+                    "UPDATE venues SET latitude = %s, longitude = %s WHERE id = %s",
+                    (latitude, longitude, venue_id)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE venues SET latitude = ?, longitude = ? WHERE id = ?",
+                    (latitude, longitude, venue_id)
+                )
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating venue coordinates: {e}")
+            return False
+
+
 def get_all_venues(filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """Get all venues, optionally filtered by city, country, venue_type, etc."""
     with get_db() as conn:

@@ -1102,19 +1102,39 @@ Return venues in a JSON block with source tags:
 
                         # Try to match against curated database
                         matched = False
+                        name_lower = name.lower().strip()
+                        print(f"[EXPLORE] Matching venue: '{name}'")
+
+                        # First try exact match
                         for v in venues:
-                            if v['name'].lower() == name.lower():
+                            if v['name'].lower() == name_lower:
                                 venue_copy = v.copy()
                                 venue_copy['source'] = 'CURATED'
-                                # Add collection from web fetch if applicable
                                 if web_fetch_context and not venue_copy.get('collection'):
                                     venue_copy['collection'] = web_fetch_context.get('title', '')[:50]
                                 matched_venues.append(venue_copy)
                                 matched = True
+                                has_coords = bool(venue_copy.get('latitude') and venue_copy.get('longitude'))
+                                print(f"[EXPLORE]   -> EXACT match: {v['name']} (coords: {has_coords})")
                                 break
 
-                        if not matched and source == "AI_PICK":
-                            # AI suggestion not in database
+                        # If no exact match, try partial match (name contains or is contained)
+                        if not matched:
+                            for v in venues:
+                                v_name_lower = v['name'].lower()
+                                if name_lower in v_name_lower or v_name_lower in name_lower:
+                                    venue_copy = v.copy()
+                                    venue_copy['source'] = 'CURATED'
+                                    if web_fetch_context and not venue_copy.get('collection'):
+                                        venue_copy['collection'] = web_fetch_context.get('title', '')[:50]
+                                    matched_venues.append(venue_copy)
+                                    matched = True
+                                    has_coords = bool(venue_copy.get('latitude') and venue_copy.get('longitude'))
+                                    print(f"[EXPLORE]   -> PARTIAL match: {v['name']} (coords: {has_coords})")
+                                    break
+
+                        if not matched:
+                            # Not found in database - add as AI_PICK
                             ai_venue = {
                                 'name': name,
                                 'source': 'AI_PICK',
@@ -1125,6 +1145,7 @@ Return venues in a JSON block with source tags:
                                 'collection': web_fetch_context.get('title', '')[:50] if web_fetch_context else ''
                             }
                             matched_venues.append(ai_venue)
+                            print(f"[EXPLORE]   -> NO MATCH, added as AI_PICK")
 
                     # Remove JSON block from response text
                     assistant_response = re.sub(r'```json\s*\{.*?\}\s*```', '', assistant_response, flags=re.DOTALL).strip()
@@ -1255,6 +1276,42 @@ Return venues in a JSON block with source tags:
                     debug_info["reimport_result"] = f"Imported {imported} venues"
                 else:
                     debug_info["reimport_result"] = "CSV not found"
+
+            # Geocode missing venues
+            if params.get('geocode_missing'):
+                from geocode_venues import geocode_address
+                venues = load_venues()
+                missing = [v for v in venues if not v.get('latitude') or not v.get('longitude')]
+                debug_info["geocode_total_missing"] = len(missing)
+
+                geocoded = 0
+                failed = 0
+                results = []
+                for v in missing[:50]:  # Limit to 50 at a time to avoid timeout
+                    name = v.get('name', '')
+                    city = v.get('city', '')
+                    country = v.get('country', '')
+                    lat, lng = geocode_address(name, city, country)
+                    if lat and lng:
+                        db.update_venue_coordinates(v['id'], lat, lng)
+                        geocoded += 1
+                        results.append(f"✓ {name}: {lat:.4f}, {lng:.4f}")
+                    else:
+                        # Try city-level fallback
+                        lat, lng = geocode_address("", city, country)
+                        if lat and lng:
+                            db.update_venue_coordinates(v['id'], lat, lng)
+                            geocoded += 1
+                            results.append(f"✓ {name} (city-level): {lat:.4f}, {lng:.4f}")
+                        else:
+                            failed += 1
+                            results.append(f"✗ {name}: NOT FOUND")
+                    import time
+                    time.sleep(1.1)  # Nominatim rate limit
+
+                _venues_cache = None  # Clear cache
+                debug_info["geocode_result"] = f"Geocoded {geocoded}, failed {failed}"
+                debug_info["geocode_details"] = results
 
             venue_count = db.get_venue_count()
             debug_info["venue_count"] = venue_count
