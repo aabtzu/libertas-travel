@@ -1310,6 +1310,38 @@ Return venues in a JSON block with source tags:
                 debug_info["geocode_result"] = f"Geocoded {geocoded}, failed {failed}"
                 debug_info["geocode_details"] = results
 
+            # Seed Rome Michelin coordinates (hardcoded to avoid Nominatim rate limits)
+            if params.get('seed_rome_coords'):
+                rome_coords = {
+                    "Achilli al Parlamento": (41.9008, 12.4764),
+                    "Acquolina": (41.9111, 12.4762),
+                    "All'Oro": (41.9097, 12.4959),
+                    "Aroma": (41.8893, 12.4925),
+                    "Enoteca La Torre": (41.9176, 12.4574),
+                    "Glass Hostaria": (41.8896, 12.4710),
+                    "Idylio by Apreda": (41.9060, 12.4822),
+                    "Il Convivio Troiani": (41.8995, 12.4717),
+                    "Il Pagliaccio": (41.8978, 12.4708),
+                    "Imàgo": (41.9068, 12.4835),
+                    "La Pergola": (41.9248, 12.4543),
+                    "Marco Martini": (41.8716, 12.4776),
+                    "Moma": (41.9047, 12.4880),
+                    "Orma": (41.8925, 12.4809),
+                    "Per Me Giulio Terrinoni": (41.8979, 12.4754),
+                    "Pipero": (41.9013, 12.4785),
+                    "Pulejo": (41.9066, 12.4629),
+                }
+                venues = load_venues()
+                updated = 0
+                for venue in venues:
+                    name = venue.get('name', '')
+                    if name in rome_coords and not venue.get('latitude'):
+                        lat, lng = rome_coords[name]
+                        db.update_venue_coordinates(venue['id'], lat, lng)
+                        updated += 1
+                _venues_cache = None  # Clear cache
+                debug_info["seed_rome_result"] = f"Updated {updated} Rome Michelin venues"
+
             venue_count = db.get_venue_count()
             debug_info["venue_count"] = venue_count
             debug_info["venues_seed_csv"] = str(VENUES_SEED_CSV)
