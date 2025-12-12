@@ -722,3 +722,65 @@ body {
         display: none !important;
     }
 }
+
+/* ==================== Source/Confidence Badges ==================== */
+/* Used on Explore venue cards and Create suggestion cards */
+
+.source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.source-badge.curated {
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    color: white;
+}
+
+.source-badge.curated::before {
+    content: "\f091";  /* trophy icon */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.6rem;
+}
+
+.source-badge.ai-pick {
+    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    color: white;
+}
+
+.source-badge.ai-pick::before {
+    content: "\f544";  /* robot icon */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.6rem;
+}
+
+/* Collection/origin tag */
+.collection-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    background: rgba(0, 0, 0, 0.1);
+    color: #666;
+    margin-left: 4px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Badge container for inline display */
+.source-badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}

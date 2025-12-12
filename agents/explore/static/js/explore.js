@@ -404,6 +404,17 @@ function createVenueCard(venue) {
     const venueType = (venue.venue_type || 'other').toLowerCase();
     const icon = VENUE_ICONS[venue.venue_type] || 'fa-map-marker-alt';
 
+    // Source badge (CURATED vs AI_PICK)
+    const source = venue.source || 'CURATED';
+    const sourceBadgeClass = source === 'CURATED' ? 'curated' : 'ai-pick';
+    const sourceBadgeText = source === 'CURATED' ? 'Curated' : 'AI Pick';
+    const sourceBadge = `<span class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</span>`;
+
+    // Collection tag (origin)
+    const collectionTag = venue.collection && venue.collection !== 'Saved'
+        ? `<span class="collection-tag" title="${venue.collection}">${venue.collection}</span>`
+        : '';
+
     // Michelin badge
     const michelinBadge = venue.michelin_stars > 0
         ? `<div class="michelin-badge"><i class="fas fa-star"></i> ${venue.michelin_stars} Michelin</div>`
@@ -429,13 +440,16 @@ function createVenueCard(venue) {
         : '';
 
     return `
-        <div class="venue-card" data-name="${venue.name}">
+        <div class="venue-card" data-name="${venue.name}" data-source="${source}">
             <div class="venue-card-image ${venueType}">
                 <i class="fas ${icon} placeholder-icon"></i>
                 <div class="venue-type-badge">${venue.venue_type || 'Place'}</div>
                 ${michelinBadge}
             </div>
             <div class="venue-card-content">
+                <div class="venue-card-header">
+                    <div class="source-badges">${sourceBadge}${collectionTag}</div>
+                </div>
                 <div class="venue-card-name" title="${venue.name}">${venue.name}</div>
                 <div class="venue-card-location">
                     <i class="fas fa-map-marker-alt"></i>

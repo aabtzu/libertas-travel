@@ -10,6 +10,7 @@ import tempfile
 import shutil
 import urllib.request
 import ssl
+from html.parser import HTMLParser
 
 # Add agents to path
 import sys
@@ -243,6 +244,97 @@ def extract_text_from_html(html_content: bytes) -> str:
     text = re.sub(r' +', ' ', text)
 
     return text.strip()
+
+
+def fetch_webpage_for_chat(url: str) -> dict:
+    """Fetch a web page and extract text for chat handlers.
+
+    Returns dict with:
+        success: bool
+        text: str (extracted text content)
+        title: str (page title if found)
+        error: str (if failed)
+    """
+    try:
+        content, filename, content_type = download_from_url(url)
+
+        # Extract text from HTML
+        if 'html' in content_type or filename.endswith('.html'):
+            text = extract_text_from_html(content)
+        else:
+            # Try to decode as text
+            try:
+                text = content.decode('utf-8')
+            except UnicodeDecodeError:
+                text = content.decode('latin-1')
+
+        # Try to extract page title from HTML
+        title = None
+        try:
+            html_str = content.decode('utf-8', errors='ignore')
+            title_match = re.search(r'<title[^>]*>([^<]+)</title>', html_str, re.IGNORECASE)
+            if title_match:
+                title = title_match.group(1).strip()
+        except:
+            pass
+
+        # Limit text length for LLM context
+        if len(text) > 15000:
+            text = text[:15000] + "\n\n[Content truncated...]"
+
+        return {
+            'success': True,
+            'text': text,
+            'title': title or url,
+            'url': url
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'url': url
+        }
+
+
+def cross_reference_venues(names: list[str], venues: list[dict]) -> list[dict]:
+    """Cross-reference venue names against curated database.
+
+    Returns list of dicts with source field indicating if found in curated DB.
+    """
+    results = []
+    venues_lower = {v['name'].lower(): v for v in venues}
+
+    for name in names:
+        name_clean = name.strip()
+        name_lower = name_clean.lower()
+
+        # Try exact match first
+        if name_lower in venues_lower:
+            venue = venues_lower[name_lower].copy()
+            venue['source'] = 'CURATED'
+            results.append(venue)
+        else:
+            # Try fuzzy match (name contains or is contained)
+            matched = False
+            for v_name_lower, v in venues_lower.items():
+                if name_lower in v_name_lower or v_name_lower in name_lower:
+                    venue = v.copy()
+                    venue['source'] = 'CURATED'
+                    results.append(venue)
+                    matched = True
+                    break
+
+            if not matched:
+                # Not in curated DB - mark as AI_PICK
+                results.append({
+                    'name': name_clean,
+                    'source': 'AI_PICK',
+                    'venue_type': 'Restaurant',  # Default guess
+                    'city': None,
+                    'country': None
+                })
+
+    return results
 
 
 def load_venues() -> list[dict]:
@@ -771,7 +863,14 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         self.send_json_response(venues)
 
     def handle_explore_chat(self):
-        """Handle chat messages for explore feature with Claude LLM."""
+        """Handle chat messages for explore feature with Claude LLM.
+
+        Supports:
+        - Curated venue search from database
+        - Web page fetching for external lists (Eater, etc.)
+        - AI suggestions beyond curated database
+        - Source tagging (CURATED vs AI_PICK)
+        """
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
@@ -822,29 +921,57 @@ States/Regions: {', '.join(f"{k} ({v})" for k, v in sorted(states.items(), key=l
 
 Countries: {', '.join(sorted(countries.keys()))}
 
-When the user asks about places, restaurants, bars, hotels, or other venues:
-1. Search through the FULL venue list provided below - it contains ALL venues in the database
-2. Return venues that match the user's criteria
-3. IMPORTANT: The summary stats above are just highlights - the full venue list below is the source of truth
+## CAPABILITIES
 
-IMPORTANT - Route/Trip Queries:
-When users ask about "trips from X to Y" or "road trip from X to Y" or similar route-based queries:
-- Think about the geographic route between those locations
-- Include venues from intermediate stops along the way, not just the endpoints
-- For example, "SF to Alaska" should include places in Oregon, Washington, Vancouver, etc.
-- For example, "NYC to Miami" should include places in DC, the Carolinas, Georgia, etc.
-- Organize the results geographically from start to finish when possible
+1. **Curated Database Search**: Search the venue list below for trusted, vetted recommendations
+2. **Web Fetch**: Use the fetch_web_page tool to read external lists (Eater, Infatuation, blogs, etc.)
+3. **AI Suggestions**: Recommend places not in the database (will be marked as AI picks)
 
-To return venue results to display on the map, include a JSON block in your response like this:
+## WHEN TO USE WEB FETCH
+
+Use the fetch_web_page tool when users mention:
+- External lists: "Eater 38", "Infatuation", "Michelin Guide website", blog posts
+- Specific URLs they want to check
+- "Check this page for recommendations"
+
+## RESPONSE FORMAT
+
+Return venues in a JSON block with source tags:
 ```json
-{{"venues": ["venue_name_1", "venue_name_2", ...]}}
+{{"venues": [
+    {{"name": "Roscioli", "source": "CURATED"}},
+    {{"name": "Some AI Pick", "source": "AI_PICK", "city": "Rome", "venue_type": "Restaurant", "notes": "Brief description"}}
+]}}
 ```
 
-The venue names must match exactly from the database. Include up to 30 venues maximum for route queries, 20 for regular searches.
+- Use "CURATED" for venues from the database (name must match exactly)
+- Use "AI_PICK" for recommendations not in the database (include city, venue_type, notes)
+- Include collection field if relevant (e.g., "Eater 38 Rome" for web-fetched venues)
 
-If the user is just chatting or asking general questions (not searching for venues), respond conversationally without the JSON block.
+## IMPORTANT RULES
 
-Keep responses concise and direct. Avoid flowery language, clichés, or poetic phrases like "the journey becomes the destination". Just give practical info about the places."""
+- Route queries: Include intermediate stops (SF to Alaska = Oregon, Washington, Vancouver, etc.)
+- Up to 30 venues for route queries, 20 for regular searches
+- Curated venues should appear first in the list
+- Be concise and practical, no flowery language"""
+
+            # Define tools
+            tools = [
+                {
+                    "name": "fetch_web_page",
+                    "description": "Fetch a web page to extract venue recommendations. Use this when users mention external lists like Eater, Infatuation, blog posts, or provide URLs.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "The URL to fetch. For 'Eater 38 Rome', construct URL like 'https://www.eater.com/maps/best-restaurants-rome'"
+                            }
+                        },
+                        "required": ["url"]
+                    }
+                }
+            ]
 
             # Build messages from history
             messages = []
@@ -852,8 +979,6 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                 role = h.get('role', 'user')
                 if role in ['user', 'assistant']:
                     messages.append({"role": role, "content": h.get('content', '')})
-
-            messages.append({"role": "user", "content": message})
 
             # Organize venues by state/region for better route query support
             venues_by_region = {}
@@ -891,37 +1016,123 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
                 venue_context += "\n"
 
             # Add venue list to the user message
-            messages[-1]["content"] = f"{message}\n\n---\n{venue_context}"
+            messages.append({"role": "user", "content": f"{message}\n\n---\n{venue_context}"})
 
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=2000,
-                system=system_prompt,
-                messages=messages
-            )
+            # Tool use loop - handle multiple rounds if Claude calls tools
+            max_iterations = 3
+            web_fetch_context = None
 
-            assistant_response = response.content[0].text
+            for iteration in range(max_iterations):
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=2000,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=tools
+                )
 
-            # Extract venue names from JSON block if present
+                # Check if Claude wants to use a tool
+                tool_use_block = None
+                text_block = None
+
+                for block in response.content:
+                    if block.type == "tool_use":
+                        tool_use_block = block
+                    elif block.type == "text":
+                        text_block = block
+
+                if tool_use_block and tool_use_block.name == "fetch_web_page":
+                    # Execute the web fetch
+                    url = tool_use_block.input.get("url", "")
+                    print(f"[EXPLORE] Fetching web page: {url}")
+
+                    fetch_result = fetch_webpage_for_chat(url)
+
+                    if fetch_result['success']:
+                        web_fetch_context = {
+                            'url': url,
+                            'title': fetch_result.get('title', url)
+                        }
+                        tool_result_content = f"Successfully fetched page: {fetch_result['title']}\n\nContent:\n{fetch_result['text']}"
+                    else:
+                        tool_result_content = f"Failed to fetch page: {fetch_result.get('error', 'Unknown error')}"
+
+                    # Add assistant message with tool use and tool result
+                    messages.append({"role": "assistant", "content": response.content})
+                    messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_block.id,
+                            "content": tool_result_content
+                        }]
+                    })
+                    # Continue loop for Claude to process the result
+                    continue
+
+                # No more tool calls - we have the final response
+                break
+
+            # Extract final response text
+            assistant_response = ""
+            for block in response.content:
+                if block.type == "text":
+                    assistant_response = block.text
+                    break
+
+            # Extract venue data from JSON block
             matched_venues = []
-            import re
             json_match = re.search(r'```json\s*(\{.*?\})\s*```', assistant_response, re.DOTALL)
+
             if json_match:
                 try:
                     venue_data = json.loads(json_match.group(1))
-                    venue_names = venue_data.get('venues', [])
+                    venue_list = venue_data.get('venues', [])
 
-                    # Match venue names to actual venue objects
-                    for name in venue_names:
+                    for item in venue_list:
+                        # Handle both string names (old format) and dict format (new)
+                        if isinstance(item, str):
+                            name = item
+                            source = "CURATED"
+                            extra = {}
+                        else:
+                            name = item.get('name', '')
+                            source = item.get('source', 'CURATED')
+                            extra = {k: v for k, v in item.items() if k not in ('name', 'source')}
+
+                        # Try to match against curated database
+                        matched = False
                         for v in venues:
                             if v['name'].lower() == name.lower():
-                                matched_venues.append(v)
+                                venue_copy = v.copy()
+                                venue_copy['source'] = 'CURATED'
+                                # Add collection from web fetch if applicable
+                                if web_fetch_context and not venue_copy.get('collection'):
+                                    venue_copy['collection'] = web_fetch_context.get('title', '')[:50]
+                                matched_venues.append(venue_copy)
+                                matched = True
                                 break
+
+                        if not matched and source == "AI_PICK":
+                            # AI suggestion not in database
+                            ai_venue = {
+                                'name': name,
+                                'source': 'AI_PICK',
+                                'venue_type': extra.get('venue_type', 'Restaurant'),
+                                'city': extra.get('city', ''),
+                                'country': extra.get('country', ''),
+                                'notes': extra.get('notes', ''),
+                                'collection': web_fetch_context.get('title', '')[:50] if web_fetch_context else ''
+                            }
+                            matched_venues.append(ai_venue)
 
                     # Remove JSON block from response text
                     assistant_response = re.sub(r'```json\s*\{.*?\}\s*```', '', assistant_response, flags=re.DOTALL).strip()
                 except json.JSONDecodeError:
                     pass
+
+            # Sort: CURATED first, then AI_PICK
+            matched_venues.sort(key=lambda v: (0 if v.get('source') == 'CURATED' else 1, v.get('name', '')))
 
             self.send_json_response({
                 "response": assistant_response,
@@ -932,6 +1143,10 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
             # Fallback to simple search if Claude API fails
             print(f"Claude API error: {e}")
             matched_venues = self.simple_venue_search(message, venues)
+
+            # Add source field to fallback results
+            for v in matched_venues:
+                v['source'] = 'CURATED'
 
             if matched_venues:
                 response_text = f"I found {len(matched_venues)} places matching your search:"

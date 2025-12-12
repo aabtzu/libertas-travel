@@ -910,9 +910,13 @@
 
 .suggestion-item-header {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
     margin-bottom: 6px;
+}
+
+.suggestion-item-header .source-badges {
+    margin-bottom: 2px;
 }
 
 .suggestion-item-title {

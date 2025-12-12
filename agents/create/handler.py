@@ -2,12 +2,119 @@
 
 import json
 import os
+import re
+import ssl
+import urllib.request
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from anthropic import Anthropic
 
 import database as db
+
+
+def _fetch_webpage_for_chat(url: str) -> dict:
+    """Fetch a web page and extract text for chat handlers.
+
+    Returns dict with success, text, title, error fields.
+    """
+    try:
+        # Create SSL context
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        }
+
+        req = urllib.request.Request(url, headers=headers)
+
+        with urllib.request.urlopen(req, context=ctx, timeout=60) as response:
+            content = response.read()
+
+        # Extract text from HTML
+        from html.parser import HTMLParser
+
+        class TextExtractor(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.text_parts = []
+                self.skip_tags = {'script', 'style', 'meta', 'link', 'noscript'}
+                self.current_skip = False
+
+            def handle_starttag(self, tag, attrs):
+                if tag in self.skip_tags:
+                    self.current_skip = True
+                elif tag in ('br', 'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3'):
+                    self.text_parts.append('\n')
+
+            def handle_endtag(self, tag):
+                if tag in self.skip_tags:
+                    self.current_skip = False
+
+            def handle_data(self, data):
+                if not self.current_skip:
+                    text = data.strip()
+                    if text:
+                        self.text_parts.append(text + ' ')
+
+        try:
+            html_str = content.decode('utf-8')
+        except UnicodeDecodeError:
+            html_str = content.decode('latin-1')
+
+        extractor = TextExtractor()
+        extractor.feed(html_str)
+        text = ''.join(extractor.text_parts)
+        text = re.sub(r'\n\s*\n', '\n\n', text)
+        text = re.sub(r' +', ' ', text).strip()
+
+        # Extract title
+        title = None
+        title_match = re.search(r'<title[^>]*>([^<]+)</title>', html_str, re.IGNORECASE)
+        if title_match:
+            title = title_match.group(1).strip()
+
+        # Limit text length
+        if len(text) > 15000:
+            text = text[:15000] + "\n\n[Content truncated...]"
+
+        return {
+            'success': True,
+            'text': text,
+            'title': title or url,
+            'url': url
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'url': url
+        }
+
+
+def _load_curated_venues() -> List[Dict]:
+    """Load curated venues from database for cross-referencing."""
+    try:
+        venues = db.get_all_venues()
+        return venues if venues else []
+    except Exception as e:
+        print(f"Error loading curated venues: {e}")
+        return []
+
+
+def _cross_reference_curated(name: str, venues: List[Dict]) -> Optional[Dict]:
+    """Check if a venue name exists in the curated database."""
+    name_lower = name.lower().strip()
+    for v in venues:
+        if v.get('name', '').lower() == name_lower:
+            return v
+        # Fuzzy match
+        if name_lower in v.get('name', '').lower() or v.get('name', '').lower() in name_lower:
+            return v
+    return None
 
 
 def create_trip_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -337,6 +444,11 @@ def add_item_to_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> D
 def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
     """Handle LLM chat for venue recommendations.
 
+    Supports:
+    - Curated venue database cross-referencing
+    - Web page fetching for external lists (Eater, etc.)
+    - Source tagging (CURATED vs AI_PICK)
+
     Args:
         user_id: The user's ID
         data: Request data containing message and history
@@ -351,8 +463,11 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
     history = data.get('history', [])
     trip_context = data.get('trip_context', {})
 
+    # Load curated venues for cross-referencing
+    curated_venues = _load_curated_venues()
+
     # Build system prompt for venue-focused chat
-    system_prompt = _build_venue_chat_prompt(trip_context)
+    system_prompt = _build_venue_chat_prompt(trip_context, curated_venues)
 
     # Build messages for LLM (filter out empty messages)
     messages = []
@@ -365,7 +480,7 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
             })
     messages.append({'role': 'user', 'content': message})
 
-    # Define tool for adding items to the trip
+    # Define tools for trip building and web fetching
     tools = [
         {
             "name": "add_to_itinerary",
@@ -407,6 +522,11 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
                                 "website": {
                                     "type": "string",
                                     "description": "Official website URL for the place (e.g., https://example.com)"
+                                },
+                                "source": {
+                                    "type": "string",
+                                    "enum": ["CURATED", "AI_PICK"],
+                                    "description": "CURATED if from the venue database, AI_PICK if a new recommendation"
                                 }
                             },
                             "required": ["title", "category"]
@@ -415,46 +535,107 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
                 },
                 "required": ["items"]
             }
+        },
+        {
+            "name": "fetch_web_page",
+            "description": "Fetch a web page to extract venue recommendations. Use this when users mention external lists like Eater, Infatuation, blog posts, or provide URLs.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "The URL to fetch. For 'Eater 38 Rome', try 'https://www.eater.com/maps/best-restaurants-rome'"
+                    }
+                },
+                "required": ["url"]
+            }
         }
     ]
 
     try:
         client = Anthropic()
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2048,
-            system=system_prompt,
-            messages=messages,
-            tools=tools
-        )
 
-        # Extract text response and tool use
-        response_text = ""
+        # Tool use loop - handle multiple rounds if Claude calls tools
+        max_iterations = 3
+        web_fetch_context = None
         add_items = []
+        response_text = ""
 
-        for block in response.content:
-            if block.type == "text":
-                response_text = block.text
-            elif block.type == "tool_use" and block.name == "add_to_itinerary":
-                # Extract items from tool call
-                tool_input = block.input
-                if "items" in tool_input:
-                    add_items = tool_input["items"]
+        for iteration in range(max_iterations):
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=2048,
+                system=system_prompt,
+                messages=messages,
+                tools=tools
+            )
+
+            # Process response blocks
+            tool_use_block = None
+
+            for block in response.content:
+                if block.type == "text":
+                    response_text = block.text
+                elif block.type == "tool_use":
+                    if block.name == "add_to_itinerary":
+                        tool_input = block.input
+                        if "items" in tool_input:
+                            add_items = tool_input["items"]
+                    elif block.name == "fetch_web_page":
+                        tool_use_block = block
+
+            # Handle web fetch tool
+            if tool_use_block and tool_use_block.name == "fetch_web_page":
+                url = tool_use_block.input.get("url", "")
+                print(f"[CREATE CHAT] Fetching web page: {url}")
+
+                fetch_result = _fetch_webpage_for_chat(url)
+
+                if fetch_result['success']:
+                    web_fetch_context = {
+                        'url': url,
+                        'title': fetch_result.get('title', url)
+                    }
+                    tool_result_content = f"Successfully fetched page: {fetch_result['title']}\n\nContent:\n{fetch_result['text']}"
+                else:
+                    tool_result_content = f"Failed to fetch page: {fetch_result.get('error', 'Unknown error')}"
+
+                # Add assistant message with tool use and tool result
+                messages.append({"role": "assistant", "content": response.content})
+                messages.append({
+                    "role": "user",
+                    "content": [{
+                        "type": "tool_result",
+                        "tool_use_id": tool_use_block.id,
+                        "content": tool_result_content
+                    }]
+                })
+                # Continue loop for Claude to process the result
+                continue
+
+            # No web fetch - we have the final response
+            break
 
         # Clean response text (remove any leftover JSON block for display)
         display_text = _clean_response_text(response_text)
 
-        # Also parse any suggested items (for suggestions without add)
-        suggested_items = _parse_suggested_items(display_text)
+        # Parse suggested items and cross-reference with curated DB
+        suggested_items = _parse_suggested_items(display_text, curated_venues, web_fetch_context)
+
+        # Add source field to add_items too
+        for item in add_items:
+            if 'source' not in item:
+                curated_match = _cross_reference_curated(item.get('title', ''), curated_venues)
+                item['source'] = 'CURATED' if curated_match else 'AI_PICK'
+            if web_fetch_context and not item.get('collection'):
+                item['collection'] = web_fetch_context.get('title', '')[:50]
 
         # Debug logging
         print(f"[CREATE CHAT] Response text length: {len(display_text)}")
         print(f"[CREATE CHAT] Parsed suggested items: {len(suggested_items)}")
         for i, item in enumerate(suggested_items[:5]):  # Show first 5 items
-            website_status = f"website={item.get('website', 'NONE')}"
-            print(f"[CREATE CHAT] Item {i+1}: {item.get('title', 'NO TITLE')} - {website_status}")
-        if not suggested_items:
-            print(f"[CREATE CHAT] Response preview: {display_text[:500]}")
+            source = item.get('source', 'NONE')
+            print(f"[CREATE CHAT] Item {i+1}: {item.get('title', 'NO TITLE')} - source={source}")
 
         return {
             'success': True,
@@ -465,16 +646,19 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         print(f"Create chat error: {e}")
+        import traceback
+        traceback.print_exc()
         return {'error': f'Chat service error: {str(e)}'}, 500
 
 
-def _build_venue_chat_prompt(trip_context: Dict[str, Any]) -> str:
+def _build_venue_chat_prompt(trip_context: Dict[str, Any], curated_venues: List[Dict] = None) -> str:
     """Build the system prompt for venue-focused chat."""
 
     destination = trip_context.get('destination', 'your destination')
     dates = trip_context.get('dates', '')
     days = trip_context.get('days', [])
     ideas = trip_context.get('ideas', [])
+    curated_venues = curated_venues or []
 
     # Build context about what's already planned
     itinerary_context = ""
@@ -530,53 +714,80 @@ def _build_venue_chat_prompt(trip_context: Dict[str, Any]) -> str:
 
     existing_list = "\n".join(f"  - {t}" for t in sorted(existing_titles)) if existing_titles else "  (none yet)"
 
+    # Build curated venue summary for context
+    curated_context = ""
+    if curated_venues:
+        # Filter venues relevant to destination
+        dest_lower = destination.lower() if destination else ''
+        relevant_venues = [v for v in curated_venues
+                          if dest_lower in (v.get('city', '') or '').lower()
+                          or dest_lower in (v.get('country', '') or '').lower()
+                          or dest_lower in (v.get('state', '') or '').lower()]
+
+        if relevant_venues:
+            curated_context = f"\n\n## CURATED VENUES DATABASE\n\nYou have access to {len(curated_venues)} vetted venues. Here are {len(relevant_venues)} venues near {destination}:\n"
+            for v in relevant_venues[:50]:  # Limit to 50 relevant venues
+                curated_context += f"- {v['name']}"
+                if v.get('city'):
+                    curated_context += f", {v['city']}"
+                if v.get('venue_type'):
+                    curated_context += f" ({v['venue_type']})"
+                if v.get('michelin_stars'):
+                    curated_context += f" ⭐{v['michelin_stars']} Michelin"
+                if v.get('collection') and v['collection'] not in ('Saved', None):
+                    curated_context += f" #{v['collection']}"
+                curated_context += "\n"
+            curated_context += "\nVenues from this list should be marked as source: CURATED\n"
+
     prompt = f"""You are a helpful travel planning assistant for Libertas, a travel itinerary app.
 
-You have the ability to add items directly to the user's itinerary using the add_to_itinerary tool.
+You have the ability to:
+1. Add items to the user's itinerary using the add_to_itinerary tool
+2. Fetch web pages using the fetch_web_page tool for external lists (Eater, Infatuation, blogs)
 
 Current trip context:
 - Destination: {destination}
 - Dates: {dates if dates else 'Not set yet'}
 {itinerary_context}
 {day_reference}
+{curated_context}
 
 ## CRITICAL: AVOID DUPLICATES
 
 The user already has these items in their trip (DO NOT suggest or add these again):
 {existing_list}
 
-When the user asks for "other", "more", "different", or "alternative" options, you MUST suggest DIFFERENT places than those listed above. Never re-suggest items already in the trip.
+When the user asks for "other", "more", "different", or "alternative" options, you MUST suggest DIFFERENT places than those listed above.
 
-## WHEN TO USE THE add_to_itinerary TOOL
+## WEB FETCH
 
-ONLY use the tool when the user EXPLICITLY asks to ADD something. Look for these exact words:
+Use the fetch_web_page tool when users mention:
+- External lists: "Eater 38", "Infatuation", "Michelin Guide", blog posts
+- Specific URLs they want to check
+- "Check this page for recommendations"
+
+## WHEN TO USE add_to_itinerary TOOL
+
+ONLY use the tool when the user EXPLICITLY asks to ADD something:
 - "add this", "add these", "put this in my trip", "include this", "book this"
 
-DO NOT use the tool when the user asks for:
-- "suggestions", "recommend", "ideas", "options", "what are some", "tell me about"
-- These are ASKING FOR INFORMATION, not asking you to add anything!
+DO NOT use the tool for: "suggestions", "recommend", "ideas", "options", "what are some"
+
+When using add_to_itinerary, include the source field:
+- source: "CURATED" - if the venue is in the curated database above
+- source: "AI_PICK" - if it's a new recommendation not in the database
 
 Categories: meal, hotel, activity, attraction, transport, other
 Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
-Time: 24-hour format like "14:30" (optional)
-Website: Include the official website URL when available
 
 ## SUGGESTING (default behavior)
 
-When the user asks for suggestions, recommendations, ideas, or options - DO NOT use the tool!
-Instead, respond with this EXACT format so they can choose what to add:
+When the user asks for suggestions, respond with this format:
 
-1. **Venue Name** - Brief description and why it's worth visiting. [Website](https://example.com)
-2. **Another Venue** - Its description here. [Website](https://their-site.com)
+1. **Venue Name** - Brief description. [Website](https://example.com)
+2. **Another Venue** - Description here. [Website](https://their-site.com)
 
-IMPORTANT: Always include a website link for each suggestion when you know the official URL.
-The user will see "Add to Ideas" buttons under each suggestion and can choose which ones to add.
-
-Guidelines:
-- NEVER suggest places already in the user's itinerary (see list above)
-- When asked for alternatives, suggest DIFFERENT venues
-- Suggest complementary activities nearby
-- Help fill gaps in their schedule
+Include website links when available. Prefer curated venues when they match the user's request.
 """
     return prompt
 
@@ -612,14 +823,15 @@ def _clean_response_text(response_text: str) -> str:
     return cleaned.strip()
 
 
-def _parse_suggested_items(response_text: str) -> List[Dict[str, Any]]:
+def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None, web_fetch_context: Dict = None) -> List[Dict[str, Any]]:
     """Parse suggested items from the LLM response.
 
     This is a simple parser that looks for structured suggestions.
+    Cross-references with curated database to add source field.
     Returns a list of items that can be added to the trip.
     """
     items = []
-    import re
+    curated_venues = curated_venues or []
 
     # Pattern 1: Numbered items with bold names like "1. **Name** - description"
     pattern1 = r'\d+\.\s+\*\*([^*]+)\*\*\s*[-–—:]?\s*(.+?)(?=\n\d+\.|\n\n|$)'
@@ -683,15 +895,37 @@ def _parse_suggested_items(response_text: str) -> List[Dict[str, Any]]:
         elif any(word in combined_lower for word in ['hike', 'trail', 'tour', 'trek', 'walk', 'cycling']):
             category = 'activity'
 
+        # Cross-reference with curated database
+        curated_match = _cross_reference_curated(name, curated_venues)
+        source = 'CURATED' if curated_match else 'AI_PICK'
+
         item = {
             'title': name,
             'category': category,
-            'notes': description[:200] if len(description) > 200 else description
+            'notes': description[:200] if len(description) > 200 else description,
+            'source': source
         }
+
+        # Add collection from curated match or web fetch context
+        if curated_match and curated_match.get('collection'):
+            item['collection'] = curated_match['collection']
+        elif web_fetch_context:
+            item['collection'] = web_fetch_context.get('title', '')[:50]
+
         if website:
             item['website'] = website
 
+        # Add extra info from curated match
+        if curated_match:
+            if curated_match.get('website') and not website:
+                item['website'] = curated_match['website']
+            if curated_match.get('city'):
+                item['location'] = curated_match['city']
+
         items.append(item)
+
+    # Sort: CURATED first, then AI_PICK
+    items.sort(key=lambda x: (0 if x.get('source') == 'CURATED' else 1, x.get('title', '')))
 
     return items
 

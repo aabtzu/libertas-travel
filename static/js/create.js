@@ -1612,12 +1612,26 @@ function addChatMessage(role, content, suggestedItems = [], saveToHistory = true
             const itemDiv = document.createElement('div');
             itemDiv.className = 'suggestion-item';
 
+            // Source badge (CURATED vs AI_PICK)
+            const source = item.source || 'AI_PICK';
+            const sourceBadgeClass = source === 'CURATED' ? 'curated' : 'ai-pick';
+            const sourceBadgeText = source === 'CURATED' ? 'Curated' : 'AI Pick';
+            const sourceBadge = `<span class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</span>`;
+
+            // Collection tag (origin)
+            const collectionTag = item.collection && item.collection !== 'Saved'
+                ? `<span class="collection-tag" title="${escapeHtml(item.collection)}">${escapeHtml(item.collection)}</span>`
+                : '';
+
             const headerDiv = document.createElement('div');
             headerDiv.className = 'suggestion-item-header';
             const websiteLink = item.website
                 ? ` <a href="${escapeHtml(item.website)}" target="_blank" class="suggestion-website-link" title="Visit website"><i class="fas fa-external-link-alt"></i></a>`
                 : '';
-            headerDiv.innerHTML = `<span class="suggestion-item-title">${escapeHtml(item.title)}${websiteLink}</span>`;
+            headerDiv.innerHTML = `
+                <div class="source-badges">${sourceBadge}${collectionTag}</div>
+                <span class="suggestion-item-title">${escapeHtml(item.title)}${websiteLink}</span>
+            `;
             itemDiv.appendChild(headerDiv);
 
             if (item.notes) {

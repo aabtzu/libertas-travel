@@ -371,6 +371,10 @@
     padding: 16px;
 }
 
+.venue-card-header {
+    margin-bottom: 8px;
+}
+
 .venue-card-name {
     font-size: 1rem;
     font-weight: 600;
