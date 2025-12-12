@@ -1115,11 +1115,14 @@ Return venues in a JSON block with source tags:
                                 matched = True
                                 break
 
-                        # If no exact match, try partial match (name contains or is contained)
+                        # If no exact match, try partial match (search name contains venue name)
+                        # Only match if venue name is substantial (5+ chars) to avoid false positives
                         if not matched:
                             for v in venues:
                                 v_name_lower = v['name'].lower()
-                                if name_lower in v_name_lower or v_name_lower in name_lower:
+                                # Only match if search term contains the full venue name
+                                # and venue name is at least 5 chars (avoids "ORO" matching "All'Oro")
+                                if len(v_name_lower) >= 5 and v_name_lower in name_lower:
                                     venue_copy = v.copy()
                                     venue_copy['source'] = 'CURATED'
                                     if web_fetch_context and not venue_copy.get('collection'):
