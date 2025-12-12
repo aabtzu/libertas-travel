@@ -6,7 +6,6 @@ import urllib.request
 import urllib.parse
 import json
 import ssl
-import database as db
 
 
 def geocode_address(name: str, city: str, country: str) -> tuple:
@@ -56,6 +55,7 @@ def geocode_address(name: str, city: str, country: str) -> tuple:
 
 def geocode_missing_venues():
     """Find and geocode all venues missing coordinates."""
+    import database as db  # Lazy import to avoid circular imports
     venues = db.get_all_venues()
     missing = [v for v in venues if not v.get('latitude') or not v.get('longitude')]
 
