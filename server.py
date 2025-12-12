@@ -32,7 +32,6 @@ import geocoding_worker
 
 # Allow OUTPUT_DIR to be configured via environment variable (for Render persistent disk)
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent / "output"))
-TRIPS_DATA_FILE = OUTPUT_DIR / "trips_data.json"
 
 # Travel recommendations data - seed CSV for initial import (in repo for deployment)
 VENUES_SEED_CSV = Path(__file__).parent / "data" / "venues_seed.csv"
@@ -246,20 +245,6 @@ def extract_text_from_html(html_content: bytes) -> str:
     return text.strip()
 
 
-def load_trips_data() -> list[dict]:
-    """Load trips data from JSON file."""
-    if TRIPS_DATA_FILE.exists():
-        with open(TRIPS_DATA_FILE) as f:
-            return json.load(f)
-    return []
-
-
-def save_trips_data(trips: list[dict]) -> None:
-    """Save trips data to JSON file."""
-    with open(TRIPS_DATA_FILE, "w") as f:
-        json.dump(trips, f, indent=2)
-
-
 def load_venues() -> list[dict]:
     """Load venues from database. Auto-imports from CSV if database is empty."""
     global _venues_cache
@@ -310,16 +295,10 @@ def load_venues() -> list[dict]:
     return formatted_venues
 
 
-def regenerate_trips_page(user_id: int = None) -> None:
-    """Regenerate the trips.html page with current trips data.
-
-    If user_id is provided, uses database. Otherwise uses JSON file (legacy).
-    """
+def regenerate_trips_page(user_id: int) -> None:
+    """Regenerate the trips.html page with current trips data from database."""
     try:
-        if user_id is not None:
-            trips = db.get_user_trips(user_id)
-        else:
-            trips = load_trips_data()
+        trips = db.get_user_trips(user_id)
         html = generate_trips_page(trips)
         (OUTPUT_DIR / "trips.html").write_text(html)
     except Exception as e:
@@ -996,8 +975,6 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
             "output_dir": str(OUTPUT_DIR),
             "output_dir_exists": OUTPUT_DIR.exists(),
             "output_dir_is_dir": OUTPUT_DIR.is_dir() if OUTPUT_DIR.exists() else False,
-            "trips_data_file": str(TRIPS_DATA_FILE),
-            "trips_data_exists": TRIPS_DATA_FILE.exists(),
             "env_output_dir": os.environ.get("OUTPUT_DIR", "NOT SET"),
             "env_port": os.environ.get("PORT", "NOT SET"),
             "cwd": os.getcwd(),
@@ -2098,52 +2075,21 @@ Keep responses concise and direct. Avoid flowery language, clichés, or poetic p
         self.wfile.write(json.dumps({"success": False, "error": message}).encode())
 
 
-def initialize_trips_data():
-    """Initialize trips data file with existing trips if needed."""
+def initialize_server():
+    """Initialize server directories and static pages."""
     try:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         print(f"Warning: Could not create output directory: {e}")
 
-    if not TRIPS_DATA_FILE.exists():
-        # Check for existing trip files and create initial data
-        trips = []
-
-        if (OUTPUT_DIR / "alaska_trip.html").exists():
-            trips.append({
-                "title": "Alaska Adventure Trip",
-                "link": "alaska_trip.html",
-                "dates": "August 2018",
-                "days": 10,
-                "locations": 5,
-                "activities": 25,
-            })
-
-        if (OUTPUT_DIR / "seasia_trip.html").exists():
-            trips.append({
-                "title": "Vietnam, Cambodia & Singapore",
-                "link": "seasia_trip.html",
-                "dates": "December 2024",
-                "days": 14,
-                "locations": 6,
-                "activities": 25,
-            })
-
-        save_trips_data(trips)
-
-    # Regenerate trips page with upload area
-    regenerate_trips_page()
-
-    # Regenerate about page
+    # Generate static pages
     (OUTPUT_DIR / "about.html").write_text(generate_about_page())
-
-    # Generate home page
     (OUTPUT_DIR / "index.html").write_text(generate_home_page())
 
 
 def run_server(port: int = 8000):
     """Run the Libertas web server."""
-    initialize_trips_data()
+    initialize_server()
 
     # Ensure default admin user exists
     auth.ensure_default_user()
