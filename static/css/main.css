@@ -465,6 +465,84 @@ body {
     }
 }
 
+/* ==================== Mobile Landscape Mode ==================== */
+/* Compact headers when phone is rotated to landscape */
+@media (max-height: 500px) and (orientation: landscape) {
+    .libertas-nav {
+        height: 44px;
+        padding: 0 12px;
+    }
+
+    .libertas-nav .brand-icon {
+        font-size: 1.1rem;
+    }
+
+    .libertas-nav .brand-name {
+        font-size: 1.1rem;
+    }
+
+    .libertas-nav .brand-tagline {
+        display: none;
+    }
+
+    .nav-hamburger {
+        font-size: 1.1rem;
+    }
+
+    /* Trip page headers */
+    .trip-header {
+        padding: 8px 12px;
+    }
+
+    .trip-header h1 {
+        font-size: 1.1rem;
+    }
+
+    .trip-header .trip-dates {
+        font-size: 0.8rem;
+    }
+
+    /* Day cards */
+    .day-card h3 {
+        font-size: 1rem;
+        padding: 8px 12px;
+    }
+
+    .activity {
+        padding: 4px 0;
+    }
+
+    .activity-category {
+        width: 28px;
+        height: 28px;
+        font-size: 0.85rem;
+        margin-right: 8px;
+    }
+
+    .activity-time {
+        font-size: 0.75rem;
+        min-width: 120px;
+    }
+
+    .activity-title {
+        font-size: 0.9rem;
+    }
+
+    .activity-location {
+        font-size: 0.75rem;
+    }
+
+    /* Tabs */
+    .tabs {
+        gap: 4px;
+    }
+
+    .tab {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+}
+
 /* ==================== Shared Mobile Components ==================== */
 /* These reusable classes work across all pages */
 
