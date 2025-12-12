@@ -1103,7 +1103,6 @@ Return venues in a JSON block with source tags:
                         # Try to match against curated database
                         matched = False
                         name_lower = name.lower().strip()
-                        print(f"[EXPLORE] Matching venue: '{name}'")
 
                         # First try exact match
                         for v in venues:
@@ -1114,8 +1113,6 @@ Return venues in a JSON block with source tags:
                                     venue_copy['collection'] = web_fetch_context.get('title', '')[:50]
                                 matched_venues.append(venue_copy)
                                 matched = True
-                                has_coords = bool(venue_copy.get('latitude') and venue_copy.get('longitude'))
-                                print(f"[EXPLORE]   -> EXACT match: {v['name']} (coords: {has_coords})")
                                 break
 
                         # If no exact match, try partial match (name contains or is contained)
@@ -1129,8 +1126,6 @@ Return venues in a JSON block with source tags:
                                         venue_copy['collection'] = web_fetch_context.get('title', '')[:50]
                                     matched_venues.append(venue_copy)
                                     matched = True
-                                    has_coords = bool(venue_copy.get('latitude') and venue_copy.get('longitude'))
-                                    print(f"[EXPLORE]   -> PARTIAL match: {v['name']} (coords: {has_coords})")
                                     break
 
                         if not matched:
@@ -1145,7 +1140,6 @@ Return venues in a JSON block with source tags:
                                 'collection': web_fetch_context.get('title', '')[:50] if web_fetch_context else ''
                             }
                             matched_venues.append(ai_venue)
-                            print(f"[EXPLORE]   -> NO MATCH, added as AI_PICK")
 
                     # Remove JSON block from response text
                     assistant_response = re.sub(r'```json\s*\{.*?\}\s*```', '', assistant_response, flags=re.DOTALL).strip()
