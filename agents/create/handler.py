@@ -798,13 +798,21 @@ When the user asks for general suggestions ("recommend restaurants", "what shoul
 ## FORMATTING RULES
 
 CRITICAL: Only use **bold** for venue/place names that can be added to the itinerary.
-Never bold: features, highlights, exhibits, menu items, room types, dates, questions, or descriptive text.
 
-Bad example (creates multiple suggestions):
-**ABBA Museum** - Great museum with **Costume exhibits**, **Audio guide**, and **Hologram technology**
+NEVER use bold for:
+- Features, highlights, exhibits, menu items
+- Options like "Get more information" or "Add to itinerary"
+- Questions or action choices
+- Dates, times, or day references
 
-Good example (creates one suggestion):
-**ABBA Museum** - Interactive museum celebrating Sweden's famous pop group, featuring costumes, holograms, and singalong booths.
+Bad examples (creates multiple unwanted suggestions):
+- **ABBA Museum** with **Costume exhibits** and **Audio guide**
+- What would you prefer? **Get more info** or **Add to itinerary**?
+
+Good example (creates exactly one suggestion):
+**ABBA Museum** - Interactive museum celebrating Sweden's famous pop group, featuring costumes, holograms, and singalong booths. Book tickets in advance online.
+
+Want me to add it to a specific day?
 """
     return prompt
 
@@ -882,10 +890,18 @@ def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None
         # Skip question-style items (Claude's follow-up questions, not actual venues)
         name_lower = name.lower()
         skip_phrases = [
+            # Questions and actions
             'want me to', 'would you like', 'shall i', 'should i', 'let me know',
-            'add it to', 'get more', 'suggest other', 'nearby', 'available days',
-            'your itinerary', 'your trip', 'which day', 'if so', 'day 1', 'day 2',
-            'day 3', 'day 4', 'day 5', 'dec ', 'december', 'january', 'february'
+            'add it to', 'get more', 'suggest other', 'nearby', 'something else',
+            'more information', 'what you', 'i can', 'i already', 'i shared',
+            # Itinerary/trip references
+            'your itinerary', 'your trip', 'which day', 'if so', 'available days',
+            'day 1', 'day 2', 'day 3', 'day 4', 'day 5',
+            # Dates
+            'dec ', 'december', 'january', 'february', 'march', 'april', 'may ',
+            'june', 'july', 'august', 'september', 'october', 'november',
+            # Generic options
+            'option', 'prefer', 'choose', 'select', 'pick one',
         ]
         if any(q in name_lower for q in skip_phrases):
             continue
@@ -893,10 +909,15 @@ def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None
         if name.rstrip().endswith('?') or name.rstrip().endswith(':'):
             continue
         # Skip generic/vague names
-        if name_lower in ['yes', 'no', 'here', 'there', 'this', 'that', 'more', 'other']:
+        skip_exact = ['yes', 'no', 'here', 'there', 'this', 'that', 'more', 'other',
+                      'something else', 'get more information', 'add it to your itinerary']
+        if name_lower.strip() in skip_exact:
             continue
         # Skip names that are too long (likely sentences, not venue names)
         if len(name) > 60:
+            continue
+        # Skip names that start with common non-venue words
+        if name_lower.startswith(('i ', 'you ', 'we ', 'let ', 'if ', 'what ', 'how ', 'why ', 'when ', 'where ')):
             continue
 
         # Extract website URL from markdown format [text](url) or plain URL
