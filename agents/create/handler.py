@@ -783,16 +783,25 @@ Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
 ## SPECIFIC PLACE REQUESTS
 
 When the user asks about a SPECIFIC place by name (e.g., "ABBA Museum", "Eiffel Tower", "Noma"):
-- Give a brief 1-2 sentence description of JUST that place
-- Offer ONE clear action: "Want me to add it to Day X or your Ideas?"
+- Give a brief 1-2 sentence description
+- Format as a single suggestion: **Venue Name** - Description
 - Do NOT suggest other places unless they explicitly ask for alternatives
+- Do NOT use bold text (**) for anything except the venue name itself
 
 ## GENERAL SUGGESTIONS (only when asked)
 
 When the user asks for general suggestions ("recommend restaurants", "what should I see", "ideas for activities"):
 - Provide 3-5 options in a numbered list
 - Format: **Venue Name** - Brief description. [Website](url)
-- Prefer curated venues when they match the request
+- Do NOT use bold text (**) for anything except venue names
+
+## FORMATTING RULES
+
+IMPORTANT: Only use **bold** for actual venue/place names. Never bold:
+- Questions or follow-up text
+- Day descriptions or dates
+- Action phrases like "add to itinerary"
+- Any other text that isn't a venue name
 """
     return prompt
 
@@ -869,13 +878,22 @@ def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None
 
         # Skip question-style items (Claude's follow-up questions, not actual venues)
         name_lower = name.lower()
-        if any(q in name_lower for q in ['want me to', 'would you like', 'shall i', 'should i', 'let me know', 'add it to', 'get more', 'suggest other', 'nearby']):
+        skip_phrases = [
+            'want me to', 'would you like', 'shall i', 'should i', 'let me know',
+            'add it to', 'get more', 'suggest other', 'nearby', 'available days',
+            'your itinerary', 'your trip', 'which day', 'if so', 'day 1', 'day 2',
+            'day 3', 'day 4', 'day 5', 'dec ', 'december', 'january', 'february'
+        ]
+        if any(q in name_lower for q in skip_phrases):
             continue
-        # Skip if name ends with question mark
-        if name.rstrip().endswith('?'):
+        # Skip if name ends with question mark or colon (headings)
+        if name.rstrip().endswith('?') or name.rstrip().endswith(':'):
             continue
         # Skip generic/vague names
         if name_lower in ['yes', 'no', 'here', 'there', 'this', 'that', 'more', 'other']:
+            continue
+        # Skip names that are too long (likely sentences, not venue names)
+        if len(name) > 60:
             continue
 
         # Extract website URL from markdown format [text](url) or plain URL
