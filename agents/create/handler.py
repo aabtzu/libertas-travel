@@ -780,14 +780,19 @@ When using add_to_itinerary, include the source field:
 Categories: meal, hotel, activity, attraction, transport, other
 Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
 
-## SUGGESTING (default behavior)
+## SPECIFIC PLACE REQUESTS
 
-When the user asks for suggestions, respond with this format:
+When the user asks about a SPECIFIC place by name (e.g., "ABBA Museum", "Eiffel Tower", "Noma"):
+- Give a brief 1-2 sentence description of JUST that place
+- Offer ONE clear action: "Want me to add it to Day X or your Ideas?"
+- Do NOT suggest other places unless they explicitly ask for alternatives
 
-1. **Venue Name** - Brief description. [Website](https://example.com)
-2. **Another Venue** - Description here. [Website](https://their-site.com)
+## GENERAL SUGGESTIONS (only when asked)
 
-Include website links when available. Prefer curated venues when they match the user's request.
+When the user asks for general suggestions ("recommend restaurants", "what should I see", "ideas for activities"):
+- Provide 3-5 options in a numbered list
+- Format: **Venue Name** - Brief description. [Website](url)
+- Prefer curated venues when they match the request
 """
     return prompt
 
@@ -860,6 +865,17 @@ def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None
         description = match[1].strip() if len(match) > 1 and match[1] else ''
 
         if not name:
+            continue
+
+        # Skip question-style items (Claude's follow-up questions, not actual venues)
+        name_lower = name.lower()
+        if any(q in name_lower for q in ['want me to', 'would you like', 'shall i', 'should i', 'let me know', 'add it to', 'get more', 'suggest other', 'nearby']):
+            continue
+        # Skip if name ends with question mark
+        if name.rstrip().endswith('?'):
+            continue
+        # Skip generic/vague names
+        if name_lower in ['yes', 'no', 'here', 'there', 'this', 'that', 'more', 'other']:
             continue
 
         # Extract website URL from markdown format [text](url) or plain URL
