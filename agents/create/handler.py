@@ -783,10 +783,14 @@ Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
 ## SPECIFIC PLACE REQUESTS
 
 When the user asks about a SPECIFIC place by name (e.g., "ABBA Museum", "Eiffel Tower", "Noma"):
-- Output EXACTLY ONE line in this format: **Venue Name** - Brief 1-2 sentence description
-- Do NOT list features, highlights, or sections of the venue
-- Do NOT use bullet points or numbered lists
-- Write any additional tips as plain text (no bold, no lists)
+
+REQUIRED FORMAT - always include this line:
+**Venue Name** - Brief description of the place.
+
+Example for "ABBA Museum":
+**ABBA Museum** - Interactive museum on Djurgården celebrating Sweden's legendary pop group with costumes, memorabilia, and singalong experiences.
+
+Then optionally add a plain text tip (no bold). Do NOT list features or use bullet points.
 
 ## GENERAL SUGGESTIONS (only when asked)
 
