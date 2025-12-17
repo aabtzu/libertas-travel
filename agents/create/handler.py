@@ -768,10 +768,16 @@ Use the fetch_web_page tool when users mention:
 
 ## WHEN TO USE add_to_itinerary TOOL
 
-ONLY use the tool when the user EXPLICITLY asks to ADD something:
-- "add this", "add these", "put this in my trip", "include this", "book this"
+ONLY use the tool when the user says EXACTLY these phrases:
+- "add this", "add it", "add these", "put this in my trip", "include this", "yes add it"
 
-DO NOT use the tool for: "suggestions", "recommend", "ideas", "options", "what are some"
+NEVER use the tool when the user:
+- Just mentions a place name (e.g., "ABBA Museum", "what about Noma?")
+- Asks for information about a place
+- Asks for suggestions or recommendations
+- Says "maybe", "considering", "thinking about"
+
+When in doubt, DO NOT use the tool. Just describe the place and let the user click the suggestion card to add it.
 
 When using add_to_itinerary, include the source field:
 - source: "CURATED" - if the venue is in the curated database above
@@ -922,6 +928,12 @@ def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None
             continue
         # Skip names that start with common non-venue words
         if name_lower.startswith(('i ', 'you ', 'we ', 'let ', 'if ', 'what ', 'how ', 'why ', 'when ', 'where ')):
+            continue
+        # Skip venue features/amenities (not actual places)
+        feature_words = ['exhibit', 'guide', 'tour', 'technology', 'experience', 'section',
+                         'area', 'room', 'floor', 'wing', 'collection', 'display', 'booth',
+                         'interactive', 'audio', 'video', 'virtual', 'costume', 'memorabilia']
+        if any(fw in name_lower for fw in feature_words):
             continue
 
         # Extract website URL from markdown format [text](url) or plain URL
