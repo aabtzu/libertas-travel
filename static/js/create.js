@@ -1625,14 +1625,30 @@ function addChatMessage(role, content, suggestedItems = [], saveToHistory = true
 
             const headerDiv = document.createElement('div');
             headerDiv.className = 'suggestion-item-header';
-            const websiteLink = item.website
-                ? ` <a href="${escapeHtml(item.website)}" target="_blank" class="suggestion-website-link" title="Visit website"><i class="fas fa-external-link-alt"></i></a>`
-                : '';
             headerDiv.innerHTML = `
                 <div class="source-badges">${sourceBadge}${collectionTag}</div>
-                <span class="suggestion-item-title">${escapeHtml(item.title)}${websiteLink}</span>
+                <span class="suggestion-item-title">${escapeHtml(item.title)}</span>
             `;
             itemDiv.appendChild(headerDiv);
+
+            // Website and Maps links row
+            const linksDiv = document.createElement('div');
+            linksDiv.className = 'suggestion-links';
+
+            // Website link - use actual website or Google search
+            const websiteUrl = item.website
+                ? item.website
+                : `https://www.google.com/search?q=${encodeURIComponent(item.title)}`;
+            const websiteTitle = item.website ? 'Visit website' : 'Search on Google';
+            linksDiv.innerHTML = `
+                <a href="${escapeHtml(websiteUrl)}" target="_blank" class="suggestion-link" title="${websiteTitle}">
+                    <i class="fas fa-globe"></i> Website
+                </a>
+                <a href="https://www.google.com/maps/search/${encodeURIComponent(item.title + (item.location ? ', ' + item.location : ''))}" target="_blank" class="suggestion-link" title="View on Google Maps">
+                    <i class="fas fa-map-marker-alt"></i> Maps
+                </a>
+            `;
+            itemDiv.appendChild(linksDiv);
 
             if (item.notes) {
                 const notesDiv = document.createElement('div');
