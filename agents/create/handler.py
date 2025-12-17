@@ -783,10 +783,10 @@ Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
 ## SPECIFIC PLACE REQUESTS
 
 When the user asks about a SPECIFIC place by name (e.g., "ABBA Museum", "Eiffel Tower", "Noma"):
-- Give a brief 1-2 sentence description
-- Format as a single suggestion: **Venue Name** - Description
-- Do NOT suggest other places unless they explicitly ask for alternatives
-- Do NOT use bold text (**) for anything except the venue name itself
+- Output EXACTLY ONE line in this format: **Venue Name** - Brief 1-2 sentence description
+- Do NOT list features, highlights, or sections of the venue
+- Do NOT use bullet points or numbered lists
+- Write any additional tips as plain text (no bold, no lists)
 
 ## GENERAL SUGGESTIONS (only when asked)
 
@@ -797,11 +797,14 @@ When the user asks for general suggestions ("recommend restaurants", "what shoul
 
 ## FORMATTING RULES
 
-IMPORTANT: Only use **bold** for actual venue/place names. Never bold:
-- Questions or follow-up text
-- Day descriptions or dates
-- Action phrases like "add to itinerary"
-- Any other text that isn't a venue name
+CRITICAL: Only use **bold** for venue/place names that can be added to the itinerary.
+Never bold: features, highlights, exhibits, menu items, room types, dates, questions, or descriptive text.
+
+Bad example (creates multiple suggestions):
+**ABBA Museum** - Great museum with **Costume exhibits**, **Audio guide**, and **Hologram technology**
+
+Good example (creates one suggestion):
+**ABBA Museum** - Interactive museum celebrating Sweden's famous pop group, featuring costumes, holograms, and singalong booths.
 """
     return prompt
 
