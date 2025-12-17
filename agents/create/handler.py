@@ -790,13 +790,15 @@ Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
 
 When the user asks about a SPECIFIC place by name (e.g., "ABBA Museum", "Eiffel Tower", "Noma"):
 
-REQUIRED FORMAT - always include this line:
-**Venue Name** - Brief description of the place.
+YOU MUST START YOUR RESPONSE WITH THIS EXACT FORMAT (including the ** asterisks):
+**Venue Name** - Brief description.
 
-Example for "ABBA Museum":
-**ABBA Museum** - Interactive museum on Djurgården celebrating Sweden's legendary pop group with costumes, memorabilia, and singalong experiences.
+The double asterisks ** are REQUIRED - they create a clickable suggestion card for the user.
 
-Then optionally add a plain text tip (no bold). Do NOT list features or use bullet points.
+Example response for "ABBA Museum":
+**ABBA Museum** - Interactive museum on Djurgården celebrating Sweden's legendary pop group.
+
+Book tickets in advance online. Easily accessible by tram to Djurgården island.
 
 ## GENERAL SUGGESTIONS (only when asked)
 
