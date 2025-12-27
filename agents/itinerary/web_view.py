@@ -24,18 +24,79 @@ class ItineraryWebView:
         self.mapper = ItineraryMapper(api_key=self.api_key)
         self.summarizer = ItinerarySummarizer(api_key=api_key)
 
+    def render_html(
+        self,
+        itinerary: Itinerary,
+        map_data: Optional[dict] = None,
+    ) -> str:
+        """Render trip HTML without writing to file.
+
+        Args:
+            itinerary: The Itinerary object to render
+            map_data: Pre-computed map data (markers, center, zoom). If None, uses placeholder.
+
+        Returns:
+            HTML string for the trip page
+        """
+        # Use provided map_data or placeholder
+        if map_data is None:
+            map_data = {
+                "center": {"lat": 20, "lng": 0},
+                "zoom": 2,
+                "markers": [],
+                "pending": True
+            }
+
+        # Generate the summary HTML directly from itinerary data
+        summary_html = self._build_summary_html(itinerary)
+
+        # Build meta info
+        meta_parts = []
+        if itinerary.start_date and itinerary.end_date:
+            meta_parts.append(
+                f"{itinerary.start_date.strftime('%B %d')} - "
+                f"{itinerary.end_date.strftime('%B %d, %Y')}"
+            )
+        if itinerary.duration_days:
+            meta_parts.append(f"{itinerary.duration_days} days")
+        if itinerary.travelers:
+            meta_parts.append(f"{len(itinerary.travelers)} travelers")
+        meta_parts.append(f"{len(itinerary.items)} activities")
+
+        meta_info = " • ".join(meta_parts)
+
+        # Generate column view HTML
+        column_html = self._build_column_html(itinerary)
+
+        # Generate calendar view HTML
+        calendar_html = self._build_calendar_html(itinerary)
+
+        # Build the full HTML
+        return get_template("trip.html").format(
+            nav_html=get_nav_html("trips"),
+            title=html_module.escape(itinerary.title),
+            meta_info=html_module.escape(meta_info),
+            summary_html=summary_html,
+            column_html=column_html,
+            calendar_html=calendar_html,
+            map_data_json=json.dumps(map_data),
+        )
+
     def generate(
         self,
         itinerary: Itinerary,
         output_path: str | Path,
         use_ai_summary: bool = True,
         skip_geocoding: bool = False,
-    ) -> Path:
+    ) -> tuple[Path, dict]:
         """Generate a unified HTML page with summary and Google Maps tabs.
 
         Args:
             skip_geocoding: If True, skip geocoding to speed up generation.
                            Map will show placeholder instead of real locations.
+
+        Returns:
+            Tuple of (output_path, map_data) so map_data can be stored in database
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,43 +125,11 @@ class ItineraryWebView:
                     "error": "Map could not be generated - geocoding failed"
                 }
 
-        # Generate the summary HTML directly from itinerary data
-        summary_html = self._build_summary_html(itinerary)
-
-        # Build meta info
-        meta_parts = []
-        if itinerary.start_date and itinerary.end_date:
-            meta_parts.append(
-                f"{itinerary.start_date.strftime('%B %d')} - "
-                f"{itinerary.end_date.strftime('%B %d, %Y')}"
-            )
-        if itinerary.duration_days:
-            meta_parts.append(f"{itinerary.duration_days} days")
-        if itinerary.travelers:
-            meta_parts.append(f"{len(itinerary.travelers)} travelers")
-        meta_parts.append(f"{len(itinerary.items)} activities")
-
-        meta_info = " • ".join(meta_parts)
-
-        # Generate column view HTML
-        column_html = self._build_column_html(itinerary)
-
-        # Generate calendar view HTML
-        calendar_html = self._build_calendar_html(itinerary)
-
-        # Build the full HTML
-        full_html = get_template("trip.html").format(
-            nav_html=get_nav_html("trips"),
-            title=html_module.escape(itinerary.title),
-            meta_info=html_module.escape(meta_info),
-            summary_html=summary_html,
-            column_html=column_html,
-            calendar_html=calendar_html,
-            map_data_json=json.dumps(map_data),
-        )
+        # Render HTML using the new method
+        full_html = self.render_html(itinerary, map_data)
 
         output_path.write_text(full_html)
-        return output_path
+        return output_path, map_data
 
     def _build_summary_html(self, itinerary: Itinerary) -> str:
         """Build a compact HTML summary directly from itinerary data."""

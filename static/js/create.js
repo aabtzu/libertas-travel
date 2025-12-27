@@ -1508,39 +1508,42 @@ function processAddItems(items) {
         };
 
         // Check if day is specified
-        if (item.day !== undefined && item.day !== null) {
+        if (item.day !== undefined && item.day !== null && item.day > 0) {
             const dayIndex = item.day - 1; // Convert 1-indexed to 0-indexed
 
-            if (dayIndex >= 0 && dayIndex < currentTrip.days.length) {
-                // Add to specific day
-                if (!currentTrip.days[dayIndex].items) {
-                    currentTrip.days[dayIndex].items = [];
-                }
-
-                // Insert in correct time order if item has a time
-                if (newItem.time) {
-                    const dayItems = currentTrip.days[dayIndex].items;
-                    let insertIndex = dayItems.length; // Default to end
-
-                    for (let i = 0; i < dayItems.length; i++) {
-                        const existingTime = dayItems[i].time;
-                        if (existingTime && newItem.time < existingTime) {
-                            insertIndex = i;
-                            break;
-                        }
-                    }
-
-                    dayItems.splice(insertIndex, 0, newItem);
-                } else {
-                    // No time, add to end
-                    currentTrip.days[dayIndex].items.push(newItem);
-                }
-                addedCount++;
-            } else {
-                // Day doesn't exist, add to ideas
-                currentTrip.ideas.push(newItem);
-                addedCount++;
+            // Auto-create days if they don't exist yet
+            while (currentTrip.days.length <= dayIndex) {
+                const newDayNum = currentTrip.days.length + 1;
+                currentTrip.days.push({
+                    day_number: newDayNum,
+                    date: null,
+                    items: []
+                });
             }
+
+            if (!currentTrip.days[dayIndex].items) {
+                currentTrip.days[dayIndex].items = [];
+            }
+
+            // Insert in correct time order if item has a time
+            if (newItem.time) {
+                const dayItems = currentTrip.days[dayIndex].items;
+                let insertIndex = dayItems.length; // Default to end
+
+                for (let i = 0; i < dayItems.length; i++) {
+                    const existingTime = dayItems[i].time;
+                    if (existingTime && newItem.time < existingTime) {
+                        insertIndex = i;
+                        break;
+                    }
+                }
+
+                dayItems.splice(insertIndex, 0, newItem);
+            } else {
+                // No time, add to end
+                currentTrip.days[dayIndex].items.push(newItem);
+            }
+            addedCount++;
         } else {
             // No day specified, add to ideas pile
             currentTrip.ideas.push(newItem);

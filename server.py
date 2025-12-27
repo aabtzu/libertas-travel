@@ -52,6 +52,9 @@ def itinerary_to_data(itinerary) -> dict:
     days_dict = defaultdict(list)
     ideas = []
 
+    # Get start_date for computing day_number from dates if needed
+    start_date = itinerary.start_date
+
     for item in itinerary.items:
         if item.is_home_location:
             continue  # Skip home locations
@@ -64,8 +67,16 @@ def itinerary_to_data(itinerary) -> dict:
             'notes': item.notes or item.description,
         }
 
-        if item.day_number:
-            days_dict[item.day_number].append({
+        # Determine day_number: use extracted value, or compute from date if available
+        day_number = item.day_number
+        if not day_number and item.date and start_date:
+            # Compute day_number from date difference
+            day_number = (item.date - start_date).days + 1
+            if day_number < 1:
+                day_number = None  # Date before start_date, treat as idea
+
+        if day_number:
+            days_dict[day_number].append({
                 **item_data,
                 'date': item.date.isoformat() if item.date else None,
             })
@@ -778,31 +789,76 @@ class LibertasHandler(SimpleHTTPRequestHandler):
         self.send_json_response({"canEdit": can_edit})
 
     def serve_trip_html(self, path: str):
-        """Serve trip HTML files with updated navigation injected."""
+        """Serve trip HTML dynamically from database."""
         # Security: prevent directory traversal
         if ".." in path:
             self.send_error(403, "Forbidden")
             return
 
-        # Remove leading slash and /trip/ prefix, look in output folder
-        filename = path.lstrip("/")
-        if filename.startswith("trip/"):
-            filename = filename[5:]  # Remove "trip/" prefix
-        file_path = OUTPUT_DIR / filename
+        # Extract link from path
+        link = path.lstrip("/")
+        if link.startswith("trip/"):
+            link = link[5:]  # Remove "trip/" prefix
 
-        # Check if file exists
-        if not file_path.exists() or not file_path.is_file():
+        # Handle special pages that aren't trips
+        if link in ("index.html", "about.html", "trips.html", "login.html", "register.html", "create.html", "explore.html"):
+            # Let the existing handlers deal with these
             self.send_error(404, "File not found")
             return
 
-        # Read the HTML content
-        html = file_path.read_text()
+        # Find the trip - check current user first, then any public trip
+        user_id = self.get_current_user_id()
+        trip = None
 
-        # Inject current navigation by replacing the old nav
-        # Match the nav element and its contents
-        nav_pattern = r'<nav class="libertas-nav">.*?</nav>\s*<script>\s*function logout\(\).*?</script>'
-        new_nav = get_nav_html("")
-        html = re.sub(nav_pattern, new_nav, html, flags=re.DOTALL)
+        if user_id:
+            trip = db.get_trip_by_link(user_id, link)
+
+        # If not found for current user, check if it's a public trip
+        if not trip:
+            owner_id = db.get_trip_owner(link)
+            if owner_id:
+                # Check if it's public or if user is the owner
+                with db.get_db() as conn:
+                    cursor = conn.cursor()
+                    if db.USE_POSTGRES:
+                        cursor.execute(
+                            "SELECT is_public FROM trips WHERE link = %s",
+                            (link,)
+                        )
+                    else:
+                        cursor.execute(
+                            "SELECT is_public FROM trips WHERE link = ?",
+                            (link,)
+                        )
+                    row = cursor.fetchone()
+                    if row and row[0]:
+                        trip = db.get_trip_by_link(owner_id, link)
+
+        if not trip:
+            self.send_error(404, "Trip not found")
+            return
+
+        itinerary_data = trip.get('itinerary_data')
+        if not itinerary_data:
+            self.send_error(404, "Trip has no itinerary data")
+            return
+
+        # Convert itinerary_data to Itinerary model
+        from geocoding_worker import _convert_itinerary_data_to_worker_format, deserialize_itinerary
+
+        worker_format = _convert_itinerary_data_to_worker_format(itinerary_data, trip.get('title'))
+        if not worker_format:
+            self.send_error(500, "Could not convert trip data")
+            return
+
+        itinerary = deserialize_itinerary(worker_format)
+
+        # Get map_data from itinerary_data if available
+        map_data = itinerary_data.get('map_data')
+
+        # Render HTML
+        web_view = ItineraryWebView()
+        html = web_view.render_html(itinerary, map_data)
 
         # Send the response
         self.send_response(200)
@@ -2152,6 +2208,7 @@ Return venues in a JSON block with source tags:
                         locations.add(item.location.name.split(',')[0])
 
                 # Build trip data with full itinerary for export
+                itinerary_data = itinerary_to_data(itinerary)
                 trip_data = {
                     "title": itinerary.title,
                     "link": output_file,
@@ -2160,13 +2217,12 @@ Return venues in a JSON block with source tags:
                     "locations": len(locations),
                     "activities": len(itinerary.items),
                     "map_status": "pending",  # Map will be generated async
-                    "itinerary_data": itinerary_to_data(itinerary),  # Full data for export
                 }
 
                 # Add trip to database for current user
                 print(f"[UPLOAD] Step 3: Saving trip data...")
                 user_id = self.get_current_user_id()
-                db.add_trip(user_id, trip_data)
+                db.add_trip(user_id, trip_data, itinerary_data)
                 print(f"[UPLOAD] Step 3 done: {time.time() - start_time:.1f}s - Saved trip for user {user_id}")
 
                 # Queue async geocoding for map generation
@@ -2290,6 +2346,7 @@ Return venues in a JSON block with source tags:
                     locations.add(item.location.name.split(',')[0])
 
             # Build trip data with full itinerary for export
+            itinerary_data = itinerary_to_data(itinerary)
             trip_data = {
                 "title": itinerary.title,
                 "link": output_file,
@@ -2298,12 +2355,11 @@ Return venues in a JSON block with source tags:
                 "locations": len(locations),
                 "activities": len(itinerary.items),
                 "map_status": "pending",  # Map will be generated async
-                "itinerary_data": itinerary_to_data(itinerary),  # Full data for export
             }
 
             # Add trip to database for current user
             user_id = self.get_current_user_id()
-            db.add_trip(user_id, trip_data)
+            db.add_trip(user_id, trip_data, itinerary_data)
 
             # Queue async geocoding for map generation
             geocoding_worker.queue_geocoding(output_file, itinerary)

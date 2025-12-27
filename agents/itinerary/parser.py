@@ -89,6 +89,14 @@ Important:
 - If information is not available, use null
 - Ensure the JSON is valid
 
+CRITICAL for day_number:
+- You MUST set day_number for ALL items that have a date or are associated with a specific day
+- If the document shows "Day 1", "Day 2", etc., use those numbers directly
+- If the document shows dates like "Jan 15", "Jan 16", calculate day_number as: Day 1 = first date, Day 2 = second date, etc.
+- If an item is listed under a specific date heading (e.g., "Saturday, January 15"), it MUST have a day_number
+- Only set day_number to null for items that are truly unscheduled (e.g., "Ideas", "To Do Later", "Recommendations" sections)
+- Items listed under date headings or "Day X" headings should NEVER have null day_number
+
 Text to analyze:
 """
 

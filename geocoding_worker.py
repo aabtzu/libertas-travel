@@ -40,10 +40,8 @@ def regenerate_map_for_trip(link, itinerary_data):
     """
     from agents.itinerary.models import Itinerary, ItineraryItem, Location
     from agents.itinerary.web_view import ItineraryWebView
+    from agents.itinerary.mapper import ItineraryMapper
     from datetime import datetime, date, time as dt_time
-
-    output_dir = get_output_dir()
-    output_path = output_dir / link
 
     try:
         print(f"[GEOCODING] Starting geocoding for {link}")
@@ -52,9 +50,21 @@ def regenerate_map_for_trip(link, itinerary_data):
         # Reconstruct itinerary from serialized data
         itinerary = deserialize_itinerary(itinerary_data)
 
-        # Generate web view WITH geocoding
-        web_view = ItineraryWebView()
-        web_view.generate(itinerary, output_path, use_ai_summary=False, skip_geocoding=False)
+        # Generate map data with geocoding
+        mapper = ItineraryMapper()
+        try:
+            map_data = mapper.create_map_data(itinerary)
+        except Exception as e:
+            print(f"[GEOCODING] Map generation failed: {e}")
+            map_data = {
+                "center": {"lat": 0, "lng": 0},
+                "zoom": 2,
+                "markers": [],
+                "error": f"Map could not be generated: {str(e)}"
+            }
+
+        # Store map_data in database
+        _store_map_data_in_db(link, map_data)
 
         update_trip_map_status(link, "ready")
         print(f"[GEOCODING] Completed geocoding for {link}")
@@ -64,6 +74,27 @@ def regenerate_map_for_trip(link, itinerary_data):
         traceback.print_exc()
         update_trip_map_status(link, "error", str(e))
         print(f"[GEOCODING] Failed for {link}: {e}")
+
+
+def _store_map_data_in_db(link: str, map_data: dict):
+    """Store map_data in the trip's itinerary_data JSON."""
+    import json
+
+    user_id = db.get_trip_owner(link)
+    if not user_id:
+        print(f"[GEOCODING] Cannot store map_data - no owner found for {link}")
+        return
+
+    trip = db.get_trip_by_link(user_id, link)
+    if not trip:
+        print(f"[GEOCODING] Cannot store map_data - trip not found {link}")
+        return
+
+    itinerary_data = trip.get('itinerary_data') or {}
+    itinerary_data['map_data'] = map_data
+
+    db.update_trip_itinerary_data(user_id, link, itinerary_data)
+    print(f"[GEOCODING] Stored map_data for {link}")
 
 
 def serialize_itinerary(itinerary):
@@ -155,6 +186,7 @@ def deserialize_itinerary(data):
             confirmation_number=item_data.get("confirmation_number"),
             notes=item_data.get("notes"),
             is_home_location=item_data.get("is_home_location", False),
+            website_url=item_data.get("website_url"),
         )
         items.append(item)
 
@@ -254,7 +286,7 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
                 "day_number": day_number,
                 "date": day_date,
                 "start_time": item.get('time'),
-                "end_time": None,
+                "end_time": item.get('end_time'),
                 "location_name": item.get('location'),
                 "location_address": None,
                 "location_lat": None,
@@ -262,6 +294,7 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
                 "confirmation_number": None,
                 "notes": item.get('notes'),
                 "is_home_location": False,
+                "website_url": item.get('website'),
             })
 
     # Add ideas (items without dates)
@@ -273,7 +306,7 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
             "day_number": None,
             "date": None,
             "start_time": item.get('time'),
-            "end_time": None,
+            "end_time": item.get('end_time'),
             "location_name": item.get('location'),
             "location_address": None,
             "location_lat": None,
@@ -281,6 +314,7 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
             "confirmation_number": None,
             "notes": item.get('notes'),
             "is_home_location": False,
+            "website_url": item.get('website'),
         })
 
     # Use trip_title from DB if itinerary_data doesn't have title

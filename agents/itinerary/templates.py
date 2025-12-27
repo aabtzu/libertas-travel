@@ -380,20 +380,15 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
             if isinstance(is_draft, int):
                 is_draft = bool(is_draft)
 
-            # Get date display - prefer existing formatted dates, fall back to parsing start_date
-            existing_dates = trip.get("dates", "")
-            if existing_dates and existing_dates not in ("Date unknown", "None", ""):
-                formatted_date = existing_dates
-            else:
-                # Try to format from start_date in itinerary_data
-                itinerary_data = trip.get("itinerary_data") or {}
-                if isinstance(itinerary_data, str):
-                    try:
-                        itinerary_data = json.loads(itinerary_data)
-                    except:
-                        itinerary_data = {}
-                start_date = get_trip_start_date(itinerary_data) or trip.get("start_date")
-                formatted_date = format_trip_date(start_date)
+            # Get date display - always format from start_date for consistency
+            itinerary_data = trip.get("itinerary_data") or {}
+            if isinstance(itinerary_data, str):
+                try:
+                    itinerary_data = json.loads(itinerary_data)
+                except:
+                    itinerary_data = {}
+            start_date = get_trip_start_date(itinerary_data) or trip.get("start_date")
+            formatted_date = format_trip_date(start_date)
 
             card = generate_trip_card(
                 title=trip.get("title", "Untitled Trip"),
@@ -419,19 +414,15 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         public_cards_list = []
         for i, trip in enumerate(public_trips):
             try:
-                # Get date display - prefer existing formatted dates, fall back to parsing start_date
-                pub_existing_dates = trip.get("dates", "")
-                if pub_existing_dates and pub_existing_dates not in ("Date unknown", "None", ""):
-                    pub_formatted_date = pub_existing_dates
-                else:
-                    pub_itinerary_data = trip.get("itinerary_data") or {}
-                    if isinstance(pub_itinerary_data, str):
-                        try:
-                            pub_itinerary_data = json.loads(pub_itinerary_data)
-                        except:
-                            pub_itinerary_data = {}
-                    pub_start_date = get_trip_start_date(pub_itinerary_data) or trip.get("start_date")
-                    pub_formatted_date = format_trip_date(pub_start_date)
+                # Get date display - always format from start_date for consistency
+                pub_itinerary_data = trip.get("itinerary_data") or {}
+                if isinstance(pub_itinerary_data, str):
+                    try:
+                        pub_itinerary_data = json.loads(pub_itinerary_data)
+                    except:
+                        pub_itinerary_data = {}
+                pub_start_date = get_trip_start_date(pub_itinerary_data) or trip.get("start_date")
+                pub_formatted_date = format_trip_date(pub_start_date)
 
                 card = generate_public_trip_card(
                     title=trip.get("title", "Untitled Trip"),

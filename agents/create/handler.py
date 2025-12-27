@@ -699,6 +699,8 @@ def _build_venue_chat_prompt(trip_context: Dict[str, Any], curated_venues: List[
             day_num = day.get('day_number', '?')
             day_date = day.get('date', 'TBD')
             day_reference += f"\n  - Day {day_num} ({day_date})"
+    else:
+        day_reference = "\n\nNo days set up yet. When adding items, use day=1 (or appropriate day number) to create days automatically. Only omit day for items that are truly unscheduled ideas."
 
     # Build list of existing item titles for deduplication
     existing_titles = set()
@@ -784,7 +786,7 @@ When using add_to_itinerary, include the source field:
 - source: "AI_PICK" - if it's a new recommendation not in the database
 
 Categories: meal, hotel, activity, attraction, transport, other
-Day: Use day number (1, 2, 3...) or omit to add to Ideas pile
+Day: ALWAYS use day number (1, 2, 3...) for scheduled items. Days will be auto-created if they don't exist yet. Only omit day for truly unscheduled "ideas" the user wants to consider later.
 
 ## SPECIFIC PLACE REQUESTS
 
