@@ -320,10 +320,23 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
     # Use trip_title from DB if itinerary_data doesn't have title
     title = itinerary_data.get('title') or trip_title or 'Untitled Trip'
 
+    # Get start_date and end_date - prefer top-level, fall back to computing from days
+    start_date = itinerary_data.get('start_date')
+    end_date = itinerary_data.get('end_date')
+
+    if not start_date or not end_date:
+        # Compute from days array
+        days = itinerary_data.get('days', [])
+        if days:
+            day_dates = [d.get('date') for d in days if d.get('date')]
+            if day_dates:
+                start_date = start_date or min(day_dates)
+                end_date = end_date or max(day_dates)
+
     return {
         "title": title,
-        "start_date": itinerary_data.get('start_date'),
-        "end_date": itinerary_data.get('end_date'),
+        "start_date": start_date,
+        "end_date": end_date,
         "travelers": itinerary_data.get('travelers', []),
         "items": items,
     }

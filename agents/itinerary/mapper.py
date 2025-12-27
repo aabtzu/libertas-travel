@@ -1,4 +1,4 @@
-"""Generate interactive maps from itineraries using Google Maps."""
+"""Generate interactive maps from itineraries using OpenStreetMap/Nominatim."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import os
 import json
 import html
 import requests
+import time
 from pathlib import Path
 from typing import Optional, Union
 
@@ -15,7 +16,10 @@ from .models import Itinerary, Location
 # Maximum number of locations to geocode (to avoid long waits)
 MAX_GEOCODE_LOCATIONS = 50
 
-# Google Maps marker colors by category
+# Nominatim requires a delay between requests (1 request per second)
+NOMINATIM_DELAY = 1.1
+
+# Marker colors by category
 MARKER_COLORS = {
     "hotel": "#4285F4",      # Google blue
     "lodging": "#4285F4",
@@ -32,20 +36,17 @@ MARKER_COLORS = {
 
 
 class ItineraryMapper:
-    """Generate interactive maps from itineraries using Google Maps."""
+    """Generate interactive maps from itineraries using OpenStreetMap/Nominatim."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("GOOGLE_MAPS_API_KEY", "")
+        # api_key kept for backwards compatibility but not used (Nominatim is free)
         self._geocode_failures = 0
         self._cached_region_hint = None  # Cache region hint to avoid duplicate LLM calls
         self._cached_region_itinerary_id = None  # Track which itinerary the cache is for
+        self._last_geocode_time = 0  # Rate limiting for Nominatim
 
     def geocode_locations(self, itinerary: Itinerary) -> Itinerary:
-        """Add coordinates to all locations in the itinerary using Google Geocoding API."""
-        if not self.api_key:
-            print("Warning: No GOOGLE_MAPS_API_KEY set, skipping geocoding")
-            return itinerary
-
+        """Add coordinates to all locations in the itinerary using Nominatim (OpenStreetMap)."""
         # Determine the trip's region for biasing geocoding results
         region_hint = self._get_region_hint(itinerary)
 
@@ -270,33 +271,42 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         self._geocode_failures += 1
 
     def _do_geocode(self, query: str, region_hint: str = "") -> Optional[dict]:
-        """Execute a geocoding request and return result or None."""
+        """Execute a geocoding request using Nominatim (OpenStreetMap) and return result or None."""
         try:
-            url = "https://maps.googleapis.com/maps/api/geocode/json"
-            params = {
-                "address": query,
-                "key": self.api_key
-            }
-            # Add region bias if available
-            if region_hint:
-                # Use component filtering for better regional results
-                params["region"] = self._get_region_code(region_hint)
+            # Rate limiting - Nominatim requires max 1 request per second
+            elapsed = time.time() - self._last_geocode_time
+            if elapsed < NOMINATIM_DELAY:
+                time.sleep(NOMINATIM_DELAY - elapsed)
 
-            response = requests.get(url, params=params, timeout=5)
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                "q": query,
+                "format": "json",
+                "limit": 1,
+                "addressdetails": 1
+            }
+            # Add country code bias if available
+            if region_hint:
+                country_code = self._get_region_code(region_hint)
+                if country_code:
+                    params["countrycodes"] = country_code
+
+            headers = {
+                "User-Agent": "Libertas-Travel/1.0 (https://github.com/aabtzu/libertas-travel)"
+            }
+
+            self._last_geocode_time = time.time()
+            response = requests.get(url, params=params, headers=headers, timeout=10)
             data = response.json()
 
-            if data.get("status") == "OK" and data.get("results"):
-                result = data["results"][0]
-                geo = result["geometry"]["location"]
+            if data and len(data) > 0:
+                result = data[0]
                 return {
-                    "lat": geo["lat"],
-                    "lng": geo["lng"],
-                    "address": result.get("formatted_address", "")
+                    "lat": float(result["lat"]),
+                    "lng": float(result["lon"]),
+                    "address": result.get("display_name", "")
                 }
-            elif data.get("status") == "ZERO_RESULTS":
-                return None
             else:
-                print(f"Geocoding error for {query}: {data.get('status')}")
                 return None
         except requests.Timeout:
             print(f"Geocoding timed out for: {query}")
