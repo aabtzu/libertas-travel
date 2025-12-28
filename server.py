@@ -1641,14 +1641,32 @@ Return venues in a JSON block with source tags:
             self.send_json_error("Could not parse itinerary data")
             return
 
-        # Reset status to pending and queue for geocoding
-        db.update_trip_map_status(user_id, link, "pending", None)
-        geocoding_worker.queue_geocoding(link, itinerary)
+        # Do geocoding synchronously (more reliable on cloud platforms)
+        db.update_trip_map_status(user_id, link, "processing", None)
+        print(f"[GEOCODING] Starting synchronous geocoding for {link}", flush=True)
 
-        self.send_json_response({
-            "success": True,
-            "message": "Map regeneration queued. Please refresh the page in a few moments.",
-        })
+        try:
+            from agents.itinerary.mapper import ItineraryMapper
+            mapper = ItineraryMapper()
+            map_data = mapper.create_map_data(itinerary)
+
+            # Store map_data in database
+            itinerary_data['map_data'] = map_data
+            db.update_trip_itinerary_data(user_id, link, itinerary_data)
+            db.update_trip_map_status(user_id, link, "ready", None)
+
+            markers_count = len(map_data.get('markers', []))
+            print(f"[GEOCODING] Completed: {markers_count} markers", flush=True)
+
+            self.send_json_response({
+                "success": True,
+                "message": f"Map regenerated with {markers_count} locations.",
+            })
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            db.update_trip_map_status(user_id, link, "error", str(e))
+            self.send_json_error(f"Geocoding failed: {str(e)}")
 
     def handle_get_users(self):
         """Get list of all users for sharing."""
