@@ -71,9 +71,12 @@ function regenerateMap() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
-            // Poll for completion then reload
+            // Start fast polling - page will auto-refresh when complete
             var badge = document.getElementById('map-status-badge');
             if (badge) badge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#667eea;margin-left:5px;"></i>';
+            if (typeof mapPolling !== 'undefined') {
+                mapPolling.startFastPolling();
+            }
         } else {
             alert('Failed to regenerate map: ' + (data.error || 'Unknown error'));
             if (mapLoading) mapLoading.classList.add('hidden');
@@ -358,7 +361,7 @@ function hideCalendarItemPopup() {
 }
 
 // Map status polling - only poll if map is pending/processing
-(function() {
+var mapPolling = (function() {
     var tripLink = window.location.pathname.split('/').pop();
     var mapLoading = document.getElementById('map-loading');
     var mapBadge = document.getElementById('map-status-badge');
@@ -394,6 +397,17 @@ function hideCalendarItemPopup() {
             });
     }
 
+    // Start polling with faster interval for regen
+    function startFastPolling() {
+        wasNotReady = true;
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(checkMapStatus, 2000); // Poll every 2 seconds during regen
+        checkMapStatus(); // Check immediately
+    }
+
     checkMapStatus();
     pollInterval = setInterval(checkMapStatus, 5000);
+
+    // Expose function to trigger fast polling after regen
+    return { startFastPolling: startFastPolling };
 })();
