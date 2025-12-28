@@ -208,22 +208,28 @@ def deserialize_itinerary(data):
 
 def queue_geocoding(link, itinerary):
     """Add a trip to the geocoding queue."""
+    import sys
     itinerary_data = serialize_itinerary(itinerary)
     _geocoding_queue.put((link, itinerary_data))
-    print(f"[GEOCODING] Queued {link} for background geocoding")
+    print(f"[GEOCODING] Queued {link} for background geocoding", flush=True)
+    sys.stdout.flush()
 
     # Ensure worker is running
     start_worker()
+    print(f"[GEOCODING] Queue size: {_geocoding_queue.qsize()}", flush=True)
 
 
 def _worker_loop():
     """Background worker that processes the geocoding queue."""
-    print("[GEOCODING] Worker started")
+    import sys
+    print("[GEOCODING] Worker loop started", flush=True)
+    sys.stdout.flush()
     while True:
         try:
             # Wait for a task (with timeout to allow thread to exit gracefully)
             try:
                 link, itinerary_data = _geocoding_queue.get(timeout=5)
+                print(f"[GEOCODING] Worker got task: {link}", flush=True)
             except:
                 continue
 
@@ -231,23 +237,29 @@ def _worker_loop():
             time.sleep(2)
 
             # Process the task
+            print(f"[GEOCODING] Worker processing: {link}", flush=True)
             regenerate_map_for_trip(link, itinerary_data)
             _geocoding_queue.task_done()
+            print(f"[GEOCODING] Worker finished: {link}", flush=True)
 
         except Exception as e:
-            print(f"[GEOCODING] Worker error: {e}")
+            print(f"[GEOCODING] Worker error: {e}", flush=True)
             import traceback
             traceback.print_exc()
+            sys.stdout.flush()
 
 
 def start_worker():
     """Start the background worker thread if not already running."""
     global _worker_thread
+    import sys
 
     if _worker_thread is None or not _worker_thread.is_alive():
+        print(f"[GEOCODING] Starting worker thread (current: {_worker_thread})", flush=True)
         _worker_thread = threading.Thread(target=_worker_loop, daemon=True)
         _worker_thread.start()
-        print("[GEOCODING] Background worker thread started")
+        print(f"[GEOCODING] Worker thread started: {_worker_thread.is_alive()}", flush=True)
+        sys.stdout.flush()
 
         # Test geocoding API connectivity
         _test_geocoding_connectivity()
