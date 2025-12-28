@@ -363,8 +363,9 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
 
             # Log response status for debugging
             if response.status_code != 200:
-                print(f"[GEOCODING] Nominatim returned status {response.status_code} for: {query}")
-                return None
+                print(f"[GEOCODING] Nominatim returned status {response.status_code} for: {query}", flush=True)
+                # Try Photon fallback
+                return self._do_geocode_photon(query, category)
 
             data = response.json()
 
