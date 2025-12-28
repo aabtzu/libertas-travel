@@ -426,18 +426,25 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
 
             data = response.json()
             features = data.get("features", [])
+            print(f"[GEOCODING] Photon returned {len(features)} features for: {query}", flush=True)
 
             if features:
-                # Filter by country if we have a region hint
-                target_country = None
+                # Country name mappings (Photon uses local names)
+                country_mappings = {
+                    "Germany": ["germany", "deutschland"],
+                    "Austria": ["austria", "österreich"],
+                    "Italy": ["italy", "italia"],
+                    "France": ["france"],
+                    "Spain": ["spain", "españa"],
+                }
+
+                # Find target countries to match
+                target_countries = []
                 if region_hint:
-                    # Extract country from region hint
-                    if "Germany" in region_hint:
-                        target_country = "Germany"
-                    elif "Austria" in region_hint:
-                        target_country = "Austria"
-                    elif "Italy" in region_hint:
-                        target_country = "Italy"
+                    for country, aliases in country_mappings.items():
+                        if country.lower() in region_hint.lower():
+                            target_countries = aliases
+                            break
 
                 # Convert Photon results to our format for selection
                 results = []
@@ -446,9 +453,11 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
                     coords = f.get("geometry", {}).get("coordinates", [])
                     country = props.get("country", "")
 
-                    # Skip results from wrong country
-                    if target_country and country and target_country.lower() not in country.lower():
-                        continue
+                    # Skip results from wrong country (only if we have a target and the result has a country)
+                    if target_countries and country:
+                        country_lower = country.lower()
+                        if not any(tc in country_lower for tc in target_countries):
+                            continue
 
                     if len(coords) >= 2:
                         city = props.get("city", "") or props.get("town", "") or props.get("village", "")
