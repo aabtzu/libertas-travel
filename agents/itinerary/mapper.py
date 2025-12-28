@@ -282,7 +282,7 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
             params = {
                 "q": query,
                 "format": "json",
-                "limit": 1,
+                "limit": 5,  # Get multiple results to filter
                 "addressdetails": 1
             }
             # Add country code bias if available
@@ -300,6 +300,20 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
             data = response.json()
 
             if data and len(data) > 0:
+                # Prefer non-street results (places, tourism, buildings over highways/roads)
+                preferred_classes = ['place', 'tourism', 'building', 'amenity', 'leisure', 'aeroway']
+
+                # First try to find a preferred result
+                for result in data:
+                    result_class = result.get('class', '')
+                    if result_class in preferred_classes:
+                        return {
+                            "lat": float(result["lat"]),
+                            "lng": float(result["lon"]),
+                            "address": result.get("display_name", "")
+                        }
+
+                # Fall back to first result if no preferred match
                 result = data[0]
                 return {
                     "lat": float(result["lat"]),
