@@ -347,6 +347,12 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
 
             self._last_geocode_time = time.time()
             response = requests.get(url, params=params, headers=headers, timeout=10)
+
+            # Log response status for debugging
+            if response.status_code != 200:
+                print(f"[GEOCODING] Nominatim returned status {response.status_code} for: {query}")
+                return None
+
             data = response.json()
 
             if data and len(data) > 0:
@@ -367,10 +373,54 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
                 print(f"[GEOCODING] No results for: {query}")
                 return None
         except requests.Timeout:
-            print(f"[GEOCODING] Timeout for: {query}")
+            print(f"[GEOCODING] Nominatim timeout for: {query}")
+        except Exception as e:
+            print(f"[GEOCODING] Nominatim failed for {query}: {e}")
+
+        # Fallback to Photon geocoder (also free, OSM-based)
+        return self._do_geocode_photon(query, category)
+
+    def _do_geocode_photon(self, query: str, category: str = "") -> Optional[dict]:
+        """Fallback geocoder using Photon (komoot's free OSM geocoder)."""
+        try:
+            url = "https://photon.komoot.io/api/"
+            params = {"q": query, "limit": 5}
+            headers = {"User-Agent": "Libertas-Travel/1.0"}
+
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            if response.status_code != 200:
+                print(f"[GEOCODING] Photon returned status {response.status_code}")
+                return None
+
+            data = response.json()
+            features = data.get("features", [])
+
+            if features:
+                # Convert Photon results to our format for selection
+                results = []
+                for f in features:
+                    props = f.get("properties", {})
+                    coords = f.get("geometry", {}).get("coordinates", [])
+                    if len(coords) >= 2:
+                        results.append({
+                            "lat": str(coords[1]),
+                            "lon": str(coords[0]),
+                            "class": props.get("osm_key", ""),
+                            "type": props.get("osm_value", ""),
+                            "display_name": f"{props.get('name', '')} {props.get('city', '')} {props.get('country', '')}".strip()
+                        })
+
+                best = self._select_best_result(results, category)
+                if best:
+                    print(f"[GEOCODING] Photon found: {best.get('display_name', '')[:50]}")
+                    return {
+                        "lat": float(best["lat"]),
+                        "lng": float(best["lon"]),
+                        "address": best.get("display_name", "")
+                    }
             return None
         except Exception as e:
-            print(f"[GEOCODING] Failed for {query}: {e}")
+            print(f"[GEOCODING] Photon fallback failed: {e}")
             return None
 
     def _select_best_result(self, results: list, category: str) -> Optional[dict]:
