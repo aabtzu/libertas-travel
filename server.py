@@ -1644,11 +1644,19 @@ Return venues in a JSON block with source tags:
         # Do geocoding synchronously (more reliable on cloud platforms)
         db.update_trip_map_status(user_id, link, "processing", None)
         print(f"[GEOCODING] Starting synchronous geocoding for {link}", flush=True)
+        print(f"[GEOCODING] Itinerary has {len(itinerary.items)} items", flush=True)
+
+        # Log first few items
+        for i, item in enumerate(itinerary.items[:3]):
+            loc_name = item.location.name if item.location else "None"
+            print(f"[GEOCODING] Item {i}: '{item.title}' loc='{loc_name}' cat='{item.category}'", flush=True)
 
         try:
             from agents.itinerary.mapper import ItineraryMapper
             mapper = ItineraryMapper()
+            print(f"[GEOCODING] Calling create_map_data...", flush=True)
             map_data = mapper.create_map_data(itinerary)
+            print(f"[GEOCODING] create_map_data returned", flush=True)
 
             # Store map_data in database
             itinerary_data['map_data'] = map_data
@@ -1656,7 +1664,8 @@ Return venues in a JSON block with source tags:
             db.update_trip_map_status(user_id, link, "ready", None)
 
             markers_count = len(map_data.get('markers', []))
-            print(f"[GEOCODING] Completed: {markers_count} markers", flush=True)
+            error_msg = map_data.get('error', '')
+            print(f"[GEOCODING] Completed: {markers_count} markers, error='{error_msg}'", flush=True)
 
             self.send_json_response({
                 "success": True,
@@ -1664,6 +1673,7 @@ Return venues in a JSON block with source tags:
             })
         except Exception as e:
             import traceback
+            print(f"[GEOCODING] Exception: {e}", flush=True)
             traceback.print_exc()
             db.update_trip_map_status(user_id, link, "error", str(e))
             self.send_json_error(f"Geocoding failed: {str(e)}")
