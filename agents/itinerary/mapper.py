@@ -200,65 +200,83 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
     def _geocode_item(self, item, region_hint: str = "") -> None:
         """Geocode an item using its title and location info."""
         location = item.location
-        is_flight = item.category == 'flight'
+        category = item.category or 'other'
 
-        # Build smart queries - use item title (actual place name) + location context
+        # Build smart queries based on category
         queries = []
 
-        # If we have an address, try it first
-        if location.address:
-            queries.append(location.address)
+        # Get location context
+        loc_name = location.name or ''
+        title = item.title or ''
 
-        # For flights, try to geocode the airport specifically
-        if is_flight:
-            import re
+        # For flights, use special airport logic
+        if category == 'flight':
+            queries = self._build_flight_queries(item, loc_name, region_hint)
 
-            # Try to extract IATA code from title or location and resolve via LLM
-            text_to_search = f"{item.title} {location.name or ''}"
-
-            # Look for IATA codes (3 uppercase letters)
-            iata_codes = re.findall(r'\b([A-Z]{3})\b', text_to_search)
-            for iata in iata_codes:
-                airport_name = self._resolve_iata_code(iata)
-                if airport_name:
-                    queries.append(airport_name)
-                    break  # Use first valid airport found
-
-            if location.name:
-                loc_name = location.name
-                # Extract city from location like "Vienna (Vienna International, Terminal 3)"
-                match = re.match(r'^([^(]+)', loc_name)
-                city = match.group(1).strip() if match else loc_name.split()[0]
-
-                # Add explicit airport queries
-                queries.append(f"{city} International Airport")
-                queries.append(f"{city} Airport")
-
-                if 'airport' not in loc_name.lower():
-                    queries.append(f"{loc_name} Airport")
-
+        # For hotels/lodging - search venue name + city
+        elif category in ('hotel', 'lodging'):
+            if title and loc_name:
+                queries.append(f"{title}, {loc_name}")  # "Sofitel Munich, Munich"
+                queries.append(f"{title} Hotel, {loc_name}")  # "Sofitel Munich Hotel, Munich"
+            if title:
+                queries.append(title)  # "Sofitel Munich"
+                if region_hint:
+                    queries.append(f"{title}, {region_hint}")
+            if loc_name:
                 queries.append(loc_name)
 
-        # Use item title with location context (e.g., "Sina Centurion Palace Venice Italy")
-        elif item.title and location.name:
-            # Don't add location if title already contains it
-            if location.name.lower() not in item.title.lower():
-                queries.append(f"{item.title}, {location.name}")
-            else:
-                queries.append(item.title)
-        elif item.title:
-            if region_hint:
-                queries.append(f"{item.title}, {region_hint}")
-            queries.append(item.title)
+        # For restaurants/meals - search venue name + city
+        elif category in ('restaurant', 'meal'):
+            if title and loc_name:
+                queries.append(f"{title}, {loc_name}")
+                queries.append(f"{title} Restaurant, {loc_name}")
+            if title:
+                queries.append(title)
+                if region_hint:
+                    queries.append(f"{title}, {region_hint}")
+            if loc_name:
+                queries.append(loc_name)
 
-        # Fall back to just location name with region hint
-        if location.name:
-            if region_hint and region_hint.lower() not in location.name.lower():
-                queries.append(f"{location.name}, {region_hint}")
-            queries.append(location.name)
+        # For attractions/activities - location name is usually the place itself
+        elif category in ('attraction', 'activity'):
+            # If location looks like a specific place, search it directly
+            if loc_name:
+                if region_hint and region_hint.lower() not in loc_name.lower():
+                    queries.append(f"{loc_name}, {region_hint}")
+                queries.append(loc_name)
+            # Also try title if it's different from location
+            if title and title.lower() != loc_name.lower():
+                if loc_name:
+                    queries.append(f"{title}, {loc_name}")
+                if region_hint:
+                    queries.append(f"{title}, {region_hint}")
+                queries.append(title)
 
+        # For transport (trains, etc)
+        elif category in ('transport', 'train_station'):
+            if loc_name:
+                queries.append(f"{loc_name} Station")
+                queries.append(f"{loc_name} Train Station")
+                queries.append(loc_name)
+            if title:
+                queries.append(title)
+
+        # Default fallback for other categories
+        else:
+            if loc_name:
+                if region_hint and region_hint.lower() not in loc_name.lower():
+                    queries.append(f"{loc_name}, {region_hint}")
+                queries.append(loc_name)
+            if title:
+                if loc_name and loc_name.lower() not in title.lower():
+                    queries.append(f"{title}, {loc_name}")
+                if region_hint:
+                    queries.append(f"{title}, {region_hint}")
+                queries.append(title)
+
+        # Try each query until we find a result
         for query in queries:
-            result = self._do_geocode(query, region_hint)
+            result = self._do_geocode(query, region_hint, category)
             if result:
                 location.latitude = result["lat"]
                 location.longitude = result["lng"]
@@ -270,7 +288,39 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         # No results found
         self._geocode_failures += 1
 
-    def _do_geocode(self, query: str, region_hint: str = "") -> Optional[dict]:
+    def _build_flight_queries(self, item, loc_name: str, region_hint: str) -> list:
+        """Build geocoding queries for flight items."""
+        import re
+        queries = []
+
+        # Try to extract IATA code from title or location and resolve via LLM
+        text_to_search = f"{item.title} {loc_name}"
+
+        # Look for IATA codes (3 uppercase letters)
+        iata_codes = re.findall(r'\b([A-Z]{3})\b', text_to_search)
+        for iata in iata_codes:
+            airport_name = self._resolve_iata_code(iata)
+            if airport_name:
+                queries.append(airport_name)
+                break  # Use first valid airport found
+
+        if loc_name:
+            # Extract city from location like "Vienna (Vienna International, Terminal 3)"
+            match = re.match(r'^([^(]+)', loc_name)
+            city = match.group(1).strip() if match else loc_name.split()[0]
+
+            # Add explicit airport queries
+            queries.append(f"{city} International Airport")
+            queries.append(f"{city} Airport")
+
+            if 'airport' not in loc_name.lower():
+                queries.append(f"{loc_name} Airport")
+
+            queries.append(loc_name)
+
+        return queries
+
+    def _do_geocode(self, query: str, region_hint: str = "", category: str = "") -> Optional[dict]:
         """Execute a geocoding request using Nominatim (OpenStreetMap) and return result or None."""
         try:
             # Rate limiting - Nominatim requires max 1 request per second
@@ -282,7 +332,7 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
             params = {
                 "q": query,
                 "format": "json",
-                "limit": 5,  # Get multiple results to filter
+                "limit": 10,  # Get more results for better filtering
                 "addressdetails": 1
             }
             # Add country code bias if available
@@ -300,41 +350,70 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
             data = response.json()
 
             if data and len(data) > 0:
-                # Prefer non-street results (places, tourism, buildings over highways/roads)
-                preferred_classes = ['place', 'tourism', 'building', 'amenity', 'leisure', 'aeroway']
+                # Debug: log results
+                print(f"[GEOCODING] Query '{query}' ({category}) returned {len(data)} results")
 
-                # Debug: log all results
-                print(f"[GEOCODING] Query '{query}' returned {len(data)} results:")
-                for i, r in enumerate(data[:3]):
-                    print(f"  {i+1}. class={r.get('class')}, type={r.get('type')}, name={r.get('display_name', '')[:50]}")
-
-                # First try to find a preferred result
-                for result in data:
-                    result_class = result.get('class', '')
-                    if result_class in preferred_classes:
-                        print(f"[GEOCODING] Selected: class={result_class}, {result.get('display_name', '')[:50]}")
-                        return {
-                            "lat": float(result["lat"]),
-                            "lng": float(result["lon"]),
-                            "address": result.get("display_name", "")
-                        }
-
-                # Fall back to first result if no preferred match
-                result = data[0]
-                print(f"[GEOCODING] Fallback to first result: {result.get('display_name', '')[:50]}")
-                return {
-                    "lat": float(result["lat"]),
-                    "lng": float(result["lon"]),
-                    "address": result.get("display_name", "")
-                }
+                # Category-specific result selection
+                best_result = self._select_best_result(data, category)
+                if best_result:
+                    print(f"[GEOCODING] Selected: {best_result.get('display_name', '')[:60]}")
+                    return {
+                        "lat": float(best_result["lat"]),
+                        "lng": float(best_result["lon"]),
+                        "address": best_result.get("display_name", "")
+                    }
+                return None
             else:
+                print(f"[GEOCODING] No results for: {query}")
                 return None
         except requests.Timeout:
-            print(f"Geocoding timed out for: {query}")
+            print(f"[GEOCODING] Timeout for: {query}")
             return None
         except Exception as e:
-            print(f"Geocoding failed for {query}: {e}")
+            print(f"[GEOCODING] Failed for {query}: {e}")
             return None
+
+    def _select_best_result(self, results: list, category: str) -> Optional[dict]:
+        """Select the best geocoding result based on category."""
+        if not results:
+            return None
+
+        # Define category-specific preferences
+        # Each tuple is (class, type) - type can be None to match any type in that class
+        category_preferences = {
+            'hotel': [('tourism', 'hotel'), ('tourism', None), ('building', 'hotel'), ('amenity', None)],
+            'lodging': [('tourism', 'hotel'), ('tourism', None), ('building', 'hotel'), ('amenity', None)],
+            'restaurant': [('amenity', 'restaurant'), ('amenity', 'cafe'), ('amenity', 'fast_food'), ('amenity', None)],
+            'meal': [('amenity', 'restaurant'), ('amenity', 'cafe'), ('amenity', None)],
+            'attraction': [('tourism', 'attraction'), ('tourism', None), ('historic', None), ('leisure', None), ('place', 'village'), ('place', 'town'), ('place', None)],
+            'activity': [('tourism', None), ('leisure', None), ('amenity', None), ('place', None)],
+            'flight': [('aeroway', 'aerodrome'), ('aeroway', None)],
+            'transport': [('railway', 'station'), ('railway', None), ('amenity', 'bus_station')],
+            'train_station': [('railway', 'station'), ('railway', None)],
+        }
+
+        # Default preferences for unknown categories
+        default_preferences = [('tourism', None), ('amenity', None), ('place', None), ('building', None), ('leisure', None)]
+
+        preferences = category_preferences.get(category, default_preferences)
+
+        # Try to find a result matching our preferences (in order)
+        for pref_class, pref_type in preferences:
+            for result in results:
+                r_class = result.get('class', '')
+                r_type = result.get('type', '')
+                if r_class == pref_class:
+                    if pref_type is None or r_type == pref_type:
+                        return result
+
+        # Fallback: avoid streets/highways, prefer places
+        avoid_classes = ['highway', 'boundary', 'landuse']
+        for result in results:
+            if result.get('class', '') not in avoid_classes:
+                return result
+
+        # Last resort: return first result
+        return results[0] if results else None
 
     def _get_region_code(self, region: str) -> str:
         """Convert region name to ISO 3166-1 alpha-2 code for Google."""

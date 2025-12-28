@@ -66,6 +66,11 @@ def regenerate_map_for_trip(link, itinerary_data):
         # Store map_data in database
         _store_map_data_in_db(link, map_data)
 
+        # Log marker coordinates for debugging
+        for marker in map_data.get('markers', []):
+            pos = marker.get('position', {})
+            print(f"[GEOCODING] Marker '{marker.get('title')}': lat={pos.get('lat')}, lng={pos.get('lng')}")
+
         update_trip_map_status(link, "ready")
         print(f"[GEOCODING] Completed geocoding for {link}")
 
