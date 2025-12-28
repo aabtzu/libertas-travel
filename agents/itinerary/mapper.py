@@ -364,8 +364,8 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
             # Log response status for debugging
             if response.status_code != 200:
                 print(f"[GEOCODING] Nominatim returned status {response.status_code} for: {query}", flush=True)
-                # Try Photon fallback
-                return self._do_geocode_photon(query, category)
+                # Try Photon fallback with region hint
+                return self._do_geocode_photon(query, category, region_hint)
 
             data = response.json()
 
@@ -387,54 +387,92 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
                 print(f"[GEOCODING] No results for: {query}")
                 return None
         except requests.Timeout:
-            print(f"[GEOCODING] Nominatim timeout for: {query}")
+            print(f"[GEOCODING] Nominatim timeout for: {query}", flush=True)
         except Exception as e:
-            print(f"[GEOCODING] Nominatim failed for {query}: {e}")
+            print(f"[GEOCODING] Nominatim failed for {query}: {e}", flush=True)
 
         # Fallback to Photon geocoder (also free, OSM-based)
-        return self._do_geocode_photon(query, category)
+        return self._do_geocode_photon(query, category, region_hint)
 
-    def _do_geocode_photon(self, query: str, category: str = "") -> Optional[dict]:
+    def _do_geocode_photon(self, query: str, category: str = "", region_hint: str = "") -> Optional[dict]:
         """Fallback geocoder using Photon (komoot's free OSM geocoder)."""
         try:
             url = "https://photon.komoot.io/api/"
-            params = {"q": query, "limit": 5}
+            params = {"q": query, "limit": 10}
+
+            # Add location bias if we have a region hint
+            # Photon supports lat/lon bias
+            region_coords = {
+                "Germany": (51.1657, 10.4515),
+                "Munich, Germany": (48.1351, 11.5820),
+                "Nuremberg, Germany": (49.4521, 11.0767),
+                "Austria": (47.5162, 14.5501),
+                "Italy": (41.8719, 12.5674),
+                "France": (46.6034, 1.8883),
+                "Spain": (40.4637, -3.7492),
+            }
+
+            if region_hint and region_hint in region_coords:
+                lat, lon = region_coords[region_hint]
+                params["lat"] = lat
+                params["lon"] = lon
+
             headers = {"User-Agent": "Libertas-Travel/1.0"}
 
             response = requests.get(url, params=params, headers=headers, timeout=10)
             if response.status_code != 200:
-                print(f"[GEOCODING] Photon returned status {response.status_code}")
+                print(f"[GEOCODING] Photon returned status {response.status_code}", flush=True)
                 return None
 
             data = response.json()
             features = data.get("features", [])
 
             if features:
+                # Filter by country if we have a region hint
+                target_country = None
+                if region_hint:
+                    # Extract country from region hint
+                    if "Germany" in region_hint:
+                        target_country = "Germany"
+                    elif "Austria" in region_hint:
+                        target_country = "Austria"
+                    elif "Italy" in region_hint:
+                        target_country = "Italy"
+
                 # Convert Photon results to our format for selection
                 results = []
                 for f in features:
                     props = f.get("properties", {})
                     coords = f.get("geometry", {}).get("coordinates", [])
+                    country = props.get("country", "")
+
+                    # Skip results from wrong country
+                    if target_country and country and target_country.lower() not in country.lower():
+                        continue
+
                     if len(coords) >= 2:
+                        city = props.get("city", "") or props.get("town", "") or props.get("village", "")
                         results.append({
                             "lat": str(coords[1]),
                             "lon": str(coords[0]),
                             "class": props.get("osm_key", ""),
                             "type": props.get("osm_value", ""),
-                            "display_name": f"{props.get('name', '')} {props.get('city', '')} {props.get('country', '')}".strip()
+                            "display_name": f"{props.get('name', '')} {city} {country}".strip(),
+                            "country": country
                         })
 
                 best = self._select_best_result(results, category)
                 if best:
-                    print(f"[GEOCODING] Photon found: {best.get('display_name', '')[:50]}")
+                    print(f"[GEOCODING] Photon found: {best.get('display_name', '')[:60]}", flush=True)
                     return {
                         "lat": float(best["lat"]),
                         "lng": float(best["lon"]),
                         "address": best.get("display_name", "")
                     }
+            print(f"[GEOCODING] Photon no results for: {query}", flush=True)
             return None
         except Exception as e:
-            print(f"[GEOCODING] Photon fallback failed: {e}")
+            print(f"[GEOCODING] Photon fallback failed: {e}", flush=True)
             return None
 
     def _select_best_result(self, results: list, category: str) -> Optional[dict]:
