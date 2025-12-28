@@ -173,6 +173,14 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
     if itinerary_data is None:
         return {'error': 'No itinerary data provided'}, 400
 
+    # Preserve existing map_data if not included in new data
+    if 'map_data' not in itinerary_data:
+        existing_trip = db.get_trip_by_link(user_id, link)
+        if existing_trip:
+            existing_data = existing_trip.get('itinerary_data') or {}
+            if existing_data.get('map_data'):
+                itinerary_data['map_data'] = existing_data['map_data']
+
     success = db.update_trip_itinerary_data(user_id, link, itinerary_data)
 
     if success:
