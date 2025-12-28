@@ -45,10 +45,12 @@ def regenerate_map_for_trip(link, itinerary_data):
 
     try:
         print(f"[GEOCODING] Starting geocoding for {link}")
+        print(f"[GEOCODING] Input data has {len(itinerary_data.get('items', []))} items")
         update_trip_map_status(link, "processing")
 
         # Reconstruct itinerary from serialized data
         itinerary = deserialize_itinerary(itinerary_data)
+        print(f"[GEOCODING] Deserialized {len(itinerary.items)} items")
 
         # Generate map data with geocoding
         mapper = ItineraryMapper()
@@ -247,8 +249,41 @@ def start_worker():
         _worker_thread.start()
         print("[GEOCODING] Background worker thread started")
 
+        # Test geocoding API connectivity
+        _test_geocoding_connectivity()
+
         # Recover stale pending tasks on startup
         recover_stale_tasks()
+
+
+def _test_geocoding_connectivity():
+    """Test if geocoding APIs are reachable."""
+    import requests
+
+    # Test Nominatim
+    try:
+        resp = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": "Berlin", "format": "json", "limit": 1},
+            headers={"User-Agent": "Libertas-Travel/1.0"},
+            timeout=10
+        )
+        print(f"[GEOCODING] Nominatim test: status={resp.status_code}, results={len(resp.json())}")
+    except Exception as e:
+        print(f"[GEOCODING] Nominatim test FAILED: {e}")
+
+    # Test Photon
+    try:
+        resp = requests.get(
+            "https://photon.komoot.io/api/",
+            params={"q": "Berlin", "limit": 1},
+            headers={"User-Agent": "Libertas-Travel/1.0"},
+            timeout=10
+        )
+        data = resp.json()
+        print(f"[GEOCODING] Photon test: status={resp.status_code}, results={len(data.get('features', []))}")
+    except Exception as e:
+        print(f"[GEOCODING] Photon test FAILED: {e}")
 
 
 def recover_stale_tasks():

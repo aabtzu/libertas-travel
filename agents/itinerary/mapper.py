@@ -47,25 +47,38 @@ class ItineraryMapper:
 
     def geocode_locations(self, itinerary: Itinerary) -> Itinerary:
         """Add coordinates to all locations in the itinerary using Nominatim (OpenStreetMap)."""
+        print(f"[GEOCODING] Starting geocode_locations with {len(itinerary.items)} items")
+
         # Determine the trip's region for biasing geocoding results
         region_hint = self._get_region_hint(itinerary)
+        print(f"[GEOCODING] Region hint: {region_hint}")
 
         # Limit geocoding to avoid long waits
         items_to_geocode = [
             item for item in itinerary.items
             if not item.location.has_coordinates
         ]
+        print(f"[GEOCODING] Items needing geocoding: {len(items_to_geocode)}")
+
+        # Log first few items for debugging
+        for item in items_to_geocode[:3]:
+            loc = item.location
+            print(f"[GEOCODING] Item: '{item.title}' category='{item.category}' location='{loc.name if loc else None}'")
 
         # Only geocode up to MAX_GEOCODE_LOCATIONS
         for item in items_to_geocode[:MAX_GEOCODE_LOCATIONS]:
             # Stop if too many failures (likely network/rate limit issue)
-            if self._geocode_failures >= 3:
-                print(f"Stopping geocoding after {self._geocode_failures} consecutive failures")
+            if self._geocode_failures >= 5:  # Increased from 3
+                print(f"[GEOCODING] Stopping after {self._geocode_failures} consecutive failures")
                 break
             self._geocode_item(item, region_hint)
 
         if len(items_to_geocode) > MAX_GEOCODE_LOCATIONS:
-            print(f"Note: Only geocoded {MAX_GEOCODE_LOCATIONS} of {len(items_to_geocode)} locations")
+            print(f"[GEOCODING] Note: Only geocoded {MAX_GEOCODE_LOCATIONS} of {len(items_to_geocode)} locations")
+
+        # Count successful geocodes
+        geocoded_count = sum(1 for item in itinerary.items if item.location.has_coordinates)
+        print(f"[GEOCODING] Completed: {geocoded_count}/{len(itinerary.items)} items have coordinates")
 
         return itinerary
 
