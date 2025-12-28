@@ -1625,6 +1625,13 @@ Return venues in a JSON block with source tags:
                 self.send_json_error("Invalid itinerary data format")
                 return
 
+        # Clear old map_data to force fresh geocoding
+        if 'map_data' in itinerary_data:
+            print(f"[GEOCODING] Clearing old map_data for {link}")
+            del itinerary_data['map_data']
+            # Update database to clear old map_data immediately
+            db.update_trip_itinerary_data(user_id, link, itinerary_data)
+
         # Convert to Itinerary object
         from agents.create.handler import _convert_to_itinerary
         trip_for_convert = {'itinerary_data': itinerary_data, 'title': trip.get('title', 'Trip')}
