@@ -303,10 +303,16 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
                 # Prefer non-street results (places, tourism, buildings over highways/roads)
                 preferred_classes = ['place', 'tourism', 'building', 'amenity', 'leisure', 'aeroway']
 
+                # Debug: log all results
+                print(f"[GEOCODING] Query '{query}' returned {len(data)} results:")
+                for i, r in enumerate(data[:3]):
+                    print(f"  {i+1}. class={r.get('class')}, type={r.get('type')}, name={r.get('display_name', '')[:50]}")
+
                 # First try to find a preferred result
                 for result in data:
                     result_class = result.get('class', '')
                     if result_class in preferred_classes:
+                        print(f"[GEOCODING] Selected: class={result_class}, {result.get('display_name', '')[:50]}")
                         return {
                             "lat": float(result["lat"]),
                             "lng": float(result["lon"]),
@@ -315,6 +321,7 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
 
                 # Fall back to first result if no preferred match
                 result = data[0]
+                print(f"[GEOCODING] Fallback to first result: {result.get('display_name', '')[:50]}")
                 return {
                     "lat": float(result["lat"]),
                     "lng": float(result["lon"]),
