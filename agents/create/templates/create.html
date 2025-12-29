@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/static/css/main.css?v=9">
     <link rel="stylesheet" href="/static/css/categories.css">
-    <link rel="stylesheet" href="/static/css/create.css?v=19">
+    <link rel="stylesheet" href="/static/css/create.css?v=20">
 </head>
 <body>
     {nav_html}
@@ -97,6 +97,9 @@
                     <button class="timeline-tab" data-tab="map" onclick="switchTimelineTab('map')">
                         <i class="fas fa-map-marked-alt"></i> Map
                     </button>
+                    <button class="timeline-tab" data-tab="calendar" onclick="switchTimelineTab('calendar')">
+                        <i class="fas fa-calendar-alt"></i> Calendar
+                    </button>
                     <div class="timeline-tab-actions">
                         <button class="btn-icon" id="add-day-btn" title="Add Day">
                             <i class="fas fa-plus"></i>
@@ -131,6 +134,13 @@
                             <i class="fas fa-spinner fa-spin"></i>
                             <span>Loading map...</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Calendar Tab Content -->
+                <div class="timeline-tab-content" id="calendar-tab">
+                    <div class="calendar-container" id="calendar-container">
+                        <!-- Calendar will be rendered here dynamically -->
                     </div>
                 </div>
 
@@ -260,12 +270,13 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/static/js/main.js?v=3"></script>
+    <script src="/static/js/calendar.js?v=1"></script>
     <script>
         // Trip link from URL - check for both 'link' and 'edit' parameters
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=33"></script>
+    <script src="/static/js/create.js?v=38"></script>
 
     <!-- Mobile floating chat button - must be direct child of body for position:fixed -->
     <button class="mobile-chat-fab" id="mobile-chat-fab" aria-label="Open chat assistant">

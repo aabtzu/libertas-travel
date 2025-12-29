@@ -691,7 +691,8 @@ function renderDayItems(items, dayIndex) {
         let timeStr = '';
         if (item.time) {
             timeStr = formatTime12Hour(item.time);
-            if (item.end_time) {
+            // For items with end_date (multi-day rentals), don't show end_time here - it goes in return info
+            if (item.end_time && !item.end_date) {
                 const cat = (item.category || '').toLowerCase();
                 const isTravel = (cat === 'travel' || cat === 'flight' || cat === 'transport' || cat === 'train' || cat === 'bus');
                 const separator = isTravel ? ' → ' : ' - ';
@@ -699,12 +700,13 @@ function renderDayItems(items, dayIndex) {
             }
             timeStr = `<span><i class="fas fa-clock"></i> ${timeStr}</span>`;
         }
-        // Show return date for multi-day rentals
+        // Show return date for multi-day rentals (car rentals)
         let returnDateStr = '';
         if (item.end_date) {
             const endDate = new Date(item.end_date + 'T12:00:00');
-            const returnStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            returnDateStr = `<span><i class="fas fa-calendar-check"></i> Return: ${returnStr}</span>`;
+            const returnDatePart = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const returnTimePart = item.end_time ? ', ' + formatTime12Hour(item.end_time) : '';
+            returnDateStr = `<span><i class="fas fa-calendar-check"></i> Return: ${returnDatePart}${returnTimePart}</span>`;
         }
         const locationStr = item.location ? `<span><i class="fas fa-map-marker-alt"></i> ${item.location}</span>` : '';
         const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
@@ -1236,6 +1238,7 @@ function processUploadedItems(data, fileName) {
             website: item.website || null,
             notes: item.notes || null
         };
+        console.log('processUploadedItems - newItem:', newItem.title, 'end_date:', newItem.end_date);
 
         // Try to find matching day by date or day number
         let placed = false;
@@ -1250,6 +1253,27 @@ function processUploadedItems(data, fileName) {
                 addedToDay++;
                 const dayNum = currentTrip.days[dayIndex].day_number;
                 placementDetails.push(`- **${item.title}** → Day ${dayNum} (${item.date})`);
+
+                // For car rentals with end_date, also create a return item on the drop-off day
+                if (item.end_date && item.category === 'transport') {
+                    const returnDayIndex = currentTrip.days.findIndex(day => day.date === item.end_date);
+                    if (returnDayIndex !== -1) {
+                        const returnItem = {
+                            title: `Return: ${item.title}`,
+                            category: 'transport',
+                            time: item.end_time || null,
+                            location: item.location,
+                            notes: item.notes
+                        };
+                        if (!currentTrip.days[returnDayIndex].items) {
+                            currentTrip.days[returnDayIndex].items = [];
+                        }
+                        currentTrip.days[returnDayIndex].items.push(returnItem);
+                        addedToDay++;
+                        const returnDayNum = currentTrip.days[returnDayIndex].day_number;
+                        placementDetails.push(`- **Return: ${item.title}** → Day ${returnDayNum} (${item.end_date})`);
+                    }
+                }
             }
         }
 
@@ -2196,6 +2220,11 @@ function switchTimelineTab(tabName) {
     if (tabName === 'grid') {
         renderGrid();
     }
+
+    // Render calendar when switching to calendar tab
+    if (tabName === 'calendar') {
+        renderCalendar();
+    }
 }
 
 /**
@@ -2308,6 +2337,97 @@ function renderGrid() {
 
     tableHtml += '</tbody></table></div>';
     container.innerHTML = tableHtml;
+}
+
+/**
+ * Render the calendar view using shared CalendarView module
+ */
+function renderCalendar() {
+    const container = document.getElementById('calendar-container');
+    if (!container) return;
+
+    // Use the shared CalendarView module to render
+    container.innerHTML = CalendarView.render(currentTrip, { editable: true });
+
+    // Set up click handlers for calendar items
+    setupCalendarClickHandlers(container);
+}
+
+/**
+ * Set up click handlers for calendar items in the edit view
+ */
+function setupCalendarClickHandlers(container) {
+    // Handle calendar item clicks - show edit dialog
+    container.addEventListener('click', function(event) {
+        // Handle "+N more" click
+        const moreElement = event.target.closest('.calendar-item-more');
+        if (moreElement && moreElement.hasAttribute('data-hidden-items')) {
+            event.stopPropagation();
+            showCalendarMorePopup(moreElement);
+            return;
+        }
+
+        // Handle calendar item click - open edit modal
+        const calendarItem = event.target.closest('.calendar-item');
+        if (calendarItem) {
+            event.stopPropagation();
+            const dayIndex = parseInt(calendarItem.dataset.dayIndex);
+            const itemIndex = parseInt(calendarItem.dataset.itemIndex);
+            if (!isNaN(dayIndex) && !isNaN(itemIndex)) {
+                editItem(dayIndex, itemIndex);
+            }
+        }
+    });
+}
+
+/**
+ * Show popup with hidden calendar items
+ */
+function showCalendarMorePopup(element) {
+    try {
+        const hiddenItems = JSON.parse(element.dataset.hiddenItems);
+        // Use existing item detail popup logic
+        if (typeof showItemDetailPopup === 'function') {
+            // Create a temporary container with the items
+            let popupHtml = '<div class="more-items-list">';
+            hiddenItems.forEach((item, index) => {
+                const iconClass = CalendarView.getCategoryIcon(item.category);
+                const detailParts = [];
+                if (item.time) detailParts.push(item.time);
+                if (item.location) detailParts.push(item.location);
+
+                popupHtml += `
+                    <div class="more-item" data-index="${index}">
+                        <div class="more-item-header">
+                            <i class="fas ${iconClass}"></i>
+                            <span class="more-item-title">${escapeHtml(item.title)}</span>
+                        </div>
+                        ${detailParts.length ? `<div class="more-item-detail">${escapeHtml(detailParts.join(' • '))}</div>` : ''}
+                    </div>
+                `;
+            });
+            popupHtml += '</div>';
+
+            // Show as a simple popup near the element
+            const popup = document.createElement('div');
+            popup.className = 'item-detail-popup calendar-more-popup';
+            popup.innerHTML = popupHtml;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'item-detail-overlay';
+            overlay.onclick = () => { overlay.remove(); popup.remove(); };
+
+            document.body.appendChild(overlay);
+            document.body.appendChild(popup);
+
+            // Position the popup
+            const rect = element.getBoundingClientRect();
+            popup.style.left = Math.min(rect.left, window.innerWidth - 340) + 'px';
+            popup.style.top = Math.min(rect.bottom + 5, window.innerHeight - popup.offsetHeight - 10) + 'px';
+        }
+    } catch (e) {
+        console.error('Error showing calendar more popup:', e);
+    }
 }
 
 /**
