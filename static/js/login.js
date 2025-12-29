@@ -19,6 +19,20 @@ document.getElementById('login-form').addEventListener('submit', async function(
         const data = await response.json();
 
         if (data.success) {
+            // Trigger browser password save prompt using PasswordCredential API
+            if (window.PasswordCredential) {
+                try {
+                    const cred = new PasswordCredential({
+                        id: username,
+                        password: password,
+                        name: username
+                    });
+                    await navigator.credentials.store(cred);
+                } catch (credErr) {
+                    // Ignore credential storage errors - login still succeeded
+                    console.log('Password credential storage skipped:', credErr);
+                }
+            }
             // Redirect to the original page or home
             const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
             window.location.href = redirect;
