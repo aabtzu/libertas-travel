@@ -1523,16 +1523,22 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
     # Build the LLM prompt
     from datetime import datetime
     current_year = datetime.now().year
+    current_month = datetime.now().month
     current_date = datetime.now().strftime('%Y-%m-%d')
+    next_year = current_year + 1
 
     system_prompt = f"""You are a travel document parser. Extract travel-related items from the uploaded document.
 
-Today's date is {current_date}.
+Today's date is {current_date} (December {current_year}).
 
 For each item you find, extract:
 - title: A clear name for the item (e.g., "LH 2416 MUC → ARN", "Hotel Duomo Firenze")
 - category: One of: flight, transport, hotel, meal, activity, attraction, other
-- date: The date in YYYY-MM-DD format. IMPORTANT: If the year is not specified (e.g., "Thu, Sep 10" or "September 10"), assume it's the NEXT occurrence of that date. If Sep 10 has already passed this year, use {current_year + 1}, otherwise use {current_year}.
+- date: The date in YYYY-MM-DD format. CRITICAL: When the year is not shown:
+  * For months January through November, use year {next_year}
+  * For December dates after today, use year {current_year}
+  * Example: "Sep 10" without a year means {next_year}-09-10
+  * Example: "Thu, Sep 10" means {next_year}-09-10
 - time: Start/departure time (HH:MM format, 24-hour)
 - end_time: End/arrival time if available (HH:MM format, 24-hour) - IMPORTANT for flights and trains!
 - location: City or address (destination for flights/trains)
@@ -1603,6 +1609,9 @@ Only return the JSON array, no other text."""
             response_text = '\n'.join(lines[1:-1] if lines[-1] == '```' else lines[1:])
 
         items = json.loads(response_text)
+        print(f"[UPLOAD] Parsed {len(items)} items from {filename}")
+        for item in items:
+            print(f"[UPLOAD]   - {item.get('title')}: date={item.get('date')}, time={item.get('time')}")
 
         if not isinstance(items, list):
             items = []
