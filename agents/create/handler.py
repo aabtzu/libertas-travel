@@ -1532,19 +1532,20 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
 Today's date is {current_date} (December {current_year}).
 
 For each item you find, extract:
-- title: A clear name for the item (e.g., "LH 2416 MUC → ARN", "Hotel Duomo Firenze")
-- category: One of: flight, transport, hotel, meal, activity, attraction, other
-- date: The date in YYYY-MM-DD format. CRITICAL: When the year is not shown:
+- title: A clear name for the item (e.g., "LH 2416 MUC → ARN", "Hotel Duomo Firenze", "Hertz Rental Car")
+- category: One of: flight, transport, train, bus, hotel, meal, activity, attraction, other
+- date: The start/pickup date in YYYY-MM-DD format. CRITICAL: When the year is not shown:
   * For months January through November, use year {next_year}
   * For December dates after today, use year {current_year}
   * Example: "Sep 10" without a year means {next_year}-09-10
-  * Example: "Thu, Sep 10" means {next_year}-09-10
-- time: Start/departure time (HH:MM format, 24-hour)
-- end_time: End/arrival time if available (HH:MM format, 24-hour) - IMPORTANT for flights and trains!
-- location: City or address (destination for flights/trains)
-- notes: Any additional relevant details (confirmation numbers, seat assignments, flight duration, etc.)
+- end_date: The end/return/dropoff date in YYYY-MM-DD format (for car rentals, hotels)
+- time: Start/departure/pickup time (HH:MM format, 24-hour)
+- end_time: End/arrival/dropoff time if available (HH:MM format, 24-hour)
+- location: City or address (pickup location for rentals, destination for flights)
+- notes: Any additional relevant details (confirmation numbers, vehicle type, drop-off location if different, etc.)
 
 For FLIGHTS and TRAINS: Always extract both departure time (time) and arrival time (end_time) if shown.
+For CAR RENTALS: Extract pickup date/time as date/time, drop-off date/time as end_date/end_time. Include confirmation number and vehicle type in notes.
 
 Return your response as a JSON array of items. Example:
 ```json

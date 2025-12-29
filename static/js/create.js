@@ -693,11 +693,18 @@ function renderDayItems(items, dayIndex) {
             timeStr = formatTime12Hour(item.time);
             if (item.end_time) {
                 const cat = (item.category || '').toLowerCase();
-                const isTravel = (cat === 'travel' || cat === 'flight' || cat === 'transport');
+                const isTravel = (cat === 'travel' || cat === 'flight' || cat === 'transport' || cat === 'train' || cat === 'bus');
                 const separator = isTravel ? ' → ' : ' - ';
                 timeStr += separator + formatTime12Hour(item.end_time);
             }
             timeStr = `<span><i class="fas fa-clock"></i> ${timeStr}</span>`;
+        }
+        // Show return date for multi-day rentals
+        let returnDateStr = '';
+        if (item.end_date) {
+            const endDate = new Date(item.end_date + 'T12:00:00');
+            const returnStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            returnDateStr = `<span><i class="fas fa-calendar-check"></i> Return: ${returnStr}</span>`;
         }
         const locationStr = item.location ? `<span><i class="fas fa-map-marker-alt"></i> ${item.location}</span>` : '';
         const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
@@ -711,6 +718,7 @@ function renderDayItems(items, dayIndex) {
                     <div class="item-title">${escapeHtml(item.title)} ${websiteStr}</div>
                     <div class="item-meta">
                         ${timeStr}
+                        ${returnDateStr}
                         ${locationStr}
                     </div>
                 </div>
@@ -1223,6 +1231,7 @@ function processUploadedItems(data, fileName) {
             category: item.category || 'other',
             time: item.time || null,
             end_time: item.end_time || null,
+            end_date: item.end_date || null,
             location: item.location || null,
             website: item.website || null,
             notes: item.notes || null
