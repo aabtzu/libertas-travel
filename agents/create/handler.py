@@ -159,12 +159,12 @@ def create_trip_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str, Any]:
-    """Auto-save trip itinerary data.
+    """Auto-save trip itinerary data and title.
 
     Args:
         user_id: The user's ID
         link: The trip's unique link
-        data: Request data containing itinerary_data
+        data: Request data containing itinerary_data and optionally title
 
     Returns:
         Success or error response
@@ -180,6 +180,11 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
             existing_data = existing_trip.get('itinerary_data') or {}
             if existing_data.get('map_data'):
                 itinerary_data['map_data'] = existing_data['map_data']
+
+    # Update title if provided
+    title = data.get('title')
+    if title:
+        db.update_trip(user_id, link, {'title': title})
 
     success = db.update_trip_itinerary_data(user_id, link, itinerary_data)
 

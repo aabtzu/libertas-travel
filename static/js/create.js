@@ -1309,6 +1309,7 @@ async function performAutoSave() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                title: currentTrip.title,
                 itinerary_data: {
                     days: currentTrip.days,
                     ideas: currentTrip.ideas,
