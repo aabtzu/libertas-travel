@@ -183,9 +183,11 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
 
     # Update title if provided (save to both trips table and itinerary_data)
     title = data.get('title')
+    print(f"[SAVE] link={link}, title={title}")
     if title:
         db.update_trip(user_id, link, {'title': title})
         itinerary_data['title'] = title  # Also store in itinerary_data for HTML generation
+        print(f"[SAVE] Updated title to: {title}")
 
     success = db.update_trip_itinerary_data(user_id, link, itinerary_data)
 
@@ -245,6 +247,10 @@ def publish_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
     trip = db.get_trip_by_link(user_id, link)
     if not trip:
         return {'error': 'Trip not found'}, 404
+
+    print(f"[PUBLISH] link={link}, title from DB={trip.get('title')}")
+    itinerary_data = trip.get('itinerary_data') or {}
+    print(f"[PUBLISH] title from itinerary_data={itinerary_data.get('title')}")
 
     # Generate the HTML file from itinerary_data
     _generate_trip_html(trip, link)
