@@ -175,8 +175,17 @@ function initEventListeners() {
     }
 
     // Date field interactions (clear num_days when dates are set)
-    document.getElementById('start-date')?.addEventListener('change', () => {
+    document.getElementById('start-date')?.addEventListener('change', (e) => {
         document.getElementById('num-days').value = '';
+        const endDateInput = document.getElementById('end-date');
+        if (e.target.value) {
+            // Set end date minimum to start date
+            endDateInput.min = e.target.value;
+            // If end date is empty or before start date, default to start date
+            if (!endDateInput.value || endDateInput.value < e.target.value) {
+                endDateInput.value = e.target.value;
+            }
+        }
     });
     document.getElementById('end-date')?.addEventListener('change', () => {
         document.getElementById('num-days').value = '';
@@ -195,6 +204,16 @@ function initEventListeners() {
     // Editor date changes
     document.getElementById('editor-start-date')?.addEventListener('change', (e) => {
         currentTrip.start_date = e.target.value || null;
+        const endDateInput = document.getElementById('editor-end-date');
+        if (e.target.value) {
+            // Set end date minimum to start date
+            endDateInput.min = e.target.value;
+            // If end date is empty or before start date, default to start date
+            if (!endDateInput.value || endDateInput.value < e.target.value) {
+                endDateInput.value = e.target.value;
+                currentTrip.end_date = e.target.value;
+            }
+        }
         updateDays();
         triggerAutoSave();
     });
