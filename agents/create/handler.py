@@ -1543,7 +1543,7 @@ For FLIGHTS and TRAINS: Always extract both departure time (time) and arrival ti
 Return your response as a JSON array of items. Example:
 ```json
 [
-  {
+  {{
     "title": "LH 2416 MUC → ARN",
     "category": "flight",
     "date": "2025-12-17",
@@ -1551,7 +1551,7 @@ Return your response as a JSON array of items. Example:
     "end_time": "14:25",
     "location": "Stockholm, Sweden",
     "notes": "Lufthansa, Airbus A321, Economy, 2h 15m nonstop"
-  }
+  }}
 ]
 ```
 
