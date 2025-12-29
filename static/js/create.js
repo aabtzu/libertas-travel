@@ -31,7 +31,7 @@ const CATEGORY_ICONS = {
 };
 
 // Valid category values for the dropdown
-const VALID_CATEGORIES = ['activity', 'meal', 'hotel', 'attraction', 'flight', 'transport', 'other'];
+const VALID_CATEGORIES = ['activity', 'meal', 'hotel', 'attraction', 'flight', 'transport', 'train', 'bus', 'other'];
 
 // Category normalization map (map aliases to valid values)
 const CATEGORY_MAP = {
@@ -39,9 +39,9 @@ const CATEGORY_MAP = {
     'air': 'flight',
     'plane': 'flight',
     'transportation': 'transport',
-    'train': 'transport',
-    'bus': 'transport',
     'car': 'transport',
+    'rail': 'train',
+    'coach': 'bus',
     'lodging': 'hotel',
     'accommodation': 'hotel',
     'stay': 'hotel',
