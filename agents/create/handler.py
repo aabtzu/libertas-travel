@@ -1521,12 +1521,18 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
         return {'error': f'Unsupported file type: {ext}'}, 400
 
     # Build the LLM prompt
-    system_prompt = """You are a travel document parser. Extract travel-related items from the uploaded document.
+    from datetime import datetime
+    current_year = datetime.now().year
+    current_date = datetime.now().strftime('%Y-%m-%d')
+
+    system_prompt = f"""You are a travel document parser. Extract travel-related items from the uploaded document.
+
+Today's date is {current_date}.
 
 For each item you find, extract:
 - title: A clear name for the item (e.g., "LH 2416 MUC → ARN", "Hotel Duomo Firenze")
 - category: One of: flight, transport, hotel, meal, activity, attraction, other
-- date: The date if available (YYYY-MM-DD format)
+- date: The date in YYYY-MM-DD format. IMPORTANT: If the year is not specified (e.g., "Thu, Sep 10" or "September 10"), assume it's the NEXT occurrence of that date. If Sep 10 has already passed this year, use {current_year + 1}, otherwise use {current_year}.
 - time: Start/departure time (HH:MM format, 24-hour)
 - end_time: End/arrival time if available (HH:MM format, 24-hour) - IMPORTANT for flights and trains!
 - location: City or address (destination for flights/trains)
