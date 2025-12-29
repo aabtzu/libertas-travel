@@ -642,6 +642,12 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.handle_export_trip(link)
             return
 
+        # API endpoint for ICS calendar export
+        if path.startswith("/api/trips/") and path.endswith("/calendar.ics"):
+            link = path[len("/api/trips/"):-len("/calendar.ics")]
+            self.handle_export_ics(link)
+            return
+
         # API endpoint to check if user can edit a trip (owns it)
         if path.startswith("/api/trip/") and path.endswith("/can-edit"):
             link = path[len("/api/trip/"):-len("/can-edit")]
@@ -775,6 +781,137 @@ class LibertasHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json_bytes)
         else:
             self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def handle_export_ics(self, link: str):
+        """Export trip data as ICS calendar file."""
+        user_id = self.get_current_user_id()
+        result, status = create_handler.export_trip_handler(user_id, link)
+        if status == 200:
+            export_data = result.get('export', {})
+            title = export_data.get('title', 'trip')
+            # Sanitize filename
+            safe_title = re.sub(r'[^\w\s-]', '', title).strip().replace(' ', '_')
+            filename = f"{safe_title}.ics"
+
+            ics_content = self.generate_ics(export_data, link)
+            ics_bytes = ics_content.encode('utf-8')
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/calendar; charset=utf-8')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('Content-Length', len(ics_bytes))
+            self.end_headers()
+            self.wfile.write(ics_bytes)
+        else:
+            self.send_json_error(result.get('error', 'Unknown error'), status=status)
+
+    def generate_ics(self, export_data: dict, link: str) -> str:
+        """Generate ICS calendar format from trip data."""
+        from datetime import datetime
+        import uuid
+
+        title = export_data.get('title', 'Trip')
+        itinerary_data = export_data.get('itinerary_data', {})
+        days = itinerary_data.get('days', [])
+        start_date = export_data.get('start_date') or itinerary_data.get('start_date')
+
+        lines = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Libertas Travel//Trip Planner//EN",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+            f"X-WR-CALNAME:{self._ics_escape(title)}",
+        ]
+
+        event_count = 0
+        for day in days:
+            day_date = day.get('date')
+            if not day_date:
+                continue
+
+            for item in day.get('items', []):
+                event_count += 1
+                item_title = item.get('title', 'Activity')
+                item_time = item.get('time')
+                item_end_time = item.get('end_time')
+                item_location = item.get('location', '')
+                item_notes = item.get('notes', '')
+                item_category = item.get('category', 'activity')
+                item_website = item.get('website', '')
+
+                # Generate unique ID for this event
+                uid = f"{link}-{day_date}-{event_count}@libertas.app"
+
+                # Build DTSTART and DTEND
+                if item_time:
+                    # Event with specific time
+                    dt_start = f"{day_date.replace('-', '')}T{item_time.replace(':', '')}00"
+                    if item_end_time:
+                        dt_end = f"{day_date.replace('-', '')}T{item_end_time.replace(':', '')}00"
+                    else:
+                        # Default 1 hour duration
+                        dt_end = self._add_hour_to_ics_time(dt_start)
+                    dtstart_line = f"DTSTART:{dt_start}"
+                    dtend_line = f"DTEND:{dt_end}"
+                else:
+                    # All-day event
+                    dtstart_line = f"DTSTART;VALUE=DATE:{day_date.replace('-', '')}"
+                    dtend_line = f"DTEND;VALUE=DATE:{day_date.replace('-', '')}"
+
+                # Build description
+                desc_parts = []
+                if item_category:
+                    desc_parts.append(f"Category: {item_category.title()}")
+                if item_notes:
+                    desc_parts.append(item_notes)
+                if item_website:
+                    desc_parts.append(f"Website: {item_website}")
+                description = "\\n".join(desc_parts)
+
+                lines.extend([
+                    "BEGIN:VEVENT",
+                    f"UID:{uid}",
+                    f"DTSTAMP:{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}",
+                    dtstart_line,
+                    dtend_line,
+                    f"SUMMARY:{self._ics_escape(item_title)}",
+                ])
+
+                if item_location:
+                    lines.append(f"LOCATION:{self._ics_escape(item_location)}")
+                if description:
+                    lines.append(f"DESCRIPTION:{self._ics_escape(description)}")
+
+                lines.append("END:VEVENT")
+
+        lines.append("END:VCALENDAR")
+        return "\r\n".join(lines)
+
+    def _ics_escape(self, text: str) -> str:
+        """Escape special characters for ICS format."""
+        if not text:
+            return ""
+        # ICS requires escaping backslash, semicolon, comma, and newlines
+        text = text.replace("\\", "\\\\")
+        text = text.replace(";", "\\;")
+        text = text.replace(",", "\\,")
+        text = text.replace("\n", "\\n")
+        text = text.replace("\r", "")
+        return text
+
+    def _add_hour_to_ics_time(self, dt_str: str) -> str:
+        """Add one hour to an ICS datetime string (YYYYMMDDTHHMMSS)."""
+        # Parse the time part
+        time_part = dt_str.split('T')[1] if 'T' in dt_str else "000000"
+        date_part = dt_str.split('T')[0] if 'T' in dt_str else dt_str
+        hour = int(time_part[0:2])
+        minute = time_part[2:4]
+        second = time_part[4:6] if len(time_part) >= 6 else "00"
+
+        # Add one hour
+        hour = (hour + 1) % 24
+        return f"{date_part}T{hour:02d}{minute}{second}"
 
     def handle_can_edit_trip(self, link: str):
         """Check if current user can edit a trip (i.e., owns it)."""

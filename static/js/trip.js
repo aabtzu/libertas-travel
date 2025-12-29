@@ -1,11 +1,67 @@
 /* Trip Page JavaScript - Libertas */
 /* This file can be edited directly - no need to regenerate HTML */
 
-// Export trip as JSON
+// Export trip - show format selection popup
 function exportTrip() {
+    showExportPopup();
+}
+
+// Show export format selection popup
+function showExportPopup() {
+    // Remove any existing popup
+    hideExportPopup();
+
     var tripLink = window.location.pathname.split('/').pop();
-    // The export endpoint returns a file download
-    window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/export';
+
+    // Create overlay
+    var overlay = document.createElement('div');
+    overlay.className = 'export-popup-overlay';
+    overlay.id = 'export-popup-overlay';
+    overlay.onclick = hideExportPopup;
+    document.body.appendChild(overlay);
+
+    // Create popup
+    var popup = document.createElement('div');
+    popup.className = 'export-popup';
+    popup.id = 'export-popup';
+    popup.innerHTML =
+        '<button class="popup-close" onclick="hideExportPopup()">&times;</button>' +
+        '<h3><i class="fas fa-download"></i> Export Trip</h3>' +
+        '<p class="export-popup-subtitle">Choose export format:</p>' +
+        '<div class="export-options">' +
+            '<button class="export-option" onclick="downloadExport(\'json\')">' +
+                '<i class="fas fa-file-code"></i>' +
+                '<span class="export-option-title">JSON Data</span>' +
+                '<span class="export-option-desc">Full trip data for backup or import</span>' +
+            '</button>' +
+            '<button class="export-option" onclick="downloadExport(\'ics\')">' +
+                '<i class="fas fa-calendar-alt"></i>' +
+                '<span class="export-option-title">Calendar (ICS)</span>' +
+                '<span class="export-option-desc">Import into Google Calendar, Apple Calendar, Outlook</span>' +
+            '</button>' +
+        '</div>';
+
+    document.body.appendChild(popup);
+}
+
+// Hide export popup
+function hideExportPopup() {
+    var overlay = document.getElementById('export-popup-overlay');
+    var popup = document.getElementById('export-popup');
+    if (overlay) overlay.remove();
+    if (popup) popup.remove();
+}
+
+// Download export in specified format
+function downloadExport(format) {
+    var tripLink = window.location.pathname.split('/').pop();
+    hideExportPopup();
+
+    if (format === 'ics') {
+        window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/calendar.ics';
+    } else {
+        window.location.href = '/api/trips/' + encodeURIComponent(tripLink) + '/export';
+    }
 }
 
 // Edit trip - navigate to create page with trip loaded
