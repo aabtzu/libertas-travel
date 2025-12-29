@@ -181,10 +181,11 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
             if existing_data.get('map_data'):
                 itinerary_data['map_data'] = existing_data['map_data']
 
-    # Update title if provided
+    # Update title if provided (save to both trips table and itinerary_data)
     title = data.get('title')
     if title:
         db.update_trip(user_id, link, {'title': title})
+        itinerary_data['title'] = title  # Also store in itinerary_data for HTML generation
 
     success = db.update_trip_itinerary_data(user_id, link, itinerary_data)
 
