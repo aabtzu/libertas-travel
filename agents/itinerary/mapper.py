@@ -153,37 +153,61 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
     # Cache for IATA code lookups to avoid repeated LLM calls
     _iata_cache: dict = {}
 
-    def _resolve_iata_code(self, iata: str) -> str:
-        """Use LLM to resolve an IATA airport code to full airport name for geocoding."""
-        # Check cache first
-        if iata in self._iata_cache:
-            return self._iata_cache[iata]
+    def _resolve_iata_code(self, iata: str, context: str = "") -> str:
+        """Use LLM to resolve an IATA airport code to full airport name for geocoding.
+
+        Args:
+            iata: The 3-letter IATA airport code
+            context: Optional context like flight title or trip destination to help disambiguate
+        """
+        # Check cache first (include context in cache key for disambiguation)
+        cache_key = f"{iata}|{context}" if context else iata
+        if cache_key in self._iata_cache:
+            return self._iata_cache[cache_key]
 
         # Skip common non-airport 3-letter words
         skip_words = {'THE', 'AND', 'FOR', 'DAY', 'VIA', 'NON', 'ONE', 'TWO', 'NEW', 'OLD'}
         if iata in skip_words:
-            self._iata_cache[iata] = ""
+            self._iata_cache[cache_key] = ""
             return ""
 
         try:
             import anthropic
             client = anthropic.Anthropic()
 
+            # Build a smarter prompt with context
+            prompt = f"""What airport has the IATA code "{iata}"?
+
+IATA codes are official 3-letter airport identifiers assigned by the International Air Transport Association.
+Be precise - many codes are similar but refer to different airports.
+
+{f'Context: This is for a flight with details: {context}' if context else ''}
+
+Reply with ONLY the full airport name and location in this format:
+"Airport Name, City, Country/State"
+
+Examples:
+- LAX -> "Los Angeles International Airport, Los Angeles, California"
+- BIH -> "Eastern Sierra Regional Airport, Bishop, California"
+- LHR -> "Heathrow Airport, London, United Kingdom"
+
+If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
+
             response = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=50,
-                messages=[{"role": "user", "content": f"What airport has IATA code {iata}? Reply with ONLY the airport name and city, e.g. 'Munich Airport, Germany' or 'NONE' if not a valid airport code."}]
+                model="claude-sonnet-4-20250514",
+                max_tokens=100,
+                messages=[{"role": "user", "content": prompt}]
             )
 
-            result = response.content[0].text.strip()
-            if result and 'NONE' not in result.upper() and len(result) < 100:
-                self._iata_cache[iata] = result
+            result = response.content[0].text.strip().strip('"')
+            if result and 'NONE' not in result.upper() and len(result) < 150:
+                self._iata_cache[cache_key] = result
                 print(f"[GEOCODING] Resolved IATA {iata} -> {result}")
                 return result
         except Exception as e:
             print(f"[GEOCODING] Failed to resolve IATA {iata}: {e}")
 
-        self._iata_cache[iata] = ""
+        self._iata_cache[cache_key] = ""
         return ""
 
     def _get_region_hint_fallback(self, itinerary: Itinerary) -> str:
@@ -309,10 +333,18 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         # Try to extract IATA code from title or location and resolve via LLM
         text_to_search = f"{item.title} {loc_name}"
 
+        # Build context for smarter IATA resolution
+        context_parts = [f"Flight: {item.title}"]
+        if region_hint:
+            context_parts.append(f"Trip destination: {region_hint}")
+        if loc_name:
+            context_parts.append(f"Location field: {loc_name}")
+        context = ", ".join(context_parts)
+
         # Look for IATA codes (3 uppercase letters)
         iata_codes = re.findall(r'\b([A-Z]{3})\b', text_to_search)
         for iata in iata_codes:
-            airport_name = self._resolve_iata_code(iata)
+            airport_name = self._resolve_iata_code(iata, context)
             if airport_name:
                 queries.append(airport_name)
                 break  # Use first valid airport found
