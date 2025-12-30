@@ -553,35 +553,54 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
     _origin_check_cache: dict = {}
 
     def _is_origin_flight(self, item, destination: str) -> bool:
-        """Check if an item is a flight from the origin/home city (not the destination).
+        """Check if an item is a flight/airport location outside the destination region.
 
         Uses LLM to intelligently determine if a location is in the destination region.
-        We want to EXCLUDE flights that depart from home (e.g., MUC-ARN when going to Stockholm)
-        We want to INCLUDE flights within destination or returning home
+        We want to EXCLUDE any airport/flight locations that are outside the destination.
         """
-        if item.category != 'flight':
+        # Only check flight-related items
+        category = (item.category or '').lower()
+        title = (item.title or '').lower()
+        location = item.location.name or ''
+
+        # Log every item for debugging
+        print(f"[MAP DEBUG] Item: '{item.title}' category='{category}' location='{location}'", flush=True)
+
+        # Check if this looks like a flight item (by category OR by title keywords)
+        flight_categories = ['flight', 'air', 'plane', 'travel', 'transport', 'airport']
+        flight_keywords = ['flight', 'fly', 'airport', 'muc', 'lhr', 'arn', 'bma']
+
+        is_flight_category = category in flight_categories
+        is_flight_title = any(kw in title for kw in flight_keywords)
+
+        if not is_flight_category and not is_flight_title:
             return False
 
         if not destination:
+            print(f"[MAP DEBUG] No destination set, keeping item", flush=True)
             return False
 
-        location = item.location.name or ''
-        title = item.title or ''
-
         if not location:
+            print(f"[MAP DEBUG] No location for item, keeping item", flush=True)
             return False
 
         # Quick check: if destination name appears in location, keep it
-        if destination.lower() in location.lower():
+        dest_lower = destination.lower()
+        loc_lower = location.lower()
+        if dest_lower in loc_lower:
+            print(f"[MAP DEBUG] Destination '{destination}' found in location '{location}', keeping item", flush=True)
             return False
 
-        # For day 1 flights, check if location is NOT in the destination region
-        # Day 1 flights from outside destination = origin flights to filter out
-        if item.day_number == 1:
-            is_in_destination = self._is_location_in_destination(location, title, destination)
-            if not is_in_destination:
-                return True  # Day 1 flight from outside destination = origin, filter it
+        # Check if location is in destination region using LLM
+        print(f"[MAP DEBUG] Checking if '{location}' is in '{destination}' via LLM...", flush=True)
+        is_in_destination = self._is_location_in_destination(location, item.title or '', destination)
 
+        # If location is NOT in destination, it's an origin airport - filter it out
+        if not is_in_destination:
+            print(f"[MAP] Filtering origin flight: '{item.title}' at '{location}' (not in {destination})", flush=True)
+            return True
+
+        print(f"[MAP DEBUG] Keeping item: '{item.title}' - location is in destination", flush=True)
         return False
 
     def _is_location_in_destination(self, location: str, title: str, destination: str) -> bool:
@@ -635,20 +654,36 @@ Example: If destination is "Sweden" and location is "Stockholm Arlanda", answer 
         Returns:
             Dictionary with map data (center, zoom, markers)
         """
+        # Clear the origin check cache to ensure fresh LLM calls
+        self._origin_check_cache.clear()
+        print(f"[MAP] === Starting create_map_data ===", flush=True)
+        print(f"[MAP] Trip title: '{itinerary.title}'", flush=True)
+        print(f"[MAP] Total items: {len(itinerary.items)}", flush=True)
+
         # Ensure locations are geocoded
         self.geocode_locations(itinerary)
 
         # Get the destination region to identify origin flights
         destination = self._get_region_hint(itinerary)
+        print(f"[MAP] Destination region identified: '{destination}'", flush=True)
+
+        # Log all items with coordinates before filtering
+        print(f"[MAP] === Checking items for origin flights ===", flush=True)
 
         # Get locations with coordinates, excluding home locations and origin flights
-        locations_with_coords = [
-            (item, item.location)
-            for item in itinerary.items
-            if item.location.has_coordinates
-            and not item.is_home_location
-            and not self._is_origin_flight(item, destination)
-        ]
+        locations_with_coords = []
+        for item in itinerary.items:
+            if not item.location.has_coordinates:
+                continue
+            if item.is_home_location:
+                print(f"[MAP] Skipping home location: '{item.title}'", flush=True)
+                continue
+            if self._is_origin_flight(item, destination):
+                # Already logged in _is_origin_flight
+                continue
+            locations_with_coords.append((item, item.location))
+
+        print(f"[MAP] === Items remaining after filtering: {len(locations_with_coords)} ===", flush=True)
 
         if not locations_with_coords:
             return {
