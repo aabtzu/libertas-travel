@@ -549,9 +549,13 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         }
         return codes.get(region, "")
 
+    # Cache for origin flight checks to avoid repeated LLM calls
+    _origin_check_cache: dict = {}
+
     def _is_origin_flight(self, item, destination: str) -> bool:
         """Check if an item is a flight from the origin/home city (not the destination).
 
+        Uses LLM to intelligently determine if a location is in the destination region.
         We want to EXCLUDE flights that depart from home (e.g., MUC-ARN when going to Stockholm)
         We want to INCLUDE flights within destination or returning home
         """
@@ -561,76 +565,66 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         if not destination:
             return False
 
-        dest_lower = destination.lower()
-        location = (item.location.name or '').lower()
-        title = (item.title or '').lower()
+        location = item.location.name or ''
+        title = item.title or ''
 
-        # If location contains the destination city/country, KEEP it (not an origin flight)
-        if dest_lower in location:
+        if not location:
             return False
 
-        # Expanded destination terms mapping (city/country -> related terms)
-        dest_terms = {
-            'vienna': ['vienna', 'wien', 'vie', 'austria'],
-            'austria': ['austria', 'vienna', 'wien', 'vie', 'salzburg', 'innsbruck'],
-            'bratislava': ['bratislava', 'bts', 'slovakia'],
-            'slovakia': ['slovakia', 'bratislava', 'bts'],
-            'stockholm': ['stockholm', 'arn', 'arlanda', 'sweden', 'swedish'],
-            'sweden': ['sweden', 'stockholm', 'arn', 'arlanda', 'gothenburg', 'malmo'],
-            'italy': ['italy', 'rome', 'fco', 'milan', 'mxp', 'venice', 'florence'],
-            'germany': ['germany', 'munich', 'muc', 'berlin', 'frankfurt', 'fra'],
-            'france': ['france', 'paris', 'cdg', 'orly', 'nice', 'lyon'],
-            'spain': ['spain', 'madrid', 'mad', 'barcelona', 'bcn'],
-            'japan': ['japan', 'tokyo', 'nrt', 'hnd', 'osaka', 'kix'],
-            'greece': ['greece', 'athens', 'ath', 'santorini'],
-        }
-        for dest_key, terms in dest_terms.items():
-            if dest_key in dest_lower:
-                for term in terms:
-                    if term in location or term in title:
-                        return False  # Location is at destination, keep it
+        # Quick check: if destination name appears in location, keep it
+        if destination.lower() in location.lower():
+            return False
 
-        # If flight is on day 1 and location doesn't match destination, likely origin
+        # For day 1 flights, check if location is NOT in the destination region
+        # Day 1 flights from outside destination = origin flights to filter out
         if item.day_number == 1:
-            # Day 1 flight not matching destination = outbound from home
-            return True
-
-        # Common airports that are likely origin points (not destinations)
-        # These are major hub airports people commonly fly FROM
-        origin_airports = [
-            'fco', 'fiumicino',  # Rome
-            'jfk', 'lga', 'ewr',  # New York
-            'lax',  # Los Angeles
-            'sfo', 'sjc', 'oak',  # San Francisco Bay Area
-            'ord', 'mdw',  # Chicago
-            'lhr', 'lgw', 'stn',  # London
-            'cdg', 'orly',  # Paris
-            'muc',  # Munich
-            'fra',  # Frankfurt
-            'ams',  # Amsterdam
-            'dub',  # Dublin
-            'bos',  # Boston
-            'sea',  # Seattle
-            'dfw', 'iah',  # Texas
-            'atl',  # Atlanta
-            'den',  # Denver
-            'phx',  # Phoenix
-        ]
-        for airport in origin_airports:
-            if airport in location:
-                return True  # This is likely a home airport, filter it
-
-        # Common home cities - filter these OUT unless they're the destination
-        home_cities = [
-            'rome', 'new york', 'los angeles', 'san francisco', 'chicago',
-            'london', 'paris', 'munich', 'frankfurt', 'amsterdam', 'dublin',
-            'boston', 'seattle', 'dallas', 'houston', 'atlanta', 'denver', 'phoenix'
-        ]
-        for city in home_cities:
-            if city in location and city not in dest_lower:
-                return True  # This is from a home city, filter it
+            is_in_destination = self._is_location_in_destination(location, title, destination)
+            if not is_in_destination:
+                return True  # Day 1 flight from outside destination = origin, filter it
 
         return False
+
+    def _is_location_in_destination(self, location: str, title: str, destination: str) -> bool:
+        """Use LLM to check if a location/airport is in or near the destination region."""
+        # Check cache first
+        cache_key = f"{location}|{destination}"
+        if cache_key in self._origin_check_cache:
+            return self._origin_check_cache[cache_key]
+
+        try:
+            import anthropic
+            client = anthropic.Anthropic()
+
+            prompt = f"""Is the airport or city "{location}" located in or near {destination}?
+
+Flight title for context: "{title}"
+
+Answer with just YES or NO.
+- YES if the airport/city is in {destination} or the surrounding region
+- NO if it's in a different country/region (likely the traveler's home/origin)
+
+Example: If destination is "Sweden" and location is "Munich Airport", answer NO (Munich is in Germany, not Sweden).
+Example: If destination is "Sweden" and location is "Stockholm Arlanda", answer YES (Arlanda is in Sweden)."""
+
+            response = client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=10,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            answer = response.content[0].text.strip().upper()
+            result = answer.startswith("YES")
+
+            # Cache the result
+            self._origin_check_cache[cache_key] = result
+            print(f"[MAP] Location check: '{location}' in '{destination}'? {result}", flush=True)
+
+            return result
+
+        except Exception as e:
+            print(f"[MAP] LLM location check failed: {e}", flush=True)
+            # Default to keeping the location if LLM fails
+            return True
 
     def create_map_data(self, itinerary: Itinerary) -> dict:
         """Create map data structure for Google Maps.
