@@ -30,3 +30,4 @@ data/
 # Environment files
 .env
 .env.*
+database.sqlite
