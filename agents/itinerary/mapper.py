@@ -552,8 +552,8 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
     def _is_origin_flight(self, item, destination: str) -> bool:
         """Check if an item is a flight from the origin/home city (not the destination).
 
-        We want to EXCLUDE flights that depart from home (e.g., FCO-VIE when going to Vienna)
-        We want to INCLUDE flights that depart from destination (e.g., VIE-FCO returning home)
+        We want to EXCLUDE flights that depart from home (e.g., MUC-ARN when going to Stockholm)
+        We want to INCLUDE flights within destination or returning home
         """
         if item.category != 'flight':
             return False
@@ -569,29 +569,65 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
         if dest_lower in location:
             return False
 
-        # Check for destination-related terms in location
+        # Expanded destination terms mapping (city/country -> related terms)
         dest_terms = {
-            'vienna': ['vienna', 'wien', 'vie'],
-            'austria': ['austria', 'vienna', 'wien', 'vie'],
-            'bratislava': ['bratislava', 'bts'],
-            'slovakia': ['slovakia', 'bratislava'],
+            'vienna': ['vienna', 'wien', 'vie', 'austria'],
+            'austria': ['austria', 'vienna', 'wien', 'vie', 'salzburg', 'innsbruck'],
+            'bratislava': ['bratislava', 'bts', 'slovakia'],
+            'slovakia': ['slovakia', 'bratislava', 'bts'],
+            'stockholm': ['stockholm', 'arn', 'arlanda', 'sweden', 'swedish'],
+            'sweden': ['sweden', 'stockholm', 'arn', 'arlanda', 'gothenburg', 'malmo'],
+            'italy': ['italy', 'rome', 'fco', 'milan', 'mxp', 'venice', 'florence'],
+            'germany': ['germany', 'munich', 'muc', 'berlin', 'frankfurt', 'fra'],
+            'france': ['france', 'paris', 'cdg', 'orly', 'nice', 'lyon'],
+            'spain': ['spain', 'madrid', 'mad', 'barcelona', 'bcn'],
+            'japan': ['japan', 'tokyo', 'nrt', 'hnd', 'osaka', 'kix'],
+            'greece': ['greece', 'athens', 'ath', 'santorini'],
         }
         for dest_key, terms in dest_terms.items():
             if dest_key in dest_lower:
                 for term in terms:
-                    if term in location:
+                    if term in location or term in title:
                         return False  # Location is at destination, keep it
 
-        # Common home/origin airports - filter these OUT
-        home_airports = ['fco', 'fiumicino', 'jfk', 'lax', 'sfo', 'ord', 'lhr', 'cdg', 'ewr']
-        for home in home_airports:
-            if home in location:
-                return True  # This is a home airport flight, filter it
+        # If flight is on day 1 and location doesn't match destination, likely origin
+        if item.day_number == 1:
+            # Day 1 flight not matching destination = outbound from home
+            return True
 
-        # Common home cities - filter these OUT
-        home_cities = ['rome', 'new york', 'los angeles', 'san francisco', 'chicago', 'london', 'paris']
+        # Common airports that are likely origin points (not destinations)
+        # These are major hub airports people commonly fly FROM
+        origin_airports = [
+            'fco', 'fiumicino',  # Rome
+            'jfk', 'lga', 'ewr',  # New York
+            'lax',  # Los Angeles
+            'sfo', 'sjc', 'oak',  # San Francisco Bay Area
+            'ord', 'mdw',  # Chicago
+            'lhr', 'lgw', 'stn',  # London
+            'cdg', 'orly',  # Paris
+            'muc',  # Munich
+            'fra',  # Frankfurt
+            'ams',  # Amsterdam
+            'dub',  # Dublin
+            'bos',  # Boston
+            'sea',  # Seattle
+            'dfw', 'iah',  # Texas
+            'atl',  # Atlanta
+            'den',  # Denver
+            'phx',  # Phoenix
+        ]
+        for airport in origin_airports:
+            if airport in location:
+                return True  # This is likely a home airport, filter it
+
+        # Common home cities - filter these OUT unless they're the destination
+        home_cities = [
+            'rome', 'new york', 'los angeles', 'san francisco', 'chicago',
+            'london', 'paris', 'munich', 'frankfurt', 'amsterdam', 'dublin',
+            'boston', 'seattle', 'dallas', 'houston', 'atlanta', 'denver', 'phoenix'
+        ]
         for city in home_cities:
-            if city in location:
+            if city in location and city not in dest_lower:
                 return True  # This is from a home city, filter it
 
         return False
