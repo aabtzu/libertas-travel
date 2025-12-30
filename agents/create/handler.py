@@ -1541,10 +1541,11 @@ For each item you find, extract:
 - end_date: The end/return/dropoff date in YYYY-MM-DD format (for car rentals, hotels)
 - time: Start/departure/pickup time (HH:MM format, 24-hour)
 - end_time: End/arrival/dropoff time if available (HH:MM format, 24-hour)
-- location: City or address (pickup location for rentals, destination for flights)
+- location: City or address (pickup location for rentals, destination airport CODE for flights - keep as IATA code like "BIH", do NOT expand to city name)
 - notes: Any additional relevant details (confirmation numbers, vehicle type, drop-off location if different, etc.)
 
 For FLIGHTS and TRAINS: Always extract both departure time (time) and arrival time (end_time) if shown.
+For FLIGHTS: Keep airport IATA codes as-is (e.g., "DEN", "BIH", "LAX"). Do NOT try to expand airport codes to city names - just use the 3-letter code.
 For CAR RENTALS: Extract pickup date/time as date/time, drop-off date/time as end_date/end_time. Include confirmation number and vehicle type in notes.
 
 Return your response as a JSON array of items. Example:
@@ -1556,7 +1557,7 @@ Return your response as a JSON array of items. Example:
     "date": "2025-12-17",
     "time": "12:10",
     "end_time": "14:25",
-    "location": "Stockholm, Sweden",
+    "location": "ARN",
     "notes": "Lufthansa, Airbus A321, Economy, 2h 15m nonstop"
   }}
 ]
