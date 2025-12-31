@@ -805,8 +805,17 @@ When using add_to_itinerary, include the source field:
 - source: "CURATED" - if the venue is in the curated database above
 - source: "AI_PICK" - if it's a new recommendation not in the database
 
-Categories: meal, hotel, activity, attraction, transport, other
+Categories: flight, meal, hotel, activity, attraction, transport, other
 Day: ALWAYS use day number (1, 2, 3...) for scheduled items. Days will be auto-created if they don't exist yet. Only omit day for truly unscheduled "ideas" the user wants to consider later.
+
+## FLIGHTS
+When adding flights:
+- category: "flight"
+- location: Use the DESTINATION airport IATA code only (e.g., for "DEN-BIH" use "BIH"). Do NOT expand to city name, do NOT use origin airport.
+- title: Include route like "United DEN → BIH"
+- time: Departure time
+- end_time: Arrival time
+- notes: Airline, flight number, duration
 
 ## SPECIFIC PLACE REQUESTS
 
