@@ -330,9 +330,6 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         import re
         queries = []
 
-        # Try to extract IATA code from title or location and resolve via LLM
-        text_to_search = f"{item.title} {loc_name}"
-
         # Build context for smarter IATA resolution
         context_parts = [f"Flight: {item.title}"]
         if region_hint:
@@ -341,13 +338,30 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             context_parts.append(f"Location field: {loc_name}")
         context = ", ".join(context_parts)
 
-        # Look for IATA codes (3 uppercase letters)
-        iata_codes = re.findall(r'\b([A-Z]{3})\b', text_to_search)
-        for iata in iata_codes:
-            airport_name = self._resolve_iata_code(iata, context)
+        # PRIORITY 1: Use the location field if it's an IATA code (this is the DESTINATION)
+        print(f"[GEOCODING] _build_flight_queries: loc_name='{loc_name}', title='{item.title}'")
+        loc_stripped = loc_name.strip() if loc_name else ''
+        is_iata = bool(re.match(r'^[A-Z]{3}$', loc_stripped))
+        print(f"[GEOCODING] loc_stripped='{loc_stripped}', is_iata={is_iata}")
+
+        if loc_stripped and is_iata:
+            airport_name = self._resolve_iata_code(loc_stripped, context)
+            print(f"[GEOCODING] Resolved '{loc_stripped}' -> '{airport_name}'")
             if airport_name:
                 queries.append(airport_name)
-                break  # Use first valid airport found
+                print(f"[GEOCODING] Using location field IATA: {loc_stripped} -> {airport_name}")
+
+        # PRIORITY 2: If location isn't an IATA code, try extracting from title (use LAST code = destination)
+        if not queries:
+            text_to_search = f"{item.title} {loc_name}"
+            iata_codes = re.findall(r'\b([A-Z]{3})\b', text_to_search)
+            # Use the LAST IATA code (typically the destination in "DEN → BIH")
+            for iata in reversed(iata_codes):
+                airport_name = self._resolve_iata_code(iata, context)
+                if airport_name:
+                    queries.append(airport_name)
+                    print(f"[GEOCODING] Using title IATA (last): {iata} -> {airport_name}")
+                    break
 
         if loc_name:
             # Extract city from location like "Vienna (Vienna International, Terminal 3)"
@@ -599,8 +613,9 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         print(f"[MAP DEBUG] Item: '{item.title}' category='{category}' location='{location}'", flush=True)
 
         # Check if this looks like a flight item (by category OR by title keywords)
-        flight_categories = ['flight', 'air', 'plane', 'travel', 'transport', 'airport']
-        flight_keywords = ['flight', 'fly', 'airport', 'muc', 'lhr', 'arn', 'bma']
+        # NOTE: Do NOT include 'transport' - we only want to filter origin FLIGHTS, not rental cars
+        flight_categories = ['flight', 'air', 'plane', 'airport']
+        flight_keywords = ['flight', 'fly', 'airport']
 
         is_flight_category = category in flight_categories
         is_flight_title = any(kw in title for kw in flight_keywords)
