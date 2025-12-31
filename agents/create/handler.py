@@ -520,12 +520,12 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
                                 },
                                 "category": {
                                     "type": "string",
-                                    "enum": ["meal", "hotel", "activity", "attraction", "transport", "other"],
+                                    "enum": ["flight", "meal", "hotel", "activity", "attraction", "transport", "other"],
                                     "description": "Type of item"
                                 },
                                 "location": {
                                     "type": "string",
-                                    "description": "City or address"
+                                    "description": "City/address. For FLIGHTS: use IATA airport code only (e.g. 'BIH', 'LAX') - do NOT expand to city names"
                                 },
                                 "notes": {
                                     "type": "string",
