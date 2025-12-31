@@ -601,6 +601,9 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
                         tool_input = block.input
                         if "items" in tool_input:
                             add_items = tool_input["items"]
+                            # Debug logging for flight locations
+                            for item in add_items:
+                                print(f"[CREATE CHAT] Tool add_items: title='{item.get('title')}', category='{item.get('category')}', location='{item.get('location')}'")
                     elif block.name == "fetch_web_page":
                         tool_use_block = block
 
@@ -1622,7 +1625,7 @@ Only return the JSON array, no other text."""
         items = json.loads(response_text)
         print(f"[UPLOAD] Parsed {len(items)} items from {filename}")
         for item in items:
-            print(f"[UPLOAD]   - {item.get('title')}: date={item.get('date')}, time={item.get('time')}")
+            print(f"[UPLOAD]   - {item.get('title')}: category={item.get('category')}, location='{item.get('location')}', date={item.get('date')}, time={item.get('time')}")
 
         if not isinstance(items, list):
             items = []
