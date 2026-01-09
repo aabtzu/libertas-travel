@@ -724,6 +724,9 @@ def _build_venue_chat_prompt(trip_context: Dict[str, Any], curated_venues: List[
             day_reference += f"\n  - Day {day_num} ({day_date})"
     else:
         day_reference = "\n\nNo days set up yet. When adding items, use day=1 (or appropriate day number) to create days automatically. Only omit day for items that are truly unscheduled ideas."
+        # Add date calculation hint if trip has dates
+        if dates:
+            day_reference += f"\n\nIMPORTANT: The trip dates are {dates}. The first date is Day 1. Calculate day numbers for items with specific dates (e.g., if trip starts Apr 23 and item is on Apr 25, that's Day 3)."
 
     # Build list of existing item titles for deduplication
     existing_titles = set()
@@ -819,6 +822,8 @@ When adding flights:
 - time: Departure time
 - end_time: Arrival time
 - notes: Airline, flight number, duration
+- day: CRITICAL - Calculate the day number from the flight date! If trip starts on Apr 23 and flight is on Apr 23, that's day=1. If flight is on Apr 26, that's day=4 (Apr 23=1, Apr 24=2, Apr 25=3, Apr 26=4). Always calculate and include the day number so flights go to the correct day, not the ideas pile.
+- YEAR: If no year is shown, use the NEXT occurrence of that date from today. E.g., if today is Jan 2026 and flight shows "Apr 23", use 2026. If today is Dec 2026 and flight shows "Apr 23", use 2027. Only use an explicit year if one is actually displayed.
 
 ## SPECIFIC PLACE REQUESTS
 
@@ -1541,15 +1546,16 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
 
     system_prompt = f"""You are a travel document parser. Extract travel-related items from the uploaded document.
 
-Today's date is {current_date} (December {current_year}).
+Today's date is {current_date}.
 
 For each item you find, extract:
-- title: A clear name for the item (e.g., "LH 2416 MUC → ARN", "Hotel Duomo Firenze", "Hertz Rental Car")
+- title: A clear name for the item (e.g., "LH 2416 MUC → ARN", "Hotel Duomo Firenze", "Hertz Rental Car", "Rafting Class V Inferno Canyon")
 - category: One of: flight, transport, train, bus, hotel, meal, activity, attraction, other
-- date: The start/pickup date in YYYY-MM-DD format. CRITICAL: When the year is not shown:
-  * For months January through November, use year {next_year}
-  * For December dates after today, use year {current_year}
-  * Example: "Sep 10" without a year means {next_year}-09-10
+- date: The start/pickup date in YYYY-MM-DD format. CRITICAL: When the year is not shown, use the NEXT occurrence of that date:
+  * If the month/day is still upcoming this year, use {current_year}
+  * If the month/day has already passed this year, use {next_year}
+  * Example: Today is {current_date}. "Apr 23" means {current_year}-04-23 (April is after January). "Jan 5" means {next_year}-01-05 (Jan 5 already passed).
+- day: Day number (1, 2, 3...) if the document uses "Day 1", "Day 2" format
 - end_date: The end/return/dropoff date in YYYY-MM-DD format (for car rentals, hotels)
 - time: Start/departure/pickup time (HH:MM format, 24-hour)
 - end_time: End/arrival/dropoff time if available (HH:MM format, 24-hour)
@@ -1559,6 +1565,15 @@ For each item you find, extract:
 For FLIGHTS and TRAINS: Always extract both departure time (time) and arrival time (end_time) if shown.
 For FLIGHTS: Keep airport IATA codes as-is (e.g., "DEN", "BIH", "LAX"). Do NOT try to expand airport codes to city names - just use the 3-letter code.
 For CAR RENTALS: Extract pickup date/time as date/time, drop-off date/time as end_date/end_time. Include confirmation number and vehicle type in notes.
+
+IMPORTANT: For DAY-BY-DAY NARRATIVE ITINERARIES (expedition, adventure, tour itineraries):
+- Extract EACH activity mentioned in the daily descriptions as a separate item
+- Look for: rafting, kayaking, hiking, yoga, meals, scenic drives, flights, transfers, etc.
+- Use category "activity" for adventure activities (rafting, hiking, kayaking, etc.)
+- Use category "meal" for specific meals mentioned (welcome dinner, farewell breakfast, etc.)
+- Use category "transport" for drives and transfers
+- Use category "flight" for flights
+- Include the day number from "Day 1", "Day 2", etc.
 
 Return your response as a JSON array of items. Example:
 ```json
@@ -1571,6 +1586,23 @@ Return your response as a JSON array of items. Example:
     "end_time": "14:25",
     "location": "ARN",
     "notes": "Lufthansa, Airbus A321, Economy, 2h 15m nonstop"
+  }},
+  {{
+    "title": "Class V Inferno Canyon Rafting",
+    "category": "activity",
+    "date": "2026-01-11",
+    "day": 4,
+    "location": "Futaleufu, Chile",
+    "notes": "Three-mile canyon of Class V whitewater including Entrance, Wall Shot, Dynamite, Flight of Angels, and Exit rapids"
+  }},
+  {{
+    "title": "Welcome Dinner",
+    "category": "meal",
+    "date": "2026-01-08",
+    "day": 1,
+    "time": "20:30",
+    "location": "Base Camp",
+    "notes": "Peruvian special dinner"
   }}
 ]
 ```

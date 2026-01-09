@@ -41,6 +41,187 @@ VENUES_SEED_CSV = Path(__file__).parent / "data" / "venues_seed.csv"
 _venues_cache = None
 
 
+def lookup_flight_times(airline_code: str, flight_num: str, origin: str, dest: str):
+    """Look up departure/arrival times for a flight from flightera.net.
+
+    Returns dict with 'departure_time' and 'arrival_time' (HH:MM format) or None.
+    """
+    # Map airline codes to names for URL
+    airline_names = {
+        'AA': 'American+Airlines',
+        'DL': 'Delta',
+        'UA': 'United',
+        'WN': 'Southwest',
+        'AS': 'Alaska+Airlines',
+        'B6': 'JetBlue',
+        'NK': 'Spirit',
+        'F9': 'Frontier',
+        'HA': 'Hawaiian+Airlines',
+    }
+
+    # Map airport codes to city names for URL
+    airport_cities = {
+        'SEA': 'Seattle', 'MIA': 'Miami', 'LAX': 'Los+Angeles', 'JFK': 'New+York',
+        'ORD': 'Chicago', 'DFW': 'Dallas', 'DEN': 'Denver', 'ATL': 'Atlanta',
+        'SFO': 'San+Francisco', 'BOS': 'Boston', 'LAS': 'Las+Vegas', 'PHX': 'Phoenix',
+        'MCO': 'Orlando', 'EWR': 'Newark', 'MSP': 'Minneapolis', 'DTW': 'Detroit',
+        'PHL': 'Philadelphia', 'CLT': 'Charlotte', 'IAH': 'Houston', 'SAN': 'San+Diego',
+    }
+
+    try:
+        airline_name = airline_names.get(airline_code, airline_code)
+        origin_city = airport_cities.get(origin, origin)
+        dest_city = airport_cities.get(dest, dest)
+
+        # Build flightera URL
+        url = f"https://www.flightera.net/en/flight/{airline_name}-{origin_city}-{dest_city}/{airline_code}{flight_num}"
+
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        })
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
+            html = response.read().decode('utf-8', errors='ignore')
+
+        # Verify the page title shows the correct route
+        # Title format: "Airline AA123 (AAL123) from Origin to Destination"
+        title_match = re.search(r'<title>[^<]*from\s+(\w+)\s+to\s+(\w+)', html, re.IGNORECASE)
+        if title_match:
+            title_origin = title_match.group(1)
+            title_dest = title_match.group(2)
+            # Check if the title route matches our expected airports (by city name)
+            origin_cities = {'SEA': 'Seattle', 'MIA': 'Miami', 'LAX': 'Los Angeles', 'JFK': 'New York'}
+            dest_cities = {'SEA': 'Seattle', 'MIA': 'Miami', 'LAX': 'Los Angeles', 'JFK': 'New York'}
+            expected_origin = origin_cities.get(origin, origin)
+            expected_dest = dest_cities.get(dest, dest)
+            if expected_origin.lower() not in title_origin.lower() and expected_dest.lower() not in title_dest.lower():
+                print(f"Route mismatch: page shows {title_origin}-{title_dest}, expected {origin}-{dest}")
+                return None
+
+        # Look for times with timezone markers like "17:37 <span...>EST</span>"
+        # Flightera shows departure time first, then arrival time
+        time_matches = re.findall(r'(\d{1,2}:\d{2})\s*<span[^>]*>[A-Z]{3}</span>', html)
+
+        if len(time_matches) >= 2:
+            # First occurrence is departure, second is arrival
+            return {
+                'departure_time': time_matches[0],
+                'arrival_time': time_matches[1]
+            }
+
+    except Exception as e:
+        print(f"Could not look up flight times for {airline_code}{flight_num}: {e}")
+
+    return None
+
+
+def parse_google_flights_url(url: str):
+    """Parse flight data from Google Flights URL.
+
+    Google Flights encodes flight selection in the 'tfs' query parameter as base64.
+    This function decodes it and extracts flight segments.
+
+    Returns list of flight dicts or None if not a valid Google Flights URL.
+    """
+    import base64
+
+    parsed = urlparse(url)
+
+    # Check if this is a Google Flights URL
+    if 'google.com' not in parsed.netloc or '/travel/flights' not in parsed.path:
+        return None
+
+    # Check for shared itinerary links (/flights/s/...) - these require JS rendering
+    if '/flights/s/' in parsed.path:
+        raise ValueError(
+            "Shared Google Flights links (/flights/s/...) cannot be parsed directly. "
+            "Please use the full booking URL from Google Flights that contains flight details in the address bar."
+        )
+
+    # Extract tfs parameter
+    params = parse_qs(parsed.query)
+    tfs = params.get('tfs', [None])[0]
+
+    if not tfs:
+        return None
+
+    try:
+        # Decode base64 (may need padding)
+        # Add padding to make length a multiple of 4
+        missing_padding = (4 - len(tfs) % 4) % 4
+        tfs_padded = tfs + '=' * missing_padding
+
+        # Try URL-safe base64 first, then standard
+        try:
+            decoded = base64.urlsafe_b64decode(tfs_padded)
+        except Exception:
+            decoded = base64.b64decode(tfs_padded)
+        decoded_str = decoded.decode('utf-8', errors='ignore')
+
+        # Parse the decoded data using protobuf-like structure patterns
+        flights = []
+
+        # Extract flight segments: origin, date, destination
+        # Format: \n<len>ORIGIN\x12<len>DATE...\x1a<len>DEST*
+        segment_pattern = r'\n.([A-Z]{3}).\n(\d{4}-\d{2}-\d{2})..([A-Z]{3})\*'
+        segments = re.findall(segment_pattern, decoded_str)
+
+        # Extract airline codes and flight numbers
+        # Protobuf format: airline_code + "2" (field marker) + length_byte + flight_number
+        airline_flight_pattern = r'([A-Z]{2})2.(\d{3,4})'
+        airline_matches = re.findall(airline_flight_pattern, decoded_str)
+
+        # Build flight data from segments and airline info
+        for i, (origin, date, dest) in enumerate(segments):
+            if i < len(airline_matches):
+                airline = airline_matches[i][0]
+                flight_num = airline_matches[i][1]
+
+                # Map airline codes to names
+                airline_names = {
+                    'AA': 'American Airlines',
+                    'DL': 'Delta',
+                    'UA': 'United',
+                    'WN': 'Southwest',
+                    'AS': 'Alaska Airlines',
+                    'B6': 'JetBlue',
+                    'NK': 'Spirit',
+                    'F9': 'Frontier',
+                    'HA': 'Hawaiian Airlines',
+                }
+                airline_name = airline_names.get(airline, airline)
+
+                # Look up flight times
+                times = lookup_flight_times(airline, flight_num, origin, dest)
+
+                flight_data = {
+                    'title': f'{airline_name} {origin} → {dest}',
+                    'category': 'flight',
+                    'date': date,
+                    'location': dest,  # Destination airport code
+                    'notes': f'Flight {airline}{flight_num}',
+                    'origin': origin,
+                    'destination': dest,
+                    'airline': airline_name,
+                    'flight_number': f'{airline}{flight_num}',
+                }
+
+                if times:
+                    flight_data['time'] = times['departure_time']
+                    flight_data['end_time'] = times['arrival_time']
+
+                flights.append(flight_data)
+
+        return flights if flights else None
+
+    except Exception as e:
+        print(f"Error parsing Google Flights URL: {e}")
+        return None
+
+
 def itinerary_to_data(itinerary) -> dict:
     """Convert a parsed Itinerary object to itinerary_data format for database storage.
 
@@ -2435,6 +2616,97 @@ Return venues in a JSON block with source tags:
             url = data.get('url', '').strip()
             if not url:
                 self.send_json_error("No URL provided")
+                return
+
+            # Check for Google Flights URL first (no need to download, data is in URL)
+            try:
+                google_flights = parse_google_flights_url(url)
+            except ValueError as e:
+                self.send_json_error(str(e))
+                return
+
+            if google_flights:
+                # Build itinerary from parsed Google Flights data
+                from agents.itinerary.models import Itinerary, ItineraryItem, Location
+                from datetime import datetime, time as dt_time
+
+                def parse_time(time_str):
+                    """Parse HH:MM time string to time object."""
+                    if not time_str:
+                        return None
+                    try:
+                        h, m = time_str.split(':')
+                        return dt_time(int(h), int(m))
+                    except:
+                        return None
+
+                # Create items from parsed flights
+                items = []
+                for flight in google_flights:
+                    date_obj = datetime.strptime(flight['date'], '%Y-%m-%d').date()
+                    item = ItineraryItem(
+                        title=flight['title'],
+                        category=flight['category'],
+                        date=date_obj,
+                        location=Location(name=flight['location']),
+                        notes=flight['notes'],
+                        start_time=parse_time(flight.get('time')),
+                        end_time=parse_time(flight.get('end_time')),
+                    )
+                    items.append(item)
+
+                # Determine title from route
+                if len(google_flights) >= 2:
+                    origin = google_flights[0]['origin']
+                    dest = google_flights[0]['destination']
+                    title = f"Trip to {dest}"
+                elif len(google_flights) == 1:
+                    title = f"Flight to {google_flights[0]['destination']}"
+                else:
+                    title = "Flight Itinerary"
+
+                # Get date range
+                dates = [datetime.strptime(f['date'], '%Y-%m-%d').date() for f in google_flights]
+                start_date = min(dates)
+                end_date = max(dates)
+
+                itinerary = Itinerary(
+                    title=title,
+                    items=items,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+
+                # Generate web view
+                slug = slugify(itinerary.title)
+                output_file = f"{slug}.html"
+                web_view = ItineraryWebView()
+                web_view.generate(itinerary, OUTPUT_DIR / output_file, use_ai_summary=False, skip_geocoding=True)
+
+                # Build trip data
+                itinerary_data = itinerary_to_data(itinerary)
+                trip_data = {
+                    "title": itinerary.title,
+                    "link": output_file,
+                    "dates": self.format_dates(itinerary),
+                    "days": (end_date - start_date).days + 1 if start_date != end_date else 1,
+                    "locations": len(set(f['destination'] for f in google_flights)),
+                    "activities": len(google_flights),
+                    "map_status": "pending",
+                }
+
+                # Add trip to database
+                user_id = self.get_current_user_id()
+                db.add_trip(user_id, trip_data, itinerary_data)
+
+                # Queue async geocoding
+                geocoding_worker.queue_geocoding(output_file, itinerary)
+
+                self.send_json_response({
+                    "success": True,
+                    "title": itinerary.title,
+                    "link": output_file,
+                })
                 return
 
             # Download content from URL
