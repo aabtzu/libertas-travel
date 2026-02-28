@@ -595,16 +595,16 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         }
         return codes.get(region, "")
 
-    # Cache for origin flight checks to avoid repeated LLM calls
+    # Cache for transport location checks to avoid repeated LLM calls
     _origin_check_cache: dict = {}
 
-    def _is_origin_flight(self, item, destination: str) -> bool:
-        """Check if an item is a flight/airport location outside the destination region.
+    def _is_transport_outside_destination(self, item, destination: str) -> bool:
+        """Check if a transport item's location is outside the destination region.
 
-        Uses LLM to intelligently determine if a location is in the destination region.
-        We want to EXCLUDE any airport/flight locations that are outside the destination.
+        Applies to flights, trains, cars, buses, ferries — any transport mode.
+        We want to EXCLUDE origin cities, home airports, transit/connecting stops,
+        and departure points that are not part of the actual trip destination.
         """
-        # Only check flight-related items
         category = (item.category or '').lower()
         title = (item.title or '').lower()
         location = item.location.name or ''
@@ -612,15 +612,14 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         # Log every item for debugging
         print(f"[MAP DEBUG] Item: '{item.title}' category='{category}' location='{location}'", flush=True)
 
-        # Check if this looks like a flight item (by category OR by title keywords)
-        # NOTE: Do NOT include 'transport' - we only want to filter origin FLIGHTS, not rental cars
-        flight_categories = ['flight', 'air', 'plane', 'airport']
-        flight_keywords = ['flight', 'fly', 'airport']
+        # Check all transport modes: flights, trains, cars, buses, ferries
+        transport_categories = ['flight', 'air', 'plane', 'airport', 'transport', 'train', 'car', 'bus', 'ferry']
+        transport_keywords = ['flight', 'fly', 'airport', 'train', 'rail', 'rental car', 'car rental', 'ferry', 'bus']
 
-        is_flight_category = category in flight_categories
-        is_flight_title = any(kw in title for kw in flight_keywords)
+        is_transport_category = category in transport_categories
+        is_transport_title = any(kw in title for kw in transport_keywords)
 
-        if not is_flight_category and not is_flight_title:
+        if not is_transport_category and not is_transport_title:
             return False
 
         if not destination:
@@ -642,9 +641,9 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         print(f"[MAP DEBUG] Checking if '{location}' is in '{destination}' via LLM...", flush=True)
         is_in_destination = self._is_location_in_destination(location, item.title or '', destination)
 
-        # If location is NOT in destination, it's an origin airport - filter it out
+        # If location is NOT in destination, filter it out (origin, home city, transit stop, etc.)
         if not is_in_destination:
-            print(f"[MAP] Filtering origin flight: '{item.title}' at '{location}' (not in {destination})", flush=True)
+            print(f"[MAP] Filtering transport outside destination: '{item.title}' at '{location}' (not in {destination})", flush=True)
             return True
 
         print(f"[MAP DEBUG] Keeping item: '{item.title}' - location is in destination", flush=True)
@@ -661,16 +660,20 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             import anthropic
             client = anthropic.Anthropic()
 
-            prompt = f"""Is the airport or city "{location}" located in or near {destination}?
+            prompt = f"""Is the location "{location}" part of the trip destination {destination}?
 
-Flight title for context: "{title}"
+Transport item for context: "{title}"
 
 Answer with just YES or NO.
-- YES if the airport/city is in {destination} or the surrounding region
-- NO if it's in a different country/region (likely the traveler's home/origin)
+- YES if the location is in or near {destination} (it's a real stop in the destination)
+- NO if it's the traveler's home city, origin airport, a transit/connecting stop, or anywhere outside {destination}
 
-Example: If destination is "Sweden" and location is "Munich Airport", answer NO (Munich is in Germany, not Sweden).
-Example: If destination is "Sweden" and location is "Stockholm Arlanda", answer YES (Arlanda is in Sweden)."""
+Examples where destination is "Sweden":
+- "Stockholm Arlanda" → YES (it's in Sweden)
+- "Munich Airport" → NO (Germany, likely home/origin)
+- "London Heathrow" → NO (UK, likely a connecting transit stop)
+- "New York JFK" → NO (USA, likely home/end destination)
+- "Copenhagen" → NO (Denmark, not Sweden — even if geographically close)"""
 
             response = client.messages.create(
                 model="claude-3-5-haiku-20241022",
@@ -725,8 +728,8 @@ Example: If destination is "Sweden" and location is "Stockholm Arlanda", answer 
             if item.is_home_location:
                 print(f"[MAP] Skipping home location: '{item.title}'", flush=True)
                 continue
-            if self._is_origin_flight(item, destination):
-                # Already logged in _is_origin_flight
+            if self._is_transport_outside_destination(item, destination):
+                # Already logged in _is_transport_outside_destination
                 continue
             locations_with_coords.append((item, item.location))
 
