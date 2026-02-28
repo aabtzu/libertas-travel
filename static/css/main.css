@@ -677,7 +677,6 @@ body {
         left: auto !important;
         width: 100% !important;
         max-width: 380px !important;
-        height: 100vh !important;
         z-index: 1001 !important;
         transform: translateX(100%);
         box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
