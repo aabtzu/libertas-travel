@@ -158,6 +158,25 @@ def create_trip_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         return {'error': 'Failed to create trip'}, 500
 
 
+def _extract_home_location_flags(itinerary_data: Dict[str, Any]) -> Dict[str, bool]:
+    """Return a mapping of item title -> is_home_location for all day items."""
+    flags = {}
+    for day in itinerary_data.get('days', []):
+        for item in day.get('items', []):
+            flags[item.get('title', '')] = bool(item.get('is_home_location', False))
+    return flags
+
+
+def _trigger_map_regen(user_id: int, link: str, itinerary_data: Dict[str, Any]) -> None:
+    """Clear cached map data and queue background geocoding."""
+    import geocoding_worker
+    db.update_trip_map_status(user_id, link, "processing", None)
+    itinerary = _convert_to_itinerary({'itinerary_data': itinerary_data, 'title': itinerary_data.get('title', 'Trip')})
+    if itinerary:
+        geocoding_worker.queue_geocoding(link, itinerary)
+        print(f"[SAVE] Queued map regen for {link}", flush=True)
+
+
 def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """Auto-save trip itinerary data and title.
 
@@ -173,13 +192,20 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
     if itinerary_data is None:
         return {'error': 'No itinerary data provided'}, 400
 
-    # Preserve existing map_data if not included in new data
+    # Preserve existing map_data if not included in new data, unless is_home_location changed
+    needs_map_regen = False
     if 'map_data' not in itinerary_data:
         existing_trip = db.get_trip_by_link(user_id, link)
         if existing_trip:
             existing_data = existing_trip.get('itinerary_data') or {}
             if existing_data.get('map_data'):
-                itinerary_data['map_data'] = existing_data['map_data']
+                old_flags = _extract_home_location_flags(existing_data)
+                new_flags = _extract_home_location_flags(itinerary_data)
+                if old_flags == new_flags:
+                    itinerary_data['map_data'] = existing_data['map_data']
+                else:
+                    print(f"[SAVE] is_home_location changed for {link}, will regen map")
+                    needs_map_regen = True
 
     # Update title if provided (save to both trips table and itinerary_data)
     title = data.get('title')
@@ -197,7 +223,10 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
         if trip and not trip.get('is_draft', True):
             _generate_trip_html(trip, link)
 
-        return {'success': True, 'saved_at': datetime.now().isoformat()}, 200
+        if needs_map_regen:
+            _trigger_map_regen(user_id, link, itinerary_data)
+
+        return {'success': True, 'saved_at': datetime.now().isoformat(), 'map_regen': needs_map_regen}, 200
     else:
         return {'error': 'Failed to save trip'}, 500
 
@@ -380,7 +409,7 @@ def _create_itinerary_item(item_data: Dict[str, Any], day_number: Optional[int],
         confirmation_number=None,
         notes=item_data.get('notes'),
         day_number=day_number,
-        is_home_location=False,
+        is_home_location=item_data.get('is_home_location', False),
         website_url=item_data.get('website')
     )
 

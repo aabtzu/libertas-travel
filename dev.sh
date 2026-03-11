@@ -2,6 +2,7 @@
 # Development helper script for Libertas
 
 PORT=${PORT:-5555}
+export AUTH_DISABLED=true
 
 case "$1" in
   start)

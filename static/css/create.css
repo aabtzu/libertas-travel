@@ -154,6 +154,26 @@
     max-width: 200px;
 }
 
+.form-group-checkbox {
+    margin-bottom: 12px;
+}
+
+.form-group-checkbox .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 400;
+    cursor: pointer;
+    color: #555;
+}
+
+.form-group-checkbox .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #667eea;
+}
+
 .form-actions {
     display: flex;
     gap: 12px;

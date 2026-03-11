@@ -955,14 +955,21 @@ function hideAddItemModal() {
 function handleAddItem(e) {
     e.preventDefault();
 
+    const titleVal = document.getElementById('item-title').value.trim();
+    if (!titleVal) {
+        document.getElementById('item-title').focus();
+        return;
+    }
+
     const item = {
-        title: document.getElementById('item-title').value.trim(),
+        title: titleVal,
         category: document.getElementById('item-category').value,
         time: document.getElementById('item-time').value || null,
         end_time: document.getElementById('item-end-time').value || null,
         location: document.getElementById('item-location').value.trim() || null,
         website: document.getElementById('item-website').value.trim() || null,
-        notes: document.getElementById('item-notes').value.trim() || null
+        notes: document.getElementById('item-notes').value.trim() || null,
+        is_home_location: document.getElementById('item-exclude-map').checked
     };
 
     const targetDay = document.getElementById('item-target-day').value;
@@ -1019,6 +1026,7 @@ function editItem(dayIndex, itemIndex) {
     document.getElementById('item-location').value = item.location || '';
     document.getElementById('item-website').value = item.website || '';
     document.getElementById('item-notes').value = item.notes || '';
+    document.getElementById('item-exclude-map').checked = item.is_home_location || false;
     document.getElementById('item-target-day').value = dayIndex;
 
     newForm.addEventListener('submit', (e) => {
@@ -1032,7 +1040,8 @@ function editItem(dayIndex, itemIndex) {
             end_time: document.getElementById('item-end-time').value || null,
             location: document.getElementById('item-location').value.trim() || null,
             website: document.getElementById('item-website').value.trim() || null,
-            notes: document.getElementById('item-notes').value.trim() || null
+            notes: document.getElementById('item-notes').value.trim() || null,
+            is_home_location: document.getElementById('item-exclude-map').checked
         };
 
         hideAddItemModal();
@@ -1091,6 +1100,7 @@ function editIdea(ideaIndex) {
     document.getElementById('item-location').value = item.location || '';
     document.getElementById('item-website').value = item.website || '';
     document.getElementById('item-notes').value = item.notes || '';
+    document.getElementById('item-exclude-map').checked = item.is_home_location || false;
     document.getElementById('item-target-day').value = 'ideas';
 
     newForm.addEventListener('submit', (e) => {
@@ -1104,7 +1114,8 @@ function editIdea(ideaIndex) {
             end_time: document.getElementById('item-end-time').value || null,
             location: document.getElementById('item-location').value.trim() || null,
             website: document.getElementById('item-website').value.trim() || null,
-            notes: document.getElementById('item-notes').value.trim() || null
+            notes: document.getElementById('item-notes').value.trim() || null,
+            is_home_location: document.getElementById('item-exclude-map').checked
         };
 
         hideAddItemModal();
