@@ -6,74 +6,209 @@ from typing import Any
 
 from database.connection import USE_POSTGRES, get_db
 
+# --- SQL constants ---
+
+_SQL_PG_ADD_VENUE = """
+    INSERT INTO venues (name, venue_type, city, state, country, address,
+                        latitude, longitude, website, google_maps_link,
+                        notes, description, cuisine_type, michelin_stars,
+                        chef, collection, source, created_by)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    RETURNING id
+"""
+_SQL_SQLITE_ADD_VENUE = """
+    INSERT INTO venues (name, venue_type, city, state, country, address,
+                        latitude, longitude, website, google_maps_link,
+                        notes, description, cuisine_type, michelin_stars,
+                        chef, collection, source, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+_SQL_PG_UPDATE_VENUE_COORDINATES = "UPDATE venues SET latitude = %s, longitude = %s WHERE id = %s"
+_SQL_SQLITE_UPDATE_VENUE_COORDINATES = "UPDATE venues SET latitude = ?, longitude = ? WHERE id = ?"
+
+_SQL_PG_SEARCH_VENUES = """
+    SELECT id, name, venue_type, city, state, country, address,
+           latitude, longitude, website, google_maps_link, notes,
+           description, cuisine_type, michelin_stars, chef, collection,
+           source, created_by, created_at
+    FROM venues
+    WHERE LOWER(name) LIKE LOWER(%s)
+       OR LOWER(city) LIKE LOWER(%s)
+       OR LOWER(description) LIKE LOWER(%s)
+       OR LOWER(notes) LIKE LOWER(%s)
+    ORDER BY name
+    LIMIT %s
+"""
+_SQL_SQLITE_SEARCH_VENUES = """
+    SELECT id, name, venue_type, city, state, country, address,
+           latitude, longitude, website, google_maps_link, notes,
+           description, cuisine_type, michelin_stars, chef, collection,
+           source, created_by, created_at
+    FROM venues
+    WHERE LOWER(name) LIKE LOWER(?)
+       OR LOWER(city) LIKE LOWER(?)
+       OR LOWER(description) LIKE LOWER(?)
+       OR LOWER(notes) LIKE LOWER(?)
+    ORDER BY name
+    LIMIT ?
+"""
+
+_SQL_PG_GET_VENUE_BY_ID = """
+    SELECT id, name, venue_type, city, state, country, address,
+           latitude, longitude, website, google_maps_link, notes,
+           description, cuisine_type, michelin_stars, chef, collection,
+           source, created_by, created_at
+    FROM venues WHERE id = %s
+"""
+_SQL_SQLITE_GET_VENUE_BY_ID = """
+    SELECT id, name, venue_type, city, state, country, address,
+           latitude, longitude, website, google_maps_link, notes,
+           description, cuisine_type, michelin_stars, chef, collection,
+           source, created_by, created_at
+    FROM venues WHERE id = ?
+"""
+
+_SQL_PG_FIND_VENUE_BY_NAME = """
+    SELECT id, name, venue_type, city, state, country, address,
+           latitude, longitude, website, google_maps_link, notes,
+           description, cuisine_type, michelin_stars, chef, collection,
+           source, created_by, created_at
+    FROM venues
+    WHERE LOWER(name) = LOWER(%s)
+    LIMIT 1
+"""
+_SQL_SQLITE_FIND_VENUE_BY_NAME = """
+    SELECT id, name, venue_type, city, state, country, address,
+           latitude, longitude, website, google_maps_link, notes,
+           description, cuisine_type, michelin_stars, chef, collection,
+           source, created_by, created_at
+    FROM venues
+    WHERE LOWER(name) = LOWER(?)
+    LIMIT 1
+"""
+
+_SQL_PG_FIND_VENUE_BY_NAME_AND_CITY = """
+    SELECT id, name, venue_type, city, state, country, address,
+           latitude, longitude, website, google_maps_link, notes,
+           description, cuisine_type, michelin_stars, chef, collection,
+           source, created_by, created_at
+    FROM venues
+    WHERE LOWER(name) = LOWER(%s) AND LOWER(city) = LOWER(%s)
+    LIMIT 1
+"""
+_SQL_SQLITE_FIND_VENUE_BY_NAME_AND_CITY = """
+    SELECT id, name, venue_type, city, state, country, address,
+           latitude, longitude, website, google_maps_link, notes,
+           description, cuisine_type, michelin_stars, chef, collection,
+           source, created_by, created_at
+    FROM venues
+    WHERE LOWER(name) = LOWER(?) AND LOWER(city) = LOWER(?)
+    LIMIT 1
+"""
+
+_SQL_GET_VENUE_COUNT = "SELECT COUNT(*) FROM venues"
+
+_SQL_GET_VENUE_STATS_BY_COUNTRY = """
+    SELECT country, COUNT(*) as count
+    FROM venues
+    WHERE country IS NOT NULL AND country != ''
+    GROUP BY country
+    ORDER BY count DESC
+"""
+_SQL_GET_VENUE_STATS_BY_CITY = """
+    SELECT city, COUNT(*) as count
+    FROM venues
+    WHERE city IS NOT NULL AND city != ''
+    GROUP BY city
+    ORDER BY count DESC
+    LIMIT 50
+"""
+_SQL_GET_VENUE_STATS_BY_TYPE = """
+    SELECT venue_type, COUNT(*) as count
+    FROM venues
+    WHERE venue_type IS NOT NULL AND venue_type != ''
+    GROUP BY venue_type
+    ORDER BY count DESC
+"""
+_SQL_GET_VENUE_STATS_BY_STATE = """
+    SELECT state, COUNT(*) as count
+    FROM venues
+    WHERE state IS NOT NULL AND state != ''
+    GROUP BY state
+    ORDER BY count DESC
+"""
+
+_SQL_PG_IMPORT_VENUES = """
+    INSERT INTO venues (name, venue_type, city, state, country, address,
+                        latitude, longitude, website, google_maps_link,
+                        notes, description, cuisine_type, michelin_stars,
+                        chef, collection, source)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+"""
+_SQL_SQLITE_IMPORT_VENUES = """
+    INSERT INTO venues (name, venue_type, city, state, country, address,
+                        latitude, longitude, website, google_maps_link,
+                        notes, description, cuisine_type, michelin_stars,
+                        chef, collection, source)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+# Column list shared across venue SELECT queries
+_VENUE_COLUMNS = [
+    "id",
+    "name",
+    "venue_type",
+    "city",
+    "state",
+    "country",
+    "address",
+    "latitude",
+    "longitude",
+    "website",
+    "google_maps_link",
+    "notes",
+    "description",
+    "cuisine_type",
+    "michelin_stars",
+    "chef",
+    "collection",
+    "source",
+    "created_by",
+    "created_at",
+]
+
 
 def add_venue(venue_data: dict[str, Any], created_by: int | None = None) -> int | None:
     """Add a venue to the database. Returns venue ID or None if failed."""
     with get_db() as conn:
         cursor = conn.cursor()
         try:
+            params = (
+                venue_data.get("name"),
+                venue_data.get("venue_type"),
+                venue_data.get("city"),
+                venue_data.get("state"),
+                venue_data.get("country"),
+                venue_data.get("address"),
+                venue_data.get("latitude"),
+                venue_data.get("longitude"),
+                venue_data.get("website"),
+                venue_data.get("google_maps_link"),
+                venue_data.get("notes"),
+                venue_data.get("description"),
+                venue_data.get("cuisine_type"),
+                venue_data.get("michelin_stars", 0),
+                venue_data.get("chef"),
+                venue_data.get("collection"),
+                venue_data.get("source", "curated"),
+                created_by,
+            )
             if USE_POSTGRES:
-                cursor.execute(
-                    """
-                    INSERT INTO venues (name, venue_type, city, state, country, address,
-                                       latitude, longitude, website, google_maps_link,
-                                       notes, description, cuisine_type, michelin_stars,
-                                       chef, collection, source, created_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING id
-                """,
-                    (
-                        venue_data.get("name"),
-                        venue_data.get("venue_type"),
-                        venue_data.get("city"),
-                        venue_data.get("state"),
-                        venue_data.get("country"),
-                        venue_data.get("address"),
-                        venue_data.get("latitude"),
-                        venue_data.get("longitude"),
-                        venue_data.get("website"),
-                        venue_data.get("google_maps_link"),
-                        venue_data.get("notes"),
-                        venue_data.get("description"),
-                        venue_data.get("cuisine_type"),
-                        venue_data.get("michelin_stars", 0),
-                        venue_data.get("chef"),
-                        venue_data.get("collection"),
-                        venue_data.get("source", "curated"),
-                        created_by,
-                    ),
-                )
+                cursor.execute(_SQL_PG_ADD_VENUE, params)
                 return cursor.fetchone()[0]
             else:
-                cursor.execute(
-                    """
-                    INSERT INTO venues (name, venue_type, city, state, country, address,
-                                       latitude, longitude, website, google_maps_link,
-                                       notes, description, cuisine_type, michelin_stars,
-                                       chef, collection, source, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        venue_data.get("name"),
-                        venue_data.get("venue_type"),
-                        venue_data.get("city"),
-                        venue_data.get("state"),
-                        venue_data.get("country"),
-                        venue_data.get("address"),
-                        venue_data.get("latitude"),
-                        venue_data.get("longitude"),
-                        venue_data.get("website"),
-                        venue_data.get("google_maps_link"),
-                        venue_data.get("notes"),
-                        venue_data.get("description"),
-                        venue_data.get("cuisine_type"),
-                        venue_data.get("michelin_stars", 0),
-                        venue_data.get("chef"),
-                        venue_data.get("collection"),
-                        venue_data.get("source", "curated"),
-                        created_by,
-                    ),
-                )
+                cursor.execute(_SQL_SQLITE_ADD_VENUE, params)
                 return cursor.lastrowid
         except Exception as e:
             print(f"[DB] Error adding venue: {e}")
@@ -86,14 +221,10 @@ def update_venue_coordinates(venue_id: int, latitude: float, longitude: float) -
         cursor = conn.cursor()
         try:
             if USE_POSTGRES:
-                cursor.execute(
-                    "UPDATE venues SET latitude = %s, longitude = %s WHERE id = %s",
-                    (latitude, longitude, venue_id),
-                )
+                cursor.execute(_SQL_PG_UPDATE_VENUE_COORDINATES, (latitude, longitude, venue_id))
             else:
                 cursor.execute(
-                    "UPDATE venues SET latitude = ?, longitude = ? WHERE id = ?",
-                    (latitude, longitude, venue_id),
+                    _SQL_SQLITE_UPDATE_VENUE_COORDINATES, (latitude, longitude, venue_id)
                 )
             conn.commit()
             return cursor.rowcount > 0
@@ -151,31 +282,8 @@ def get_all_venues(filters: dict[str, Any] | None = None) -> list[dict[str, Any]
 
         cursor.execute(query, params)
 
-        columns = [
-            "id",
-            "name",
-            "venue_type",
-            "city",
-            "state",
-            "country",
-            "address",
-            "latitude",
-            "longitude",
-            "website",
-            "google_maps_link",
-            "notes",
-            "description",
-            "cuisine_type",
-            "michelin_stars",
-            "chef",
-            "collection",
-            "source",
-            "created_by",
-            "created_at",
-        ]
-
         if USE_POSTGRES:
-            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
+            return [dict(zip(_VENUE_COLUMNS, row, strict=False)) for row in cursor.fetchall()]
         else:
             return [dict(row) for row in cursor.fetchall()]
 
@@ -188,59 +296,13 @@ def search_venues(query: str, limit: int = 50) -> list[dict[str, Any]]:
 
         if USE_POSTGRES:
             cursor.execute(
-                """
-                SELECT id, name, venue_type, city, state, country, address,
-                       latitude, longitude, website, google_maps_link, notes,
-                       description, cuisine_type, michelin_stars, chef, collection,
-                       source, created_by, created_at
-                FROM venues
-                WHERE LOWER(name) LIKE LOWER(%s)
-                   OR LOWER(city) LIKE LOWER(%s)
-                   OR LOWER(description) LIKE LOWER(%s)
-                   OR LOWER(notes) LIKE LOWER(%s)
-                ORDER BY name
-                LIMIT %s
-            """,
+                _SQL_PG_SEARCH_VENUES,
                 (search_pattern, search_pattern, search_pattern, search_pattern, limit),
             )
-            columns = [
-                "id",
-                "name",
-                "venue_type",
-                "city",
-                "state",
-                "country",
-                "address",
-                "latitude",
-                "longitude",
-                "website",
-                "google_maps_link",
-                "notes",
-                "description",
-                "cuisine_type",
-                "michelin_stars",
-                "chef",
-                "collection",
-                "source",
-                "created_by",
-                "created_at",
-            ]
-            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
+            return [dict(zip(_VENUE_COLUMNS, row, strict=False)) for row in cursor.fetchall()]
         else:
             cursor.execute(
-                """
-                SELECT id, name, venue_type, city, state, country, address,
-                       latitude, longitude, website, google_maps_link, notes,
-                       description, cuisine_type, michelin_stars, chef, collection,
-                       source, created_by, created_at
-                FROM venues
-                WHERE LOWER(name) LIKE LOWER(?)
-                   OR LOWER(city) LIKE LOWER(?)
-                   OR LOWER(description) LIKE LOWER(?)
-                   OR LOWER(notes) LIKE LOWER(?)
-                ORDER BY name
-                LIMIT ?
-            """,
+                _SQL_SQLITE_SEARCH_VENUES,
                 (search_pattern, search_pattern, search_pattern, search_pattern, limit),
             )
             return [dict(row) for row in cursor.fetchall()]
@@ -334,29 +396,7 @@ def flexible_venue_search(
         cursor.execute(query, params)
 
         if USE_POSTGRES:
-            columns = [
-                "id",
-                "name",
-                "venue_type",
-                "city",
-                "state",
-                "country",
-                "address",
-                "latitude",
-                "longitude",
-                "website",
-                "google_maps_link",
-                "notes",
-                "description",
-                "cuisine_type",
-                "michelin_stars",
-                "chef",
-                "collection",
-                "source",
-                "created_by",
-                "created_at",
-            ]
-            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
+            return [dict(zip(_VENUE_COLUMNS, row, strict=False)) for row in cursor.fetchall()]
         else:
             return [dict(row) for row in cursor.fetchall()]
 
@@ -365,53 +405,13 @@ def get_venue_by_id(venue_id: int) -> dict[str, Any] | None:
     """Get a specific venue by ID."""
     with get_db() as conn:
         cursor = conn.cursor()
-        columns = [
-            "id",
-            "name",
-            "venue_type",
-            "city",
-            "state",
-            "country",
-            "address",
-            "latitude",
-            "longitude",
-            "website",
-            "google_maps_link",
-            "notes",
-            "description",
-            "cuisine_type",
-            "michelin_stars",
-            "chef",
-            "collection",
-            "source",
-            "created_by",
-            "created_at",
-        ]
         if USE_POSTGRES:
-            cursor.execute(
-                """
-                SELECT id, name, venue_type, city, state, country, address,
-                       latitude, longitude, website, google_maps_link, notes,
-                       description, cuisine_type, michelin_stars, chef, collection,
-                       source, created_by, created_at
-                FROM venues WHERE id = %s
-            """,
-                (venue_id,),
-            )
+            cursor.execute(_SQL_PG_GET_VENUE_BY_ID, (venue_id,))
             row = cursor.fetchone()
             if row:
-                return dict(zip(columns, row, strict=False))
+                return dict(zip(_VENUE_COLUMNS, row, strict=False))
         else:
-            cursor.execute(
-                """
-                SELECT id, name, venue_type, city, state, country, address,
-                       latitude, longitude, website, google_maps_link, notes,
-                       description, cuisine_type, michelin_stars, chef, collection,
-                       source, created_by, created_at
-                FROM venues WHERE id = ?
-            """,
-                (venue_id,),
-            )
+            cursor.execute(_SQL_SQLITE_GET_VENUE_BY_ID, (venue_id,))
             row = cursor.fetchone()
             if row:
                 return dict(row)
@@ -424,85 +424,19 @@ def find_venue_by_name_and_city(name: str, city: str | None = None) -> dict[str,
         cursor = conn.cursor()
         if city:
             if USE_POSTGRES:
-                cursor.execute(
-                    """
-                    SELECT id, name, venue_type, city, state, country, address,
-                           latitude, longitude, website, google_maps_link, notes,
-                           description, cuisine_type, michelin_stars, chef, collection,
-                           source, created_by, created_at
-                    FROM venues
-                    WHERE LOWER(name) = LOWER(%s) AND LOWER(city) = LOWER(%s)
-                    LIMIT 1
-                """,
-                    (name, city),
-                )
+                cursor.execute(_SQL_PG_FIND_VENUE_BY_NAME_AND_CITY, (name, city))
             else:
-                cursor.execute(
-                    """
-                    SELECT id, name, venue_type, city, state, country, address,
-                           latitude, longitude, website, google_maps_link, notes,
-                           description, cuisine_type, michelin_stars, chef, collection,
-                           source, created_by, created_at
-                    FROM venues
-                    WHERE LOWER(name) = LOWER(?) AND LOWER(city) = LOWER(?)
-                    LIMIT 1
-                """,
-                    (name, city),
-                )
+                cursor.execute(_SQL_SQLITE_FIND_VENUE_BY_NAME_AND_CITY, (name, city))
         else:
             if USE_POSTGRES:
-                cursor.execute(
-                    """
-                    SELECT id, name, venue_type, city, state, country, address,
-                           latitude, longitude, website, google_maps_link, notes,
-                           description, cuisine_type, michelin_stars, chef, collection,
-                           source, created_by, created_at
-                    FROM venues
-                    WHERE LOWER(name) = LOWER(%s)
-                    LIMIT 1
-                """,
-                    (name,),
-                )
+                cursor.execute(_SQL_PG_FIND_VENUE_BY_NAME, (name,))
             else:
-                cursor.execute(
-                    """
-                    SELECT id, name, venue_type, city, state, country, address,
-                           latitude, longitude, website, google_maps_link, notes,
-                           description, cuisine_type, michelin_stars, chef, collection,
-                           source, created_by, created_at
-                    FROM venues
-                    WHERE LOWER(name) = LOWER(?)
-                    LIMIT 1
-                """,
-                    (name,),
-                )
+                cursor.execute(_SQL_SQLITE_FIND_VENUE_BY_NAME, (name,))
 
         row = cursor.fetchone()
         if row:
-            columns = [
-                "id",
-                "name",
-                "venue_type",
-                "city",
-                "state",
-                "country",
-                "address",
-                "latitude",
-                "longitude",
-                "website",
-                "google_maps_link",
-                "notes",
-                "description",
-                "cuisine_type",
-                "michelin_stars",
-                "chef",
-                "collection",
-                "source",
-                "created_by",
-                "created_at",
-            ]
             if USE_POSTGRES:
-                return dict(zip(columns, row, strict=False))
+                return dict(zip(_VENUE_COLUMNS, row, strict=False))
             else:
                 return dict(row)
         return None
@@ -512,7 +446,7 @@ def get_venue_count() -> int:
     """Get total count of venues."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM venues")
+        cursor.execute(_SQL_GET_VENUE_COUNT)
         return cursor.fetchone()[0]
 
 
@@ -521,44 +455,19 @@ def get_venue_stats() -> dict[str, Any]:
     with get_db() as conn:
         cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT country, COUNT(*) as count
-            FROM venues
-            WHERE country IS NOT NULL AND country != ''
-            GROUP BY country
-            ORDER BY count DESC
-        """)
+        cursor.execute(_SQL_GET_VENUE_STATS_BY_COUNTRY)
         countries = {row[0]: row[1] for row in cursor.fetchall()}
 
-        cursor.execute("""
-            SELECT city, COUNT(*) as count
-            FROM venues
-            WHERE city IS NOT NULL AND city != ''
-            GROUP BY city
-            ORDER BY count DESC
-            LIMIT 50
-        """)
+        cursor.execute(_SQL_GET_VENUE_STATS_BY_CITY)
         cities = {row[0]: row[1] for row in cursor.fetchall()}
 
-        cursor.execute("""
-            SELECT venue_type, COUNT(*) as count
-            FROM venues
-            WHERE venue_type IS NOT NULL AND venue_type != ''
-            GROUP BY venue_type
-            ORDER BY count DESC
-        """)
+        cursor.execute(_SQL_GET_VENUE_STATS_BY_TYPE)
         venue_types = {row[0]: row[1] for row in cursor.fetchall()}
 
-        cursor.execute("""
-            SELECT state, COUNT(*) as count
-            FROM venues
-            WHERE state IS NOT NULL AND state != ''
-            GROUP BY state
-            ORDER BY count DESC
-        """)
+        cursor.execute(_SQL_GET_VENUE_STATS_BY_STATE)
         states = {row[0]: row[1] for row in cursor.fetchall()}
 
-        cursor.execute("SELECT COUNT(*) FROM venues")
+        cursor.execute(_SQL_GET_VENUE_COUNT)
         total = cursor.fetchone()[0]
 
         return {
@@ -610,27 +519,9 @@ def import_venues_from_csv(csv_path: str, source: str = "curated") -> int:
         cursor = conn.cursor()
         try:
             if USE_POSTGRES:
-                cursor.executemany(
-                    """
-                    INSERT INTO venues (name, venue_type, city, state, country, address,
-                                       latitude, longitude, website, google_maps_link,
-                                       notes, description, cuisine_type, michelin_stars,
-                                       chef, collection, source)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                    rows,
-                )
+                cursor.executemany(_SQL_PG_IMPORT_VENUES, rows)
             else:
-                cursor.executemany(
-                    """
-                    INSERT INTO venues (name, venue_type, city, state, country, address,
-                                       latitude, longitude, website, google_maps_link,
-                                       notes, description, cuisine_type, michelin_stars,
-                                       chef, collection, source)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    rows,
-                )
+                cursor.executemany(_SQL_SQLITE_IMPORT_VENUES, rows)
             conn.commit()
             count = len(rows)
             print(f"[DB] Batch imported {count} venues from {csv_path}")

@@ -7,19 +7,73 @@ from typing import Any
 
 from database.connection import USE_POSTGRES, get_db
 
+# --- SQL constants ---
+
+_SQL_PG_GET_USER_TRIPS = """
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
+    FROM trips WHERE user_id = %s ORDER BY created_at DESC
+"""
+_SQL_SQLITE_GET_USER_TRIPS = """
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
+    FROM trips WHERE user_id = ? ORDER BY created_at DESC
+"""
+
+_SQL_PG_ADD_TRIP = """
+    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (user_id, link) DO UPDATE SET
+        title = EXCLUDED.title,
+        dates = EXCLUDED.dates,
+        days = EXCLUDED.days,
+        locations = EXCLUDED.locations,
+        activities = EXCLUDED.activities,
+        map_status = EXCLUDED.map_status,
+        itinerary_data = EXCLUDED.itinerary_data
+    RETURNING id
+"""
+_SQL_SQLITE_ADD_TRIP = """
+    INSERT OR REPLACE INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+_SQL_PG_GET_TRIP_BY_LINK = """
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
+    FROM trips WHERE user_id = %s AND link = %s
+"""
+_SQL_SQLITE_GET_TRIP_BY_LINK = """
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
+    FROM trips WHERE user_id = ? AND link = ?
+"""
+
+_SQL_PG_UPDATE_MAP_STATUS = """
+    UPDATE trips SET map_status = %s, map_error = %s
+    WHERE user_id = %s AND link = %s
+"""
+_SQL_SQLITE_UPDATE_MAP_STATUS = """
+    UPDATE trips SET map_status = ?, map_error = ?
+    WHERE user_id = ? AND link = ?
+"""
+
+_SQL_GET_PENDING_GEOCODING_TRIPS = """
+    SELECT link, itinerary_data, title
+    FROM trips
+    WHERE map_status IN ('pending', 'processing')
+    AND itinerary_data IS NOT NULL
+"""
+
+_SQL_PG_DELETE_TRIP = "DELETE FROM trips WHERE user_id = %s AND link = %s"
+_SQL_SQLITE_DELETE_TRIP = "DELETE FROM trips WHERE user_id = ? AND link = ?"
+
+_SQL_PG_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = %s"
+_SQL_SQLITE_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = ?"
+
 
 def get_user_trips(user_id: int) -> list[dict[str, Any]]:
     """Get all trips for a user."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute(
-                """
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
-                FROM trips WHERE user_id = %s ORDER BY created_at DESC
-            """,
-                (user_id,),
-            )
+            cursor.execute(_SQL_PG_GET_USER_TRIPS, (user_id,))
             columns = [
                 "id",
                 "title",
@@ -36,13 +90,7 @@ def get_user_trips(user_id: int) -> list[dict[str, Any]]:
             ]
             return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
-            cursor.execute(
-                """
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
-                FROM trips WHERE user_id = ? ORDER BY created_at DESC
-            """,
-                (user_id,),
-            )
+            cursor.execute(_SQL_SQLITE_GET_USER_TRIPS, (user_id,))
             return [dict(row) for row in cursor.fetchall()]
 
 
@@ -57,19 +105,7 @@ def add_trip(
 
             if USE_POSTGRES:
                 cursor.execute(
-                    """
-                    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (user_id, link) DO UPDATE SET
-                        title = EXCLUDED.title,
-                        dates = EXCLUDED.dates,
-                        days = EXCLUDED.days,
-                        locations = EXCLUDED.locations,
-                        activities = EXCLUDED.activities,
-                        map_status = EXCLUDED.map_status,
-                        itinerary_data = EXCLUDED.itinerary_data
-                    RETURNING id
-                """,
+                    _SQL_PG_ADD_TRIP,
                     (
                         user_id,
                         trip_data.get("title"),
@@ -85,10 +121,7 @@ def add_trip(
                 return cursor.fetchone()[0]
             else:
                 cursor.execute(
-                    """
-                    INSERT OR REPLACE INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+                    _SQL_SQLITE_ADD_TRIP,
                     (
                         user_id,
                         trip_data.get("title"),
@@ -112,13 +145,7 @@ def get_trip_by_link(user_id: int, link: str) -> dict[str, Any] | None:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute(
-                """
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
-                FROM trips WHERE user_id = %s AND link = %s
-            """,
-                (user_id, link),
-            )
+            cursor.execute(_SQL_PG_GET_TRIP_BY_LINK, (user_id, link))
             row = cursor.fetchone()
             if row:
                 columns = [
@@ -144,13 +171,7 @@ def get_trip_by_link(user_id: int, link: str) -> dict[str, Any] | None:
                     trip["end_date"] = None
                 return trip
         else:
-            cursor.execute(
-                """
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
-                FROM trips WHERE user_id = ? AND link = ?
-            """,
-                (user_id, link),
-            )
+            cursor.execute(_SQL_SQLITE_GET_TRIP_BY_LINK, (user_id, link))
             row = cursor.fetchone()
             if row:
                 trip = dict(row)
@@ -170,21 +191,9 @@ def update_trip_map_status(user_id: int, link: str, status: str, error: str | No
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute(
-                """
-                UPDATE trips SET map_status = %s, map_error = %s
-                WHERE user_id = %s AND link = %s
-            """,
-                (status, error, user_id, link),
-            )
+            cursor.execute(_SQL_PG_UPDATE_MAP_STATUS, (status, error, user_id, link))
         else:
-            cursor.execute(
-                """
-                UPDATE trips SET map_status = ?, map_error = ?
-                WHERE user_id = ? AND link = ?
-            """,
-                (status, error, user_id, link),
-            )
+            cursor.execute(_SQL_SQLITE_UPDATE_MAP_STATUS, (status, error, user_id, link))
 
 
 def get_pending_geocoding_trips() -> list[dict[str, Any]]:
@@ -195,21 +204,11 @@ def get_pending_geocoding_trips() -> list[dict[str, Any]]:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
-                SELECT link, itinerary_data, title
-                FROM trips
-                WHERE map_status IN ('pending', 'processing')
-                AND itinerary_data IS NOT NULL
-            """)
+            cursor.execute(_SQL_GET_PENDING_GEOCODING_TRIPS)
             rows = cursor.fetchall()
             return [{"link": row[0], "itinerary_data": row[1], "title": row[2]} for row in rows]
         else:
-            cursor.execute("""
-                SELECT link, itinerary_data, title
-                FROM trips
-                WHERE map_status IN ('pending', 'processing')
-                AND itinerary_data IS NOT NULL
-            """)
+            cursor.execute(_SQL_GET_PENDING_GEOCODING_TRIPS)
             rows = cursor.fetchall()
             result = []
             for row in rows:
@@ -262,9 +261,9 @@ def delete_trip(user_id: int, link: str) -> bool:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("DELETE FROM trips WHERE user_id = %s AND link = %s", (user_id, link))
+            cursor.execute(_SQL_PG_DELETE_TRIP, (user_id, link))
         else:
-            cursor.execute("DELETE FROM trips WHERE user_id = ? AND link = ?", (user_id, link))
+            cursor.execute(_SQL_SQLITE_DELETE_TRIP, (user_id, link))
         return cursor.rowcount > 0
 
 
@@ -273,8 +272,8 @@ def get_trip_owner(link: str) -> int | None:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("SELECT user_id FROM trips WHERE link = %s", (link,))
+            cursor.execute(_SQL_PG_GET_TRIP_OWNER, (link,))
         else:
-            cursor.execute("SELECT user_id FROM trips WHERE link = ?", (link,))
+            cursor.execute(_SQL_SQLITE_GET_TRIP_OWNER, (link,))
         row = cursor.fetchone()
         return row[0] if row else None

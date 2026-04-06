@@ -8,6 +8,31 @@ import bcrypt
 
 from database.connection import USE_POSTGRES, get_db
 
+# --- SQL constants ---
+
+_SQL_PG_INSERT_USER = (
+    "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id"
+)
+_SQL_SQLITE_INSERT_USER = "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)"
+
+_SQL_PG_GET_USER_BY_USERNAME = (
+    "SELECT id, username, email, password_hash FROM users WHERE username = %s"
+)
+_SQL_SQLITE_GET_USER_BY_USERNAME = (
+    "SELECT id, username, email, password_hash FROM users WHERE username = ?"
+)
+
+_SQL_PG_GET_USER_BY_ID = "SELECT id, username, email FROM users WHERE id = %s"
+_SQL_SQLITE_GET_USER_BY_ID = "SELECT id, username, email FROM users WHERE id = ?"
+
+_SQL_PG_USERNAME_EXISTS = "SELECT 1 FROM users WHERE username = %s"
+_SQL_SQLITE_USERNAME_EXISTS = "SELECT 1 FROM users WHERE username = ?"
+
+_SQL_PG_EMAIL_EXISTS = "SELECT 1 FROM users WHERE email = %s"
+_SQL_SQLITE_EMAIL_EXISTS = "SELECT 1 FROM users WHERE email = ?"
+
+_SQL_GET_ALL_USERS = "SELECT id, username FROM users ORDER BY username"
+
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
@@ -27,16 +52,10 @@ def create_user(username: str, email: str, password: str) -> int | None:
         cursor = conn.cursor()
         try:
             if USE_POSTGRES:
-                cursor.execute(
-                    "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
-                    (username, email, password_hash),
-                )
+                cursor.execute(_SQL_PG_INSERT_USER, (username, email, password_hash))
                 return cursor.fetchone()[0]
             else:
-                cursor.execute(
-                    "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-                    (username, email, password_hash),
-                )
+                cursor.execute(_SQL_SQLITE_INSERT_USER, (username, email, password_hash))
                 return cursor.lastrowid
         except Exception as e:
             print(f"[DB] Error creating user: {e}")
@@ -48,15 +67,9 @@ def get_user_by_username(username: str) -> dict[str, Any] | None:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute(
-                "SELECT id, username, email, password_hash FROM users WHERE username = %s",
-                (username,),
-            )
+            cursor.execute(_SQL_PG_GET_USER_BY_USERNAME, (username,))
         else:
-            cursor.execute(
-                "SELECT id, username, email, password_hash FROM users WHERE username = ?",
-                (username,),
-            )
+            cursor.execute(_SQL_SQLITE_GET_USER_BY_USERNAME, (username,))
 
         row = cursor.fetchone()
         if row:
@@ -72,9 +85,9 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("SELECT id, username, email FROM users WHERE id = %s", (user_id,))
+            cursor.execute(_SQL_PG_GET_USER_BY_ID, (user_id,))
         else:
-            cursor.execute("SELECT id, username, email FROM users WHERE id = ?", (user_id,))
+            cursor.execute(_SQL_SQLITE_GET_USER_BY_ID, (user_id,))
 
         row = cursor.fetchone()
         if row:
@@ -99,9 +112,9 @@ def username_exists(username: str) -> bool:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("SELECT 1 FROM users WHERE username = %s", (username,))
+            cursor.execute(_SQL_PG_USERNAME_EXISTS, (username,))
         else:
-            cursor.execute("SELECT 1 FROM users WHERE username = ?", (username,))
+            cursor.execute(_SQL_SQLITE_USERNAME_EXISTS, (username,))
         return cursor.fetchone() is not None
 
 
@@ -110,9 +123,9 @@ def email_exists(email: str) -> bool:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("SELECT 1 FROM users WHERE email = %s", (email,))
+            cursor.execute(_SQL_PG_EMAIL_EXISTS, (email,))
         else:
-            cursor.execute("SELECT 1 FROM users WHERE email = ?", (email,))
+            cursor.execute(_SQL_SQLITE_EMAIL_EXISTS, (email,))
         return cursor.fetchone() is not None
 
 
@@ -120,7 +133,7 @@ def get_all_users() -> list[dict[str, Any]]:
     """Get list of all users (id and username only, for sharing)."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username FROM users ORDER BY username")
+        cursor.execute(_SQL_GET_ALL_USERS)
         if USE_POSTGRES:
             return [{"id": row[0], "username": row[1]} for row in cursor.fetchall()]
         else:

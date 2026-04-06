@@ -10,6 +10,50 @@ from typing import Any
 from database.connection import USE_POSTGRES, get_db
 from database.trips import get_trip_by_link
 
+# --- SQL constants ---
+
+_SQL_PG_COUNT_TRIPS_BY_USER_AND_LINK = "SELECT COUNT(*) FROM trips WHERE user_id = %s AND link = %s"
+_SQL_SQLITE_COUNT_TRIPS_BY_USER_AND_LINK = (
+    "SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?"
+)
+
+_SQL_PG_CREATE_DRAFT_TRIP = """
+    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+    RETURNING id
+"""
+_SQL_SQLITE_CREATE_DRAFT_TRIP = """
+    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+"""
+
+_SQL_PG_GET_DRAFT_TRIPS = """
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
+    FROM trips WHERE user_id = %s AND is_draft = TRUE ORDER BY created_at DESC
+"""
+_SQL_SQLITE_GET_DRAFT_TRIPS = """
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
+    FROM trips WHERE user_id = ? AND is_draft = 1 ORDER BY created_at DESC
+"""
+
+_SQL_PG_UPDATE_TRIP_ITINERARY_DATA = """
+    UPDATE trips SET itinerary_data = %s, locations = %s, activities = %s
+    WHERE user_id = %s AND link = %s
+"""
+_SQL_SQLITE_UPDATE_TRIP_ITINERARY_DATA = """
+    UPDATE trips SET itinerary_data = ?, locations = ?, activities = ?
+    WHERE user_id = ? AND link = ?
+"""
+
+_SQL_PG_PUBLISH_DRAFT = """
+    UPDATE trips SET is_draft = FALSE
+    WHERE user_id = %s AND link = %s
+"""
+_SQL_SQLITE_PUBLISH_DRAFT = """
+    UPDATE trips SET is_draft = 0
+    WHERE user_id = ? AND link = ?
+"""
+
 
 def create_draft_trip(
     user_id: int,
@@ -32,13 +76,9 @@ def create_draft_trip(
         counter = 1
         while True:
             if USE_POSTGRES:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM trips WHERE user_id = %s AND link = %s", (user_id, link)
-                )
+                cursor.execute(_SQL_PG_COUNT_TRIPS_BY_USER_AND_LINK, (user_id, link))
             else:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?", (user_id, link)
-                )
+                cursor.execute(_SQL_SQLITE_COUNT_TRIPS_BY_USER_AND_LINK, (user_id, link))
             count = cursor.fetchone()[0]
             if count == 0:
                 break
@@ -76,20 +116,13 @@ def create_draft_trip(
 
             if USE_POSTGRES:
                 cursor.execute(
-                    """
-                    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
-                    RETURNING id
-                """,
+                    _SQL_PG_CREATE_DRAFT_TRIP,
                     (user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json),
                 )
                 trip_id = cursor.fetchone()[0]
             else:
                 cursor.execute(
-                    """
-                    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                """,
+                    _SQL_SQLITE_CREATE_DRAFT_TRIP,
                     (user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json),
                 )
                 trip_id = cursor.lastrowid
@@ -115,13 +148,7 @@ def get_draft_trips(user_id: int) -> list[dict[str, Any]]:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute(
-                """
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
-                FROM trips WHERE user_id = %s AND is_draft = TRUE ORDER BY created_at DESC
-            """,
-                (user_id,),
-            )
+            cursor.execute(_SQL_PG_GET_DRAFT_TRIPS, (user_id,))
             columns = [
                 "id",
                 "title",
@@ -136,13 +163,7 @@ def get_draft_trips(user_id: int) -> list[dict[str, Any]]:
             ]
             return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
-            cursor.execute(
-                """
-                SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
-                FROM trips WHERE user_id = ? AND is_draft = 1 ORDER BY created_at DESC
-            """,
-                (user_id,),
-            )
+            cursor.execute(_SQL_SQLITE_GET_DRAFT_TRIPS, (user_id,))
             return [dict(row) for row in cursor.fetchall()]
 
 
@@ -166,18 +187,12 @@ def update_trip_itinerary_data(user_id: int, link: str, itinerary_data: dict) ->
 
             if USE_POSTGRES:
                 cursor.execute(
-                    """
-                    UPDATE trips SET itinerary_data = %s, locations = %s, activities = %s
-                    WHERE user_id = %s AND link = %s
-                """,
+                    _SQL_PG_UPDATE_TRIP_ITINERARY_DATA,
                     (itinerary_json, locations, activities, user_id, link),
                 )
             else:
                 cursor.execute(
-                    """
-                    UPDATE trips SET itinerary_data = ?, locations = ?, activities = ?
-                    WHERE user_id = ? AND link = ?
-                """,
+                    _SQL_SQLITE_UPDATE_TRIP_ITINERARY_DATA,
                     (itinerary_json, locations, activities, user_id, link),
                 )
             return cursor.rowcount > 0
@@ -191,21 +206,9 @@ def publish_draft(user_id: int, link: str) -> bool:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute(
-                """
-                UPDATE trips SET is_draft = FALSE
-                WHERE user_id = %s AND link = %s
-            """,
-                (user_id, link),
-            )
+            cursor.execute(_SQL_PG_PUBLISH_DRAFT, (user_id, link))
         else:
-            cursor.execute(
-                """
-                UPDATE trips SET is_draft = 0
-                WHERE user_id = ? AND link = ?
-            """,
-                (user_id, link),
-            )
+            cursor.execute(_SQL_SQLITE_PUBLISH_DRAFT, (user_id, link))
         return cursor.rowcount > 0
 
 
