@@ -57,6 +57,23 @@ Handlers import from here rather than touching fiat-lux-agents directly. This me
 
 ---
 
+## When to use fiat-lux-agents vs. direct API calls
+
+Not every LLM call in Libertas needs to go through fiat-lux-agents. A simple sidebar chat or one-off classification is fine as a direct `anthropic.messages.create()` call — adding fla indirection would just obscure what the code is doing.
+
+**Use fiat-lux-agents (via `agents/common/llm.py`) when:**
+- The feature involves a **tool use loop** (create chat, itinerary parsing with tool calls)
+- The pattern would be **reused in another app** (summarization, explore chat)
+- An **existing bot fits** (`SummaryBot`, `FilterBot`, `ExplorerBlueprint`)
+
+**Go direct when:**
+- Single-turn Q&A with data as context — e.g. a sidebar that just answers questions about a DataFrame
+- App-specific one-off feature that won't be reused elsewhere
+
+See the [fiat-lux-agents README](https://github.com/aabtzu/fiat-lux-agents#when-to-use-fiat-lux-agents) for the full decision guide.
+
+---
+
 ## Adding a New AI Feature
 
 1. Import from `agents/common/llm.py`, not directly from fiat-lux-agents:
