@@ -37,7 +37,7 @@ Then open http://localhost:5555 in your browser.
 libertas/
 ├── app.py                    # Flask app factory, blueprint registration
 ├── auth.py                   # User credentials and registration
-├── database.py               # SQLite / PostgreSQL operations
+├── database/                 # SQLite / PostgreSQL operations (connection, users, trips, venues…)
 ├── geocoding_worker.py       # Background geocoding service
 ├── agents/
 │   ├── auth/                 # Login, register, logout routes
@@ -71,10 +71,12 @@ libertas/
 
 - **Backend**: Python / Flask with blueprint-per-feature structure
 - **Database**: SQLite (dev) / PostgreSQL (production)
-- **AI**: Claude via fiat-lux-agents
+- **AI**: Claude via [fiat-lux-agents](https://github.com/aabtzu/fiat-lux-agents) — `LLMBase` for direct API calls, `SummaryBot` for natural language Q&A
 - **Maps**: Leaflet.js with OpenStreetMap tiles
 - **Frontend**: Vanilla JavaScript, CSS3
 - **Deployment**: Render.com (gunicorn)
+
+See [`docs/fiat-lux-agents.md`](docs/fiat-lux-agents.md) for details on how the AI layer is structured.
 
 ## Running Tests
 
