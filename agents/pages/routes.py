@@ -97,6 +97,11 @@ def trip_html(trip_name: str):
     if link in reserved:
         return "Not found", 404
 
+    # DB stores links with .html suffix (e.g. "cycling_worlds_sep_2026.html")
+    # but the URL route strips it via the /<path:trip_name>.html pattern
+    if not link.endswith(".html"):
+        link = link + ".html"
+
     user_id = g.user_id
     trip = None
 
