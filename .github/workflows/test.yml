@@ -21,4 +21,6 @@ jobs:
         run: pip install -r requirements.txt pytest pytest-asyncio
 
       - name: Run unit tests
+        env:
+          ANTHROPIC_API_KEY: ci-placeholder
         run: pytest tests/ -m "not integration" -q
