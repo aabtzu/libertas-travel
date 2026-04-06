@@ -7,7 +7,8 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database import import_venues_from_csv, get_venue_count
+from database import get_venue_count, import_venues_from_csv
+
 
 def main():
     # Get path to seed data
@@ -24,17 +25,18 @@ def main():
 
     if current_count > 0:
         response = input("Venues already exist. Import anyway? (y/N): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             print("Import cancelled.")
             sys.exit(0)
 
     # Import venues
     print(f"Importing venues from {csv_path}...")
-    imported = import_venues_from_csv(csv_path, source="curated")
+    import_venues_from_csv(csv_path, source="curated")
 
     # Show final count
     final_count = get_venue_count()
     print(f"Import complete. Total venues: {final_count}")
+
 
 if __name__ == "__main__":
     main()

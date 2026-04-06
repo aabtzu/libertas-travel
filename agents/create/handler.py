@@ -6,11 +6,11 @@ import re
 import ssl
 import urllib.request
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-
-from agents.common.llm import make_llm, SONNET
+from pathlib import Path
+from typing import Any, Optional
 
 import database as db
+from agents.common.llm import SONNET, make_llm
 
 
 def _fetch_webpage_for_chat(url: str) -> dict:
@@ -25,8 +25,8 @@ def _fetch_webpage_for_chat(url: str) -> dict:
         ctx.verify_mode = ssl.CERT_NONE
 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
 
         req = urllib.request.Request(url, headers=headers)
@@ -41,14 +41,14 @@ def _fetch_webpage_for_chat(url: str) -> dict:
             def __init__(self):
                 super().__init__()
                 self.text_parts = []
-                self.skip_tags = {'script', 'style', 'meta', 'link', 'noscript'}
+                self.skip_tags = {"script", "style", "meta", "link", "noscript"}
                 self.current_skip = False
 
             def handle_starttag(self, tag, attrs):
                 if tag in self.skip_tags:
                     self.current_skip = True
-                elif tag in ('br', 'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3'):
-                    self.text_parts.append('\n')
+                elif tag in ("br", "p", "div", "li", "tr", "h1", "h2", "h3"):
+                    self.text_parts.append("\n")
 
             def handle_endtag(self, tag):
                 if tag in self.skip_tags:
@@ -58,22 +58,22 @@ def _fetch_webpage_for_chat(url: str) -> dict:
                 if not self.current_skip:
                     text = data.strip()
                     if text:
-                        self.text_parts.append(text + ' ')
+                        self.text_parts.append(text + " ")
 
         try:
-            html_str = content.decode('utf-8')
+            html_str = content.decode("utf-8")
         except UnicodeDecodeError:
-            html_str = content.decode('latin-1')
+            html_str = content.decode("latin-1")
 
         extractor = TextExtractor()
         extractor.feed(html_str)
-        text = ''.join(extractor.text_parts)
-        text = re.sub(r'\n\s*\n', '\n\n', text)
-        text = re.sub(r' +', ' ', text).strip()
+        text = "".join(extractor.text_parts)
+        text = re.sub(r"\n\s*\n", "\n\n", text)
+        text = re.sub(r" +", " ", text).strip()
 
         # Extract title
         title = None
-        title_match = re.search(r'<title[^>]*>([^<]+)</title>', html_str, re.IGNORECASE)
+        title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_str, re.IGNORECASE)
         if title_match:
             title = title_match.group(1).strip()
 
@@ -81,21 +81,12 @@ def _fetch_webpage_for_chat(url: str) -> dict:
         if len(text) > 15000:
             text = text[:15000] + "\n\n[Content truncated...]"
 
-        return {
-            'success': True,
-            'text': text,
-            'title': title or url,
-            'url': url
-        }
+        return {"success": True, "text": text, "title": title or url, "url": url}
     except Exception as e:
-        return {
-            'success': False,
-            'error': str(e),
-            'url': url
-        }
+        return {"success": False, "error": str(e), "url": url}
 
 
-def _load_curated_venues() -> List[Dict]:
+def _load_curated_venues() -> list[dict]:
     """Load curated venues from database for cross-referencing."""
     try:
         venues = db.get_all_venues()
@@ -105,19 +96,19 @@ def _load_curated_venues() -> List[Dict]:
         return []
 
 
-def _cross_reference_curated(name: str, venues: List[Dict]) -> Optional[Dict]:
+def _cross_reference_curated(name: str, venues: list[dict]) -> dict | None:
     """Check if a venue name exists in the curated database."""
     name_lower = name.lower().strip()
     for v in venues:
-        if v.get('name', '').lower() == name_lower:
+        if v.get("name", "").lower() == name_lower:
             return v
         # Fuzzy match
-        if name_lower in v.get('name', '').lower() or v.get('name', '').lower() in name_lower:
+        if name_lower in v.get("name", "").lower() or v.get("name", "").lower() in name_lower:
             return v
     return None
 
 
-def create_trip_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+def create_trip_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
     """Create a new draft trip.
 
     Args:
@@ -127,57 +118,56 @@ def create_trip_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         The created trip data or error
     """
-    title = data.get('title', '').strip()
+    title = data.get("title", "").strip()
     if not title:
-        return {'error': 'Trip title is required'}, 400
+        return {"error": "Trip title is required"}, 400
 
-    start_date = data.get('start_date')
-    end_date = data.get('end_date')
-    num_days = data.get('num_days')
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    num_days = data.get("num_days")
 
     # Validate num_days
     if num_days is not None:
         try:
             num_days = int(num_days)
             if num_days < 1 or num_days > 365:
-                return {'error': 'Number of days must be between 1 and 365'}, 400
+                return {"error": "Number of days must be between 1 and 365"}, 400
         except (ValueError, TypeError):
-            return {'error': 'Invalid number of days'}, 400
+            return {"error": "Invalid number of days"}, 400
 
     trip = db.create_draft_trip(
-        user_id=user_id,
-        title=title,
-        start_date=start_date,
-        end_date=end_date,
-        num_days=num_days
+        user_id=user_id, title=title, start_date=start_date, end_date=end_date, num_days=num_days
     )
 
     if trip:
-        return {'success': True, 'trip': trip}, 200
+        return {"success": True, "trip": trip}, 200
     else:
-        return {'error': 'Failed to create trip'}, 500
+        return {"error": "Failed to create trip"}, 500
 
 
-def _extract_home_location_flags(itinerary_data: Dict[str, Any]) -> Dict[str, bool]:
+def _extract_home_location_flags(itinerary_data: dict[str, Any]) -> dict[str, bool]:
     """Return a mapping of item title -> is_home_location for all day items."""
     flags = {}
-    for day in itinerary_data.get('days', []):
-        for item in day.get('items', []):
-            flags[item.get('title', '')] = bool(item.get('is_home_location', False))
+    for day in itinerary_data.get("days", []):
+        for item in day.get("items", []):
+            flags[item.get("title", "")] = bool(item.get("is_home_location", False))
     return flags
 
 
-def _trigger_map_regen(user_id: int, link: str, itinerary_data: Dict[str, Any]) -> None:
+def _trigger_map_regen(user_id: int, link: str, itinerary_data: dict[str, Any]) -> None:
     """Clear cached map data and queue background geocoding."""
     import geocoding_worker
+
     db.update_trip_map_status(user_id, link, "processing", None)
-    itinerary = _convert_to_itinerary({'itinerary_data': itinerary_data, 'title': itinerary_data.get('title', 'Trip')})
+    itinerary = _convert_to_itinerary(
+        {"itinerary_data": itinerary_data, "title": itinerary_data.get("title", "Trip")}
+    )
     if itinerary:
         geocoding_worker.queue_geocoding(link, itinerary)
         print(f"[SAVE] Queued map regen for {link}", flush=True)
 
 
-def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str, Any]:
+def save_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str, Any]:
     """Auto-save trip itinerary data and title.
 
     Args:
@@ -188,31 +178,31 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
     Returns:
         Success or error response
     """
-    itinerary_data = data.get('itinerary_data')
+    itinerary_data = data.get("itinerary_data")
     if itinerary_data is None:
-        return {'error': 'No itinerary data provided'}, 400
+        return {"error": "No itinerary data provided"}, 400
 
     # Preserve existing map_data if not included in new data, unless is_home_location changed
     needs_map_regen = False
-    if 'map_data' not in itinerary_data:
+    if "map_data" not in itinerary_data:
         existing_trip = db.get_trip_by_link(user_id, link)
         if existing_trip:
-            existing_data = existing_trip.get('itinerary_data') or {}
-            if existing_data.get('map_data'):
+            existing_data = existing_trip.get("itinerary_data") or {}
+            if existing_data.get("map_data"):
                 old_flags = _extract_home_location_flags(existing_data)
                 new_flags = _extract_home_location_flags(itinerary_data)
                 if old_flags == new_flags:
-                    itinerary_data['map_data'] = existing_data['map_data']
+                    itinerary_data["map_data"] = existing_data["map_data"]
                 else:
                     print(f"[SAVE] is_home_location changed for {link}, will regen map")
                     needs_map_regen = True
 
     # Update title if provided (save to both trips table and itinerary_data)
-    title = data.get('title')
+    title = data.get("title")
     print(f"[SAVE] link={link}, title={title}")
     if title:
-        db.update_trip(user_id, link, {'title': title})
-        itinerary_data['title'] = title  # Also store in itinerary_data for HTML generation
+        db.update_trip(user_id, link, {"title": title})
+        itinerary_data["title"] = title  # Also store in itinerary_data for HTML generation
         print(f"[SAVE] Updated title to: {title}")
 
     success = db.update_trip_itinerary_data(user_id, link, itinerary_data)
@@ -220,18 +210,22 @@ def save_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str
     if success:
         # If trip is already published (not a draft), regenerate HTML
         trip = db.get_trip_by_link(user_id, link)
-        if trip and not trip.get('is_draft', True):
+        if trip and not trip.get("is_draft", True):
             _generate_trip_html(trip, link)
 
         if needs_map_regen:
             _trigger_map_regen(user_id, link, itinerary_data)
 
-        return {'success': True, 'saved_at': datetime.now().isoformat(), 'map_regen': needs_map_regen}, 200
+        return {
+            "success": True,
+            "saved_at": datetime.now().isoformat(),
+            "map_regen": needs_map_regen,
+        }, 200
     else:
-        return {'error': 'Failed to save trip'}, 500
+        return {"error": "Failed to save trip"}, 500
 
 
-def _generate_trip_html(trip: Dict[str, Any], link: str) -> bool:
+def _generate_trip_html(trip: dict[str, Any], link: str) -> bool:
     """Generate HTML file for a trip.
 
     Args:
@@ -241,7 +235,6 @@ def _generate_trip_html(trip: Dict[str, Any], link: str) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    import os
     from pathlib import Path
 
     try:
@@ -249,20 +242,25 @@ def _generate_trip_html(trip: Dict[str, Any], link: str) -> bool:
         if itinerary and itinerary.items:
             from agents.itinerary.web_view import ItineraryWebView
 
-            OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
+            OUTPUT_DIR = Path(
+                os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output")
+            )
             web_view = ItineraryWebView()
-            web_view.generate(itinerary, OUTPUT_DIR / link, use_ai_summary=False, skip_geocoding=True)
+            web_view.generate(
+                itinerary, OUTPUT_DIR / link, use_ai_summary=False, skip_geocoding=True
+            )
             print(f"Generated HTML for trip: {link}")
             return True
     except Exception as e:
         print(f"Warning: Could not generate trip HTML: {e}")
         import traceback
+
         traceback.print_exc()
 
     return False
 
 
-def publish_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
+def publish_trip_handler(user_id: int, link: str) -> dict[str, Any]:
     """Publish a draft trip (set is_draft=False) and generate HTML.
 
     Args:
@@ -275,10 +273,10 @@ def publish_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
     # Get the trip data first
     trip = db.get_trip_by_link(user_id, link)
     if not trip:
-        return {'error': 'Trip not found'}, 404
+        return {"error": "Trip not found"}, 404
 
     print(f"[PUBLISH] link={link}, title from DB={trip.get('title')}")
-    itinerary_data = trip.get('itinerary_data') or {}
+    itinerary_data = trip.get("itinerary_data") or {}
     print(f"[PUBLISH] title from itinerary_data={itinerary_data.get('title')}")
 
     # Generate the HTML file from itinerary_data
@@ -288,43 +286,44 @@ def publish_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
     success = db.publish_draft(user_id, link)
 
     if success:
-        return {'success': True}, 200
+        return {"success": True}, 200
     else:
-        return {'error': 'Failed to publish trip'}, 500
+        return {"error": "Failed to publish trip"}, 500
 
 
-def _convert_to_itinerary(trip: Dict[str, Any]):
+def _convert_to_itinerary(trip: dict[str, Any]):
     """Convert trip data from database to Itinerary object for HTML generation."""
-    from datetime import datetime, date, time
-    from agents.itinerary.models import Itinerary, ItineraryItem, Location
+    from datetime import datetime
 
-    itinerary_data = trip.get('itinerary_data') or {}
+    from agents.itinerary.models import Itinerary
+
+    itinerary_data = trip.get("itinerary_data") or {}
 
     # Get title
-    title = itinerary_data.get('title') or trip.get('title', 'Untitled Trip')
+    title = itinerary_data.get("title") or trip.get("title", "Untitled Trip")
 
     # Collect all items from days and ideas
     items = []
 
     # Process days
-    days = itinerary_data.get('days', [])
+    days = itinerary_data.get("days", [])
     for day in days:
-        day_number = day.get('day_number')
-        day_date_str = day.get('date')
+        day_number = day.get("day_number")
+        day_date_str = day.get("date")
         day_date = None
         if day_date_str:
             try:
-                day_date = datetime.strptime(day_date_str, '%Y-%m-%d').date()
-            except:
+                day_date = datetime.strptime(day_date_str, "%Y-%m-%d").date()
+            except ValueError:
                 pass
 
-        for item_data in day.get('items', []):
+        for item_data in day.get("items", []):
             item = _create_itinerary_item(item_data, day_number, day_date)
             if item:
                 items.append(item)
 
     # Process ideas pile (items without dates)
-    ideas = itinerary_data.get('ideas', [])
+    ideas = itinerary_data.get("ideas", [])
     for item_data in ideas:
         item = _create_itinerary_item(item_data, None, None)
         if item:
@@ -333,15 +332,15 @@ def _convert_to_itinerary(trip: Dict[str, Any]):
     # Get start/end dates
     start_date = None
     end_date = None
-    if itinerary_data.get('start_date'):
+    if itinerary_data.get("start_date"):
         try:
-            start_date = datetime.strptime(itinerary_data['start_date'], '%Y-%m-%d').date()
-        except:
+            start_date = datetime.strptime(itinerary_data["start_date"], "%Y-%m-%d").date()
+        except ValueError:
             pass
-    if itinerary_data.get('end_date'):
+    if itinerary_data.get("end_date"):
         try:
-            end_date = datetime.strptime(itinerary_data['end_date'], '%Y-%m-%d').date()
-        except:
+            end_date = datetime.strptime(itinerary_data["end_date"], "%Y-%m-%d").date()
+        except ValueError:
             pass
 
     return Itinerary(
@@ -349,72 +348,69 @@ def _convert_to_itinerary(trip: Dict[str, Any]):
         items=items,
         start_date=start_date,
         end_date=end_date,
-        travelers=itinerary_data.get('travelers', []),
-        source_file=None
+        travelers=itinerary_data.get("travelers", []),
+        source_file=None,
     )
 
 
-def _create_itinerary_item(item_data: Dict[str, Any], day_number: Optional[int], day_date) -> Optional:
+def _create_itinerary_item(item_data: dict[str, Any], day_number: int | None, day_date) -> Optional:
     """Create an ItineraryItem from create trip item data."""
-    from datetime import datetime, time
+    from datetime import time
+
     from agents.itinerary.models import ItineraryItem, Location
 
-    if not item_data.get('title'):
+    if not item_data.get("title"):
         return None
 
     # Parse location
-    location_data = item_data.get('location', '')
+    location_data = item_data.get("location", "")
     if isinstance(location_data, dict):
-        location_name = location_data.get('name', '') or location_data.get('city', '')
+        location_name = location_data.get("name", "") or location_data.get("city", "")
     else:
-        location_name = str(location_data) if location_data else ''
+        location_name = str(location_data) if location_data else ""
 
-    location = Location(
-        name=location_name,
-        address=None,
-        location_type=item_data.get('category')
-    )
+    location = Location(name=location_name, address=None, location_type=item_data.get("category"))
 
     # Parse start time
     start_time = None
-    time_str = item_data.get('time')
-    if time_str and isinstance(time_str, str) and ':' in time_str:
+    time_str = item_data.get("time")
+    if time_str and isinstance(time_str, str) and ":" in time_str:
         try:
-            parts = time_str.split(':')
+            parts = time_str.split(":")
             start_time = time(int(parts[0]), int(parts[1]))
-        except:
+        except (ValueError, IndexError):
             pass
 
     # Parse end time (for flights, trains, etc.)
     end_time_obj = None
-    end_time_str = item_data.get('end_time')
-    if end_time_str and isinstance(end_time_str, str) and ':' in end_time_str:
+    end_time_str = item_data.get("end_time")
+    if end_time_str and isinstance(end_time_str, str) and ":" in end_time_str:
         try:
-            parts = end_time_str.split(':')
+            parts = end_time_str.split(":")
             end_time_obj = time(int(parts[0]), int(parts[1]))
-        except:
+        except (ValueError, IndexError):
             pass
 
     # Map category
-    category = item_data.get('category', 'activity')
+    category = item_data.get("category", "activity")
 
     return ItineraryItem(
-        title=item_data.get('title', 'Untitled'),
+        title=item_data.get("title", "Untitled"),
         location=location,
         date=day_date,
         start_time=start_time,
         end_time=end_time_obj,
-        description=item_data.get('notes'),
+        description=item_data.get("notes"),
         category=category,
         confirmation_number=None,
-        notes=item_data.get('notes'),
+        notes=item_data.get("notes"),
         day_number=day_number,
-        is_home_location=item_data.get('is_home_location', False),
-        website_url=item_data.get('website')
+        is_home_location=item_data.get("is_home_location", False),
+        website_url=item_data.get("website"),
     )
 
 
-def get_trip_data_handler(user_id: int, link: str) -> Dict[str, Any]:
+def get_trip_data_handler(user_id: int, link: str) -> dict[str, Any]:
     """Get trip data for editing.
 
     Args:
@@ -427,12 +423,12 @@ def get_trip_data_handler(user_id: int, link: str) -> Dict[str, Any]:
     trip = db.get_trip_by_link(user_id, link)
 
     if trip:
-        return {'success': True, 'trip': trip}, 200
+        return {"success": True, "trip": trip}, 200
     else:
-        return {'error': 'Trip not found'}, 404
+        return {"error": "Trip not found"}, 404
 
 
-def export_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
+def export_trip_handler(user_id: int, link: str) -> dict[str, Any]:
     """Export trip data as downloadable JSON.
 
     Args:
@@ -445,25 +441,25 @@ def export_trip_handler(user_id: int, link: str) -> Dict[str, Any]:
     trip = db.get_trip_by_link(user_id, link)
 
     if not trip:
-        return {'error': 'Trip not found'}, 404
+        return {"error": "Trip not found"}, 404
 
     # Build export data with all relevant fields
     export_data = {
-        'export_version': '1.0',
-        'exported_at': datetime.now().isoformat(),
-        'title': trip.get('title', 'Untitled Trip'),
-        'dates': trip.get('dates'),
-        'days': trip.get('days'),
-        'locations': trip.get('locations'),
-        'activities': trip.get('activities'),
-        'itinerary_data': trip.get('itinerary_data'),
-        'is_public': trip.get('is_public', False),
+        "export_version": "1.0",
+        "exported_at": datetime.now().isoformat(),
+        "title": trip.get("title", "Untitled Trip"),
+        "dates": trip.get("dates"),
+        "days": trip.get("days"),
+        "locations": trip.get("locations"),
+        "activities": trip.get("activities"),
+        "itinerary_data": trip.get("itinerary_data"),
+        "is_public": trip.get("is_public", False),
     }
 
-    return {'success': True, 'export': export_data}, 200
+    return {"success": True, "export": export_data}, 200
 
 
-def add_item_to_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> Dict[str, Any]:
+def add_item_to_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str, Any]:
     """Add an item to trip's ideas pile.
 
     Args:
@@ -474,23 +470,23 @@ def add_item_to_trip_handler(user_id: int, link: str, data: Dict[str, Any]) -> D
     Returns:
         Success or error response
     """
-    item = data.get('item')
+    item = data.get("item")
     if not item:
-        return {'error': 'No item provided'}, 400
+        return {"error": "No item provided"}, 400
 
     # Ensure item has required fields
-    if 'title' not in item:
-        return {'error': 'Item must have a title'}, 400
+    if "title" not in item:
+        return {"error": "Item must have a title"}, 400
 
     success = db.add_item_to_trip(user_id, link, item)
 
     if success:
-        return {'success': True}, 200
+        return {"success": True}, 200
     else:
-        return {'error': 'Failed to add item to trip'}, 500
+        return {"error": "Failed to add item to trip"}, 500
 
 
-def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
     """Handle LLM chat for venue recommendations.
 
     Supports:
@@ -505,12 +501,12 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         LLM response with suggested items
     """
-    message = data.get('message', '').strip()
+    message = data.get("message", "").strip()
     if not message:
-        return {'error': 'No message provided'}, 400
+        return {"error": "No message provided"}, 400
 
-    history = data.get('history', [])
-    trip_context = data.get('trip_context', {})
+    history = data.get("history", [])
+    trip_context = data.get("trip_context", {})
 
     # Load curated venues for cross-referencing
     curated_venues = _load_curated_venues()
@@ -521,13 +517,10 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
     # Build messages for LLM (filter out empty messages)
     messages = []
     for msg in history[-10:]:  # Last 10 messages for context
-        content = msg.get('content', '').strip()
+        content = msg.get("content", "").strip()
         if content:  # Only include messages with non-empty content
-            messages.append({
-                'role': msg.get('role', 'user'),
-                'content': content
-            })
-    messages.append({'role': 'user', 'content': message})
+            messages.append({"role": msg.get("role", "user"), "content": content})
+    messages.append({"role": "user", "content": message})
 
     # Define tools for trip building and web fetching
     tools = [
@@ -545,45 +538,53 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
                             "properties": {
                                 "title": {
                                     "type": "string",
-                                    "description": "Name of the place or activity"
+                                    "description": "Name of the place or activity",
                                 },
                                 "category": {
                                     "type": "string",
-                                    "enum": ["flight", "meal", "hotel", "activity", "attraction", "transport", "other"],
-                                    "description": "Type of item"
+                                    "enum": [
+                                        "flight",
+                                        "meal",
+                                        "hotel",
+                                        "activity",
+                                        "attraction",
+                                        "transport",
+                                        "other",
+                                    ],
+                                    "description": "Type of item",
                                 },
                                 "location": {
                                     "type": "string",
-                                    "description": "City/address. For FLIGHTS: use IATA airport code only (e.g. 'BIH', 'LAX') - do NOT expand to city names"
+                                    "description": "City/address. For FLIGHTS: use IATA airport code only (e.g. 'BIH', 'LAX') - do NOT expand to city names",
                                 },
                                 "notes": {
                                     "type": "string",
-                                    "description": "Additional details about the item"
+                                    "description": "Additional details about the item",
                                 },
                                 "day": {
                                     "type": "integer",
-                                    "description": "Day number to add to (1, 2, 3...). Omit to add to Ideas pile."
+                                    "description": "Day number to add to (1, 2, 3...). Omit to add to Ideas pile.",
                                 },
                                 "time": {
                                     "type": "string",
-                                    "description": "Time in 24-hour format like '14:30' (optional)"
+                                    "description": "Time in 24-hour format like '14:30' (optional)",
                                 },
                                 "website": {
                                     "type": "string",
-                                    "description": "Official website URL for the place (e.g., https://example.com)"
+                                    "description": "Official website URL for the place (e.g., https://example.com)",
                                 },
                                 "source": {
                                     "type": "string",
                                     "enum": ["CURATED", "AI_PICK"],
-                                    "description": "CURATED if from the venue database, AI_PICK if a new recommendation"
-                                }
+                                    "description": "CURATED if from the venue database, AI_PICK if a new recommendation",
+                                },
                             },
-                            "required": ["title", "category"]
-                        }
+                            "required": ["title", "category"],
+                        },
                     }
                 },
-                "required": ["items"]
-            }
+                "required": ["items"],
+            },
         },
         {
             "name": "fetch_web_page",
@@ -593,12 +594,12 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
                 "properties": {
                     "url": {
                         "type": "string",
-                        "description": "The URL to fetch. For 'Eater 38 Rome', try 'https://www.eater.com/maps/best-restaurants-rome'"
+                        "description": "The URL to fetch. For 'Eater 38 Rome', try 'https://www.eater.com/maps/best-restaurants-rome'",
                     }
                 },
-                "required": ["url"]
-            }
-        }
+                "required": ["url"],
+            },
+        },
     ]
 
     try:
@@ -610,12 +611,12 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         add_items = []
         response_text = ""
 
-        for iteration in range(max_iterations):
+        for _iteration in range(max_iterations):
             response = llm.call_api(
                 system_prompt=system_prompt,
                 messages=messages,
                 tools=tools,
-                return_full_response=True
+                return_full_response=True,
             )
 
             # Process response blocks
@@ -631,7 +632,9 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
                             add_items = tool_input["items"]
                             # Debug logging for flight locations
                             for item in add_items:
-                                print(f"[CREATE CHAT] Tool add_items: title='{item.get('title')}', category='{item.get('category')}', location='{item.get('location')}'")
+                                print(
+                                    f"[CREATE CHAT] Tool add_items: title='{item.get('title')}', category='{item.get('category')}', location='{item.get('location')}'"
+                                )
                     elif block.name == "fetch_web_page":
                         tool_use_block = block
 
@@ -642,25 +645,28 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
 
                 fetch_result = _fetch_webpage_for_chat(url)
 
-                if fetch_result['success']:
-                    web_fetch_context = {
-                        'url': url,
-                        'title': fetch_result.get('title', url)
-                    }
+                if fetch_result["success"]:
+                    web_fetch_context = {"url": url, "title": fetch_result.get("title", url)}
                     tool_result_content = f"Successfully fetched page: {fetch_result['title']}\n\nContent:\n{fetch_result['text']}"
                 else:
-                    tool_result_content = f"Failed to fetch page: {fetch_result.get('error', 'Unknown error')}"
+                    tool_result_content = (
+                        f"Failed to fetch page: {fetch_result.get('error', 'Unknown error')}"
+                    )
 
                 # Add assistant message with tool use and tool result
                 messages.append({"role": "assistant", "content": response.content})
-                messages.append({
-                    "role": "user",
-                    "content": [{
-                        "type": "tool_result",
-                        "tool_use_id": tool_use_block.id,
-                        "content": tool_result_content
-                    }]
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tool_use_block.id,
+                                "content": tool_result_content,
+                            }
+                        ],
+                    }
+                )
                 # Continue loop for Claude to process the result
                 continue
 
@@ -675,40 +681,43 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
 
         # Add source field to add_items too
         for item in add_items:
-            if 'source' not in item:
-                curated_match = _cross_reference_curated(item.get('title', ''), curated_venues)
-                item['source'] = 'CURATED' if curated_match else 'AI_PICK'
-            if web_fetch_context and not item.get('collection'):
-                item['collection'] = web_fetch_context.get('title', '')[:50]
+            if "source" not in item:
+                curated_match = _cross_reference_curated(item.get("title", ""), curated_venues)
+                item["source"] = "CURATED" if curated_match else "AI_PICK"
+            if web_fetch_context and not item.get("collection"):
+                item["collection"] = web_fetch_context.get("title", "")[:50]
 
         # Debug logging
         print(f"[CREATE CHAT] Response text length: {len(display_text)}")
         print(f"[CREATE CHAT] Parsed suggested items: {len(suggested_items)}")
         for i, item in enumerate(suggested_items[:5]):  # Show first 5 items
-            source = item.get('source', 'NONE')
-            print(f"[CREATE CHAT] Item {i+1}: {item.get('title', 'NO TITLE')} - source={source}")
+            source = item.get("source", "NONE")
+            print(f"[CREATE CHAT] Item {i + 1}: {item.get('title', 'NO TITLE')} - source={source}")
 
         return {
-            'success': True,
-            'response': display_text,
-            'suggested_items': suggested_items,
-            'add_items': add_items
+            "success": True,
+            "response": display_text,
+            "suggested_items": suggested_items,
+            "add_items": add_items,
         }, 200
 
     except Exception as e:
         print(f"Create chat error: {e}")
         import traceback
+
         traceback.print_exc()
-        return {'error': f'Chat service error: {str(e)}'}, 500
+        return {"error": f"Chat service error: {str(e)}"}, 500
 
 
-def _build_venue_chat_prompt(trip_context: Dict[str, Any], curated_venues: List[Dict] = None) -> str:
+def _build_venue_chat_prompt(
+    trip_context: dict[str, Any], curated_venues: list[dict] = None
+) -> str:
     """Build the system prompt for venue-focused chat."""
 
-    destination = trip_context.get('destination', 'your destination')
-    dates = trip_context.get('dates', '')
-    days = trip_context.get('days', [])
-    ideas = trip_context.get('ideas', [])
+    destination = trip_context.get("destination", "your destination")
+    dates = trip_context.get("dates", "")
+    days = trip_context.get("days", [])
+    ideas = trip_context.get("ideas", [])
     curated_venues = curated_venues or []
 
     # Build context about what's already planned
@@ -717,16 +726,16 @@ def _build_venue_chat_prompt(trip_context: Dict[str, Any], curated_venues: List[
     if days:
         itinerary_context += "\n\nCurrent itinerary by day:"
         for day in days:
-            day_num = day.get('day_number', '?')
-            day_date = day.get('date', 'TBD')
-            items = day.get('items', [])
+            day_num = day.get("day_number", "?")
+            day_date = day.get("date", "TBD")
+            items = day.get("items", [])
             if items:
                 itinerary_context += f"\n  Day {day_num} ({day_date}):"
                 for item in items:
-                    title = item.get('title', 'Untitled')
-                    category = item.get('category', '')
-                    time = item.get('time', '')
-                    location = item.get('location', '')
+                    title = item.get("title", "Untitled")
+                    category = item.get("category", "")
+                    time = item.get("time", "")
+                    location = item.get("location", "")
                     time_str = f" at {time}" if time else ""
                     loc_str = f" - {location}" if location else ""
                     itinerary_context += f"\n    - [{category}] {title}{time_str}{loc_str}"
@@ -736,10 +745,14 @@ def _build_venue_chat_prompt(trip_context: Dict[str, Any], curated_venues: List[
     if ideas:
         itinerary_context += "\n\nIdeas pile (items user is considering but hasn't scheduled):"
         for item in ideas:
-            title = item.get('title', 'Untitled')
-            category = item.get('category', '')
-            notes = item.get('notes', '')
-            notes_str = f" - {notes[:50]}..." if notes and len(notes) > 50 else (f" - {notes}" if notes else "")
+            title = item.get("title", "Untitled")
+            category = item.get("category", "")
+            notes = item.get("notes", "")
+            notes_str = (
+                f" - {notes[:50]}..."
+                if notes and len(notes) > 50
+                else (f" - {notes}" if notes else "")
+            )
             itinerary_context += f"\n  - [{category}] {title}{notes_str}"
 
     # Build day reference for adding to specific days
@@ -747,8 +760,8 @@ def _build_venue_chat_prompt(trip_context: Dict[str, Any], curated_venues: List[
     if days:
         day_reference = "\n\nAvailable days to add items to:"
         for day in days:
-            day_num = day.get('day_number', '?')
-            day_date = day.get('date', 'TBD')
+            day_num = day.get("day_number", "?")
+            day_date = day.get("date", "TBD")
             day_reference += f"\n  - Day {day_num} ({day_date})"
     else:
         day_reference = "\n\nNo days set up yet. When adding items, use day=1 (or appropriate day number) to create days automatically. Only omit day for items that are truly unscheduled ideas."
@@ -759,38 +772,45 @@ def _build_venue_chat_prompt(trip_context: Dict[str, Any], curated_venues: List[
     # Build list of existing item titles for deduplication
     existing_titles = set()
     for day in days:
-        for item in day.get('items', []):
-            title = item.get('title', '').lower().strip()
+        for item in day.get("items", []):
+            title = item.get("title", "").lower().strip()
             if title:
                 existing_titles.add(title)
     for item in ideas:
-        title = item.get('title', '').lower().strip()
+        title = item.get("title", "").lower().strip()
         if title:
             existing_titles.add(title)
 
-    existing_list = "\n".join(f"  - {t}" for t in sorted(existing_titles)) if existing_titles else "  (none yet)"
+    existing_list = (
+        "\n".join(f"  - {t}" for t in sorted(existing_titles))
+        if existing_titles
+        else "  (none yet)"
+    )
 
     # Build curated venue summary for context
     curated_context = ""
     if curated_venues:
         # Filter venues relevant to destination
-        dest_lower = destination.lower() if destination else ''
-        relevant_venues = [v for v in curated_venues
-                          if dest_lower in (v.get('city', '') or '').lower()
-                          or dest_lower in (v.get('country', '') or '').lower()
-                          or dest_lower in (v.get('state', '') or '').lower()]
+        dest_lower = destination.lower() if destination else ""
+        relevant_venues = [
+            v
+            for v in curated_venues
+            if dest_lower in (v.get("city", "") or "").lower()
+            or dest_lower in (v.get("country", "") or "").lower()
+            or dest_lower in (v.get("state", "") or "").lower()
+        ]
 
         if relevant_venues:
             curated_context = f"\n\n## CURATED VENUES DATABASE\n\nYou have access to {len(curated_venues)} vetted venues. Here are {len(relevant_venues)} venues near {destination}:\n"
             for v in relevant_venues[:50]:  # Limit to 50 relevant venues
                 curated_context += f"- {v['name']}"
-                if v.get('city'):
+                if v.get("city"):
                     curated_context += f", {v['city']}"
-                if v.get('venue_type'):
+                if v.get("venue_type"):
                     curated_context += f" ({v['venue_type']})"
-                if v.get('michelin_stars'):
+                if v.get("michelin_stars"):
                     curated_context += f" ⭐{v['michelin_stars']} Michelin"
-                if v.get('collection') and v['collection'] not in ('Saved', None):
+                if v.get("collection") and v["collection"] not in ("Saved", None):
                     curated_context += f" #{v['collection']}"
                 curated_context += "\n"
             curated_context += "\nVenues from this list should be marked as source: CURATED\n"
@@ -803,7 +823,7 @@ You have the ability to:
 
 Current trip context:
 - Destination: {destination}
-- Dates: {dates if dates else 'Not set yet'}
+- Dates: {dates if dates else "Not set yet"}
 {itinerary_context}
 {day_reference}
 {curated_context}
@@ -896,7 +916,7 @@ Want me to add it to a specific day?
     return prompt
 
 
-def _parse_add_items(response_text: str) -> List[Dict[str, Any]]:
+def _parse_add_items(response_text: str) -> list[dict[str, Any]]:
     """Parse items to add from JSON block in LLM response.
 
     Looks for ```json blocks with add_items array.
@@ -911,8 +931,8 @@ def _parse_add_items(response_text: str) -> List[Dict[str, Any]]:
     if match:
         try:
             data = json.loads(match.group(1))
-            if 'add_items' in data and isinstance(data['add_items'], list):
-                return data['add_items']
+            if "add_items" in data and isinstance(data["add_items"], list):
+                return data["add_items"]
         except json.JSONDecodeError as e:
             print(f"Failed to parse add_items JSON: {e}")
 
@@ -922,12 +942,15 @@ def _parse_add_items(response_text: str) -> List[Dict[str, Any]]:
 def _clean_response_text(response_text: str) -> str:
     """Remove the JSON block from the response text for display."""
     import re
+
     # Remove the JSON code block
-    cleaned = re.sub(r'```json\s*\{[\s\S]*?"add_items"[\s\S]*?\}\s*```', '', response_text)
+    cleaned = re.sub(r'```json\s*\{[\s\S]*?"add_items"[\s\S]*?\}\s*```', "", response_text)
     return cleaned.strip()
 
 
-def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None, web_fetch_context: Dict = None) -> List[Dict[str, Any]]:
+def _parse_suggested_items(
+    response_text: str, curated_venues: list[dict] = None, web_fetch_context: dict = None
+) -> list[dict[str, Any]]:
     """Parse suggested items from the LLM response.
 
     This is a simple parser that looks for structured suggestions.
@@ -938,30 +961,30 @@ def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None
     curated_venues = curated_venues or []
 
     # Pattern 1: Numbered items with bold names like "1. **Name** - description"
-    pattern1 = r'\d+\.\s+\*\*([^*]+)\*\*\s*[-–—:]?\s*(.+?)(?=\n\d+\.|\n\n|$)'
+    pattern1 = r"\d+\.\s+\*\*([^*]+)\*\*\s*[-–—:]?\s*(.+?)(?=\n\d+\.|\n\n|$)"
     matches = re.findall(pattern1, response_text, re.DOTALL)
 
     # Pattern 2: Bullet points with bold names like "- **Name** - description"
     if not matches:
-        pattern2 = r'[-•]\s+\*\*([^*]+)\*\*\s*[-–—:]?\s*(.+?)(?=\n[-•]|\n\n|$)'
+        pattern2 = r"[-•]\s+\*\*([^*]+)\*\*\s*[-–—:]?\s*(.+?)(?=\n[-•]|\n\n|$)"
         matches = re.findall(pattern2, response_text, re.DOTALL)
 
     # Pattern 3: Just bold names on their own line "**Name**"
     if not matches:
-        pattern3 = r'\*\*([^*]+)\*\*\s*[-–—:]?\s*([^\n*]+)?'
+        pattern3 = r"\*\*([^*]+)\*\*\s*[-–—:]?\s*([^\n*]+)?"
         matches = re.findall(pattern3, response_text)
 
     # Pattern 4: Plain text "Name - description" on separate lines (no bold)
     if not matches:
         # Look for lines that start with a capitalized word followed by " - " and description
-        pattern4 = r'^([A-Z][A-Za-z\s&\']+?)\s*[-–—]\s*(.+?)$'
+        pattern4 = r"^([A-Z][A-Za-z\s&\']+?)\s*[-–—]\s*(.+?)$"
         matches = re.findall(pattern4, response_text, re.MULTILINE)
         # Filter out lines that are too long (likely regular sentences, not names)
         matches = [(m[0].strip(), m[1].strip()) for m in matches if len(m[0].strip()) < 50]
 
     for match in matches:
-        name = match[0].strip() if match[0] else ''
-        description = match[1].strip() if len(match) > 1 and match[1] else ''
+        name = match[0].strip() if match[0] else ""
+        description = match[1].strip() if len(match) > 1 and match[1] else ""
 
         if not name:
             continue
@@ -970,38 +993,104 @@ def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None
         name_lower = name.lower()
         skip_phrases = [
             # Questions and actions
-            'want me to', 'would you like', 'shall i', 'should i', 'let me know',
-            'add it to', 'get more', 'suggest other', 'nearby', 'something else',
-            'more information', 'what you', 'i can', 'i already', 'i shared',
+            "want me to",
+            "would you like",
+            "shall i",
+            "should i",
+            "let me know",
+            "add it to",
+            "get more",
+            "suggest other",
+            "nearby",
+            "something else",
+            "more information",
+            "what you",
+            "i can",
+            "i already",
+            "i shared",
             # Itinerary/trip references
-            'your itinerary', 'your trip', 'which day', 'if so', 'available days',
-            'day 1', 'day 2', 'day 3', 'day 4', 'day 5',
+            "your itinerary",
+            "your trip",
+            "which day",
+            "if so",
+            "available days",
+            "day 1",
+            "day 2",
+            "day 3",
+            "day 4",
+            "day 5",
             # Dates
-            'dec ', 'december', 'january', 'february', 'march', 'april', 'may ',
-            'june', 'july', 'august', 'september', 'october', 'november',
+            "dec ",
+            "december",
+            "january",
+            "february",
+            "march",
+            "april",
+            "may ",
+            "june",
+            "july",
+            "august",
+            "september",
+            "october",
+            "november",
             # Generic options
-            'option', 'prefer', 'choose', 'select', 'pick one',
+            "option",
+            "prefer",
+            "choose",
+            "select",
+            "pick one",
         ]
         if any(q in name_lower for q in skip_phrases):
             continue
         # Skip if name ends with question mark or colon (headings)
-        if name.rstrip().endswith('?') or name.rstrip().endswith(':'):
+        if name.rstrip().endswith("?") or name.rstrip().endswith(":"):
             continue
         # Skip generic/vague names
-        skip_exact = ['yes', 'no', 'here', 'there', 'this', 'that', 'more', 'other',
-                      'something else', 'get more information', 'add it to your itinerary']
+        skip_exact = [
+            "yes",
+            "no",
+            "here",
+            "there",
+            "this",
+            "that",
+            "more",
+            "other",
+            "something else",
+            "get more information",
+            "add it to your itinerary",
+        ]
         if name_lower.strip() in skip_exact:
             continue
         # Skip names that are too long (likely sentences, not venue names)
         if len(name) > 60:
             continue
         # Skip names that start with common non-venue words
-        if name_lower.startswith(('i ', 'you ', 'we ', 'let ', 'if ', 'what ', 'how ', 'why ', 'when ', 'where ')):
+        if name_lower.startswith(
+            ("i ", "you ", "we ", "let ", "if ", "what ", "how ", "why ", "when ", "where ")
+        ):
             continue
         # Skip venue features/amenities (not actual places)
-        feature_words = ['exhibit', 'guide', 'tour', 'technology', 'experience', 'section',
-                         'area', 'room', 'floor', 'wing', 'collection', 'display', 'booth',
-                         'interactive', 'audio', 'video', 'virtual', 'costume', 'memorabilia']
+        feature_words = [
+            "exhibit",
+            "guide",
+            "tour",
+            "technology",
+            "experience",
+            "section",
+            "area",
+            "room",
+            "floor",
+            "wing",
+            "collection",
+            "display",
+            "booth",
+            "interactive",
+            "audio",
+            "video",
+            "virtual",
+            "costume",
+            "memorabilia",
+        ]
         if any(fw in name_lower for fw in feature_words):
             continue
 
@@ -1009,167 +1098,232 @@ def _parse_suggested_items(response_text: str, curated_venues: List[Dict] = None
         website = None
 
         # Pattern 1: Any markdown link format [any text](url)
-        any_link_pattern = r'\[([^\]]+)\]\((https?://[^\)]+)\)'
+        any_link_pattern = r"\[([^\]]+)\]\((https?://[^\)]+)\)"
         url_match = re.search(any_link_pattern, description)
         if url_match:
             website = url_match.group(2)  # Group 2 is the URL
             # Remove the markdown link from description
-            description = re.sub(any_link_pattern, '', description).strip()
+            description = re.sub(any_link_pattern, "", description).strip()
         else:
             # Pattern 2: Plain URL anywhere in the text (not just at end)
-            plain_url = r'(https?://[^\s\)\]]+)'
+            plain_url = r"(https?://[^\s\)\]]+)"
             plain_match = re.search(plain_url, description)
             if plain_match:
                 website = plain_match.group(1)
-                description = re.sub(plain_url, '', description).strip()
+                description = re.sub(plain_url, "", description).strip()
 
         # Clean up trailing punctuation from description
-        description = description.rstrip(' .-–—')
+        description = description.rstrip(" .-–—")
 
         # Try to determine category from keywords
-        category = 'activity'
-        combined_lower = (name + ' ' + description).lower()
-        if any(word in combined_lower for word in ['restaurant', 'cafe', 'bakery', 'deli', 'trattoria', 'food', 'cuisine', 'dishes', 'dining', 'bistro']):
-            category = 'meal'
-        elif any(word in combined_lower for word in ['hotel', 'hostel', 'stay', 'accommodation', 'rooms', 'inn', 'lodge']):
-            category = 'hotel'
-        elif any(word in combined_lower for word in ['museum', 'gallery', 'cathedral', 'church', 'monument', 'palace', 'castle', 'theater', 'theatre', 'opera', 'concert hall']):
-            category = 'attraction'
-        elif any(word in combined_lower for word in ['hike', 'trail', 'tour', 'trek', 'walk', 'cycling']):
-            category = 'activity'
+        category = "activity"
+        combined_lower = (name + " " + description).lower()
+        if any(
+            word in combined_lower
+            for word in [
+                "restaurant",
+                "cafe",
+                "bakery",
+                "deli",
+                "trattoria",
+                "food",
+                "cuisine",
+                "dishes",
+                "dining",
+                "bistro",
+            ]
+        ):
+            category = "meal"
+        elif any(
+            word in combined_lower
+            for word in ["hotel", "hostel", "stay", "accommodation", "rooms", "inn", "lodge"]
+        ):
+            category = "hotel"
+        elif any(
+            word in combined_lower
+            for word in [
+                "museum",
+                "gallery",
+                "cathedral",
+                "church",
+                "monument",
+                "palace",
+                "castle",
+                "theater",
+                "theatre",
+                "opera",
+                "concert hall",
+            ]
+        ):
+            category = "attraction"
+        elif any(
+            word in combined_lower for word in ["hike", "trail", "tour", "trek", "walk", "cycling"]
+        ):
+            category = "activity"
 
         # Cross-reference with curated database
         curated_match = _cross_reference_curated(name, curated_venues)
-        source = 'CURATED' if curated_match else 'AI_PICK'
+        source = "CURATED" if curated_match else "AI_PICK"
 
         item = {
-            'title': name,
-            'category': category,
-            'notes': description[:200] if len(description) > 200 else description,
-            'source': source
+            "title": name,
+            "category": category,
+            "notes": description[:200] if len(description) > 200 else description,
+            "source": source,
         }
 
         # Add collection from curated match or web fetch context
-        if curated_match and curated_match.get('collection'):
-            item['collection'] = curated_match['collection']
+        if curated_match and curated_match.get("collection"):
+            item["collection"] = curated_match["collection"]
         elif web_fetch_context:
-            item['collection'] = web_fetch_context.get('title', '')[:50]
+            item["collection"] = web_fetch_context.get("title", "")[:50]
 
         if website:
-            item['website'] = website
+            item["website"] = website
 
         # Add extra info from curated match
         if curated_match:
-            if curated_match.get('website') and not website:
-                item['website'] = curated_match['website']
-            if curated_match.get('city'):
-                item['location'] = curated_match['city']
+            if curated_match.get("website") and not website:
+                item["website"] = curated_match["website"]
+            if curated_match.get("city"):
+                item["location"] = curated_match["city"]
 
         items.append(item)
 
     # Sort: CURATED first, then AI_PICK
-    items.sort(key=lambda x: (0 if x.get('source') == 'CURATED' else 1, x.get('title', '')))
+    items.sort(key=lambda x: (0 if x.get("source") == "CURATED" else 1, x.get("title", "")))
 
     return items
 
 
-def _parse_ics_file(file_data: bytes) -> List[Dict[str, Any]]:
+def _parse_ics_file(file_data: bytes) -> list[dict[str, Any]]:
     """Parse ICS calendar file to extract travel events.
 
     Returns list of items with title, category, date, time, location, notes.
     """
     try:
-        content = file_data.decode('utf-8')
+        content = file_data.decode("utf-8")
     except UnicodeDecodeError:
-        content = file_data.decode('latin-1')
+        content = file_data.decode("latin-1")
 
     items = []
     current_event = {}
     in_event = False
 
-    lines = content.replace('\r\n ', '').replace('\r\n\t', '').split('\r\n')
+    lines = content.replace("\r\n ", "").replace("\r\n\t", "").split("\r\n")
     if len(lines) == 1:
-        lines = content.replace('\n ', '').replace('\n\t', '').split('\n')
+        lines = content.replace("\n ", "").replace("\n\t", "").split("\n")
 
     for line in lines:
         line = line.strip()
-        if line == 'BEGIN:VEVENT':
+        if line == "BEGIN:VEVENT":
             in_event = True
             current_event = {}
-        elif line == 'END:VEVENT':
-            if current_event.get('title'):
+        elif line == "END:VEVENT":
+            if current_event.get("title"):
                 # Determine category from summary/description
-                title = current_event.get('title', '').lower()
-                description = current_event.get('notes', '').lower()
+                title = current_event.get("title", "").lower()
+                description = current_event.get("notes", "").lower()
                 combined = f"{title} {description}"
 
-                category = 'activity'
-                if any(w in combined for w in ['flight', 'airline', 'airport', 'terminal']):
-                    category = 'flight'
-                elif any(w in combined for w in ['train', 'bus', 'car rental', 'uber', 'taxi', 'transfer']):
-                    category = 'transport'
-                elif any(w in combined for w in ['hotel', 'hostel', 'airbnb', 'accommodation', 'check-in', 'check in', 'stay']):
-                    category = 'hotel'
-                elif any(w in combined for w in ['restaurant', 'dinner', 'lunch', 'breakfast', 'cafe', 'brunch', 'reservation']):
-                    category = 'meal'
-                elif any(w in combined for w in ['museum', 'tour', 'visit', 'cathedral', 'palace', 'gallery']):
-                    category = 'attraction'
+                category = "activity"
+                if any(w in combined for w in ["flight", "airline", "airport", "terminal"]):
+                    category = "flight"
+                elif any(
+                    w in combined
+                    for w in ["train", "bus", "car rental", "uber", "taxi", "transfer"]
+                ):
+                    category = "transport"
+                elif any(
+                    w in combined
+                    for w in [
+                        "hotel",
+                        "hostel",
+                        "airbnb",
+                        "accommodation",
+                        "check-in",
+                        "check in",
+                        "stay",
+                    ]
+                ):
+                    category = "hotel"
+                elif any(
+                    w in combined
+                    for w in [
+                        "restaurant",
+                        "dinner",
+                        "lunch",
+                        "breakfast",
+                        "cafe",
+                        "brunch",
+                        "reservation",
+                    ]
+                ):
+                    category = "meal"
+                elif any(
+                    w in combined
+                    for w in ["museum", "tour", "visit", "cathedral", "palace", "gallery"]
+                ):
+                    category = "attraction"
 
-                current_event['category'] = category
+                current_event["category"] = category
 
                 # Use UTC time as fallback if no local time was extracted from description
-                if not current_event.get('time') and current_event.get('_utc_time'):
-                    current_event['time'] = current_event['_utc_time']
+                if not current_event.get("time") and current_event.get("_utc_time"):
+                    current_event["time"] = current_event["_utc_time"]
 
                 # Clean up internal field
-                current_event.pop('_utc_time', None)
+                current_event.pop("_utc_time", None)
 
                 items.append(current_event)
             in_event = False
         elif in_event:
-            if line.startswith('SUMMARY:'):
-                current_event['title'] = line[8:].strip()
-            elif line.startswith('DTSTART'):
+            if line.startswith("SUMMARY:"):
+                current_event["title"] = line[8:].strip()
+            elif line.startswith("DTSTART"):
                 # Parse date/time - store raw value, may be overridden by description
-                value = line.split(':', 1)[-1]
-                if 'T' in value:
+                value = line.split(":", 1)[-1]
+                if "T" in value:
                     # Has time component
                     date_part = value[:8]
                     time_part = value[9:13] if len(value) > 12 else None
                     try:
-                        current_event['date'] = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}"
+                        current_event["date"] = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}"
                         if time_part:
                             # Store UTC time as fallback - may be overridden by local time from description
-                            current_event['_utc_time'] = f"{time_part[:2]}:{time_part[2:4]}"
-                    except:
+                            current_event["_utc_time"] = f"{time_part[:2]}:{time_part[2:4]}"
+                    except (ValueError, IndexError):
                         pass
                 else:
                     # Date only
                     try:
-                        current_event['date'] = f"{value[:4]}-{value[4:6]}-{value[6:8]}"
-                    except:
+                        current_event["date"] = f"{value[:4]}-{value[4:6]}-{value[6:8]}"
+                    except (ValueError, IndexError):
                         pass
-            elif line.startswith('LOCATION:'):
-                current_event['location'] = line[9:].strip()
-            elif line.startswith('DESCRIPTION:'):
+            elif line.startswith("LOCATION:"):
+                current_event["location"] = line[9:].strip()
+            elif line.startswith("DESCRIPTION:"):
                 desc = line[12:].strip()
                 # Unescape ICS format
-                desc = desc.replace('\\n', '\n').replace('\\,', ',').replace('\\;', ';')
-                current_event['notes'] = desc[:500]  # Limit notes length
+                desc = desc.replace("\\n", "\n").replace("\\,", ",").replace("\\;", ";")
+                current_event["notes"] = desc[:500]  # Limit notes length
 
                 # Extract local departure time from description (more accurate than UTC)
                 # Look for patterns like "Departure time: 10:15" or "Departs: 10:15"
                 import re
-                time_match = re.search(r'(?:Departure time|Departs?):\s*(\d{1,2}):(\d{2})', desc, re.IGNORECASE)
+
+                time_match = re.search(
+                    r"(?:Departure time|Departs?):\s*(\d{1,2}):(\d{2})", desc, re.IGNORECASE
+                )
                 if time_match:
                     hour = int(time_match.group(1))
                     minute = time_match.group(2)
-                    current_event['time'] = f"{hour:02d}:{minute}"
+                    current_event["time"] = f"{hour:02d}:{minute}"
 
     return items
 
 
-def _parse_json_trip(file_data: bytes) -> List[Dict[str, Any]]:
+def _parse_json_trip(file_data: bytes) -> list[dict[str, Any]]:
     """Parse JSON file that might contain trip data.
 
     Handles various JSON formats:
@@ -1179,9 +1333,9 @@ def _parse_json_trip(file_data: bytes) -> List[Dict[str, Any]]:
     - TripIt-style JSON exports
     """
     try:
-        content = file_data.decode('utf-8')
+        content = file_data.decode("utf-8")
     except UnicodeDecodeError:
-        content = file_data.decode('latin-1')
+        content = file_data.decode("latin-1")
 
     data = json.loads(content)
     items = []
@@ -1194,152 +1348,152 @@ def _parse_json_trip(file_data: bytes) -> List[Dict[str, Any]]:
                 items.append(_normalize_item(item))
     elif isinstance(data, dict):
         # Check for our export format (has export_version and itinerary_data)
-        if 'export_version' in data and 'itinerary_data' in data:
-            itinerary_data = data.get('itinerary_data', {})
+        if "export_version" in data and "itinerary_data" in data:
+            itinerary_data = data.get("itinerary_data", {})
             # Process days from itinerary_data
-            for day in itinerary_data.get('days', []):
-                day_num = day.get('day_number') or day.get('day')
-                day_date = day.get('date')
-                for item in day.get('items', []):
+            for day in itinerary_data.get("days", []):
+                day_num = day.get("day_number") or day.get("day")
+                day_date = day.get("date")
+                for item in day.get("items", []):
                     normalized = _normalize_item(item)
-                    if day_num and not normalized.get('day'):
-                        normalized['day'] = day_num
-                    if day_date and not normalized.get('date'):
-                        normalized['date'] = day_date
+                    if day_num and not normalized.get("day"):
+                        normalized["day"] = day_num
+                    if day_date and not normalized.get("date"):
+                        normalized["date"] = day_date
                     items.append(normalized)
             # Process ideas pile
-            for item in itinerary_data.get('ideas', []):
+            for item in itinerary_data.get("ideas", []):
                 items.append(_normalize_item(item))
         # Check for our itinerary format
-        elif 'items' in data:
-            for item in data.get('items', []):
+        elif "items" in data:
+            for item in data.get("items", []):
                 if isinstance(item, dict):
                     items.append(_normalize_item(item))
         # Check for days array
-        elif 'days' in data:
-            for day in data.get('days', []):
-                day_num = day.get('day_number') or day.get('day')
-                day_date = day.get('date')
-                for item in day.get('items', []):
+        elif "days" in data:
+            for day in data.get("days", []):
+                day_num = day.get("day_number") or day.get("day")
+                day_date = day.get("date")
+                for item in day.get("items", []):
                     normalized = _normalize_item(item)
-                    if day_num and not normalized.get('day'):
-                        normalized['day'] = day_num
-                    if day_date and not normalized.get('date'):
-                        normalized['date'] = day_date
+                    if day_num and not normalized.get("day"):
+                        normalized["day"] = day_num
+                    if day_date and not normalized.get("date"):
+                        normalized["date"] = day_date
                     items.append(normalized)
         # Check for itinerary_data without export_version (just in case)
-        elif 'itinerary_data' in data:
-            return _parse_json_trip(json.dumps(data['itinerary_data']).encode())
+        elif "itinerary_data" in data:
+            return _parse_json_trip(json.dumps(data["itinerary_data"]).encode())
         # Check for events array (common export format)
-        elif 'events' in data:
-            for item in data.get('events', []):
+        elif "events" in data:
+            for item in data.get("events", []):
                 if isinstance(item, dict):
                     items.append(_normalize_item(item))
 
     # Smart day assignment: if no items have dates but some have times,
     # this is likely a single-day itinerary - assign all to Day 1
-    has_any_date = any(item.get('date') for item in items)
-    has_any_time = any(item.get('time') for item in items)
-    has_any_day = any(item.get('day') for item in items)
+    has_any_date = any(item.get("date") for item in items)
+    has_any_time = any(item.get("time") for item in items)
+    has_any_day = any(item.get("day") for item in items)
 
     if not has_any_date and not has_any_day and has_any_time:
         # Looks like a single-day itinerary without explicit dates
         # Assign all items to Day 1
         for item in items:
-            item['day'] = 1
+            item["day"] = 1
 
     return items
 
 
-def _normalize_item(item: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     """Normalize an item dict to our expected format."""
     normalized = {}
 
     # Title can be in various fields
-    normalized['title'] = (
-        item.get('title') or
-        item.get('name') or
-        item.get('summary') or
-        item.get('event') or
-        'Untitled'
+    normalized["title"] = (
+        item.get("title")
+        or item.get("name")
+        or item.get("summary")
+        or item.get("event")
+        or "Untitled"
     )
 
     # Category normalization
-    cat = (item.get('category') or item.get('type') or '').lower()
-    if cat in ['flight', 'air', 'plane']:
-        normalized['category'] = 'flight'
-    elif cat in ['train', 'bus', 'car', 'transport', 'transportation', 'transfer']:
-        normalized['category'] = 'transport'
-    elif cat in ['hotel', 'accommodation', 'lodging', 'stay', 'hostel']:
-        normalized['category'] = 'hotel'
-    elif cat in ['meal', 'restaurant', 'food', 'dining', 'breakfast', 'lunch', 'dinner']:
-        normalized['category'] = 'meal'
-    elif cat in ['attraction', 'sightseeing', 'museum', 'tour']:
-        normalized['category'] = 'attraction'
-    elif cat in ['activity', 'event']:
-        normalized['category'] = 'activity'
+    cat = (item.get("category") or item.get("type") or "").lower()
+    if cat in ["flight", "air", "plane"]:
+        normalized["category"] = "flight"
+    elif cat in ["train", "bus", "car", "transport", "transportation", "transfer"]:
+        normalized["category"] = "transport"
+    elif cat in ["hotel", "accommodation", "lodging", "stay", "hostel"]:
+        normalized["category"] = "hotel"
+    elif cat in ["meal", "restaurant", "food", "dining", "breakfast", "lunch", "dinner"]:
+        normalized["category"] = "meal"
+    elif cat in ["attraction", "sightseeing", "museum", "tour"]:
+        normalized["category"] = "attraction"
+    elif cat in ["activity", "event"]:
+        normalized["category"] = "activity"
     else:
-        normalized['category'] = cat or 'activity'
+        normalized["category"] = cat or "activity"
 
     # Date handling
-    date = item.get('date') or item.get('start_date') or item.get('startDate')
+    date = item.get("date") or item.get("start_date") or item.get("startDate")
     if date:
         # Try to parse various date formats
         if isinstance(date, str):
             # Already in ISO format
-            if len(date) >= 10 and date[4] == '-':
-                normalized['date'] = date[:10]
+            if len(date) >= 10 and date[4] == "-":
+                normalized["date"] = date[:10]
             # Try common formats
             else:
-                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%B %d, %Y']:
+                for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d, %Y"]:
                     try:
                         parsed = datetime.strptime(date[:10], fmt)
-                        normalized['date'] = parsed.strftime('%Y-%m-%d')
+                        normalized["date"] = parsed.strftime("%Y-%m-%d")
                         break
-                    except:
+                    except ValueError:
                         pass
 
     # Time handling
-    time = item.get('time') or item.get('start_time') or item.get('startTime')
+    time = item.get("time") or item.get("start_time") or item.get("startTime")
     if time:
         if isinstance(time, str):
             # Handle HH:MM format
-            if ':' in time and len(time) >= 5:
-                normalized['time'] = time[:5]
+            if ":" in time and len(time) >= 5:
+                normalized["time"] = time[:5]
             # Handle HHMM format
             elif len(time) == 4 and time.isdigit():
-                normalized['time'] = f"{time[:2]}:{time[2:]}"
+                normalized["time"] = f"{time[:2]}:{time[2:]}"
 
     # End time handling (for flights, trains, etc.)
-    end_time = item.get('end_time') or item.get('endTime') or item.get('arrival_time')
+    end_time = item.get("end_time") or item.get("endTime") or item.get("arrival_time")
     if end_time:
         if isinstance(end_time, str):
             # Handle HH:MM format
-            if ':' in end_time and len(end_time) >= 5:
-                normalized['end_time'] = end_time[:5]
+            if ":" in end_time and len(end_time) >= 5:
+                normalized["end_time"] = end_time[:5]
             # Handle HHMM format
             elif len(end_time) == 4 and end_time.isdigit():
-                normalized['end_time'] = f"{end_time[:2]}:{end_time[2:]}"
+                normalized["end_time"] = f"{end_time[:2]}:{end_time[2:]}"
 
     # Location
-    loc = item.get('location')
+    loc = item.get("location")
     if isinstance(loc, dict):
-        normalized['location'] = loc.get('name') or loc.get('address') or loc.get('city')
+        normalized["location"] = loc.get("name") or loc.get("address") or loc.get("city")
     elif isinstance(loc, str):
-        normalized['location'] = loc
-    elif item.get('city'):
-        normalized['location'] = item.get('city')
-    elif item.get('address'):
-        normalized['location'] = item.get('address')
+        normalized["location"] = loc
+    elif item.get("city"):
+        normalized["location"] = item.get("city")
+    elif item.get("address"):
+        normalized["location"] = item.get("address")
 
     # Notes
-    notes = item.get('notes') or item.get('description') or item.get('details')
+    notes = item.get("notes") or item.get("description") or item.get("details")
     if notes:
-        normalized['notes'] = str(notes)[:500]
+        normalized["notes"] = str(notes)[:500]
 
     # Day number if present
-    if item.get('day') or item.get('day_number'):
-        normalized['day'] = item.get('day') or item.get('day_number')
+    if item.get("day") or item.get("day_number"):
+        normalized["day"] = item.get("day") or item.get("day_number")
 
     return normalized
 
@@ -1353,12 +1507,12 @@ def _parse_excel_to_text(file_data: bytes, ext: str) -> str:
 
     try:
         import openpyxl
-    except ImportError:
-        raise ImportError("openpyxl not installed")
+    except ImportError as e:
+        raise ImportError("openpyxl not installed") from e
 
     text_parts = []
 
-    if ext == 'xlsx':
+    if ext == "xlsx":
         wb = openpyxl.load_workbook(BytesIO(file_data), data_only=True)
 
         for sheet_name in wb.sheetnames:
@@ -1386,17 +1540,18 @@ def _parse_excel_to_text(file_data: bytes, ext: str) -> str:
                     if cell is not None:
                         row_text.append(str(cell))
                     else:
-                        row_text.append('')
+                        row_text.append("")
                 if any(row_text):  # Skip empty rows
-                    text_parts.append(' | '.join(row_text))
+                    text_parts.append(" | ".join(row_text))
 
-            text_parts.append('')  # Blank line between sheets
+            text_parts.append("")  # Blank line between sheets
 
         wb.close()
-    elif ext == 'xls':
+    elif ext == "xls":
         # For .xls files, try xlrd
         try:
             import xlrd
+
             wb = xlrd.open_workbook(file_contents=file_data)
 
             for sheet_name in wb.sheet_names():
@@ -1407,16 +1562,16 @@ def _parse_excel_to_text(file_data: bytes, ext: str) -> str:
                     row_text = []
                     for col_idx in range(sheet.ncols):
                         cell = sheet.cell_value(row_idx, col_idx)
-                        row_text.append(str(cell) if cell else '')
+                        row_text.append(str(cell) if cell else "")
                     if any(row_text):
-                        text_parts.append(' | '.join(row_text))
+                        text_parts.append(" | ".join(row_text))
 
-                text_parts.append('')
-        except ImportError:
+                text_parts.append("")
+        except ImportError as e:
             # Fall back to openpyxl's xlrd compatibility
-            raise ImportError("xlrd not installed for .xls files")
+            raise ImportError("xlrd not installed for .xls files") from e
 
-    return '\n'.join(text_parts)
+    return "\n".join(text_parts)
 
 
 def _parse_word_to_text(file_data: bytes, ext: str) -> str:
@@ -1426,11 +1581,11 @@ def _parse_word_to_text(file_data: bytes, ext: str) -> str:
     """
     from io import BytesIO
 
-    if ext == 'docx':
+    if ext == "docx":
         try:
             from docx import Document
-        except ImportError:
-            raise ImportError("python-docx not installed")
+        except ImportError as e:
+            raise ImportError("python-docx not installed") from e
 
         doc = Document(BytesIO(file_data))
         text_parts = []
@@ -1441,20 +1596,20 @@ def _parse_word_to_text(file_data: bytes, ext: str) -> str:
 
         # Also extract tables
         for table in doc.tables:
-            text_parts.append('\n--- Table ---')
+            text_parts.append("\n--- Table ---")
             for row in table.rows:
                 row_text = [cell.text.strip() for cell in row.cells]
-                text_parts.append(' | '.join(row_text))
+                text_parts.append(" | ".join(row_text))
 
-        return '\n'.join(text_parts)
+        return "\n".join(text_parts)
 
-    elif ext == 'doc':
+    elif ext == "doc":
         # .doc files are harder - try antiword or textract
         # For now, return error suggesting conversion
         raise ValueError("Legacy .doc format not supported. Please save as .docx")
 
 
-def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str) -> Dict[str, Any]:
+def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str) -> dict[str, Any]:
     """Handle uploaded file and extract trip items using LLM.
 
     Args:
@@ -1467,7 +1622,6 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
         Extracted items or error
     """
     import base64
-    from io import BytesIO
 
     # Determine how to process the file
     content_for_llm = None
@@ -1475,74 +1629,71 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
     media_type = None
     pre_parsed_items = None  # For formats we can parse directly
 
-    if ext in ['txt', 'html', 'htm', 'eml']:
+    if ext in ["txt", "html", "htm", "eml"]:
         # Text-based files - decode as text
         try:
-            content_for_llm = file_data.decode('utf-8')
+            content_for_llm = file_data.decode("utf-8")
         except UnicodeDecodeError:
-            content_for_llm = file_data.decode('latin-1')
+            content_for_llm = file_data.decode("latin-1")
 
-    elif ext in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+    elif ext in ["png", "jpg", "jpeg", "gif", "webp"]:
         # Image files - send as base64 to vision model
-        image_data = base64.standard_b64encode(file_data).decode('utf-8')
-        media_type = f"image/{ext}" if ext != 'jpg' else 'image/jpeg'
+        image_data = base64.standard_b64encode(file_data).decode("utf-8")
+        media_type = f"image/{ext}" if ext != "jpg" else "image/jpeg"
 
-    elif ext == 'ics':
+    elif ext == "ics":
         # ICS calendar files - parse directly
         try:
             pre_parsed_items = _parse_ics_file(file_data)
             if pre_parsed_items:
-                return {
-                    'success': True,
-                    'items': pre_parsed_items,
-                    'filename': filename
-                }, 200
-        except Exception as e:
+                return {"success": True, "items": pre_parsed_items, "filename": filename}, 200
+        except Exception:
             # Fall back to LLM parsing if direct parse fails
             try:
-                content_for_llm = file_data.decode('utf-8')
+                content_for_llm = file_data.decode("utf-8")
             except UnicodeDecodeError:
-                content_for_llm = file_data.decode('latin-1')
+                content_for_llm = file_data.decode("latin-1")
 
-    elif ext == 'json':
+    elif ext == "json":
         # JSON files - try to parse as trip data
         try:
             pre_parsed_items = _parse_json_trip(file_data)
             if pre_parsed_items:
-                return {
-                    'success': True,
-                    'items': pre_parsed_items,
-                    'filename': filename
-                }, 200
-        except Exception as e:
+                return {"success": True, "items": pre_parsed_items, "filename": filename}, 200
+        except Exception:
             # Fall back to LLM parsing
             try:
-                content_for_llm = file_data.decode('utf-8')
+                content_for_llm = file_data.decode("utf-8")
             except UnicodeDecodeError:
-                return {'error': 'Invalid JSON file encoding'}, 400
+                return {"error": "Invalid JSON file encoding"}, 400
 
-    elif ext in ['xlsx', 'xls']:
+    elif ext in ["xlsx", "xls"]:
         # Excel files - extract as text table
         try:
             content_for_llm = _parse_excel_to_text(file_data, ext)
         except ImportError:
-            return {'error': 'Excel processing not available. Please install openpyxl: pip install openpyxl'}, 500
+            return {
+                "error": "Excel processing not available. Please install openpyxl: pip install openpyxl"
+            }, 500
         except Exception as e:
-            return {'error': f'Error reading Excel file: {str(e)}'}, 400
+            return {"error": f"Error reading Excel file: {str(e)}"}, 400
 
-    elif ext in ['docx', 'doc']:
+    elif ext in ["docx", "doc"]:
         # Word documents - extract text
         try:
             content_for_llm = _parse_word_to_text(file_data, ext)
         except ImportError:
-            return {'error': 'Word document processing not available. Please install python-docx: pip install python-docx'}, 500
+            return {
+                "error": "Word document processing not available. Please install python-docx: pip install python-docx"
+            }, 500
         except Exception as e:
-            return {'error': f'Error reading Word document: {str(e)}'}, 400
+            return {"error": f"Error reading Word document: {str(e)}"}, 400
 
-    elif ext == 'pdf':
+    elif ext == "pdf":
         # PDF files - try to extract text, or use vision for scanned PDFs
         try:
             import fitz  # PyMuPDF
+
             doc = fitz.open(stream=file_data, filetype="pdf")
             text_content = []
             for page in doc:
@@ -1553,23 +1704,25 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
             if not content_for_llm.strip():
                 page = doc[0]
                 pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                image_data = base64.standard_b64encode(pix.tobytes("png")).decode('utf-8')
+                image_data = base64.standard_b64encode(pix.tobytes("png")).decode("utf-8")
                 media_type = "image/png"
 
             doc.close()
         except ImportError:
-            return {'error': 'PDF processing not available. Please install PyMuPDF: pip install pymupdf'}, 500
+            return {
+                "error": "PDF processing not available. Please install PyMuPDF: pip install pymupdf"
+            }, 500
         except Exception as e:
-            return {'error': f'Error reading PDF: {str(e)}'}, 400
+            return {"error": f"Error reading PDF: {str(e)}"}, 400
 
     else:
-        return {'error': f'Unsupported file type: {ext}'}, 400
+        return {"error": f"Unsupported file type: {ext}"}, 400
 
     # Build the LLM prompt
     from datetime import datetime
+
     current_year = datetime.now().year
-    current_month = datetime.now().month
-    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_date = datetime.now().strftime("%Y-%m-%d")
     next_year = current_year + 1
 
     system_prompt = f"""You are a travel document parser. Extract travel-related items from the uploaded document.
@@ -1643,64 +1796,722 @@ Only return the JSON array, no other text."""
 
         if image_data:
             # Use vision for images
-            messages = [{
-                'role': 'user',
-                'content': [
-                    {
-                        'type': 'image',
-                        'source': {
-                            'type': 'base64',
-                            'media_type': media_type,
-                            'data': image_data
-                        }
-                    },
-                    {
-                        'type': 'text',
-                        'text': f'Extract travel items from this document (filename: {filename})'
-                    }
-                ]
-            }]
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_data,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": f"Extract travel items from this document (filename: {filename})",
+                        },
+                    ],
+                }
+            ]
         else:
             # Use text content
-            messages = [{
-                'role': 'user',
-                'content': f'Extract travel items from this document (filename: {filename}):\n\n{content_for_llm[:10000]}'  # Limit content
-            }]
+            messages = [
+                {
+                    "role": "user",
+                    "content": f"Extract travel items from this document (filename: {filename}):\n\n{content_for_llm[:10000]}",  # Limit content
+                }
+            ]
 
         response = llm.call_api(
-            system_prompt=system_prompt,
-            messages=messages,
-            return_full_response=True
+            system_prompt=system_prompt, messages=messages, return_full_response=True
         )
 
         response_text = response.content[0].text.strip()
 
         # Parse the JSON response
         # Remove markdown code block if present
-        if response_text.startswith('```'):
-            lines = response_text.split('\n')
-            response_text = '\n'.join(lines[1:-1] if lines[-1] == '```' else lines[1:])
+        if response_text.startswith("```"):
+            lines = response_text.split("\n")
+            response_text = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
 
         items = json.loads(response_text)
         print(f"[UPLOAD] Parsed {len(items)} items from {filename}")
         for item in items:
-            print(f"[UPLOAD]   - {item.get('title')}: category={item.get('category')}, location='{item.get('location')}', date={item.get('date')}, time={item.get('time')}")
+            print(
+                f"[UPLOAD]   - {item.get('title')}: category={item.get('category')}, location='{item.get('location')}', date={item.get('date')}, time={item.get('time')}"
+            )
 
         if not isinstance(items, list):
             items = []
 
-        return {
-            'success': True,
-            'items': items,
-            'filename': filename
-        }, 200
+        return {"success": True, "items": items, "filename": filename}, 200
 
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}")
         print(f"Response was: {response_text}")
-        return {'error': 'Failed to parse extracted items'}, 500
+        return {"error": "Failed to parse extracted items"}, 500
     except Exception as e:
         print(f"Upload plan error: {e}")
         import traceback
+
         traceback.print_exc()
-        return {'error': f'Error processing file: {str(e)}'}, 500
+        return {"error": f"Error processing file: {str(e)}"}, 500
+
+
+# ---------------------------------------------------------------------------
+# File / URL import helpers (moved from server.py for Flask migration)
+# ---------------------------------------------------------------------------
+
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
+
+_DATA_DIR = Path(__file__).parent.parent.parent / "data"
+_AIRLINE_CODES_CSV = _DATA_DIR / "airline_codes.csv"
+
+# Cached lookup tables
+_airline_names: dict[str, str] | None = (
+    None  # IATA code -> display name (e.g. "AA" -> "American Airlines")
+)
+_airline_url_names: dict[str, str] | None = None  # IATA code -> URL-encoded name for flightera URLs
+_airports_db: dict | None = None  # airportsdata IATA lookup, loaded on first use
+
+
+def _load_airline_codes() -> tuple[dict[str, str], dict[str, str]]:
+    """Load airline code -> name mappings from data/airline_codes.csv."""
+    global _airline_names, _airline_url_names
+    if _airline_names is not None and _airline_url_names is not None:
+        return _airline_names, _airline_url_names
+    import csv
+
+    names: dict[str, str] = {}
+    url_names: dict[str, str] = {}
+    if _AIRLINE_CODES_CSV.exists():
+        with open(_AIRLINE_CODES_CSV, newline="") as f:
+            for row in csv.DictReader(f):
+                code = row["code"].strip()
+                names[code] = row["name"].strip()
+                url_names[code] = row["url_name"].strip()
+    _airline_names = names
+    _airline_url_names = url_names
+    return _airline_names, _airline_url_names
+
+
+def _get_airport_city(iata_code: str) -> str:
+    """Return URL-encoded city name for an IATA airport code.
+
+    Uses the airportsdata package (~55,000 airports worldwide) so any airport
+    code works without maintaining a local lookup file.
+    Falls back to the raw IATA code if the airport is not found.
+    """
+    global _airports_db
+    if _airports_db is None:
+        try:
+            import airportsdata
+
+            _airports_db = airportsdata.load("IATA")
+        except ImportError:
+            _airports_db = {}
+
+    airport = _airports_db.get(iata_code.upper())
+    if airport and airport.get("city"):
+        return airport["city"].replace(" ", "+")
+    return iata_code  # Fall back to raw code — flightera may still resolve it
+
+
+def slugify(text: str) -> str:
+    """Convert text to URL-friendly slug."""
+    text = text.lower()
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"[\s_-]+", "_", text)
+    return text.strip("_")
+
+
+def format_dates(itinerary) -> str:
+    """Format itinerary start/end dates for display."""
+    if itinerary.start_date and itinerary.end_date:
+        if itinerary.start_date.year == itinerary.end_date.year:
+            if itinerary.start_date.month == itinerary.end_date.month:
+                return f"{itinerary.start_date.strftime('%B')} {itinerary.start_date.year}"
+            return f"{itinerary.start_date.strftime('%b')} - {itinerary.end_date.strftime('%b %Y')}"
+        return f"{itinerary.start_date.strftime('%b %Y')} - {itinerary.end_date.strftime('%b %Y')}"
+    elif itinerary.start_date:
+        return itinerary.start_date.strftime("%B %Y")
+    return "Date unknown"
+
+
+def itinerary_to_data(itinerary) -> dict:
+    """Convert a parsed Itinerary object to itinerary_data format for database storage."""
+    from collections import defaultdict
+
+    days_dict = defaultdict(list)
+    ideas = []
+    start_date = itinerary.start_date
+
+    for item in itinerary.items:
+        if item.is_home_location:
+            continue
+
+        item_data = {
+            "title": item.title,
+            "category": item.category or "activity",
+            "location": item.location.name if item.location else "",
+            "time": item.start_time.strftime("%H:%M") if item.start_time else None,
+            "notes": item.notes or item.description,
+        }
+
+        day_number = item.day_number
+        if not day_number and item.date and start_date:
+            day_number = (item.date - start_date).days + 1
+            if day_number < 1:
+                day_number = None
+
+        if day_number:
+            days_dict[day_number].append(
+                {**item_data, "date": item.date.isoformat() if item.date else None}
+            )
+        else:
+            ideas.append(item_data)
+
+    days = []
+    for day_num in sorted(days_dict.keys()):
+        day_items = days_dict[day_num]
+        day_date = None
+        for it in day_items:
+            if it.get("date"):
+                day_date = it["date"]
+                break
+        days.append({"day_number": day_num, "date": day_date, "items": day_items})
+
+    return {
+        "title": itinerary.title,
+        "start_date": itinerary.start_date.isoformat() if itinerary.start_date else None,
+        "end_date": itinerary.end_date.isoformat() if itinerary.end_date else None,
+        "travelers": itinerary.travelers or [],
+        "days": days,
+        "ideas": ideas,
+    }
+
+
+def extract_text_from_html(html_content: bytes) -> str:
+    """Extract readable text from HTML content for itinerary parsing."""
+    import html.parser
+
+    class TextExtractor(html.parser.HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.text_parts = []
+            self.skip_tags = {"script", "style", "meta", "link", "noscript"}
+            self.current_skip = False
+
+        def handle_starttag(self, tag, attrs):
+            if tag in self.skip_tags:
+                self.current_skip = True
+            elif tag in ("br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6"):
+                self.text_parts.append("\n")
+
+        def handle_endtag(self, tag):
+            if tag in self.skip_tags:
+                self.current_skip = False
+            elif tag in ("p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6"):
+                self.text_parts.append("\n")
+
+        def handle_data(self, data):
+            if not self.current_skip:
+                text = data.strip()
+                if text:
+                    self.text_parts.append(text + " ")
+
+    try:
+        html_str = html_content.decode("utf-8")
+    except UnicodeDecodeError:
+        html_str = html_content.decode("latin-1")
+
+    extractor = TextExtractor()
+    extractor.feed(html_str)
+    text = "".join(extractor.text_parts)
+    text = re.sub(r"\n\s*\n", "\n\n", text)
+    text = re.sub(r" +", " ", text)
+    return text.strip()
+
+
+def convert_google_drive_url(url: str) -> tuple[str, str]:
+    """Convert Google Drive sharing URL to direct download URL. Returns (url, filename)."""
+    file_id = None
+    filename = "downloaded_file"
+
+    if "/file/d/" in url:
+        match = re.search(r"/file/d/([a-zA-Z0-9_-]+)", url)
+        if match:
+            file_id = match.group(1)
+    elif "id=" in url:
+        match = re.search(r"id=([a-zA-Z0-9_-]+)", url)
+        if match:
+            file_id = match.group(1)
+    elif "/spreadsheets/d/" in url:
+        match = re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", url)
+        if match:
+            file_id = match.group(1)
+            return (
+                f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx",
+                "spreadsheet.xlsx",
+            )
+
+    if file_id:
+        return f"https://drive.google.com/uc?export=download&id={file_id}", filename
+    return url, filename
+
+
+def download_from_url(url: str) -> tuple[bytes, str, str]:
+    """Download content from URL. Returns (content, filename, content_type)."""
+    filename = "downloaded_file"
+
+    parsed_url = urllib.request.urlparse(url) if hasattr(urllib.request, "urlparse") else None
+    from urllib.parse import urlparse as _urlparse
+
+    parsed_url = _urlparse(url)
+    if "google.com" in parsed_url.netloc or "drive.google.com" in parsed_url.netloc:
+        url, filename = convert_google_drive_url(url)
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "identity",
+        "Connection": "keep-alive",
+    }
+
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, context=ctx, timeout=60) as response:
+        content_type = response.headers.get("Content-Type", "").lower()
+        content_disp = response.headers.get("Content-Disposition", "")
+        if "filename=" in content_disp:
+            match = re.search(r'filename[*]?=["\']?([^"\';]+)', content_disp)
+            if match:
+                filename = match.group(1).strip("\"'")
+
+        if "." not in filename:
+            if "spreadsheet" in content_type or "excel" in content_type:
+                filename += ".xlsx"
+            elif "pdf" in content_type:
+                filename += ".pdf"
+            elif "html" in content_type:
+                filename += ".html"
+
+        return response.read(), filename, content_type
+
+
+def lookup_flight_times(airline_code: str, flight_num: str, origin: str, dest: str) -> dict | None:
+    """Look up departure/arrival times for a flight from flightera.net."""
+    _, airline_url_names = _load_airline_codes()
+    try:
+        airline_name = airline_url_names.get(airline_code, airline_code)
+        origin_city = _get_airport_city(origin)
+        dest_city = _get_airport_city(dest)
+        url = f"https://www.flightera.net/en/flight/{airline_name}-{origin_city}-{dest_city}/{airline_code}{flight_num}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+            },
+        )
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
+            html_bytes = resp.read()
+        html_text = html_bytes.decode("utf-8", errors="ignore")
+        dep_match = re.search(r'"departure_time"[:\s]+"?(\d{2}:\d{2})', html_text)
+        arr_match = re.search(r'"arrival_time"[:\s]+"?(\d{2}:\d{2})', html_text)
+        if dep_match and arr_match:
+            return {"departure_time": dep_match.group(1), "arrival_time": arr_match.group(1)}
+    except Exception:
+        pass
+    return None
+
+
+def parse_google_flights_url(url: str) -> list | None:
+    """Parse flight data from Google Flights URL. Returns list of flight dicts or None."""
+    import base64
+    from urllib.parse import parse_qs, urlparse
+
+    parsed = urlparse(url)
+    if "google.com" not in parsed.netloc or "/travel/flights" not in parsed.path:
+        return None
+
+    if "/flights/s/" in parsed.path:
+        raise ValueError(
+            "Shared Google Flights links (/flights/s/...) cannot be parsed directly. "
+            "Please use the full booking URL from Google Flights."
+        )
+
+    params = parse_qs(parsed.query)
+    tfs = params.get("tfs", [None])[0]
+    if not tfs:
+        return None
+
+    try:
+        missing_padding = (4 - len(tfs) % 4) % 4
+        tfs_padded = tfs + "=" * missing_padding
+        try:
+            decoded = base64.urlsafe_b64decode(tfs_padded)
+        except Exception:
+            decoded = base64.b64decode(tfs_padded)
+        decoded_str = decoded.decode("utf-8", errors="ignore")
+
+        flights = []
+        segment_pattern = r"\n.([A-Z]{3}).\n(\d{4}-\d{2}-\d{2})..([A-Z]{3})\*"
+        segments = re.findall(segment_pattern, decoded_str)
+        airline_flight_pattern = r"([A-Z]{2})2.(\d{3,4})"
+        airline_matches = re.findall(airline_flight_pattern, decoded_str)
+
+        airline_display_names, _ = _load_airline_codes()
+
+        for i, (origin, date, dest) in enumerate(segments):
+            if i < len(airline_matches):
+                airline = airline_matches[i][0]
+                flight_num = airline_matches[i][1]
+                airline_name = airline_display_names.get(airline, airline)
+                times = lookup_flight_times(airline, flight_num, origin, dest)
+                flight_data = {
+                    "title": f"{airline_name} {origin} → {dest}",
+                    "category": "flight",
+                    "origin": origin,
+                    "destination": dest,
+                    "date": date,
+                    "location": dest,
+                    "notes": f"Flight {airline}{flight_num}",
+                    "time": times["departure_time"] if times else None,
+                    "end_time": times["arrival_time"] if times else None,
+                }
+                flights.append(flight_data)
+
+        return flights if flights else None
+    except Exception:
+        return None
+
+
+def fetch_webpage_for_chat(url: str) -> dict:
+    """Fetch a web page and return extracted text for chat handlers."""
+    try:
+        content, filename, content_type = download_from_url(url)
+        if "html" in content_type or filename.endswith(".html"):
+            text = extract_text_from_html(content)
+        else:
+            try:
+                text = content.decode("utf-8")
+            except UnicodeDecodeError:
+                text = content.decode("latin-1")
+
+        title = None
+        try:
+            html_str = content.decode("utf-8", errors="ignore")
+            title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_str, re.IGNORECASE)
+            if title_match:
+                title = title_match.group(1).strip()
+        except Exception:
+            pass
+
+        if len(text) > 15000:
+            text = text[:15000] + "\n\n[Content truncated...]"
+
+        return {"success": True, "text": text, "title": title or url, "url": url}
+    except Exception as e:
+        return {"success": False, "error": str(e), "url": url}
+
+
+def upload_file_handler(
+    user_id: int, file_data: bytes, filename: str, output_dir: Path | None = None
+) -> tuple[dict, int]:
+    """Process an uploaded itinerary file. Returns (result, status_code)."""
+    import tempfile
+    import time
+
+    import geocoding_worker
+    from agents.itinerary.parser import ItineraryParser
+    from agents.itinerary.web_view import ItineraryWebView
+
+    out_dir = output_dir or OUTPUT_DIR
+    suffix = Path(filename).suffix.lower()
+    valid_extensions = [".pdf", ".xlsx", ".xls", ".html", ".htm", ".json"]
+    if suffix not in valid_extensions:
+        return {"error": f"Invalid file type '{suffix}'. Supported: PDF, Excel, HTML, JSON"}, 400
+
+    # Save debug copy
+    uploads_dir = out_dir / "uploads"
+    uploads_dir.mkdir(exist_ok=True)
+    try:
+        (uploads_dir / filename).write_bytes(file_data)
+    except Exception as e:
+        print(f"Warning: Could not save upload copy: {e}")
+
+    try:
+        start_time = time.time()
+        is_html_file = suffix in (".html", ".htm")
+        is_json_file = suffix == ".json"
+
+        if is_json_file:
+            print("[UPLOAD] Importing JSON trip data...")
+            try:
+                import_data = json.loads(file_data.decode("utf-8"))
+            except json.JSONDecodeError as e:
+                return {"error": f"Invalid JSON file: {e}"}, 400
+
+            if "itinerary_data" not in import_data and "days" not in import_data:
+                return {"error": "JSON file is not a valid trip export"}, 400
+
+            itinerary_data = import_data.get("itinerary_data") or import_data
+            title = itinerary_data.get("title") or import_data.get("title", "Imported Trip")
+            slug = slugify(title)
+            output_file = f"{slug}.html"
+
+            trip_for_html = {"itinerary_data": itinerary_data, "title": title}
+            itinerary = _convert_to_itinerary(trip_for_html)
+            if not itinerary or not itinerary.items:
+                return {"error": "Could not parse trip data from JSON"}, 400
+
+            web_view = ItineraryWebView()
+            web_view.generate(
+                itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+            )
+
+            locations = {
+                item.location.name.split(",")[0]
+                for item in itinerary.items
+                if item.location.name and not item.is_home_location
+            }
+            days_count = (
+                itinerary.duration_days
+                or len({item.day_number for item in itinerary.items if item.day_number})
+                or len(itinerary_data.get("days", []))
+            )
+            trip_data = {
+                "title": title,
+                "link": output_file,
+                "dates": format_dates(itinerary),
+                "days": days_count,
+                "locations": len(locations),
+                "activities": len(itinerary.items),
+                "map_status": "pending",
+                "is_public": import_data.get("is_public", False),
+            }
+            db.add_trip(user_id, trip_data, itinerary_data)
+            geocoding_worker.queue_geocoding(output_file, itinerary)
+            return {"success": True, "title": title, "link": output_file}, 200
+
+        # PDF, Excel, or HTML
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp.write(file_data)
+                tmp_path = tmp.name
+
+            print("[UPLOAD] Step 1: Parsing file...")
+            parser = ItineraryParser()
+            if is_html_file:
+                html_text = extract_text_from_html(file_data)
+                if len(html_text) < 100:
+                    return {
+                        "error": "Could not extract meaningful content from the HTML file."
+                    }, 400
+                itinerary = parser.parse_text(html_text, source_url=filename)
+            else:
+                itinerary = parser.parse_file(tmp_path)
+            print(
+                f"[UPLOAD] Step 1 done: {time.time() - start_time:.1f}s - {len(itinerary.items)} items"
+            )
+
+            print("[UPLOAD] Step 2: Generating web view...")
+            slug = slugify(itinerary.title)
+            output_file = f"{slug}.html"
+            web_view = ItineraryWebView()
+            web_view.generate(
+                itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+            )
+            print(f"[UPLOAD] Step 2 done: {time.time() - start_time:.1f}s")
+
+            locations = {
+                item.location.name.split(",")[0]
+                for item in itinerary.items
+                if item.location.name and not item.is_home_location
+            }
+            itinerary_data = itinerary_to_data(itinerary)
+            trip_data = {
+                "title": itinerary.title,
+                "link": output_file,
+                "dates": format_dates(itinerary),
+                "days": itinerary.duration_days
+                or len({item.day_number for item in itinerary.items if item.day_number}),
+                "locations": len(locations),
+                "activities": len(itinerary.items),
+                "map_status": "pending",
+            }
+            print("[UPLOAD] Step 3: Saving trip data...")
+            db.add_trip(user_id, trip_data, itinerary_data)
+            geocoding_worker.queue_geocoding(output_file, itinerary)
+            print(f"[UPLOAD] SUCCESS - Total time: {time.time() - start_time:.1f}s")
+            return {"success": True, "title": itinerary.title, "link": output_file}, 200
+
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        return {"error": str(e)}, 500
+
+
+def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -> tuple[dict, int]:
+    """Import an itinerary from a URL. Returns (result, status_code)."""
+    import tempfile
+    from datetime import time as dt_time
+
+    import geocoding_worker
+    from agents.itinerary.models import Itinerary, ItineraryItem, Location
+    from agents.itinerary.parser import ItineraryParser
+    from agents.itinerary.web_view import ItineraryWebView
+
+    out_dir = output_dir or OUTPUT_DIR
+
+    try:
+        google_flights = parse_google_flights_url(url)
+    except ValueError as e:
+        return {"error": str(e)}, 400
+
+    if google_flights:
+
+        def _parse_time(time_str):
+            if not time_str:
+                return None
+            try:
+                h, m = time_str.split(":")
+                return dt_time(int(h), int(m))
+            except (ValueError, AttributeError):
+                return None
+
+        items = []
+        for flight in google_flights:
+            date_obj = datetime.strptime(flight["date"], "%Y-%m-%d").date()
+            items.append(
+                ItineraryItem(
+                    title=flight["title"],
+                    category=flight["category"],
+                    date=date_obj,
+                    location=Location(name=flight["location"]),
+                    notes=flight["notes"],
+                    start_time=_parse_time(flight.get("time")),
+                    end_time=_parse_time(flight.get("end_time")),
+                )
+            )
+
+        if len(google_flights) >= 2:
+            title = f"Trip to {google_flights[0]['destination']}"
+        elif len(google_flights) == 1:
+            title = f"Flight to {google_flights[0]['destination']}"
+        else:
+            title = "Flight Itinerary"
+
+        dates = [datetime.strptime(f["date"], "%Y-%m-%d").date() for f in google_flights]
+        itinerary = Itinerary(title=title, items=items, start_date=min(dates), end_date=max(dates))
+        slug = slugify(itinerary.title)
+        output_file = f"{slug}.html"
+        web_view = ItineraryWebView()
+        web_view.generate(
+            itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+        )
+
+        itinerary_data = itinerary_to_data(itinerary)
+        start_d, end_d = min(dates), max(dates)
+        trip_data = {
+            "title": itinerary.title,
+            "link": output_file,
+            "dates": format_dates(itinerary),
+            "days": (end_d - start_d).days + 1 if start_d != end_d else 1,
+            "locations": len({f["destination"] for f in google_flights}),
+            "activities": len(google_flights),
+            "map_status": "pending",
+        }
+        db.add_trip(user_id, trip_data, itinerary_data)
+        geocoding_worker.queue_geocoding(output_file, itinerary)
+        return {"success": True, "title": itinerary.title, "link": output_file}, 200
+
+    try:
+        file_data, filename, content_type = download_from_url(url)
+    except Exception as e:
+        return {"error": f"Failed to download from URL: {str(e)}"}, 400
+
+    is_html = "html" in content_type or file_data[:15].lower().startswith((b"<!doctype", b"<html"))
+    is_pdf = file_data[:4] == b"%PDF"
+    is_xlsx = file_data[:4] == b"PK\x03\x04"
+
+    tmp_path = None
+    try:
+        if is_html and not is_pdf and not is_xlsx:
+            html_text = extract_text_from_html(file_data)
+            if len(html_text) < 100:
+                return {
+                    "error": "Could not extract meaningful content from the page. "
+                    "The page might require login or have restricted access."
+                }, 400
+            parser = ItineraryParser()
+            itinerary = parser.parse_text(html_text, source_url=url)
+        else:
+            suffix = Path(filename).suffix.lower()
+            if not suffix or suffix not in (".pdf", ".xlsx", ".xls"):
+                suffix = ".xlsx" if is_xlsx else ".pdf" if is_pdf else None
+            if not suffix:
+                return {
+                    "error": "Could not determine file type. Please use PDF, Excel, or HTML pages."
+                }, 400
+
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp.write(file_data)
+                tmp_path = tmp.name
+
+            parser = ItineraryParser()
+            try:
+                itinerary = parser.parse_file(tmp_path)
+            except Exception as e:
+                return {"error": f"Failed to parse itinerary: {str(e)}"}, 400
+
+        slug = slugify(itinerary.title)
+        output_file = f"{slug}.html"
+        web_view = ItineraryWebView()
+        web_view.generate(
+            itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+        )
+
+        locations = {
+            item.location.name.split(",")[0]
+            for item in itinerary.items
+            if item.location.name and not item.is_home_location
+        }
+        itinerary_data = itinerary_to_data(itinerary)
+        trip_data = {
+            "title": itinerary.title,
+            "link": output_file,
+            "dates": format_dates(itinerary),
+            "days": itinerary.duration_days
+            or len({item.day_number for item in itinerary.items if item.day_number}),
+            "locations": len(locations),
+            "activities": len(itinerary.items),
+            "map_status": "pending",
+        }
+        db.add_trip(user_id, trip_data, itinerary_data)
+        geocoding_worker.queue_geocoding(output_file, itinerary)
+        return {"success": True, "title": itinerary.title, "link": output_file}, 200
+
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        return {"error": str(e)}, 500
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)

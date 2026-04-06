@@ -5,9 +5,9 @@ import json
 import sys
 from pathlib import Path
 
+from .mapper import ItineraryMapper
 from .parser import ItineraryParser
 from .summarizer import ItinerarySummarizer
-from .mapper import ItineraryMapper
 from .web_view import ItineraryWebView
 
 
@@ -135,7 +135,7 @@ Examples:
 
         # Generate map
         if args.map:
-            print(f"\nGenerating map...")
+            print("\nGenerating map...")
             mapper = ItineraryMapper()
             mapper.create_map(
                 itinerary,
@@ -155,7 +155,7 @@ Examples:
 
         # Generate unified web page
         if args.web:
-            print(f"\nGenerating web view...")
+            print("\nGenerating web view...")
             web_view = ItineraryWebView(api_key=args.api_key)
             web_view.generate(
                 itinerary,

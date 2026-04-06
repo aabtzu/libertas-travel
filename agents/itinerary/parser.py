@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date, datetime, time
 from pathlib import Path
-from datetime import date, time, datetime
-from typing import Optional, Union
 
-import pdfplumber
 import openpyxl
+import pdfplumber
 
-from agents.common.llm import make_llm, SONNET
+from agents.common.llm import SONNET, make_llm
 
 from .models import Itinerary, ItineraryItem, Location
 
@@ -19,12 +18,12 @@ from .models import Itinerary, ItineraryItem, Location
 def fix_json_string(json_str: str) -> str:
     """Fix common JSON issues that Claude sometimes produces."""
     # Remove trailing commas before ] or }
-    json_str = re.sub(r',\s*([}\]])', r'\1', json_str)
+    json_str = re.sub(r",\s*([}\]])", r"\1", json_str)
 
     # Fix unescaped newlines inside strings (common issue)
     # This is tricky - we need to find strings and escape newlines within them
     # Simple approach: replace literal newlines that appear to be inside strings
-    lines = json_str.split('\n')
+    lines = json_str.split("\n")
     fixed_lines = []
     in_string = False
     for line in lines:
@@ -33,16 +32,16 @@ def fix_json_string(json_str: str) -> str:
         if in_string:
             # We're continuing a string from previous line - this is the problem
             # Escape it and continue
-            line = '\\n' + line.replace('\n', '\\n').replace('\r', '\\r')
+            line = "\\n" + line.replace("\n", "\\n").replace("\r", "\\r")
         fixed_lines.append(line)
         # Update string state (odd number of quotes toggles state)
         if quote_count % 2 == 1:
             in_string = not in_string
 
-    json_str = '\n'.join(fixed_lines)
+    json_str = "\n".join(fixed_lines)
 
     # Remove control characters except newlines and tabs
-    json_str = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', json_str)
+    json_str = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", json_str)
 
     return json_str
 
@@ -105,7 +104,7 @@ Text to analyze:
 class ItineraryParser:
     """Parse itineraries from various file formats using Claude."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         # api_key param kept for backwards compatibility; fla reads ANTHROPIC_API_KEY from env
         self.llm = make_llm(model=SONNET, max_tokens=8192)
 
@@ -163,6 +162,7 @@ class ItineraryParser:
             print("Trying PyPDF2 as fallback...")
             try:
                 from PyPDF2 import PdfReader
+
                 reader = PdfReader(file_path)
                 for page in reader.pages:
                     try:
@@ -176,7 +176,9 @@ class ItineraryParser:
                 print(f"Warning: PyPDF2 also failed: {e}")
 
         if not text_parts:
-            raise ValueError("Could not extract any text from PDF. The file may be image-based or corrupted.")
+            raise ValueError(
+                "Could not extract any text from PDF. The file may be image-based or corrupted."
+            )
 
         return "\n\n".join(text_parts)
 
@@ -221,12 +223,14 @@ class ItineraryParser:
             data = json.loads(json_str)
         except json.JSONDecodeError as e:
             # Try to show context around the error
-            lines = json_str.split('\n')
+            lines = json_str.split("\n")
             error_line = e.lineno - 1 if e.lineno else 0
             start = max(0, error_line - 2)
             end = min(len(lines), error_line + 3)
-            context = '\n'.join(f"{i+1}: {lines[i]}" for i in range(start, end))
-            raise ValueError(f"Failed to parse Claude's response as JSON: {e}\nContext:\n{context}")
+            context = "\n".join(f"{i + 1}: {lines[i]}" for i in range(start, end))
+            raise ValueError(
+                f"Failed to parse Claude's response as JSON: {e}\nContext:\n{context}"
+            ) from e
 
         return self._build_itinerary(data, source_file)
 
@@ -266,7 +270,7 @@ class ItineraryParser:
             source_file=source_file,
         )
 
-    def _parse_date(self, date_str: Optional[str]) -> Optional[date]:
+    def _parse_date(self, date_str: str | None) -> date | None:
         """Parse a date string to a date object."""
         if not date_str:
             return None
@@ -275,7 +279,7 @@ class ItineraryParser:
         except ValueError:
             return None
 
-    def _parse_time(self, time_str: Optional[str]) -> Optional[time]:
+    def _parse_time(self, time_str: str | None) -> time | None:
         """Parse a time string to a time object."""
         if not time_str:
             return None

@@ -3,6 +3,7 @@
 
 PORT=${PORT:-5555}
 export AUTH_DISABLED=true
+export SECRET_KEY=${SECRET_KEY:-dev-secret-not-for-prod}
 
 # Use venv if present
 PYTHON="python3"
@@ -16,7 +17,7 @@ case "$1" in
     lsof -ti:$PORT | xargs kill 2>/dev/null
     sleep 1
     echo "Starting server on port $PORT..."
-    $PYTHON server.py
+    $PYTHON app.py
     ;;
 
   bg)
@@ -24,7 +25,7 @@ case "$1" in
     lsof -ti:$PORT | xargs kill 2>/dev/null
     sleep 1
     echo "Starting server in background on port $PORT..."
-    $PYTHON server.py > /tmp/libertas.log 2>&1 &
+    $PYTHON app.py > /tmp/libertas.log 2>&1 &
     echo "PID: $!"
     echo "Logs: tail -f /tmp/libertas.log"
     ;;
@@ -32,7 +33,7 @@ case "$1" in
   stop)
     echo "Stopping server..."
     lsof -ti:$PORT | xargs kill 2>/dev/null
-    pkill -f "python3 server.py" 2>/dev/null
+    pkill -f "python3 app.py" 2>/dev/null
     echo "Stopped"
     ;;
 

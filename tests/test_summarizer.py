@@ -1,13 +1,15 @@
 """Tests for ItinerarySummarizer — unit tests run without API."""
 
-import pytest
-from datetime import date, time
+import os
+import sys
+from datetime import date
 
-import sys, os
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.itinerary.summarizer import ItinerarySummarizer
 from agents.itinerary.models import Itinerary, ItineraryItem, Location
+from agents.itinerary.summarizer import ItinerarySummarizer
 
 
 def _make_itinerary(**kwargs):
@@ -23,8 +25,14 @@ def _make_itinerary(**kwargs):
     return Itinerary(**defaults)
 
 
-def _make_item(title="Hotel Hyatt", category="hotel", location_name="Tokyo, Japan",
-               item_date=None, start_time=None, day_number=1):
+def _make_item(
+    title="Hotel Hyatt",
+    category="hotel",
+    location_name="Tokyo, Japan",
+    item_date=None,
+    start_time=None,
+    day_number=1,
+):
     return ItineraryItem(
         title=title,
         location=Location(name=location_name),
@@ -38,6 +46,7 @@ def _make_item(title="Hotel Hyatt", category="hotel", location_name="Tokyo, Japa
 # ---------------------------------------------------------------------------
 # Unit tests — no API calls
 # ---------------------------------------------------------------------------
+
 
 class TestFormatItineraryForPrompt:
     def setup_method(self):
@@ -98,13 +107,16 @@ class TestQuickSummary:
 # Integration tests — require live API
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 def test_summarize_returns_text():
     s = ItinerarySummarizer()
-    itinerary = _make_itinerary(items=[
-        _make_item("Park Hyatt Tokyo", "hotel", "Shinjuku, Tokyo"),
-        _make_item("Senso-ji Temple", "activity", "Asakusa, Tokyo"),
-    ])
+    itinerary = _make_itinerary(
+        items=[
+            _make_item("Park Hyatt Tokyo", "hotel", "Shinjuku, Tokyo"),
+            _make_item("Senso-ji Temple", "activity", "Asakusa, Tokyo"),
+        ]
+    )
     result = s.summarize(itinerary)
     assert isinstance(result, str)
     assert len(result) > 100

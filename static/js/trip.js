@@ -431,8 +431,14 @@ var mapPolling = (function() {
                 if (data.map_status === 'ready') {
                     if (mapBadge) mapBadge.innerHTML = '';
                     if (pollInterval) clearInterval(pollInterval);
-                    if (wasNotReady) {
+                    // Reload if we were waiting, OR if the page was rendered without map data
+                    // (mapData.pending=true means the DB had no map_data when page was served)
+                    var needsReload = wasNotReady || (mapData && mapData.pending);
+                    if (needsReload) {
                         window.location.reload();
+                    } else if (mapLoading) {
+                        // Status is ready and page already has map data — just hide spinner
+                        mapLoading.classList.add('hidden');
                     }
                 } else if (data.map_status === 'error') {
                     if (mapLoading) {

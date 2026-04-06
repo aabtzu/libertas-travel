@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import os
-import json
 import calendar
-from datetime import date, timedelta
-from pathlib import Path
-from typing import Optional, Union
 import html as html_module
+import json
+import os
+from datetime import date
+from pathlib import Path
 
-from .models import Itinerary, ItineraryItem
 from .mapper import ItineraryMapper
+from .models import Itinerary, ItineraryItem
 from .summarizer import ItinerarySummarizer
 from .templates import get_nav_html, get_template
 
@@ -19,7 +18,7 @@ from .templates import get_nav_html, get_template
 class ItineraryWebView:
     """Generate a unified web page with tabs for summary and map using Google Maps."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.environ.get("GOOGLE_MAPS_API_KEY", "")
         self.mapper = ItineraryMapper(api_key=self.api_key)
         self.summarizer = ItinerarySummarizer(api_key=api_key)
@@ -27,7 +26,7 @@ class ItineraryWebView:
     def render_html(
         self,
         itinerary: Itinerary,
-        map_data: Optional[dict] = None,
+        map_data: dict | None = None,
     ) -> str:
         """Render trip HTML without writing to file.
 
@@ -40,12 +39,7 @@ class ItineraryWebView:
         """
         # Use provided map_data or placeholder
         if map_data is None:
-            map_data = {
-                "center": {"lat": 20, "lng": 0},
-                "zoom": 2,
-                "markers": [],
-                "pending": True
-            }
+            map_data = {"center": {"lat": 20, "lng": 0}, "zoom": 2, "markers": [], "pending": True}
 
         # Generate the summary HTML directly from itinerary data
         summary_html = self._build_summary_html(itinerary)
@@ -108,21 +102,22 @@ class ItineraryWebView:
                 "center": {"lat": 20, "lng": 0},
                 "zoom": 2,
                 "markers": [],
-                "error": f"Map for {itinerary.title} - geocoding skipped for speed"
+                "error": f"Map for {itinerary.title} - geocoding skipped for speed",
             }
-            print(f"[WEB_VIEW] Skipped geocoding for speed")
+            print("[WEB_VIEW] Skipped geocoding for speed")
         else:
             try:
                 map_data = self.mapper.create_map_data(itinerary)
             except Exception as e:
                 print(f"Warning: Map generation failed: {e}")
                 import traceback
+
                 traceback.print_exc()
                 map_data = {
                     "center": {"lat": 0, "lng": 0},
                     "zoom": 2,
                     "markers": [],
-                    "error": "Map could not be generated - geocoding failed"
+                    "error": "Map could not be generated - geocoding failed",
                 }
 
         # Render HTML using the new method
@@ -158,7 +153,7 @@ class ItineraryWebView:
             date_str = ""
             if items and items[0].date:
                 date_str = f" - {items[0].date.strftime('%B %d')}"
-            lines.append(f'<h3>Day {day_num}{date_str}</h3>')
+            lines.append(f"<h3>Day {day_num}{date_str}</h3>")
 
             for item in items:
                 time_str = ""
@@ -177,17 +172,25 @@ class ItineraryWebView:
 
                 # Build data attributes for popup
                 title = item.title or "Untitled"
-                location = (item.location.name if item.location and item.location.name else "") or ""
-                website = html_module.escape(item.website_url) if item.website_url else ''
-                notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+                location = (
+                    item.location.name if item.location and item.location.name else ""
+                ) or ""
+                website = html_module.escape(item.website_url) if item.website_url else ""
+                notes = (
+                    html_module.escape(item.notes or item.description or "")[:200]
+                    if (item.notes or item.description)
+                    else ""
+                )
 
-                lines.append(f'<div class="activity" '
-                            f'data-title="{html_module.escape(title)}" '
-                            f'data-time="{time_str}" '
-                            f'data-location="{html_module.escape(location)}" '
-                            f'data-category="{category}" '
-                            f'data-website="{website}" '
-                            f'data-notes="{notes}">')
+                lines.append(
+                    f'<div class="activity" '
+                    f'data-title="{html_module.escape(title)}" '
+                    f'data-time="{time_str}" '
+                    f'data-location="{html_module.escape(location)}" '
+                    f'data-category="{category}" '
+                    f'data-website="{website}" '
+                    f'data-notes="{notes}">'
+                )
                 lines.append(f'<span class="activity-category {category}">{category_icon}</span>')
                 if time_str:
                     lines.append(f'<span class="activity-time">{time_str}</span>')
@@ -196,16 +199,18 @@ class ItineraryWebView:
 
                 lines.append('<div class="activity-info">')
                 lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
-                lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
-                lines.append('</div>')
-                lines.append('</div>')
+                lines.append(
+                    f'<span class="activity-location">{html_module.escape(location)}</span>'
+                )
+                lines.append("</div>")
+                lines.append("</div>")
 
-            lines.append('</div>')
+            lines.append("</div>")
 
         # Render items without days
         if items_without_day:
             lines.append('<div class="day-card">')
-            lines.append('<h3>Other Activities</h3>')
+            lines.append("<h3>Other Activities</h3>")
             for item in items_without_day:
                 time_str = ""
                 if item.start_time:
@@ -223,17 +228,25 @@ class ItineraryWebView:
 
                 # Build data attributes for popup
                 title = item.title or "Untitled"
-                location = (item.location.name if item.location and item.location.name else "") or ""
-                website = html_module.escape(item.website_url) if item.website_url else ''
-                notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+                location = (
+                    item.location.name if item.location and item.location.name else ""
+                ) or ""
+                website = html_module.escape(item.website_url) if item.website_url else ""
+                notes = (
+                    html_module.escape(item.notes or item.description or "")[:200]
+                    if (item.notes or item.description)
+                    else ""
+                )
 
-                lines.append(f'<div class="activity" '
-                            f'data-title="{html_module.escape(title)}" '
-                            f'data-time="{time_str}" '
-                            f'data-location="{html_module.escape(location)}" '
-                            f'data-category="{category}" '
-                            f'data-website="{website}" '
-                            f'data-notes="{notes}">')
+                lines.append(
+                    f'<div class="activity" '
+                    f'data-title="{html_module.escape(title)}" '
+                    f'data-time="{time_str}" '
+                    f'data-location="{html_module.escape(location)}" '
+                    f'data-category="{category}" '
+                    f'data-website="{website}" '
+                    f'data-notes="{notes}">'
+                )
                 lines.append(f'<span class="activity-category {category}">{category_icon}</span>')
                 if time_str:
                     lines.append(f'<span class="activity-time">{time_str}</span>')
@@ -242,22 +255,24 @@ class ItineraryWebView:
 
                 lines.append('<div class="activity-info">')
                 lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
-                lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
-                lines.append('</div>')
-                lines.append('</div>')
-            lines.append('</div>')
+                lines.append(
+                    f'<span class="activity-location">{html_module.escape(location)}</span>'
+                )
+                lines.append("</div>")
+                lines.append("</div>")
+            lines.append("</div>")
 
         # Key locations section
         locations = itinerary.locations
         if locations:
             lines.append('<div class="locations-section">')
-            lines.append('<h3>Key Locations</h3>')
+            lines.append("<h3>Key Locations</h3>")
             lines.append('<div class="location-list">')
             for loc in locations:
                 loc_name = loc.name or "Unknown"
                 lines.append(f'<span class="location-tag">{html_module.escape(loc_name)}</span>')
-            lines.append('</div>')
-            lines.append('</div>')
+            lines.append("</div>")
+            lines.append("</div>")
 
         return "\n".join(lines)
 
@@ -300,14 +315,14 @@ class ItineraryWebView:
         lines = [
             '<div class="column-table-wrapper">',
             '<table class="column-table">',
-            '<thead><tr>',
-            '<th>Day</th>',
-            '<th>Travel</th>',
-            '<th>Activity</th>',
-            '<th>Night Stay</th>',
-            '<th>Notes</th>',
-            '</tr></thead>',
-            '<tbody>'
+            "<thead><tr>",
+            "<th>Day</th>",
+            "<th>Travel</th>",
+            "<th>Activity</th>",
+            "<th>Night Stay</th>",
+            "<th>Notes</th>",
+            "</tr></thead>",
+            "<tbody>",
         ]
 
         # Group items by day
@@ -367,7 +382,7 @@ class ItineraryWebView:
                 # Only carry forward if:
                 # - Not the last day of the trip
                 # - No flight on this day (implies flying home)
-                is_last_day = (day_num == last_day)
+                is_last_day = day_num == last_day
                 if not is_last_day and not has_flight:
                     current_night_stay = last_night_stay
                     current_night_stay_item = last_night_stay_item
@@ -378,7 +393,7 @@ class ItineraryWebView:
             if items and items[0].date:
                 date_str = items[0].date.strftime("%b %d")
 
-            lines.append('<tr>')
+            lines.append("<tr>")
 
             # Day column
             day_label = f"Day {day_num}"
@@ -387,52 +402,62 @@ class ItineraryWebView:
             lines.append(f'<td style="font-weight:600;white-space:nowrap;">{day_label}</td>')
 
             # Travel column
-            lines.append('<td>')
+            lines.append("<td>")
             for item in travel_items:
                 lines.append(self._format_column_item(item))
-            lines.append('</td>')
+            lines.append("</td>")
 
             # Activity column (includes meals)
-            lines.append('<td>')
+            lines.append("<td>")
             for item in activity_items:
                 lines.append(self._format_column_item(item))
-            lines.append('</td>')
+            lines.append("</td>")
 
             # Night Stay column
-            lines.append('<td>')
+            lines.append("<td>")
             if current_night_stay and current_night_stay_item:
                 carried_class = " night-stay-carried" if is_carried else ""
                 # Build data attributes for popup
                 item = current_night_stay_item
                 title = html_module.escape(item.title or current_night_stay)
-                time_str = ''
+                time_str = ""
                 if item.start_time:
-                    time_str = item.start_time.strftime('%I:%M %p').lstrip('0')
-                loc_name = html_module.escape(item.location.name) if item.location and item.location.name else ''
-                website = html_module.escape(item.website_url) if item.website_url else ''
-                notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+                    time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
+                loc_name = (
+                    html_module.escape(item.location.name)
+                    if item.location and item.location.name
+                    else ""
+                )
+                website = html_module.escape(item.website_url) if item.website_url else ""
+                notes = (
+                    html_module.escape(item.notes or item.description or "")[:200]
+                    if (item.notes or item.description)
+                    else ""
+                )
 
-                lines.append(f'<div class="night-stay{carried_class}" '
-                            f'data-title="{title}" '
-                            f'data-time="{time_str}" '
-                            f'data-location="{loc_name}" '
-                            f'data-category="hotel" '
-                            f'data-website="{website}" '
-                            f'data-notes="{notes}">')
+                lines.append(
+                    f'<div class="night-stay{carried_class}" '
+                    f'data-title="{title}" '
+                    f'data-time="{time_str}" '
+                    f'data-location="{loc_name}" '
+                    f'data-category="hotel" '
+                    f'data-website="{website}" '
+                    f'data-notes="{notes}">'
+                )
                 lines.append(f'<i class="fas fa-bed"></i>{html_module.escape(current_night_stay)}')
-                lines.append('</div>')
-            lines.append('</td>')
+                lines.append("</div>")
+            lines.append("</td>")
 
             # Notes column
-            lines.append('<td>')
+            lines.append("<td>")
             for item in notes_items:
                 lines.append(self._format_column_item(item))
-            lines.append('</td>')
+            lines.append("</td>")
 
-            lines.append('</tr>')
+            lines.append("</tr>")
 
-        lines.append('</tbody></table>')
-        lines.append('</div>')  # Close column-table-wrapper
+        lines.append("</tbody></table>")
+        lines.append("</div>")  # Close column-table-wrapper
         return "\n".join(lines)
 
     def _format_column_item(self, item: ItineraryItem) -> str:
@@ -441,25 +466,31 @@ class ItineraryWebView:
         icon = self._get_category_icon(category)
 
         # Build data attributes for detail popup
-        full_title = html_module.escape(item.title or 'Activity')
-        time_str = ''
+        full_title = html_module.escape(item.title or "Activity")
+        time_str = ""
         if item.start_time:
-            time_str = item.start_time.strftime('%I:%M %p').lstrip('0')
+            time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
             if item.end_time:
-                time_str += f' - {item.end_time.strftime("%I:%M %p").lstrip("0")}'
-        loc_name = ''
+                time_str += f" - {item.end_time.strftime('%I:%M %p').lstrip('0')}"
+        loc_name = ""
         if item.location and item.location.name:
             loc_name = html_module.escape(item.location.name)
-        website = html_module.escape(item.website_url) if item.website_url else ''
-        notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+        website = html_module.escape(item.website_url) if item.website_url else ""
+        notes = (
+            html_module.escape(item.notes or item.description or "")[:200]
+            if (item.notes or item.description)
+            else ""
+        )
 
-        parts = [f'<div class="column-item {category}" '
-                 f'data-title="{full_title}" '
-                 f'data-time="{time_str}" '
-                 f'data-location="{loc_name}" '
-                 f'data-category="{category}" '
-                 f'data-website="{website}" '
-                 f'data-notes="{notes}">']
+        parts = [
+            f'<div class="column-item {category}" '
+            f'data-title="{full_title}" '
+            f'data-time="{time_str}" '
+            f'data-location="{loc_name}" '
+            f'data-category="{category}" '
+            f'data-website="{website}" '
+            f'data-notes="{notes}">'
+        ]
 
         # Build display text - combine title and location smartly
         title = item.title or "Untitled"
@@ -473,7 +504,7 @@ class ItineraryWebView:
         if location_name:
             loc_lower = location_name.lower()
             # Extract just the city (first part before comma)
-            city = location_name.split(',')[0].strip()
+            city = location_name.split(",")[0].strip()
             city_lower = city.lower()
 
             # Only show location if it adds info not in the title
@@ -484,14 +515,16 @@ class ItineraryWebView:
             elif title_lower in city_lower or city_lower in title_lower:
                 # Title and location are basically the same thing
                 # Just show title with city context if different
-                loc_parts = location_name.split(',')
+                loc_parts = location_name.split(",")
                 if len(loc_parts) > 1:
                     # Add just the region/country for context
                     short_location = loc_parts[1].strip()
                     show_location = True
 
         # Display title with icon
-        parts.append(f'<div class="column-item-title"><i class="fas {icon} column-item-icon"></i> {html_module.escape(title)}</div>')
+        parts.append(
+            f'<div class="column-item-title"><i class="fas {icon} column-item-icon"></i> {html_module.escape(title)}</div>'
+        )
 
         # Display time if available
         if item.start_time:
@@ -503,25 +536,29 @@ class ItineraryWebView:
                     time_display = f"{time_display} → {end_time_str}"
                 else:
                     time_display = f"{time_display} - {end_time_str}"
-            parts.append(f'<div class="column-item-time"><i class="fas fa-clock"></i> {time_display}</div>')
+            parts.append(
+                f'<div class="column-item-time"><i class="fas fa-clock"></i> {time_display}</div>'
+            )
 
         # Display location only if it adds value
         if show_location and short_location:
-            parts.append(f'<div class="column-item-location"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</div>')
+            parts.append(
+                f'<div class="column-item-location"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</div>'
+            )
 
-        parts.append('</div>')
+        parts.append("</div>")
         return "\n".join(parts)
 
     def _build_calendar_html(self, itinerary: Itinerary) -> str:
         """Build a calendar view HTML showing trip days with activities."""
         if not itinerary.start_date or not itinerary.end_date:
-            return '''
+            return """
             <div class="calendar-empty">
                 <i class="fas fa-calendar-times"></i>
                 <h3>No dates available</h3>
                 <p>This itinerary doesn't have date information for a calendar view.</p>
             </div>
-            '''
+            """
 
         # Group items by date
         items_by_date = itinerary.items_by_date()
@@ -537,13 +574,11 @@ class ItineraryWebView:
         end_month = date(end_date.year, end_date.month, 1)
 
         while current_month <= end_month:
-            lines.append(self._build_month_calendar(
-                current_month.year,
-                current_month.month,
-                start_date,
-                end_date,
-                items_by_date
-            ))
+            lines.append(
+                self._build_month_calendar(
+                    current_month.year, current_month.month, start_date, end_date, items_by_date
+                )
+            )
 
             # Move to next month
             if current_month.month == 12:
@@ -551,7 +586,7 @@ class ItineraryWebView:
             else:
                 current_month = date(current_month.year, current_month.month + 1, 1)
 
-        lines.append('</div>')
+        lines.append("</div>")
         return "\n".join(lines)
 
     def _build_month_calendar(
@@ -560,14 +595,14 @@ class ItineraryWebView:
         month: int,
         trip_start: date,
         trip_end: date,
-        items_by_date: dict[date, list[ItineraryItem]]
+        items_by_date: dict[date, list[ItineraryItem]],
     ) -> str:
         """Build a single month calendar grid."""
         month_name = calendar.month_name[month]
         cal = calendar.Calendar(firstweekday=6)  # Start on Sunday
 
         lines = [
-            f'<div class="calendar-month">',
+            '<div class="calendar-month">',
             f'<h3 class="calendar-month-title">{month_name} {year}</h3>',
             '<div class="calendar-grid">',
             '<div class="calendar-header">',
@@ -578,8 +613,8 @@ class ItineraryWebView:
             '<div class="calendar-day-name">Thu</div>',
             '<div class="calendar-day-name">Fri</div>',
             '<div class="calendar-day-name">Sat</div>',
-            '</div>',
-            '<div class="calendar-body">'
+            "</div>",
+            '<div class="calendar-body">',
         ]
 
         for week in cal.monthdatescalendar(year, month):
@@ -590,15 +625,15 @@ class ItineraryWebView:
                 items = items_by_date.get(day_date, [])
 
                 # Determine CSS classes
-                classes = ['calendar-day']
+                classes = ["calendar-day"]
                 if not is_current_month:
-                    classes.append('other-month')
+                    classes.append("other-month")
                 if is_trip_day:
-                    classes.append('trip-day')
+                    classes.append("trip-day")
                 if day_date == trip_start:
-                    classes.append('trip-start')
+                    classes.append("trip-start")
                 if day_date == trip_end:
-                    classes.append('trip-end')
+                    classes.append("trip-end")
 
                 lines.append(f'<div class="{" ".join(classes)}">')
                 lines.append(f'<div class="calendar-day-number">{day_date.day}</div>')
@@ -606,26 +641,32 @@ class ItineraryWebView:
                 if is_trip_day and items:
                     lines.append('<div class="calendar-day-items">')
                     for item in items[:3]:  # Show max 3 items
-                        category = (item.category or 'other').lower()
-                        title = item.title or 'Activity'
+                        category = (item.category or "other").lower()
+                        title = item.title or "Activity"
                         full_title = html_module.escape(title)
                         # Truncate long titles for display
                         display_title = title
                         if len(display_title) > 25:
-                            display_title = display_title[:22] + '...'
+                            display_title = display_title[:22] + "..."
                         # Build tooltip data
-                        time_str = ''
+                        time_str = ""
                         if item.start_time:
-                            time_str = item.start_time.strftime('%I:%M %p').lstrip('0')
+                            time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
                             if item.end_time:
-                                time_str += f' - {item.end_time.strftime("%I:%M %p").lstrip("0")}'
+                                time_str += f" - {item.end_time.strftime('%I:%M %p').lstrip('0')}"
                         loc = item.location
                         if loc:
-                            location = html_module.escape(str(loc.name) if hasattr(loc, 'name') else str(loc))
+                            location = html_module.escape(
+                                str(loc.name) if hasattr(loc, "name") else str(loc)
+                            )
                         else:
-                            location = ''
-                        website = html_module.escape(item.website_url) if item.website_url else ''
-                        notes = html_module.escape(item.notes or item.description or '')[:200] if (item.notes or item.description) else ''
+                            location = ""
+                        website = html_module.escape(item.website_url) if item.website_url else ""
+                        notes = (
+                            html_module.escape(item.notes or item.description or "")[:200]
+                            if (item.notes or item.description)
+                            else ""
+                        )
                         lines.append(
                             f'<div class="calendar-item {category}" '
                             f'data-title="{full_title}" '
@@ -634,41 +675,47 @@ class ItineraryWebView:
                             f'data-category="{category}" '
                             f'data-website="{website}" '
                             f'data-notes="{notes}">'
-                            f'{html_module.escape(display_title)}</div>'
+                            f"{html_module.escape(display_title)}</div>"
                         )
                     if len(items) > 3:
                         # Build JSON data for hidden items
                         hidden_items = []
                         for item in items[3:]:
-                            hi_category = (item.category or 'other').lower()
-                            hi_title = item.title or 'Activity'
-                            hi_time = ''
+                            hi_category = (item.category or "other").lower()
+                            hi_title = item.title or "Activity"
+                            hi_time = ""
                             if item.start_time:
-                                hi_time = item.start_time.strftime('%I:%M %p').lstrip('0')
+                                hi_time = item.start_time.strftime("%I:%M %p").lstrip("0")
                                 if item.end_time:
-                                    hi_time += f' - {item.end_time.strftime("%I:%M %p").lstrip("0")}'
+                                    hi_time += (
+                                        f" - {item.end_time.strftime('%I:%M %p').lstrip('0')}"
+                                    )
                             hi_loc = item.location
-                            hi_location = ''
+                            hi_location = ""
                             if hi_loc:
-                                hi_location = str(hi_loc.name) if hasattr(hi_loc, 'name') else str(hi_loc)
-                            hidden_items.append({
-                                'title': hi_title,
-                                'time': hi_time,
-                                'location': hi_location,
-                                'category': hi_category,
-                                'website': item.website_url or '',
-                                'notes': (item.notes or item.description or '')[:200]
-                            })
+                                hi_location = (
+                                    str(hi_loc.name) if hasattr(hi_loc, "name") else str(hi_loc)
+                                )
+                            hidden_items.append(
+                                {
+                                    "title": hi_title,
+                                    "time": hi_time,
+                                    "location": hi_location,
+                                    "category": hi_category,
+                                    "website": item.website_url or "",
+                                    "notes": (item.notes or item.description or "")[:200],
+                                }
+                            )
                         hidden_json = html_module.escape(json.dumps(hidden_items))
                         lines.append(
                             f'<div class="calendar-item-more" data-hidden-items="{hidden_json}">+{len(items) - 3} more</div>'
                         )
-                    lines.append('</div>')
+                    lines.append("</div>")
 
-                lines.append('</div>')
-            lines.append('</div>')
+                lines.append("</div>")
+            lines.append("</div>")
 
-        lines.append('</div>')  # calendar-body
-        lines.append('</div>')  # calendar-grid
-        lines.append('</div>')  # calendar-month
+        lines.append("</div>")  # calendar-body
+        lines.append("</div>")  # calendar-grid
+        lines.append("</div>")  # calendar-month
         return "\n".join(lines)

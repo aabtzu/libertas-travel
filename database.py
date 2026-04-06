@@ -1,19 +1,20 @@
 """PostgreSQL database module for multi-user support."""
 
-import os
 import json
-import bcrypt
-from datetime import datetime
-from typing import Optional, List, Dict, Any
-from contextlib import contextmanager
+import os
 
 # Always import sqlite3 for local dev fallback
 import sqlite3
+from contextlib import contextmanager
+from typing import Any
+
+import bcrypt
 
 # Try to import psycopg2 for production
 try:
     import psycopg2
     import psycopg2.extras
+
     HAS_POSTGRES = True
 except ImportError:
     HAS_POSTGRES = False
@@ -138,13 +139,13 @@ def init_db():
             # Add is_public column if it doesn't exist (for existing databases)
             try:
                 cursor.execute("ALTER TABLE trips ADD COLUMN is_public INTEGER DEFAULT 0")
-            except:
+            except Exception:
                 pass  # Column already exists
 
             # Add is_draft column if it doesn't exist
             try:
                 cursor.execute("ALTER TABLE trips ADD COLUMN is_draft INTEGER DEFAULT 0")
-            except:
+            except Exception:
                 pass  # Column already exists
 
             cursor.execute("""
@@ -226,17 +227,18 @@ def init_db():
 
 # ============ User Functions ============
 
+
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
     """Verify a password against its hash."""
-    return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+    return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
 
-def create_user(username: str, email: str, password: str) -> Optional[int]:
+def create_user(username: str, email: str, password: str) -> int | None:
     """Create a new user. Returns user ID or None if failed."""
     password_hash = hash_password(password)
 
@@ -246,13 +248,13 @@ def create_user(username: str, email: str, password: str) -> Optional[int]:
             if USE_POSTGRES:
                 cursor.execute(
                     "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING id",
-                    (username, email, password_hash)
+                    (username, email, password_hash),
                 )
                 return cursor.fetchone()[0]
             else:
                 cursor.execute(
                     "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-                    (username, email, password_hash)
+                    (username, email, password_hash),
                 )
                 return cursor.lastrowid
         except Exception as e:
@@ -260,14 +262,20 @@ def create_user(username: str, email: str, password: str) -> Optional[int]:
             return None
 
 
-def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
+def get_user_by_username(username: str) -> dict[str, Any] | None:
     """Get user by username."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("SELECT id, username, email, password_hash FROM users WHERE username = %s", (username,))
+            cursor.execute(
+                "SELECT id, username, email, password_hash FROM users WHERE username = %s",
+                (username,),
+            )
         else:
-            cursor.execute("SELECT id, username, email, password_hash FROM users WHERE username = ?", (username,))
+            cursor.execute(
+                "SELECT id, username, email, password_hash FROM users WHERE username = ?",
+                (username,),
+            )
 
         row = cursor.fetchone()
         if row:
@@ -278,7 +286,7 @@ def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     """Get user by ID."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -296,7 +304,7 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
         return None
 
 
-def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
+def authenticate_user(username: str, password: str) -> dict[str, Any] | None:
     """Authenticate user and return user dict if successful."""
     user = get_user_by_username(username)
     if user and verify_password(password, user["password_hash"]):
@@ -329,26 +337,48 @@ def email_exists(email: str) -> bool:
 
 # ============ Trip Functions ============
 
-def get_user_trips(user_id: int) -> List[Dict[str, Any]]:
+
+def get_user_trips(user_id: int) -> list[dict[str, Any]]:
     """Get all trips for a user."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
                 FROM trips WHERE user_id = %s ORDER BY created_at DESC
-            """, (user_id,))
-            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'is_public', 'is_draft', 'itinerary_data']
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            """,
+                (user_id,),
+            )
+            columns = [
+                "id",
+                "title",
+                "link",
+                "dates",
+                "days",
+                "locations",
+                "activities",
+                "map_status",
+                "map_error",
+                "is_public",
+                "is_draft",
+                "itinerary_data",
+            ]
+            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
                 FROM trips WHERE user_id = ? ORDER BY created_at DESC
-            """, (user_id,))
+            """,
+                (user_id,),
+            )
             return [dict(row) for row in cursor.fetchall()]
 
 
-def add_trip(user_id: int, trip_data: Dict[str, Any], itinerary_data: Optional[Dict] = None) -> Optional[int]:
+def add_trip(
+    user_id: int, trip_data: dict[str, Any], itinerary_data: dict | None = None
+) -> int | None:
     """Add a trip for a user. Returns trip ID or None if failed."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -356,7 +386,8 @@ def add_trip(user_id: int, trip_data: Dict[str, Any], itinerary_data: Optional[D
             itinerary_json = json.dumps(itinerary_data) if itinerary_data else None
 
             if USE_POSTGRES:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (user_id, link) DO UPDATE SET
@@ -368,99 +399,130 @@ def add_trip(user_id: int, trip_data: Dict[str, Any], itinerary_data: Optional[D
                         map_status = EXCLUDED.map_status,
                         itinerary_data = EXCLUDED.itinerary_data
                     RETURNING id
-                """, (
-                    user_id,
-                    trip_data.get("title"),
-                    trip_data.get("link"),
-                    trip_data.get("dates"),
-                    trip_data.get("days"),
-                    trip_data.get("locations"),
-                    trip_data.get("activities"),
-                    trip_data.get("map_status", "pending"),
-                    itinerary_json
-                ))
+                """,
+                    (
+                        user_id,
+                        trip_data.get("title"),
+                        trip_data.get("link"),
+                        trip_data.get("dates"),
+                        trip_data.get("days"),
+                        trip_data.get("locations"),
+                        trip_data.get("activities"),
+                        trip_data.get("map_status", "pending"),
+                        itinerary_json,
+                    ),
+                )
                 return cursor.fetchone()[0]
             else:
                 # SQLite doesn't have ON CONFLICT ... DO UPDATE in older versions
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT OR REPLACE INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    user_id,
-                    trip_data.get("title"),
-                    trip_data.get("link"),
-                    trip_data.get("dates"),
-                    trip_data.get("days"),
-                    trip_data.get("locations"),
-                    trip_data.get("activities"),
-                    trip_data.get("map_status", "pending"),
-                    itinerary_json
-                ))
+                """,
+                    (
+                        user_id,
+                        trip_data.get("title"),
+                        trip_data.get("link"),
+                        trip_data.get("dates"),
+                        trip_data.get("days"),
+                        trip_data.get("locations"),
+                        trip_data.get("activities"),
+                        trip_data.get("map_status", "pending"),
+                        itinerary_json,
+                    ),
+                )
                 return cursor.lastrowid
         except Exception as e:
             print(f"[DB] Error adding trip: {e}")
             return None
 
 
-def get_trip_by_link(user_id: int, link: str) -> Optional[Dict[str, Any]]:
+def get_trip_by_link(user_id: int, link: str) -> dict[str, Any] | None:
     """Get a specific trip by link for a user."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
                 FROM trips WHERE user_id = %s AND link = %s
-            """, (user_id, link))
+            """,
+                (user_id, link),
+            )
             row = cursor.fetchone()
             if row:
-                columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'itinerary_data', 'is_draft']
-                trip = dict(zip(columns, row))
-                if trip['itinerary_data']:
-                    trip['itinerary_data'] = trip['itinerary_data']  # Already parsed by psycopg2 for JSONB
+                columns = [
+                    "id",
+                    "title",
+                    "link",
+                    "dates",
+                    "days",
+                    "locations",
+                    "activities",
+                    "map_status",
+                    "map_error",
+                    "itinerary_data",
+                    "is_draft",
+                ]
+                trip = dict(zip(columns, row, strict=False))
+                if trip["itinerary_data"]:
+                    trip["itinerary_data"] = trip[
+                        "itinerary_data"
+                    ]  # Already parsed by psycopg2 for JSONB
                     # Extract start_date and end_date from itinerary_data for convenience
-                    trip['start_date'] = trip['itinerary_data'].get('start_date')
-                    trip['end_date'] = trip['itinerary_data'].get('end_date')
+                    trip["start_date"] = trip["itinerary_data"].get("start_date")
+                    trip["end_date"] = trip["itinerary_data"].get("end_date")
                 else:
-                    trip['start_date'] = None
-                    trip['end_date'] = None
+                    trip["start_date"] = None
+                    trip["end_date"] = None
                 return trip
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
                 FROM trips WHERE user_id = ? AND link = ?
-            """, (user_id, link))
+            """,
+                (user_id, link),
+            )
             row = cursor.fetchone()
             if row:
                 trip = dict(row)
-                if trip['itinerary_data']:
-                    trip['itinerary_data'] = json.loads(trip['itinerary_data'])
+                if trip["itinerary_data"]:
+                    trip["itinerary_data"] = json.loads(trip["itinerary_data"])
                     # Extract start_date and end_date from itinerary_data for convenience
-                    trip['start_date'] = trip['itinerary_data'].get('start_date')
-                    trip['end_date'] = trip['itinerary_data'].get('end_date')
+                    trip["start_date"] = trip["itinerary_data"].get("start_date")
+                    trip["end_date"] = trip["itinerary_data"].get("end_date")
                 else:
-                    trip['start_date'] = None
-                    trip['end_date'] = None
+                    trip["start_date"] = None
+                    trip["end_date"] = None
                 return trip
         return None
 
 
-def update_trip_map_status(user_id: int, link: str, status: str, error: Optional[str] = None):
+def update_trip_map_status(user_id: int, link: str, status: str, error: str | None = None):
     """Update the map status for a trip."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE trips SET map_status = %s, map_error = %s
                 WHERE user_id = %s AND link = %s
-            """, (status, error, user_id, link))
+            """,
+                (status, error, user_id, link),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE trips SET map_status = ?, map_error = ?
                 WHERE user_id = ? AND link = ?
-            """, (status, error, user_id, link))
+            """,
+                (status, error, user_id, link),
+            )
 
 
-def get_pending_geocoding_trips() -> List[Dict[str, Any]]:
+def get_pending_geocoding_trips() -> list[dict[str, Any]]:
     """Get all trips with pending or processing map status that need geocoding.
 
     Used on startup to recover stale geocoding tasks after server restart.
@@ -475,7 +537,7 @@ def get_pending_geocoding_trips() -> List[Dict[str, Any]]:
                 AND itinerary_data IS NOT NULL
             """)
             rows = cursor.fetchall()
-            return [{'link': row[0], 'itinerary_data': row[1], 'title': row[2]} for row in rows]
+            return [{"link": row[0], "itinerary_data": row[1], "title": row[2]} for row in rows]
         else:
             cursor.execute("""
                 SELECT link, itinerary_data, title
@@ -486,19 +548,27 @@ def get_pending_geocoding_trips() -> List[Dict[str, Any]]:
             rows = cursor.fetchall()
             result = []
             for row in rows:
-                itinerary_data = json.loads(row['itinerary_data']) if row['itinerary_data'] else None
+                itinerary_data = (
+                    json.loads(row["itinerary_data"]) if row["itinerary_data"] else None
+                )
                 if itinerary_data:
-                    result.append({'link': row['link'], 'itinerary_data': itinerary_data, 'title': row['title']})
+                    result.append(
+                        {
+                            "link": row["link"],
+                            "itinerary_data": itinerary_data,
+                            "title": row["title"],
+                        }
+                    )
             return result
 
 
-def update_trip(user_id: int, link: str, updates: Dict[str, Any]) -> bool:
+def update_trip(user_id: int, link: str, updates: dict[str, Any]) -> bool:
     """Update a trip's fields (title, dates, days, locations, activities)."""
     if not updates:
         return False
 
     # Build the SET clause dynamically
-    allowed_fields = ['title', 'dates', 'days', 'locations', 'activities']
+    allowed_fields = ["title", "dates", "days", "locations", "activities"]
     set_parts = []
     values = []
 
@@ -537,7 +607,7 @@ def delete_trip(user_id: int, link: str) -> bool:
         return cursor.rowcount > 0
 
 
-def get_trip_owner(link: str) -> Optional[int]:
+def get_trip_owner(link: str) -> int | None:
     """Get the user_id of a trip owner by link (for any user)."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -551,7 +621,8 @@ def get_trip_owner(link: str) -> Optional[int]:
 
 # ============ User List Functions ============
 
-def get_all_users() -> List[Dict[str, Any]]:
+
+def get_all_users() -> list[dict[str, Any]]:
     """Get list of all users (id and username only, for sharing)."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -564,7 +635,8 @@ def get_all_users() -> List[Dict[str, Any]]:
 
 # ============ Trip Sharing Functions ============
 
-def copy_trip_to_user(source_user_id: int, link: str, target_user_id: int) -> Optional[int]:
+
+def copy_trip_to_user(source_user_id: int, link: str, target_user_id: int) -> int | None:
     """Copy a trip from one user to another. Returns new trip ID or None if failed."""
     # Get the source trip
     source_trip = get_trip_by_link(source_user_id, link)
@@ -599,37 +671,47 @@ def share_trip_with_all(source_user_id: int, link: str) -> int:
 
 # ============ Public Trips Functions ============
 
+
 def set_trip_public(user_id: int, link: str, is_public: bool) -> bool:
     """Set a trip's public visibility."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE trips SET is_public = %s
                 WHERE user_id = %s AND link = %s
-            """, (is_public, user_id, link))
+            """,
+                (is_public, user_id, link),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE trips SET is_public = ?
                 WHERE user_id = ? AND link = ?
-            """, (is_public, user_id, link))
+            """,
+                (is_public, user_id, link),
+            )
         return cursor.rowcount > 0
 
 
-def get_public_trips(exclude_user_id: Optional[int] = None) -> List[Dict[str, Any]]:
+def get_public_trips(exclude_user_id: int | None = None) -> list[dict[str, Any]]:
     """Get all public trips, optionally excluding a specific user's trips."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
             if exclude_user_id:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
                            t.map_status, t.map_error, u.username as owner_username, t.itinerary_data
                     FROM trips t
                     JOIN users u ON t.user_id = u.id
                     WHERE t.is_public = TRUE AND t.user_id != %s
                     ORDER BY t.created_at DESC
-                """, (exclude_user_id,))
+                """,
+                    (exclude_user_id,),
+                )
             else:
                 cursor.execute("""
                     SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
@@ -639,18 +721,33 @@ def get_public_trips(exclude_user_id: Optional[int] = None) -> List[Dict[str, An
                     WHERE t.is_public = TRUE
                     ORDER BY t.created_at DESC
                 """)
-            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'owner_username', 'itinerary_data']
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            columns = [
+                "id",
+                "title",
+                "link",
+                "dates",
+                "days",
+                "locations",
+                "activities",
+                "map_status",
+                "map_error",
+                "owner_username",
+                "itinerary_data",
+            ]
+            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
             if exclude_user_id:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
                            t.map_status, t.map_error, u.username as owner_username, t.itinerary_data
                     FROM trips t
                     JOIN users u ON t.user_id = u.id
                     WHERE t.is_public = 1 AND t.user_id != ?
                     ORDER BY t.created_at DESC
-                """, (exclude_user_id,))
+                """,
+                    (exclude_user_id,),
+                )
             else:
                 cursor.execute("""
                     SELECT t.id, t.title, t.link, t.dates, t.days, t.locations, t.activities,
@@ -665,15 +762,21 @@ def get_public_trips(exclude_user_id: Optional[int] = None) -> List[Dict[str, An
 
 # ============ Draft Trip Functions ============
 
-def create_draft_trip(user_id: int, title: str, start_date: Optional[str] = None,
-                      end_date: Optional[str] = None, num_days: Optional[int] = None) -> Optional[Dict[str, Any]]:
+
+def create_draft_trip(
+    user_id: int,
+    title: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    num_days: int | None = None,
+) -> dict[str, Any] | None:
     """Create a new draft trip. Returns the trip data with link or None if failed."""
     import re
 
     # Generate link from title
     slug = title.lower()
-    slug = re.sub(r'[^a-z0-9]+', '_', slug)
-    slug = re.sub(r'_+', '_', slug).strip('_')
+    slug = re.sub(r"[^a-z0-9]+", "_", slug)
+    slug = re.sub(r"_+", "_", slug).strip("_")
     base_link = f"{slug}.html"
 
     # Check for existing trips with this link and find a unique one
@@ -683,9 +786,13 @@ def create_draft_trip(user_id: int, title: str, start_date: Optional[str] = None
         counter = 1
         while True:
             if USE_POSTGRES:
-                cursor.execute("SELECT COUNT(*) FROM trips WHERE user_id = %s AND link = %s", (user_id, link))
+                cursor.execute(
+                    "SELECT COUNT(*) FROM trips WHERE user_id = %s AND link = %s", (user_id, link)
+                )
             else:
-                cursor.execute("SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?", (user_id, link))
+                cursor.execute(
+                    "SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?", (user_id, link)
+                )
             count = cursor.fetchone()[0]
             if count == 0:
                 break
@@ -702,29 +809,20 @@ def create_draft_trip(user_id: int, title: str, start_date: Optional[str] = None
     # Calculate days if dates provided
     if not num_days and start_date and end_date:
         from datetime import datetime
+
         try:
             start = datetime.strptime(start_date, "%Y-%m-%d")
             end = datetime.strptime(end_date, "%Y-%m-%d")
             num_days = (end - start).days + 1
-        except:
+        except ValueError:
             pass
-
-    trip_data = {
-        "title": title,
-        "link": link,
-        "dates": dates,
-        "days": num_days,
-        "locations": 0,
-        "activities": 0,
-        "map_status": "pending",
-    }
 
     itinerary_data = {
         "title": title,
         "items": [],
         "start_date": start_date,
         "end_date": end_date,
-        "travelers": []
+        "travelers": [],
     }
 
     with get_db() as conn:
@@ -733,21 +831,23 @@ def create_draft_trip(user_id: int, title: str, start_date: Optional[str] = None
             itinerary_json = json.dumps(itinerary_data)
 
             if USE_POSTGRES:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
                     RETURNING id
-                """, (
-                    user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json
-                ))
+                """,
+                    (user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json),
+                )
                 trip_id = cursor.fetchone()[0]
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                """, (
-                    user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json
-                ))
+                """,
+                    (user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json),
+                )
                 trip_id = cursor.lastrowid
 
             return {
@@ -759,33 +859,50 @@ def create_draft_trip(user_id: int, title: str, start_date: Optional[str] = None
                 "start_date": start_date,
                 "end_date": end_date,
                 "is_draft": True,
-                "itinerary_data": itinerary_data
+                "itinerary_data": itinerary_data,
             }
         except Exception as e:
             print(f"[DB] Error creating draft trip: {e}")
             return None
 
 
-def get_draft_trips(user_id: int) -> List[Dict[str, Any]]:
+def get_draft_trips(user_id: int) -> list[dict[str, Any]]:
     """Get all draft trips for a user."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
                 FROM trips WHERE user_id = %s AND is_draft = TRUE ORDER BY created_at DESC
-            """, (user_id,))
-            columns = ['id', 'title', 'link', 'dates', 'days', 'locations', 'activities', 'map_status', 'map_error', 'is_public']
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            """,
+                (user_id,),
+            )
+            columns = [
+                "id",
+                "title",
+                "link",
+                "dates",
+                "days",
+                "locations",
+                "activities",
+                "map_status",
+                "map_error",
+                "is_public",
+            ]
+            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public
                 FROM trips WHERE user_id = ? AND is_draft = 1 ORDER BY created_at DESC
-            """, (user_id,))
+            """,
+                (user_id,),
+            )
             return [dict(row) for row in cursor.fetchall()]
 
 
-def update_trip_itinerary_data(user_id: int, link: str, itinerary_data: Dict) -> bool:
+def update_trip_itinerary_data(user_id: int, link: str, itinerary_data: dict) -> bool:
     """Update a trip's itinerary_data (for auto-save)."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -793,24 +910,32 @@ def update_trip_itinerary_data(user_id: int, link: str, itinerary_data: Dict) ->
             itinerary_json = json.dumps(itinerary_data)
 
             # Also update counts from itinerary_data
-            items = itinerary_data.get('items', [])
-            locations = len(set(
-                item.get('location', {}).get('name')
-                for item in items
-                if item.get('location') and item.get('location', {}).get('name')
-            ))
+            items = itinerary_data.get("items", [])
+            locations = len(
+                set(
+                    item.get("location", {}).get("name")
+                    for item in items
+                    if item.get("location") and item.get("location", {}).get("name")
+                )
+            )
             activities = len(items)
 
             if USE_POSTGRES:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE trips SET itinerary_data = %s, locations = %s, activities = %s
                     WHERE user_id = %s AND link = %s
-                """, (itinerary_json, locations, activities, user_id, link))
+                """,
+                    (itinerary_json, locations, activities, user_id, link),
+                )
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE trips SET itinerary_data = ?, locations = ?, activities = ?
                     WHERE user_id = ? AND link = ?
-                """, (itinerary_json, locations, activities, user_id, link))
+                """,
+                    (itinerary_json, locations, activities, user_id, link),
+                )
             return cursor.rowcount > 0
         except Exception as e:
             print(f"[DB] Error updating trip itinerary: {e}")
@@ -822,33 +947,43 @@ def publish_draft(user_id: int, link: str) -> bool:
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE trips SET is_draft = FALSE
                 WHERE user_id = %s AND link = %s
-            """, (user_id, link))
+            """,
+                (user_id, link),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE trips SET is_draft = 0
                 WHERE user_id = ? AND link = ?
-            """, (user_id, link))
+            """,
+                (user_id, link),
+            )
         return cursor.rowcount > 0
 
 
-def add_item_to_trip(user_id: int, link: str, item: Dict) -> bool:
+def add_item_to_trip(user_id: int, link: str, item: dict) -> bool:
     """Add an item to a trip's itinerary_data."""
     trip = get_trip_by_link(user_id, link)
     if not trip:
         return False
 
-    itinerary_data = trip.get('itinerary_data') or {"title": trip["title"], "items": [], "travelers": []}
-    if 'items' not in itinerary_data:
-        itinerary_data['items'] = []
+    itinerary_data = trip.get("itinerary_data") or {
+        "title": trip["title"],
+        "items": [],
+        "travelers": [],
+    }
+    if "items" not in itinerary_data:
+        itinerary_data["items"] = []
 
-    itinerary_data['items'].append(item)
+    itinerary_data["items"].append(item)
     return update_trip_itinerary_data(user_id, link, itinerary_data)
 
 
-def copy_trip_by_link(link: str, target_user_id: int) -> Optional[Dict[str, Any]]:
+def copy_trip_by_link(link: str, target_user_id: int) -> dict[str, Any] | None:
     """Copy any trip by link to a target user with a unique link.
 
     Returns dict with new_link and trip_id, or None if failed.
@@ -859,37 +994,54 @@ def copy_trip_by_link(link: str, target_user_id: int) -> Optional[Dict[str, Any]
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, user_id, title, link, dates, days, locations, activities,
                        map_status, map_error, itinerary_data
                 FROM trips WHERE link = %s
-            """, (link,))
+            """,
+                (link,),
+            )
             row = cursor.fetchone()
             if not row:
                 return None
-            columns = ['id', 'user_id', 'title', 'link', 'dates', 'days', 'locations',
-                      'activities', 'map_status', 'map_error', 'itinerary_data']
-            source_trip = dict(zip(columns, row))
+            columns = [
+                "id",
+                "user_id",
+                "title",
+                "link",
+                "dates",
+                "days",
+                "locations",
+                "activities",
+                "map_status",
+                "map_error",
+                "itinerary_data",
+            ]
+            source_trip = dict(zip(columns, row, strict=False))
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, user_id, title, link, dates, days, locations, activities,
                        map_status, map_error, itinerary_data
                 FROM trips WHERE link = ?
-            """, (link,))
+            """,
+                (link,),
+            )
             row = cursor.fetchone()
             if not row:
                 return None
             source_trip = dict(row)
 
     # If target user owns this trip, they can edit directly (no copy needed)
-    if source_trip.get('user_id') == target_user_id:
-        return {"new_link": link, "trip_id": source_trip['id'], "was_copied": False}
+    if source_trip.get("user_id") == target_user_id:
+        return {"new_link": link, "trip_id": source_trip["id"], "was_copied": False}
 
     # Generate a unique link for the target user
     title = source_trip.get("title", "trip")
     slug = title.lower()
-    slug = re.sub(r'[^a-z0-9]+', '_', slug)
-    slug = re.sub(r'_+', '_', slug).strip('_')
+    slug = re.sub(r"[^a-z0-9]+", "_", slug)
+    slug = re.sub(r"_+", "_", slug).strip("_")
     base_link = f"{slug}.html"
 
     new_link = base_link
@@ -898,11 +1050,15 @@ def copy_trip_by_link(link: str, target_user_id: int) -> Optional[Dict[str, Any]
         counter = 1
         while True:
             if USE_POSTGRES:
-                cursor.execute("SELECT COUNT(*) FROM trips WHERE user_id = %s AND link = %s",
-                             (target_user_id, new_link))
+                cursor.execute(
+                    "SELECT COUNT(*) FROM trips WHERE user_id = %s AND link = %s",
+                    (target_user_id, new_link),
+                )
             else:
-                cursor.execute("SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?",
-                             (target_user_id, new_link))
+                cursor.execute(
+                    "SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?",
+                    (target_user_id, new_link),
+                )
             count = cursor.fetchone()[0]
             if count == 0:
                 break
@@ -910,12 +1066,13 @@ def copy_trip_by_link(link: str, target_user_id: int) -> Optional[Dict[str, Any]
             new_link = f"{slug}_{counter}.html"
 
     # Parse itinerary_data if it's a string
-    itinerary_data = source_trip.get('itinerary_data')
+    itinerary_data = source_trip.get("itinerary_data")
     if isinstance(itinerary_data, str):
         import json
+
         try:
             itinerary_data = json.loads(itinerary_data)
-        except:
+        except (json.JSONDecodeError, ValueError):
             itinerary_data = None
 
     # Create trip data for target user
@@ -938,67 +1095,74 @@ def copy_trip_by_link(link: str, target_user_id: int) -> Optional[Dict[str, Any]
 
 # ============ Venue Functions ============
 
-def add_venue(venue_data: Dict[str, Any], created_by: Optional[int] = None) -> Optional[int]:
+
+def add_venue(venue_data: dict[str, Any], created_by: int | None = None) -> int | None:
     """Add a venue to the database. Returns venue ID or None if failed."""
     with get_db() as conn:
         cursor = conn.cursor()
         try:
             if USE_POSTGRES:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO venues (name, venue_type, city, state, country, address,
                                        latitude, longitude, website, google_maps_link,
                                        notes, description, cuisine_type, michelin_stars,
                                        chef, collection, source, created_by)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
-                """, (
-                    venue_data.get("name"),
-                    venue_data.get("venue_type"),
-                    venue_data.get("city"),
-                    venue_data.get("state"),
-                    venue_data.get("country"),
-                    venue_data.get("address"),
-                    venue_data.get("latitude"),
-                    venue_data.get("longitude"),
-                    venue_data.get("website"),
-                    venue_data.get("google_maps_link"),
-                    venue_data.get("notes"),
-                    venue_data.get("description"),
-                    venue_data.get("cuisine_type"),
-                    venue_data.get("michelin_stars", 0),
-                    venue_data.get("chef"),
-                    venue_data.get("collection"),
-                    venue_data.get("source", "curated"),
-                    created_by
-                ))
+                """,
+                    (
+                        venue_data.get("name"),
+                        venue_data.get("venue_type"),
+                        venue_data.get("city"),
+                        venue_data.get("state"),
+                        venue_data.get("country"),
+                        venue_data.get("address"),
+                        venue_data.get("latitude"),
+                        venue_data.get("longitude"),
+                        venue_data.get("website"),
+                        venue_data.get("google_maps_link"),
+                        venue_data.get("notes"),
+                        venue_data.get("description"),
+                        venue_data.get("cuisine_type"),
+                        venue_data.get("michelin_stars", 0),
+                        venue_data.get("chef"),
+                        venue_data.get("collection"),
+                        venue_data.get("source", "curated"),
+                        created_by,
+                    ),
+                )
                 return cursor.fetchone()[0]
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO venues (name, venue_type, city, state, country, address,
                                        latitude, longitude, website, google_maps_link,
                                        notes, description, cuisine_type, michelin_stars,
                                        chef, collection, source, created_by)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    venue_data.get("name"),
-                    venue_data.get("venue_type"),
-                    venue_data.get("city"),
-                    venue_data.get("state"),
-                    venue_data.get("country"),
-                    venue_data.get("address"),
-                    venue_data.get("latitude"),
-                    venue_data.get("longitude"),
-                    venue_data.get("website"),
-                    venue_data.get("google_maps_link"),
-                    venue_data.get("notes"),
-                    venue_data.get("description"),
-                    venue_data.get("cuisine_type"),
-                    venue_data.get("michelin_stars", 0),
-                    venue_data.get("chef"),
-                    venue_data.get("collection"),
-                    venue_data.get("source", "curated"),
-                    created_by
-                ))
+                """,
+                    (
+                        venue_data.get("name"),
+                        venue_data.get("venue_type"),
+                        venue_data.get("city"),
+                        venue_data.get("state"),
+                        venue_data.get("country"),
+                        venue_data.get("address"),
+                        venue_data.get("latitude"),
+                        venue_data.get("longitude"),
+                        venue_data.get("website"),
+                        venue_data.get("google_maps_link"),
+                        venue_data.get("notes"),
+                        venue_data.get("description"),
+                        venue_data.get("cuisine_type"),
+                        venue_data.get("michelin_stars", 0),
+                        venue_data.get("chef"),
+                        venue_data.get("collection"),
+                        venue_data.get("source", "curated"),
+                        created_by,
+                    ),
+                )
                 return cursor.lastrowid
         except Exception as e:
             print(f"[DB] Error adding venue: {e}")
@@ -1013,12 +1177,12 @@ def update_venue_coordinates(venue_id: int, latitude: float, longitude: float) -
             if USE_POSTGRES:
                 cursor.execute(
                     "UPDATE venues SET latitude = %s, longitude = %s WHERE id = %s",
-                    (latitude, longitude, venue_id)
+                    (latitude, longitude, venue_id),
                 )
             else:
                 cursor.execute(
                     "UPDATE venues SET latitude = ?, longitude = ? WHERE id = ?",
-                    (latitude, longitude, venue_id)
+                    (latitude, longitude, venue_id),
                 )
             conn.commit()
             return cursor.rowcount > 0
@@ -1027,7 +1191,7 @@ def update_venue_coordinates(venue_id: int, latitude: float, longitude: float) -
             return False
 
 
-def get_all_venues(filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+def get_all_venues(filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Get all venues, optionally filtered by city, country, venue_type, etc."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -1037,16 +1201,26 @@ def get_all_venues(filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, A
 
         if filters:
             if filters.get("city"):
-                where_clauses.append("LOWER(city) = LOWER(%s)" if USE_POSTGRES else "LOWER(city) = LOWER(?)")
+                where_clauses.append(
+                    "LOWER(city) = LOWER(%s)" if USE_POSTGRES else "LOWER(city) = LOWER(?)"
+                )
                 params.append(filters["city"])
             if filters.get("country"):
-                where_clauses.append("LOWER(country) = LOWER(%s)" if USE_POSTGRES else "LOWER(country) = LOWER(?)")
+                where_clauses.append(
+                    "LOWER(country) = LOWER(%s)" if USE_POSTGRES else "LOWER(country) = LOWER(?)"
+                )
                 params.append(filters["country"])
             if filters.get("state"):
-                where_clauses.append("LOWER(state) = LOWER(%s)" if USE_POSTGRES else "LOWER(state) = LOWER(?)")
+                where_clauses.append(
+                    "LOWER(state) = LOWER(%s)" if USE_POSTGRES else "LOWER(state) = LOWER(?)"
+                )
                 params.append(filters["state"])
             if filters.get("venue_type"):
-                where_clauses.append("LOWER(venue_type) = LOWER(%s)" if USE_POSTGRES else "LOWER(venue_type) = LOWER(?)")
+                where_clauses.append(
+                    "LOWER(venue_type) = LOWER(%s)"
+                    if USE_POSTGRES
+                    else "LOWER(venue_type) = LOWER(?)"
+                )
                 params.append(filters["venue_type"])
             if filters.get("source"):
                 where_clauses.append("source = %s" if USE_POSTGRES else "source = ?")
@@ -1066,25 +1240,44 @@ def get_all_venues(filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, A
 
         cursor.execute(query, params)
 
-        columns = ['id', 'name', 'venue_type', 'city', 'state', 'country', 'address',
-                   'latitude', 'longitude', 'website', 'google_maps_link', 'notes',
-                   'description', 'cuisine_type', 'michelin_stars', 'chef', 'collection',
-                   'source', 'created_by', 'created_at']
+        columns = [
+            "id",
+            "name",
+            "venue_type",
+            "city",
+            "state",
+            "country",
+            "address",
+            "latitude",
+            "longitude",
+            "website",
+            "google_maps_link",
+            "notes",
+            "description",
+            "cuisine_type",
+            "michelin_stars",
+            "chef",
+            "collection",
+            "source",
+            "created_by",
+            "created_at",
+        ]
 
         if USE_POSTGRES:
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
             return [dict(row) for row in cursor.fetchall()]
 
 
-def search_venues(query: str, limit: int = 50) -> List[Dict[str, Any]]:
+def search_venues(query: str, limit: int = 50) -> list[dict[str, Any]]:
     """Search venues by name, city, or description."""
     with get_db() as conn:
         cursor = conn.cursor()
         search_pattern = f"%{query}%"
 
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, name, venue_type, city, state, country, address,
                        latitude, longitude, website, google_maps_link, notes,
                        description, cuisine_type, michelin_stars, chef, collection,
@@ -1096,14 +1289,35 @@ def search_venues(query: str, limit: int = 50) -> List[Dict[str, Any]]:
                    OR LOWER(notes) LIKE LOWER(%s)
                 ORDER BY name
                 LIMIT %s
-            """, (search_pattern, search_pattern, search_pattern, search_pattern, limit))
-            columns = ['id', 'name', 'venue_type', 'city', 'state', 'country', 'address',
-                       'latitude', 'longitude', 'website', 'google_maps_link', 'notes',
-                       'description', 'cuisine_type', 'michelin_stars', 'chef', 'collection',
-                       'source', 'created_by', 'created_at']
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            """,
+                (search_pattern, search_pattern, search_pattern, search_pattern, limit),
+            )
+            columns = [
+                "id",
+                "name",
+                "venue_type",
+                "city",
+                "state",
+                "country",
+                "address",
+                "latitude",
+                "longitude",
+                "website",
+                "google_maps_link",
+                "notes",
+                "description",
+                "cuisine_type",
+                "michelin_stars",
+                "chef",
+                "collection",
+                "source",
+                "created_by",
+                "created_at",
+            ]
+            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, name, venue_type, city, state, country, address,
                        latitude, longitude, website, google_maps_link, notes,
                        description, cuisine_type, michelin_stars, chef, collection,
@@ -1115,20 +1329,22 @@ def search_venues(query: str, limit: int = 50) -> List[Dict[str, Any]]:
                    OR LOWER(notes) LIKE LOWER(?)
                 ORDER BY name
                 LIMIT ?
-            """, (search_pattern, search_pattern, search_pattern, search_pattern, limit))
+            """,
+                (search_pattern, search_pattern, search_pattern, search_pattern, limit),
+            )
             return [dict(row) for row in cursor.fetchall()]
 
 
 def flexible_venue_search(
-    cities: Optional[List[str]] = None,
-    states: Optional[List[str]] = None,
-    countries: Optional[List[str]] = None,
-    venue_types: Optional[List[str]] = None,
-    cuisine_types: Optional[List[str]] = None,
-    keywords: Optional[List[str]] = None,
+    cities: list[str] | None = None,
+    states: list[str] | None = None,
+    countries: list[str] | None = None,
+    venue_types: list[str] | None = None,
+    cuisine_types: list[str] | None = None,
+    keywords: list[str] | None = None,
     michelin_only: bool = False,
-    limit: int = 30
-) -> List[Dict[str, Any]]:
+    limit: int = 30,
+) -> list[dict[str, Any]]:
     """
     Flexible venue search with multiple optional filters.
     All filters are combined with AND logic.
@@ -1185,7 +1401,9 @@ def flexible_venue_search(
         if keywords:
             keyword_conditions = []
             for kw in keywords:
-                keyword_conditions.append(f"(LOWER(name) LIKE LOWER({placeholder}) OR LOWER(notes) LIKE LOWER({placeholder}) OR LOWER(description) LIKE LOWER({placeholder}))")
+                keyword_conditions.append(
+                    f"(LOWER(name) LIKE LOWER({placeholder}) OR LOWER(notes) LIKE LOWER({placeholder}) OR LOWER(description) LIKE LOWER({placeholder}))"
+                )
                 params.extend([f"%{kw}%", f"%{kw}%", f"%{kw}%"])
             conditions.append(f"({' OR '.join(keyword_conditions)})")
 
@@ -1213,55 +1431,98 @@ def flexible_venue_search(
         cursor.execute(query, params)
 
         if USE_POSTGRES:
-            columns = ['id', 'name', 'venue_type', 'city', 'state', 'country', 'address',
-                       'latitude', 'longitude', 'website', 'google_maps_link', 'notes',
-                       'description', 'cuisine_type', 'michelin_stars', 'chef', 'collection',
-                       'source', 'created_by', 'created_at']
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            columns = [
+                "id",
+                "name",
+                "venue_type",
+                "city",
+                "state",
+                "country",
+                "address",
+                "latitude",
+                "longitude",
+                "website",
+                "google_maps_link",
+                "notes",
+                "description",
+                "cuisine_type",
+                "michelin_stars",
+                "chef",
+                "collection",
+                "source",
+                "created_by",
+                "created_at",
+            ]
+            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
             return [dict(row) for row in cursor.fetchall()]
 
 
-def get_venue_by_id(venue_id: int) -> Optional[Dict[str, Any]]:
+def get_venue_by_id(venue_id: int) -> dict[str, Any] | None:
     """Get a specific venue by ID."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, name, venue_type, city, state, country, address,
                        latitude, longitude, website, google_maps_link, notes,
                        description, cuisine_type, michelin_stars, chef, collection,
                        source, created_by, created_at
                 FROM venues WHERE id = %s
-            """, (venue_id,))
+            """,
+                (venue_id,),
+            )
             row = cursor.fetchone()
             if row:
-                columns = ['id', 'name', 'venue_type', 'city', 'state', 'country', 'address',
-                           'latitude', 'longitude', 'website', 'google_maps_link', 'notes',
-                           'description', 'cuisine_type', 'michelin_stars', 'chef', 'collection',
-                           'source', 'created_by', 'created_at']
-                return dict(zip(columns, row))
+                columns = [
+                    "id",
+                    "name",
+                    "venue_type",
+                    "city",
+                    "state",
+                    "country",
+                    "address",
+                    "latitude",
+                    "longitude",
+                    "website",
+                    "google_maps_link",
+                    "notes",
+                    "description",
+                    "cuisine_type",
+                    "michelin_stars",
+                    "chef",
+                    "collection",
+                    "source",
+                    "created_by",
+                    "created_at",
+                ]
+                return dict(zip(columns, row, strict=False))
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, name, venue_type, city, state, country, address,
                        latitude, longitude, website, google_maps_link, notes,
                        description, cuisine_type, michelin_stars, chef, collection,
                        source, created_by, created_at
                 FROM venues WHERE id = ?
-            """, (venue_id,))
+            """,
+                (venue_id,),
+            )
             row = cursor.fetchone()
             if row:
                 return dict(row)
         return None
 
 
-def find_venue_by_name_and_city(name: str, city: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def find_venue_by_name_and_city(name: str, city: str | None = None) -> dict[str, Any] | None:
     """Find a venue by exact name match (case-insensitive), optionally in a specific city."""
     with get_db() as conn:
         cursor = conn.cursor()
         if city:
             if USE_POSTGRES:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT id, name, venue_type, city, state, country, address,
                            latitude, longitude, website, google_maps_link, notes,
                            description, cuisine_type, michelin_stars, chef, collection,
@@ -1269,9 +1530,12 @@ def find_venue_by_name_and_city(name: str, city: Optional[str] = None) -> Option
                     FROM venues
                     WHERE LOWER(name) = LOWER(%s) AND LOWER(city) = LOWER(%s)
                     LIMIT 1
-                """, (name, city))
+                """,
+                    (name, city),
+                )
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT id, name, venue_type, city, state, country, address,
                            latitude, longitude, website, google_maps_link, notes,
                            description, cuisine_type, michelin_stars, chef, collection,
@@ -1279,10 +1543,13 @@ def find_venue_by_name_and_city(name: str, city: Optional[str] = None) -> Option
                     FROM venues
                     WHERE LOWER(name) = LOWER(?) AND LOWER(city) = LOWER(?)
                     LIMIT 1
-                """, (name, city))
+                """,
+                    (name, city),
+                )
         else:
             if USE_POSTGRES:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT id, name, venue_type, city, state, country, address,
                            latitude, longitude, website, google_maps_link, notes,
                            description, cuisine_type, michelin_stars, chef, collection,
@@ -1290,9 +1557,12 @@ def find_venue_by_name_and_city(name: str, city: Optional[str] = None) -> Option
                     FROM venues
                     WHERE LOWER(name) = LOWER(%s)
                     LIMIT 1
-                """, (name,))
+                """,
+                    (name,),
+                )
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT id, name, venue_type, city, state, country, address,
                            latitude, longitude, website, google_maps_link, notes,
                            description, cuisine_type, michelin_stars, chef, collection,
@@ -1300,16 +1570,36 @@ def find_venue_by_name_and_city(name: str, city: Optional[str] = None) -> Option
                     FROM venues
                     WHERE LOWER(name) = LOWER(?)
                     LIMIT 1
-                """, (name,))
+                """,
+                    (name,),
+                )
 
         row = cursor.fetchone()
         if row:
-            columns = ['id', 'name', 'venue_type', 'city', 'state', 'country', 'address',
-                       'latitude', 'longitude', 'website', 'google_maps_link', 'notes',
-                       'description', 'cuisine_type', 'michelin_stars', 'chef', 'collection',
-                       'source', 'created_by', 'created_at']
+            columns = [
+                "id",
+                "name",
+                "venue_type",
+                "city",
+                "state",
+                "country",
+                "address",
+                "latitude",
+                "longitude",
+                "website",
+                "google_maps_link",
+                "notes",
+                "description",
+                "cuisine_type",
+                "michelin_stars",
+                "chef",
+                "collection",
+                "source",
+                "created_by",
+                "created_at",
+            ]
             if USE_POSTGRES:
-                return dict(zip(columns, row))
+                return dict(zip(columns, row, strict=False))
             else:
                 return dict(row)
         return None
@@ -1323,7 +1613,7 @@ def get_venue_count() -> int:
         return cursor.fetchone()[0]
 
 
-def get_venue_stats() -> Dict[str, Any]:
+def get_venue_stats() -> dict[str, Any]:
     """Get statistics about venues (counts by city, country, type, etc.)."""
     with get_db() as conn:
         cursor = conn.cursor()
@@ -1378,7 +1668,7 @@ def get_venue_stats() -> Dict[str, Any]:
             "by_country": countries,
             "by_city": cities,
             "by_type": venue_types,
-            "by_state": states
+            "by_state": states,
         }
 
 
@@ -1388,31 +1678,33 @@ def import_venues_from_csv(csv_path: str, source: str = "curated") -> int:
 
     # Read all rows first
     rows = []
-    with open(csv_path, 'r', encoding='utf-8') as f:
+    with open(csv_path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             name = row.get("name", "").strip()
             if not name:
                 continue
-            rows.append((
-                name,
-                row.get("venue_type", "").strip() or None,
-                row.get("city", "").strip() or None,
-                row.get("state", "").strip() or None,
-                row.get("country", "").strip() or None,
-                row.get("address", "").strip() or None,
-                float(row["latitude"]) if row.get("latitude") else None,
-                float(row["longitude"]) if row.get("longitude") else None,
-                row.get("website", "").strip() or None,
-                row.get("google_maps_link", "").strip() or None,
-                row.get("notes", "").strip() or None,
-                row.get("description", "").strip() or None,
-                row.get("cuisine_type", "").strip() or None,
-                int(row["michelin_stars"]) if row.get("michelin_stars") else 0,
-                row.get("chef", "").strip() or None,
-                row.get("collection", "").strip() or None,
-                source
-            ))
+            rows.append(
+                (
+                    name,
+                    row.get("venue_type", "").strip() or None,
+                    row.get("city", "").strip() or None,
+                    row.get("state", "").strip() or None,
+                    row.get("country", "").strip() or None,
+                    row.get("address", "").strip() or None,
+                    float(row["latitude"]) if row.get("latitude") else None,
+                    float(row["longitude"]) if row.get("longitude") else None,
+                    row.get("website", "").strip() or None,
+                    row.get("google_maps_link", "").strip() or None,
+                    row.get("notes", "").strip() or None,
+                    row.get("description", "").strip() or None,
+                    row.get("cuisine_type", "").strip() or None,
+                    int(row["michelin_stars"]) if row.get("michelin_stars") else 0,
+                    row.get("chef", "").strip() or None,
+                    row.get("collection", "").strip() or None,
+                    source,
+                )
+            )
 
     if not rows:
         return 0
@@ -1422,21 +1714,27 @@ def import_venues_from_csv(csv_path: str, source: str = "curated") -> int:
         cursor = conn.cursor()
         try:
             if USE_POSTGRES:
-                cursor.executemany("""
+                cursor.executemany(
+                    """
                     INSERT INTO venues (name, venue_type, city, state, country, address,
                                        latitude, longitude, website, google_maps_link,
                                        notes, description, cuisine_type, michelin_stars,
                                        chef, collection, source)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, rows)
+                """,
+                    rows,
+                )
             else:
-                cursor.executemany("""
+                cursor.executemany(
+                    """
                     INSERT INTO venues (name, venue_type, city, state, country, address,
                                        latitude, longitude, website, google_maps_link,
                                        notes, description, cuisine_type, michelin_stars,
                                        chef, collection, source)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, rows)
+                """,
+                    rows,
+                )
             conn.commit()
             count = len(rows)
             print(f"[DB] Batch imported {count} venues from {csv_path}")

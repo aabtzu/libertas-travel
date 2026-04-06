@@ -1,6 +1,8 @@
 """Tests for create/handler.py pure helper functions — no API calls needed."""
 
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.create.handler import (
@@ -9,10 +11,10 @@ from agents.create.handler import (
     _parse_suggested_items,
 )
 
-
 # ---------------------------------------------------------------------------
 # _cross_reference_curated
 # ---------------------------------------------------------------------------
+
 
 class TestCrossReferenceCurated:
     VENUES = [
@@ -46,6 +48,7 @@ class TestCrossReferenceCurated:
 # _clean_response_text
 # ---------------------------------------------------------------------------
 
+
 class TestCleanResponseText:
     def test_removes_json_add_items_block(self):
         text = 'Here are some great spots!\n```json\n{"add_items": [{"title": "Nobu"}]}\n```'
@@ -66,6 +69,7 @@ class TestCleanResponseText:
 # ---------------------------------------------------------------------------
 # _parse_suggested_items
 # ---------------------------------------------------------------------------
+
 
 class TestParseSuggestedItems:
     def test_numbered_bold_items(self):

@@ -1,10 +1,8 @@
 """Generate text summaries of itineraries using Claude."""
 
-from typing import Optional
+from agents.common.llm import SONNET, make_llm
 
-from agents.common.llm import make_llm, SONNET
 from .models import Itinerary
-
 
 SUMMARY_PROMPT = """You are a helpful travel assistant. Create a clear, well-organized text summary of this travel itinerary.
 
@@ -23,7 +21,7 @@ Itinerary data:
 class ItinerarySummarizer:
     """Generate text summaries of itineraries."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         # api_key param kept for backwards compatibility; fla reads ANTHROPIC_API_KEY from env
         self.llm = make_llm(model=SONNET, max_tokens=2048)
 

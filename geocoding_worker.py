@@ -1,11 +1,9 @@
 """Background geocoding worker for async map generation."""
 
-import json
 import threading
 import time
 from pathlib import Path
 from queue import Queue
-from typing import Optional
 
 import database as db
 
@@ -17,6 +15,7 @@ _worker_thread = None
 def get_output_dir():
     """Get the output directory from environment."""
     import os
+
     return Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent / "output"))
 
 
@@ -38,10 +37,8 @@ def regenerate_map_for_trip(link, itinerary_data):
         link: The trip HTML filename (e.g., 'my_trip.html')
         itinerary_data: Serialized itinerary data dict
     """
-    from agents.itinerary.models import Itinerary, ItineraryItem, Location
-    from agents.itinerary.web_view import ItineraryWebView
+
     from agents.itinerary.mapper import ItineraryMapper
-    from datetime import datetime, date, time as dt_time
 
     try:
         print(f"[GEOCODING] Starting geocoding for {link}")
@@ -62,22 +59,25 @@ def regenerate_map_for_trip(link, itinerary_data):
                 "center": {"lat": 0, "lng": 0},
                 "zoom": 2,
                 "markers": [],
-                "error": f"Map could not be generated: {str(e)}"
+                "error": f"Map could not be generated: {str(e)}",
             }
 
         # Store map_data in database
         _store_map_data_in_db(link, map_data)
 
         # Log marker coordinates for debugging
-        for marker in map_data.get('markers', []):
-            pos = marker.get('position', {})
-            print(f"[GEOCODING] Marker '{marker.get('title')}': lat={pos.get('lat')}, lng={pos.get('lng')}")
+        for marker in map_data.get("markers", []):
+            pos = marker.get("position", {})
+            print(
+                f"[GEOCODING] Marker '{marker.get('title')}': lat={pos.get('lat')}, lng={pos.get('lng')}"
+            )
 
         update_trip_map_status(link, "ready")
         print(f"[GEOCODING] Completed geocoding for {link}")
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         update_trip_map_status(link, "error", str(e))
         print(f"[GEOCODING] Failed for {link}: {e}")
@@ -85,7 +85,6 @@ def regenerate_map_for_trip(link, itinerary_data):
 
 def _store_map_data_in_db(link: str, map_data: dict):
     """Store map_data in the trip's itinerary_data JSON."""
-    import json
 
     user_id = db.get_trip_owner(link)
     if not user_id:
@@ -97,8 +96,8 @@ def _store_map_data_in_db(link: str, map_data: dict):
         print(f"[GEOCODING] Cannot store map_data - trip not found {link}")
         return
 
-    itinerary_data = trip.get('itinerary_data') or {}
-    itinerary_data['map_data'] = map_data
+    itinerary_data = trip.get("itinerary_data") or {}
+    itinerary_data["map_data"] = map_data
 
     db.update_trip_itinerary_data(user_id, link, itinerary_data)
     print(f"[GEOCODING] Stored map_data for {link}")
@@ -106,38 +105,41 @@ def _store_map_data_in_db(link: str, map_data: dict):
 
 def serialize_itinerary(itinerary):
     """Serialize an Itinerary object to a dict for queue storage."""
+
     def serialize_date(d):
         if d is None:
             return None
-        if hasattr(d, 'isoformat'):
+        if hasattr(d, "isoformat"):
             return d.isoformat()
         return str(d)
 
     def serialize_time(t):
         if t is None:
             return None
-        if hasattr(t, 'isoformat'):
+        if hasattr(t, "isoformat"):
             return t.isoformat()
         return str(t)
 
     items = []
     for item in itinerary.items:
-        items.append({
-            "title": item.title,
-            "description": item.description,
-            "category": item.category,
-            "day_number": item.day_number,
-            "date": serialize_date(item.date),
-            "start_time": serialize_time(item.start_time),
-            "end_time": serialize_time(item.end_time),
-            "location_name": item.location.name if item.location else None,
-            "location_address": item.location.address if item.location else None,
-            "location_lat": item.location.latitude if item.location else None,
-            "location_lon": item.location.longitude if item.location else None,
-            "confirmation_number": item.confirmation_number,
-            "notes": item.notes,
-            "is_home_location": item.is_home_location,
-        })
+        items.append(
+            {
+                "title": item.title,
+                "description": item.description,
+                "category": item.category,
+                "day_number": item.day_number,
+                "date": serialize_date(item.date),
+                "start_time": serialize_time(item.start_time),
+                "end_time": serialize_time(item.end_time),
+                "location_name": item.location.name if item.location else None,
+                "location_address": item.location.address if item.location else None,
+                "location_lat": item.location.latitude if item.location else None,
+                "location_lon": item.location.longitude if item.location else None,
+                "confirmation_number": item.confirmation_number,
+                "notes": item.notes,
+                "is_home_location": item.is_home_location,
+            }
+        )
 
     return {
         "title": itinerary.title,
@@ -151,15 +153,17 @@ def serialize_itinerary(itinerary):
 
 def deserialize_itinerary(data):
     """Deserialize an Itinerary from a dict."""
+    from datetime import datetime
+    from datetime import time as dt_time
+
     from agents.itinerary.models import Itinerary, ItineraryItem, Location
-    from datetime import datetime, date, time as dt_time
 
     def parse_date(s):
         if s is None:
             return None
         try:
             return datetime.fromisoformat(s).date()
-        except:
+        except (ValueError, TypeError):
             return None
 
     def parse_time(s):
@@ -167,10 +171,10 @@ def deserialize_itinerary(data):
             return None
         try:
             return datetime.fromisoformat(s).time()
-        except:
+        except (ValueError, TypeError):
             try:
                 return dt_time.fromisoformat(s)
-            except:
+            except (ValueError, TypeError):
                 return None
 
     items = []
@@ -209,6 +213,7 @@ def deserialize_itinerary(data):
 def queue_geocoding(link, itinerary):
     """Add a trip to the geocoding queue."""
     import sys
+
     itinerary_data = serialize_itinerary(itinerary)
     _geocoding_queue.put((link, itinerary_data))
     print(f"[GEOCODING] Queued {link} for background geocoding", flush=True)
@@ -222,6 +227,7 @@ def queue_geocoding(link, itinerary):
 def _worker_loop():
     """Background worker that processes the geocoding queue."""
     import sys
+
     print("[GEOCODING] Worker loop started", flush=True)
     sys.stdout.flush()
     while True:
@@ -230,7 +236,7 @@ def _worker_loop():
             try:
                 link, itinerary_data = _geocoding_queue.get(timeout=5)
                 print(f"[GEOCODING] Worker got task: {link}", flush=True)
-            except:
+            except Exception:
                 continue
 
             # Add a small delay between geocoding tasks to avoid rate limits
@@ -245,6 +251,7 @@ def _worker_loop():
         except Exception as e:
             print(f"[GEOCODING] Worker error: {e}", flush=True)
             import traceback
+
             traceback.print_exc()
             sys.stdout.flush()
 
@@ -278,7 +285,7 @@ def _test_geocoding_connectivity():
             "https://nominatim.openstreetmap.org/search",
             params={"q": "Berlin", "format": "json", "limit": 1},
             headers={"User-Agent": "Libertas-Travel/1.0"},
-            timeout=10
+            timeout=10,
         )
         print(f"[GEOCODING] Nominatim test: status={resp.status_code}, results={len(resp.json())}")
     except Exception as e:
@@ -290,10 +297,12 @@ def _test_geocoding_connectivity():
             "https://photon.komoot.io/api/",
             params={"q": "Berlin", "limit": 1},
             headers={"User-Agent": "Libertas-Travel/1.0"},
-            timeout=10
+            timeout=10,
         )
         data = resp.json()
-        print(f"[GEOCODING] Photon test: status={resp.status_code}, results={len(data.get('features', []))}")
+        print(
+            f"[GEOCODING] Photon test: status={resp.status_code}, results={len(data.get('features', []))}"
+        )
     except Exception as e:
         print(f"[GEOCODING] Photon test FAILED: {e}")
 
@@ -305,9 +314,9 @@ def recover_stale_tasks():
         if pending_trips:
             print(f"[GEOCODING] Recovering {len(pending_trips)} stale geocoding tasks")
             for trip in pending_trips:
-                link = trip['link']
-                itinerary_data = trip['itinerary_data']
-                trip_title = trip.get('title', 'Untitled Trip')
+                link = trip["link"]
+                itinerary_data = trip["itinerary_data"]
+                trip_title = trip.get("title", "Untitled Trip")
                 # Convert itinerary_data format to worker format
                 worker_data = _convert_itinerary_data_to_worker_format(itinerary_data, trip_title)
                 if worker_data:
@@ -316,6 +325,7 @@ def recover_stale_tasks():
     except Exception as e:
         print(f"[GEOCODING] Error recovering stale tasks: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -327,60 +337,64 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
     # The database stores in a different format than the worker expects
     # Convert from {days: [{items: [...]}]} to {items: [...]}
     items = []
-    for day in itinerary_data.get('days', []):
-        day_date = day.get('date')
-        day_number = day.get('day_number')
-        for item in day.get('items', []):
-            items.append({
-                "title": item.get('title'),
-                "description": item.get('notes'),
-                "category": item.get('category'),
-                "day_number": day_number,
-                "date": day_date,
-                "start_time": item.get('time'),
-                "end_time": item.get('end_time'),
-                "location_name": item.get('location'),
+    for day in itinerary_data.get("days", []):
+        day_date = day.get("date")
+        day_number = day.get("day_number")
+        for item in day.get("items", []):
+            items.append(
+                {
+                    "title": item.get("title"),
+                    "description": item.get("notes"),
+                    "category": item.get("category"),
+                    "day_number": day_number,
+                    "date": day_date,
+                    "start_time": item.get("time"),
+                    "end_time": item.get("end_time"),
+                    "location_name": item.get("location"),
+                    "location_address": None,
+                    "location_lat": None,
+                    "location_lon": None,
+                    "confirmation_number": None,
+                    "notes": item.get("notes"),
+                    "is_home_location": False,
+                    "website_url": item.get("website"),
+                }
+            )
+
+    # Add ideas (items without dates)
+    for item in itinerary_data.get("ideas", []):
+        items.append(
+            {
+                "title": item.get("title"),
+                "description": item.get("notes"),
+                "category": item.get("category"),
+                "day_number": None,
+                "date": None,
+                "start_time": item.get("time"),
+                "end_time": item.get("end_time"),
+                "location_name": item.get("location"),
                 "location_address": None,
                 "location_lat": None,
                 "location_lon": None,
                 "confirmation_number": None,
-                "notes": item.get('notes'),
+                "notes": item.get("notes"),
                 "is_home_location": False,
-                "website_url": item.get('website'),
-            })
-
-    # Add ideas (items without dates)
-    for item in itinerary_data.get('ideas', []):
-        items.append({
-            "title": item.get('title'),
-            "description": item.get('notes'),
-            "category": item.get('category'),
-            "day_number": None,
-            "date": None,
-            "start_time": item.get('time'),
-            "end_time": item.get('end_time'),
-            "location_name": item.get('location'),
-            "location_address": None,
-            "location_lat": None,
-            "location_lon": None,
-            "confirmation_number": None,
-            "notes": item.get('notes'),
-            "is_home_location": False,
-            "website_url": item.get('website'),
-        })
+                "website_url": item.get("website"),
+            }
+        )
 
     # Use trip_title from DB if itinerary_data doesn't have title
-    title = itinerary_data.get('title') or trip_title or 'Untitled Trip'
+    title = itinerary_data.get("title") or trip_title or "Untitled Trip"
 
     # Get start_date and end_date - prefer top-level, fall back to computing from days
-    start_date = itinerary_data.get('start_date')
-    end_date = itinerary_data.get('end_date')
+    start_date = itinerary_data.get("start_date")
+    end_date = itinerary_data.get("end_date")
 
     if not start_date or not end_date:
         # Compute from days array
-        days = itinerary_data.get('days', [])
+        days = itinerary_data.get("days", [])
         if days:
-            day_dates = [d.get('date') for d in days if d.get('date')]
+            day_dates = [d.get("date") for d in days if d.get("date")]
             if day_dates:
                 start_date = start_date or min(day_dates)
                 end_date = end_date or max(day_dates)
@@ -389,7 +403,7 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
         "title": title,
         "start_date": start_date,
         "end_date": end_date,
-        "travelers": itinerary_data.get('travelers', []),
+        "travelers": itinerary_data.get("travelers", []),
         "items": items,
     }
 
