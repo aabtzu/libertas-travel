@@ -1279,10 +1279,10 @@ class LibertasHandler(SimpleHTTPRequestHandler):
                 countries[v['country']] = countries.get(v['country'], 0) + 1
 
         # Call Claude API to process the message
-        import anthropic
+        from agents.common.llm import make_llm, SONNET
 
         try:
-            client = anthropic.Anthropic()
+            llm = make_llm(model=SONNET, max_tokens=2000)
 
             system_prompt = f"""You are a helpful travel assistant for Libertas, a travel planning app.
 You have access to a curated database of {len(venues)} venues across {len(countries)} countries.
@@ -1313,12 +1313,12 @@ Use the fetch_web_page tool when users mention:
 Return venues in a JSON block with source tags:
 ```json
 {{"venues": [
-    {{"name": "Roscioli", "source": "CURATED"}},
+    {{"name": "Roscioli", "source": "CURATED", "city": "Rome"}},
     {{"name": "Some AI Pick", "source": "AI_PICK", "city": "Rome", "venue_type": "Restaurant", "notes": "Brief description"}}
 ]}}
 ```
 
-- Use "CURATED" for venues from the database (name must match exactly)
+- Use "CURATED" for venues from the database (name must match exactly). Always include the city so the correct location is matched.
 - Use "AI_PICK" for recommendations not in the database (include city, venue_type, notes)
 - Include collection field if relevant (e.g., "Eater 38 Rome" for web-fetched venues)
 
@@ -1397,12 +1397,11 @@ Return venues in a JSON block with source tags:
             web_fetch_context = None
 
             for iteration in range(max_iterations):
-                response = client.messages.create(
-                    model="claude-sonnet-4-20250514",
-                    max_tokens=2000,
-                    system=system_prompt,
+                response = llm.call_api(
+                    system_prompt=system_prompt,
                     messages=messages,
-                    tools=tools
+                    tools=tools,
+                    return_full_response=True
                 )
 
                 # Check if Claude wants to use a tool
@@ -1477,31 +1476,40 @@ Return venues in a JSON block with source tags:
                         # Try to match against curated database
                         matched = False
                         name_lower = name.lower().strip()
+                        item_city = extra.get('city', '').lower().strip()
 
-                        # First try exact match
+                        def _city_matches(v):
+                            """True if no city hint given, or venue city/state/country contains the hint."""
+                            if not item_city:
+                                return True
+                            return (item_city in (v.get('city') or '').lower() or
+                                    item_city in (v.get('state') or '').lower() or
+                                    item_city in (v.get('country') or '').lower())
+
+                        def _append_curated(v):
+                            venue_copy = v.copy()
+                            venue_copy['source'] = 'CURATED'
+                            if web_fetch_context and not venue_copy.get('collection'):
+                                venue_copy['collection'] = web_fetch_context.get('title', '')[:50]
+                            matched_venues.append(venue_copy)
+
+                        # Exact name match — prefer same-city, fall back to any city only if no city hint
+                        exact_any = None
                         for v in venues:
                             if v['name'].lower() == name_lower:
-                                venue_copy = v.copy()
-                                venue_copy['source'] = 'CURATED'
-                                if web_fetch_context and not venue_copy.get('collection'):
-                                    venue_copy['collection'] = web_fetch_context.get('title', '')[:50]
-                                matched_venues.append(venue_copy)
-                                matched = True
-                                break
+                                if _city_matches(v):
+                                    _append_curated(v)
+                                    matched = True
+                                    break
+                                elif exact_any is None:
+                                    exact_any = v  # remember first mismatch in case no city hint
 
-                        # If no exact match, try partial match (search name contains venue name)
-                        # Only match if venue name is substantial (5+ chars) to avoid false positives
+                        # Partial match (5+ char venue name contained in LLM name)
                         if not matched:
                             for v in venues:
                                 v_name_lower = v['name'].lower()
-                                # Only match if search term contains the full venue name
-                                # and venue name is at least 5 chars (avoids "ORO" matching "All'Oro")
-                                if len(v_name_lower) >= 5 and v_name_lower in name_lower:
-                                    venue_copy = v.copy()
-                                    venue_copy['source'] = 'CURATED'
-                                    if web_fetch_context and not venue_copy.get('collection'):
-                                        venue_copy['collection'] = web_fetch_context.get('title', '')[:50]
-                                    matched_venues.append(venue_copy)
+                                if len(v_name_lower) >= 5 and v_name_lower in name_lower and _city_matches(v):
+                                    _append_curated(v)
                                     matched = True
                                     break
 
@@ -1531,7 +1539,7 @@ Return venues in a JSON block with source tags:
                 "venues": matched_venues,
             })
 
-        except anthropic.APIError as e:
+        except Exception as e:
             # Fallback to simple search if Claude API fails
             print(f"Claude API error: {e}")
             matched_venues = self.simple_venue_search(message, venues)

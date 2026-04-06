@@ -36,6 +36,7 @@ class ItineraryItem:
     title: str
     location: Location
     date: Optional[date] = None
+    end_date: Optional[date] = None  # checkout date for hotels, return date for rentals
     start_time: Optional[time] = None
     end_time: Optional[time] = None
     description: Optional[str] = None
@@ -51,6 +52,7 @@ class ItineraryItem:
             "title": self.title,
             "location": self.location.to_dict(),
             "date": self.date.isoformat() if self.date else None,
+            "end_date": self.end_date.isoformat() if self.end_date else None,
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
             "description": self.description,

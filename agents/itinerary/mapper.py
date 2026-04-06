@@ -127,9 +127,7 @@ class ItineraryMapper:
 
     def _extract_destination_with_llm(self, context: str) -> str:
         """Use LLM to extract the primary destination from trip context."""
-        import anthropic
-
-        client = anthropic.Anthropic()
+        from agents.common.llm import make_llm, SONNET
 
         prompt = f"""Based on this trip information, identify the PRIMARY DESTINATION city and country.
 Ignore origin/departure locations (like home airports). Focus on where the traveler is actually visiting.
@@ -139,13 +137,10 @@ Ignore origin/departure locations (like home airports). Focus on where the trave
 Respond with ONLY the destination in format: "City, Country" (e.g., "Vienna, Austria" or "Tokyo, Japan").
 If multiple destinations, pick the main one. If unclear, respond with just the country."""
 
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=50,
+        result = make_llm(model=SONNET, max_tokens=50).call_api(
+            system_prompt="",
             messages=[{"role": "user", "content": prompt}]
         )
-
-        result = response.content[0].text.strip()
         # Clean up response - remove quotes, periods, etc.
         result = result.strip('"\'.')
         return result if result and len(result) < 100 else ""
@@ -172,8 +167,7 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
             return ""
 
         try:
-            import anthropic
-            client = anthropic.Anthropic()
+            from agents.common.llm import make_llm, SONNET
 
             # Build a smarter prompt with context
             prompt = f"""What airport has the IATA code "{iata}"?
@@ -193,13 +187,10 @@ Examples:
 
 If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=100,
+            result = make_llm(model=SONNET, max_tokens=100).call_api(
+                system_prompt="",
                 messages=[{"role": "user", "content": prompt}]
-            )
-
-            result = response.content[0].text.strip().strip('"')
+            ).strip('"')
             if result and 'NONE' not in result.upper() and len(result) < 150:
                 self._iata_cache[cache_key] = result
                 print(f"[GEOCODING] Resolved IATA {iata} -> {result}")
@@ -216,16 +207,12 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             return ""
 
         try:
-            import anthropic
-            client = anthropic.Anthropic()
+            from agents.common.llm import make_llm, HAIKU
 
-            response = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=30,
+            result = make_llm(model=HAIKU, max_tokens=30).call_api(
+                system_prompt="",
                 messages=[{"role": "user", "content": f"What country is this trip to? '{itinerary.title}'. Reply with ONLY the country name, or 'UNKNOWN' if unclear."}]
             )
-
-            result = response.content[0].text.strip()
             if result and 'UNKNOWN' not in result.upper() and len(result) < 50:
                 print(f"[GEOCODING] Fallback resolved region: {result}")
                 return result
@@ -657,8 +644,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             return self._origin_check_cache[cache_key]
 
         try:
-            import anthropic
-            client = anthropic.Anthropic()
+            from agents.common.llm import make_llm, HAIKU
 
             prompt = f"""Is the location "{location}" part of the trip destination {destination}?
 
@@ -675,13 +661,10 @@ Examples where destination is "Sweden":
 - "New York JFK" → NO (USA, likely home/end destination)
 - "Copenhagen" → NO (Denmark, not Sweden — even if geographically close)"""
 
-            response = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=10,
+            answer = make_llm(model=HAIKU, max_tokens=10).call_api(
+                system_prompt="",
                 messages=[{"role": "user", "content": prompt}]
-            )
-
-            answer = response.content[0].text.strip().upper()
+            ).strip().upper()
             result = answer.startswith("YES")
 
             # Cache the result

@@ -2,7 +2,7 @@
 name = "libertas"
 version = "0.1.0"
 description = "Agentic travel solution with specialized agents for trip planning"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.39.0",
     "pdfplumber>=0.11.0",

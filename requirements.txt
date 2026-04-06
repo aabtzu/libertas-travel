@@ -1,4 +1,5 @@
-anthropic>=0.39.0
+fiat-lux-agents @ file:///Users/amit/repos/fiat-lux-agents
+flask>=3.0.0
 pdfplumber>=0.11.0
 PyPDF2>=3.0.0
 PyMuPDF>=1.24.0

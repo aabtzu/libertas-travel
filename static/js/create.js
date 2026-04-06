@@ -966,6 +966,7 @@ function handleAddItem(e) {
         category: document.getElementById('item-category').value,
         time: document.getElementById('item-time').value || null,
         end_time: document.getElementById('item-end-time').value || null,
+        end_date: document.getElementById('item-end-date').value || null,
         location: document.getElementById('item-location').value.trim() || null,
         website: document.getElementById('item-website').value.trim() || null,
         notes: document.getElementById('item-notes').value.trim() || null,
@@ -1023,6 +1024,7 @@ function editItem(dayIndex, itemIndex) {
     document.getElementById('item-category').value = normalizeCategory(item.category);
     document.getElementById('item-time').value = item.time || '';
     document.getElementById('item-end-time').value = item.end_time || '';
+    document.getElementById('item-end-date').value = item.end_date || '';
     document.getElementById('item-location').value = item.location || '';
     document.getElementById('item-website').value = item.website || '';
     document.getElementById('item-notes').value = item.notes || '';
@@ -1038,6 +1040,7 @@ function editItem(dayIndex, itemIndex) {
             category: document.getElementById('item-category').value,
             time: document.getElementById('item-time').value || null,
             end_time: document.getElementById('item-end-time').value || null,
+            end_date: document.getElementById('item-end-date').value || null,
             location: document.getElementById('item-location').value.trim() || null,
             website: document.getElementById('item-website').value.trim() || null,
             notes: document.getElementById('item-notes').value.trim() || null,
@@ -1097,6 +1100,7 @@ function editIdea(ideaIndex) {
     document.getElementById('item-category').value = normalizeCategory(item.category);
     document.getElementById('item-time').value = item.time || '';
     document.getElementById('item-end-time').value = item.end_time || '';
+    document.getElementById('item-end-date').value = item.end_date || '';
     document.getElementById('item-location').value = item.location || '';
     document.getElementById('item-website').value = item.website || '';
     document.getElementById('item-notes').value = item.notes || '';
@@ -1112,6 +1116,7 @@ function editIdea(ideaIndex) {
             category: document.getElementById('item-category').value,
             time: document.getElementById('item-time').value || null,
             end_time: document.getElementById('item-end-time').value || null,
+            end_date: document.getElementById('item-end-date').value || null,
             location: document.getElementById('item-location').value.trim() || null,
             website: document.getElementById('item-website').value.trim() || null,
             notes: document.getElementById('item-notes').value.trim() || null,
@@ -2262,6 +2267,13 @@ function renderGrid() {
     let lastNightStay = null;
     const lastDayNum = currentTrip.days[currentTrip.days.length - 1].day_number;
 
+    // Pre-compute which day indices have lodging, so carry-forward knows when to stop
+    const lodgingDayNums = new Set(
+        currentTrip.days
+            .filter(d => (d.items || []).some(i => ['hotel','lodging'].includes((i.category||'').toLowerCase())))
+            .map(d => d.day_number)
+    );
+
     // Build table HTML
     let tableHtml = `
         <div class="column-table-wrapper">
@@ -2308,12 +2320,24 @@ function renderGrid() {
         if (lodgingItems.length > 0) {
             const lastLodging = lodgingItems[lodgingItems.length - 1];
             currentNightStay = lastLodging.title || lastLodging.location || null;
-            lastNightStay = currentNightStay;
+            lastNightStay = lastLodging;  // store full item so we can check end_date
         } else if (lastNightStay) {
             const isLastDay = (day.day_number === lastDayNum);
-            if (!isLastDay && !hasFlight) {
-                currentNightStay = lastNightStay;
+            let withinStay = false;
+            if (lastNightStay.end_date && day.date) {
+                // Has explicit checkout — carry while before that date
+                withinStay = day.date < lastNightStay.end_date;
+            } else {
+                // No end_date — carry until the next day that has its own lodging
+                const nextLodgingDay = currentTrip.days
+                    .find(d => d.day_number > day.day_number && lodgingDayNums.has(d.day_number));
+                withinStay = !nextLodgingDay || day.day_number < nextLodgingDay.day_number;
+            }
+            if (!isLastDay && !hasFlight && withinStay) {
+                currentNightStay = lastNightStay.title || lastNightStay.location || null;
                 isCarried = true;
+            } else {
+                lastNightStay = null;  // stop carrying — checkout reached or next lodging found
             }
         }
 

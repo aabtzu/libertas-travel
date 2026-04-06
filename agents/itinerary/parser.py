@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 from datetime import date, time, datetime
 from typing import Optional, Union
 
-import anthropic
 import pdfplumber
 import openpyxl
+
+from agents.common.llm import make_llm, SONNET
 
 from .models import Itinerary, ItineraryItem, Location
 
@@ -65,6 +65,7 @@ Return a JSON object with this exact structure:
             "location_address": "Full address if available",
             "location_type": "hotel|restaurant|attraction|airport|train_station|home|other",
             "date": "YYYY-MM-DD or null",
+            "end_date": "YYYY-MM-DD or null (checkout date for hotels, return date for rentals)",
             "start_time": "HH:MM (24hr) or null",
             "end_time": "HH:MM (24hr) or null",
             "description": "Brief description",
@@ -82,7 +83,7 @@ Important:
 - Be precise with dates and times
 - ALWAYS include the state/region/country with location names for accurate geocoding (e.g. "Homer, Alaska" not just "Homer")
 - Mark home/departure locations with is_home_location: true (these are typically the origin city at start/end of trip)
-- For HOTELS/ACCOMMODATIONS: Extract the ACTUAL hotel name (e.g. "Taj Palace", "ITC Mughal", "Marriott") NOT generic descriptions like "Hotel stay in Delhi". The hotel name should go in the "title" field.
+- For HOTELS/ACCOMMODATIONS: Extract the ACTUAL hotel name and set end_date to the checkout date if available. (e.g. "Taj Palace", "ITC Mughal", "Marriott") NOT generic descriptions like "Hotel stay in Delhi". The hotel name should go in the "title" field.
 - For FLIGHTS: start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available. Title should include flight number and route (e.g. "UA 123 SFO → JFK"). Keep IATA airport codes as-is in the title - do NOT try to expand them to city names (e.g. keep "DEN → BIH" not "Denver → Birmingham"). The location_name should be the destination airport code only (e.g. "BIH" not "Birmingham")
 - For TRAINS: start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available.
 - For MEALS/RESERVATIONS: start_time is reservation time, end_time can be estimated end (e.g. +2 hours for dinner)
@@ -105,12 +106,8 @@ class ItineraryParser:
     """Parse itineraries from various file formats using Claude."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not self.api_key:
-            raise ValueError(
-                "Anthropic API key required. Set ANTHROPIC_API_KEY env var or pass api_key."
-            )
-        self.client = anthropic.Anthropic(api_key=self.api_key)
+        # api_key param kept for backwards compatibility; fla reads ANTHROPIC_API_KEY from env
+        self.llm = make_llm(model=SONNET, max_tokens=8192)
 
     def parse_file(self, file_path: str | Path) -> Itinerary:
         """Parse an itinerary from a PDF or Excel file."""
@@ -204,18 +201,10 @@ class ItineraryParser:
 
     def _parse_with_claude(self, text: str, source_file: str) -> Itinerary:
         """Use Claude to extract structured data from itinerary text."""
-        message = self.client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=8192,
-            messages=[
-                {
-                    "role": "user",
-                    "content": EXTRACTION_PROMPT + text,
-                }
-            ],
+        response_text = self.llm.call_api(
+            system_prompt="",
+            messages=[{"role": "user", "content": EXTRACTION_PROMPT + text}],
         )
-
-        response_text = message.content[0].text
 
         # Extract JSON from response (handle markdown code blocks)
         if "```json" in response_text:
@@ -256,6 +245,7 @@ class ItineraryParser:
                 title=item_data.get("title", "Untitled"),
                 location=location,
                 date=self._parse_date(item_data.get("date")),
+                end_date=self._parse_date(item_data.get("end_date")),
                 start_time=self._parse_time(item_data.get("start_time")),
                 end_time=self._parse_time(item_data.get("end_time")),
                 description=item_data.get("description"),
