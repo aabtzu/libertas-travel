@@ -6,6 +6,7 @@ import re
 import ssl
 import urllib.request
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 import database as db
@@ -1857,3 +1858,647 @@ Only return the JSON array, no other text."""
 
         traceback.print_exc()
         return {"error": f"Error processing file: {str(e)}"}, 500
+
+
+# ---------------------------------------------------------------------------
+# File / URL import helpers (moved from server.py for Flask migration)
+# ---------------------------------------------------------------------------
+
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
+
+_DATA_DIR = Path(__file__).parent.parent.parent / "data"
+_AIRLINE_CODES_CSV = _DATA_DIR / "airline_codes.csv"
+
+# Cached lookup tables
+_airline_names: dict[str, str] | None = None  # IATA code -> display name (e.g. "AA" -> "American Airlines")
+_airline_url_names: dict[str, str] | None = None  # IATA code -> URL-encoded name for flightera URLs
+_airports_db: dict | None = None  # airportsdata IATA lookup, loaded on first use
+
+
+def _load_airline_codes() -> tuple[dict[str, str], dict[str, str]]:
+    """Load airline code -> name mappings from data/airline_codes.csv."""
+    global _airline_names, _airline_url_names
+    if _airline_names is not None and _airline_url_names is not None:
+        return _airline_names, _airline_url_names
+    import csv
+
+    names: dict[str, str] = {}
+    url_names: dict[str, str] = {}
+    if _AIRLINE_CODES_CSV.exists():
+        with open(_AIRLINE_CODES_CSV, newline="") as f:
+            for row in csv.DictReader(f):
+                code = row["code"].strip()
+                names[code] = row["name"].strip()
+                url_names[code] = row["url_name"].strip()
+    _airline_names = names
+    _airline_url_names = url_names
+    return _airline_names, _airline_url_names
+
+
+def _get_airport_city(iata_code: str) -> str:
+    """Return URL-encoded city name for an IATA airport code.
+
+    Uses the airportsdata package (~55,000 airports worldwide) so any airport
+    code works without maintaining a local lookup file.
+    Falls back to the raw IATA code if the airport is not found.
+    """
+    global _airports_db
+    if _airports_db is None:
+        try:
+            import airportsdata
+
+            _airports_db = airportsdata.load("IATA")
+        except ImportError:
+            _airports_db = {}
+
+    airport = _airports_db.get(iata_code.upper())
+    if airport and airport.get("city"):
+        return airport["city"].replace(" ", "+")
+    return iata_code  # Fall back to raw code — flightera may still resolve it
+
+
+def slugify(text: str) -> str:
+    """Convert text to URL-friendly slug."""
+    text = text.lower()
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"[\s_-]+", "_", text)
+    return text.strip("_")
+
+
+def format_dates(itinerary) -> str:
+    """Format itinerary start/end dates for display."""
+    if itinerary.start_date and itinerary.end_date:
+        if itinerary.start_date.year == itinerary.end_date.year:
+            if itinerary.start_date.month == itinerary.end_date.month:
+                return f"{itinerary.start_date.strftime('%B')} {itinerary.start_date.year}"
+            return f"{itinerary.start_date.strftime('%b')} - {itinerary.end_date.strftime('%b %Y')}"
+        return f"{itinerary.start_date.strftime('%b %Y')} - {itinerary.end_date.strftime('%b %Y')}"
+    elif itinerary.start_date:
+        return itinerary.start_date.strftime("%B %Y")
+    return "Date unknown"
+
+
+def itinerary_to_data(itinerary) -> dict:
+    """Convert a parsed Itinerary object to itinerary_data format for database storage."""
+    from collections import defaultdict
+
+    days_dict = defaultdict(list)
+    ideas = []
+    start_date = itinerary.start_date
+
+    for item in itinerary.items:
+        if item.is_home_location:
+            continue
+
+        item_data = {
+            "title": item.title,
+            "category": item.category or "activity",
+            "location": item.location.name if item.location else "",
+            "time": item.start_time.strftime("%H:%M") if item.start_time else None,
+            "notes": item.notes or item.description,
+        }
+
+        day_number = item.day_number
+        if not day_number and item.date and start_date:
+            day_number = (item.date - start_date).days + 1
+            if day_number < 1:
+                day_number = None
+
+        if day_number:
+            days_dict[day_number].append(
+                {**item_data, "date": item.date.isoformat() if item.date else None}
+            )
+        else:
+            ideas.append(item_data)
+
+    days = []
+    for day_num in sorted(days_dict.keys()):
+        day_items = days_dict[day_num]
+        day_date = None
+        for it in day_items:
+            if it.get("date"):
+                day_date = it["date"]
+                break
+        days.append({"day_number": day_num, "date": day_date, "items": day_items})
+
+    return {
+        "title": itinerary.title,
+        "start_date": itinerary.start_date.isoformat() if itinerary.start_date else None,
+        "end_date": itinerary.end_date.isoformat() if itinerary.end_date else None,
+        "travelers": itinerary.travelers or [],
+        "days": days,
+        "ideas": ideas,
+    }
+
+
+def extract_text_from_html(html_content: bytes) -> str:
+    """Extract readable text from HTML content for itinerary parsing."""
+    import html.parser
+
+    class TextExtractor(html.parser.HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.text_parts = []
+            self.skip_tags = {"script", "style", "meta", "link", "noscript"}
+            self.current_skip = False
+
+        def handle_starttag(self, tag, attrs):
+            if tag in self.skip_tags:
+                self.current_skip = True
+            elif tag in ("br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6"):
+                self.text_parts.append("\n")
+
+        def handle_endtag(self, tag):
+            if tag in self.skip_tags:
+                self.current_skip = False
+            elif tag in ("p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6"):
+                self.text_parts.append("\n")
+
+        def handle_data(self, data):
+            if not self.current_skip:
+                text = data.strip()
+                if text:
+                    self.text_parts.append(text + " ")
+
+    try:
+        html_str = html_content.decode("utf-8")
+    except UnicodeDecodeError:
+        html_str = html_content.decode("latin-1")
+
+    extractor = TextExtractor()
+    extractor.feed(html_str)
+    text = "".join(extractor.text_parts)
+    text = re.sub(r"\n\s*\n", "\n\n", text)
+    text = re.sub(r" +", " ", text)
+    return text.strip()
+
+
+def convert_google_drive_url(url: str) -> tuple[str, str]:
+    """Convert Google Drive sharing URL to direct download URL. Returns (url, filename)."""
+    file_id = None
+    filename = "downloaded_file"
+
+    if "/file/d/" in url:
+        match = re.search(r"/file/d/([a-zA-Z0-9_-]+)", url)
+        if match:
+            file_id = match.group(1)
+    elif "id=" in url:
+        match = re.search(r"id=([a-zA-Z0-9_-]+)", url)
+        if match:
+            file_id = match.group(1)
+    elif "/spreadsheets/d/" in url:
+        match = re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", url)
+        if match:
+            file_id = match.group(1)
+            return (
+                f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx",
+                "spreadsheet.xlsx",
+            )
+
+    if file_id:
+        return f"https://drive.google.com/uc?export=download&id={file_id}", filename
+    return url, filename
+
+
+def download_from_url(url: str) -> tuple[bytes, str, str]:
+    """Download content from URL. Returns (content, filename, content_type)."""
+    filename = "downloaded_file"
+
+    parsed_url = urllib.request.urlparse(url) if hasattr(urllib.request, "urlparse") else None
+    from urllib.parse import urlparse as _urlparse
+
+    parsed_url = _urlparse(url)
+    if "google.com" in parsed_url.netloc or "drive.google.com" in parsed_url.netloc:
+        url, filename = convert_google_drive_url(url)
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "identity",
+        "Connection": "keep-alive",
+    }
+
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, context=ctx, timeout=60) as response:
+        content_type = response.headers.get("Content-Type", "").lower()
+        content_disp = response.headers.get("Content-Disposition", "")
+        if "filename=" in content_disp:
+            match = re.search(r'filename[*]?=["\']?([^"\';]+)', content_disp)
+            if match:
+                filename = match.group(1).strip("\"'")
+
+        if "." not in filename:
+            if "spreadsheet" in content_type or "excel" in content_type:
+                filename += ".xlsx"
+            elif "pdf" in content_type:
+                filename += ".pdf"
+            elif "html" in content_type:
+                filename += ".html"
+
+        return response.read(), filename, content_type
+
+
+def lookup_flight_times(
+    airline_code: str, flight_num: str, origin: str, dest: str
+) -> dict | None:
+    """Look up departure/arrival times for a flight from flightera.net."""
+    _, airline_url_names = _load_airline_codes()
+    try:
+        airline_name = airline_url_names.get(airline_code, airline_code)
+        origin_city = _get_airport_city(origin)
+        dest_city = _get_airport_city(dest)
+        url = f"https://www.flightera.net/en/flight/{airline_name}-{origin_city}-{dest_city}/{airline_code}{flight_num}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+            },
+        )
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
+            html_bytes = resp.read()
+        html_text = html_bytes.decode("utf-8", errors="ignore")
+        dep_match = re.search(r'"departure_time"[:\s]+"?(\d{2}:\d{2})', html_text)
+        arr_match = re.search(r'"arrival_time"[:\s]+"?(\d{2}:\d{2})', html_text)
+        if dep_match and arr_match:
+            return {"departure_time": dep_match.group(1), "arrival_time": arr_match.group(1)}
+    except Exception:
+        pass
+    return None
+
+
+def parse_google_flights_url(url: str) -> list | None:
+    """Parse flight data from Google Flights URL. Returns list of flight dicts or None."""
+    import base64
+    from urllib.parse import parse_qs, urlparse
+
+    parsed = urlparse(url)
+    if "google.com" not in parsed.netloc or "/travel/flights" not in parsed.path:
+        return None
+
+    if "/flights/s/" in parsed.path:
+        raise ValueError(
+            "Shared Google Flights links (/flights/s/...) cannot be parsed directly. "
+            "Please use the full booking URL from Google Flights."
+        )
+
+    params = parse_qs(parsed.query)
+    tfs = params.get("tfs", [None])[0]
+    if not tfs:
+        return None
+
+    try:
+        missing_padding = (4 - len(tfs) % 4) % 4
+        tfs_padded = tfs + "=" * missing_padding
+        try:
+            decoded = base64.urlsafe_b64decode(tfs_padded)
+        except Exception:
+            decoded = base64.b64decode(tfs_padded)
+        decoded_str = decoded.decode("utf-8", errors="ignore")
+
+        flights = []
+        segment_pattern = r"\n.([A-Z]{3}).\n(\d{4}-\d{2}-\d{2})..([A-Z]{3})\*"
+        segments = re.findall(segment_pattern, decoded_str)
+        airline_flight_pattern = r"([A-Z]{2})2.(\d{3,4})"
+        airline_matches = re.findall(airline_flight_pattern, decoded_str)
+
+        airline_display_names, _ = _load_airline_codes()
+
+        for i, (origin, date, dest) in enumerate(segments):
+            if i < len(airline_matches):
+                airline = airline_matches[i][0]
+                flight_num = airline_matches[i][1]
+                airline_name = airline_display_names.get(airline, airline)
+                times = lookup_flight_times(airline, flight_num, origin, dest)
+                flight_data = {
+                    "title": f"{airline_name} {origin} → {dest}",
+                    "category": "flight",
+                    "origin": origin,
+                    "destination": dest,
+                    "date": date,
+                    "location": dest,
+                    "notes": f"Flight {airline}{flight_num}",
+                    "time": times["departure_time"] if times else None,
+                    "end_time": times["arrival_time"] if times else None,
+                }
+                flights.append(flight_data)
+
+        return flights if flights else None
+    except Exception:
+        return None
+
+
+def fetch_webpage_for_chat(url: str) -> dict:
+    """Fetch a web page and return extracted text for chat handlers."""
+    try:
+        content, filename, content_type = download_from_url(url)
+        if "html" in content_type or filename.endswith(".html"):
+            text = extract_text_from_html(content)
+        else:
+            try:
+                text = content.decode("utf-8")
+            except UnicodeDecodeError:
+                text = content.decode("latin-1")
+
+        title = None
+        try:
+            html_str = content.decode("utf-8", errors="ignore")
+            title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_str, re.IGNORECASE)
+            if title_match:
+                title = title_match.group(1).strip()
+        except Exception:
+            pass
+
+        if len(text) > 15000:
+            text = text[:15000] + "\n\n[Content truncated...]"
+
+        return {"success": True, "text": text, "title": title or url, "url": url}
+    except Exception as e:
+        return {"success": False, "error": str(e), "url": url}
+
+
+def upload_file_handler(
+    user_id: int, file_data: bytes, filename: str, output_dir: Path | None = None
+) -> tuple[dict, int]:
+    """Process an uploaded itinerary file. Returns (result, status_code)."""
+    import tempfile
+    import time
+
+    from agents.itinerary.parser import ItineraryParser
+    from agents.itinerary.web_view import ItineraryWebView
+    import geocoding_worker
+
+    out_dir = output_dir or OUTPUT_DIR
+    suffix = Path(filename).suffix.lower()
+    valid_extensions = [".pdf", ".xlsx", ".xls", ".html", ".htm", ".json"]
+    if suffix not in valid_extensions:
+        return {"error": f"Invalid file type '{suffix}'. Supported: PDF, Excel, HTML, JSON"}, 400
+
+    # Save debug copy
+    uploads_dir = out_dir / "uploads"
+    uploads_dir.mkdir(exist_ok=True)
+    try:
+        (uploads_dir / filename).write_bytes(file_data)
+    except Exception as e:
+        print(f"Warning: Could not save upload copy: {e}")
+
+    try:
+        start_time = time.time()
+        is_html_file = suffix in (".html", ".htm")
+        is_json_file = suffix == ".json"
+
+        if is_json_file:
+            print("[UPLOAD] Importing JSON trip data...")
+            try:
+                import_data = json.loads(file_data.decode("utf-8"))
+            except json.JSONDecodeError as e:
+                return {"error": f"Invalid JSON file: {e}"}, 400
+
+            if "itinerary_data" not in import_data and "days" not in import_data:
+                return {"error": "JSON file is not a valid trip export"}, 400
+
+            itinerary_data = import_data.get("itinerary_data") or import_data
+            title = itinerary_data.get("title") or import_data.get("title", "Imported Trip")
+            slug = slugify(title)
+            output_file = f"{slug}.html"
+
+            trip_for_html = {"itinerary_data": itinerary_data, "title": title}
+            itinerary = _convert_to_itinerary(trip_for_html)
+            if not itinerary or not itinerary.items:
+                return {"error": "Could not parse trip data from JSON"}, 400
+
+            web_view = ItineraryWebView()
+            web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+
+            locations = {
+                item.location.name.split(",")[0]
+                for item in itinerary.items
+                if item.location.name and not item.is_home_location
+            }
+            days_count = (
+                itinerary.duration_days
+                or len({item.day_number for item in itinerary.items if item.day_number})
+                or len(itinerary_data.get("days", []))
+            )
+            trip_data = {
+                "title": title,
+                "link": output_file,
+                "dates": format_dates(itinerary),
+                "days": days_count,
+                "locations": len(locations),
+                "activities": len(itinerary.items),
+                "map_status": "pending",
+                "is_public": import_data.get("is_public", False),
+            }
+            db.add_trip(user_id, trip_data, itinerary_data)
+            geocoding_worker.queue_geocoding(output_file, itinerary)
+            return {"success": True, "title": title, "link": output_file}, 200
+
+        # PDF, Excel, or HTML
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp.write(file_data)
+                tmp_path = tmp.name
+
+            print("[UPLOAD] Step 1: Parsing file...")
+            parser = ItineraryParser()
+            if is_html_file:
+                html_text = extract_text_from_html(file_data)
+                if len(html_text) < 100:
+                    return {"error": "Could not extract meaningful content from the HTML file."}, 400
+                itinerary = parser.parse_text(html_text, source_url=filename)
+            else:
+                itinerary = parser.parse_file(tmp_path)
+            print(f"[UPLOAD] Step 1 done: {time.time() - start_time:.1f}s - {len(itinerary.items)} items")
+
+            print("[UPLOAD] Step 2: Generating web view...")
+            slug = slugify(itinerary.title)
+            output_file = f"{slug}.html"
+            web_view = ItineraryWebView()
+            web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+            print(f"[UPLOAD] Step 2 done: {time.time() - start_time:.1f}s")
+
+            locations = {
+                item.location.name.split(",")[0]
+                for item in itinerary.items
+                if item.location.name and not item.is_home_location
+            }
+            itinerary_data = itinerary_to_data(itinerary)
+            trip_data = {
+                "title": itinerary.title,
+                "link": output_file,
+                "dates": format_dates(itinerary),
+                "days": itinerary.duration_days
+                or len({item.day_number for item in itinerary.items if item.day_number}),
+                "locations": len(locations),
+                "activities": len(itinerary.items),
+                "map_status": "pending",
+            }
+            print("[UPLOAD] Step 3: Saving trip data...")
+            db.add_trip(user_id, trip_data, itinerary_data)
+            geocoding_worker.queue_geocoding(output_file, itinerary)
+            print(f"[UPLOAD] SUCCESS - Total time: {time.time() - start_time:.1f}s")
+            return {"success": True, "title": itinerary.title, "link": output_file}, 200
+
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}, 500
+
+
+def url_import_handler(
+    user_id: int, url: str, output_dir: Path | None = None
+) -> tuple[dict, int]:
+    """Import an itinerary from a URL. Returns (result, status_code)."""
+    import tempfile
+
+    from agents.itinerary.models import Itinerary, ItineraryItem, Location
+    from agents.itinerary.parser import ItineraryParser
+    from agents.itinerary.web_view import ItineraryWebView
+    import geocoding_worker
+    from datetime import time as dt_time
+
+    out_dir = output_dir or OUTPUT_DIR
+
+    try:
+        google_flights = parse_google_flights_url(url)
+    except ValueError as e:
+        return {"error": str(e)}, 400
+
+    if google_flights:
+        def _parse_time(time_str):
+            if not time_str:
+                return None
+            try:
+                h, m = time_str.split(":")
+                return dt_time(int(h), int(m))
+            except (ValueError, AttributeError):
+                return None
+
+        items = []
+        for flight in google_flights:
+            date_obj = datetime.strptime(flight["date"], "%Y-%m-%d").date()
+            items.append(
+                ItineraryItem(
+                    title=flight["title"],
+                    category=flight["category"],
+                    date=date_obj,
+                    location=Location(name=flight["location"]),
+                    notes=flight["notes"],
+                    start_time=_parse_time(flight.get("time")),
+                    end_time=_parse_time(flight.get("end_time")),
+                )
+            )
+
+        if len(google_flights) >= 2:
+            title = f"Trip to {google_flights[0]['destination']}"
+        elif len(google_flights) == 1:
+            title = f"Flight to {google_flights[0]['destination']}"
+        else:
+            title = "Flight Itinerary"
+
+        dates = [datetime.strptime(f["date"], "%Y-%m-%d").date() for f in google_flights]
+        itinerary = Itinerary(
+            title=title, items=items, start_date=min(dates), end_date=max(dates)
+        )
+        slug = slugify(itinerary.title)
+        output_file = f"{slug}.html"
+        web_view = ItineraryWebView()
+        web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+
+        itinerary_data = itinerary_to_data(itinerary)
+        start_d, end_d = min(dates), max(dates)
+        trip_data = {
+            "title": itinerary.title,
+            "link": output_file,
+            "dates": format_dates(itinerary),
+            "days": (end_d - start_d).days + 1 if start_d != end_d else 1,
+            "locations": len({f["destination"] for f in google_flights}),
+            "activities": len(google_flights),
+            "map_status": "pending",
+        }
+        db.add_trip(user_id, trip_data, itinerary_data)
+        geocoding_worker.queue_geocoding(output_file, itinerary)
+        return {"success": True, "title": itinerary.title, "link": output_file}, 200
+
+    try:
+        file_data, filename, content_type = download_from_url(url)
+    except Exception as e:
+        return {"error": f"Failed to download from URL: {str(e)}"}, 400
+
+    is_html = "html" in content_type or file_data[:15].lower().startswith((b"<!doctype", b"<html"))
+    is_pdf = file_data[:4] == b"%PDF"
+    is_xlsx = file_data[:4] == b"PK\x03\x04"
+
+    tmp_path = None
+    try:
+        if is_html and not is_pdf and not is_xlsx:
+            html_text = extract_text_from_html(file_data)
+            if len(html_text) < 100:
+                return {
+                    "error": "Could not extract meaningful content from the page. "
+                    "The page might require login or have restricted access."
+                }, 400
+            parser = ItineraryParser()
+            itinerary = parser.parse_text(html_text, source_url=url)
+        else:
+            suffix = Path(filename).suffix.lower()
+            if not suffix or suffix not in (".pdf", ".xlsx", ".xls"):
+                suffix = ".xlsx" if is_xlsx else ".pdf" if is_pdf else None
+            if not suffix:
+                return {"error": "Could not determine file type. Please use PDF, Excel, or HTML pages."}, 400
+
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp.write(file_data)
+                tmp_path = tmp.name
+
+            parser = ItineraryParser()
+            try:
+                itinerary = parser.parse_file(tmp_path)
+            except Exception as e:
+                return {"error": f"Failed to parse itinerary: {str(e)}"}, 400
+
+        slug = slugify(itinerary.title)
+        output_file = f"{slug}.html"
+        web_view = ItineraryWebView()
+        web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+
+        locations = {
+            item.location.name.split(",")[0]
+            for item in itinerary.items
+            if item.location.name and not item.is_home_location
+        }
+        itinerary_data = itinerary_to_data(itinerary)
+        trip_data = {
+            "title": itinerary.title,
+            "link": output_file,
+            "dates": format_dates(itinerary),
+            "days": itinerary.duration_days
+            or len({item.day_number for item in itinerary.items if item.day_number}),
+            "locations": len(locations),
+            "activities": len(itinerary.items),
+            "map_status": "pending",
+        }
+        db.add_trip(user_id, trip_data, itinerary_data)
+        geocoding_worker.queue_geocoding(output_file, itinerary)
+        return {"success": True, "title": itinerary.title, "link": output_file}, 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}, 500
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)

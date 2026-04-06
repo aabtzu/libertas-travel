@@ -1,5 +1,7 @@
 fiat-lux-agents @ git+https://github.com/aabtzu/fiat-lux-agents.git
 flask>=3.0.0
+gunicorn>=21.0.0
+airportsdata>=20240720
 pdfplumber>=0.11.0
 PyPDF2>=3.0.0
 PyMuPDF>=1.24.0

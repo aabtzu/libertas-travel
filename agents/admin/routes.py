@@ -1,0 +1,155 @@
+"""Admin blueprint: debug info, trip regeneration, venue management."""
+
+from __future__ import annotations
+
+import os
+import subprocess
+import traceback
+from pathlib import Path
+
+import database as db
+import geocoding_worker
+from agents.common.flask_utils import json_err, json_ok, require_auth
+from flask import Blueprint, g, request
+
+admin_bp = Blueprint("admin", __name__)
+
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
+
+
+@admin_bp.get("/api/debug")
+def debug():
+    from agents.explore.handler import load_venues
+
+    debug_info: dict = {
+        "output_dir": str(OUTPUT_DIR),
+        "output_dir_exists": OUTPUT_DIR.exists(),
+        "output_dir_is_dir": OUTPUT_DIR.is_dir() if OUTPUT_DIR.exists() else False,
+        "env_output_dir": os.environ.get("OUTPUT_DIR", "NOT SET"),
+        "env_port": os.environ.get("PORT", "NOT SET"),
+        "cwd": os.getcwd(),
+    }
+
+    if OUTPUT_DIR.exists():
+        try:
+            files = list(OUTPUT_DIR.iterdir())
+            debug_info["output_files"] = [f.name for f in files if f.is_file()]
+            debug_info["output_file_count"] = len([f for f in files if f.is_file()])
+        except Exception as e:
+            debug_info["output_files_error"] = str(e)
+
+    uploads_dir = OUTPUT_DIR / "uploads"
+    if uploads_dir.exists():
+        try:
+            uploads = list(uploads_dir.iterdir())
+            debug_info["uploaded_files"] = [f.name for f in uploads]
+            debug_info["uploaded_file_count"] = len(uploads)
+        except Exception as e:
+            debug_info["uploaded_files_error"] = str(e)
+
+    try:
+        result = subprocess.run(
+            ["df", "-h", str(OUTPUT_DIR)], capture_output=True, text=True, timeout=5
+        )
+        debug_info["disk_space"] = result.stdout
+    except Exception as e:
+        debug_info["disk_space_error"] = str(e)
+
+    try:
+        with db.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM users")
+            debug_info["users_count"] = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM trips")
+            debug_info["trips_count"] = cursor.fetchone()[0]
+            cursor.execute(
+                "SELECT id, user_id, title, link FROM trips ORDER BY created_at DESC LIMIT 10"
+            )
+            debug_info["trips"] = [
+                {"id": row[0], "user_id": row[1], "title": row[2], "link": row[3]}
+                for row in cursor.fetchall()
+            ]
+    except Exception as e:
+        debug_info["trips_error"] = str(e)
+
+    try:
+        venues_seed_csv = Path(__file__).parent.parent.parent / "data" / "venues_seed.csv"
+
+        if request.args.get("reimport_venues"):
+            from agents.explore.handler import _venues_cache as _vc  # noqa: F401
+            import agents.explore.handler as explore_handler
+
+            explore_handler._venues_cache = None
+            if venues_seed_csv.exists():
+                imported = db.import_venues_from_csv(str(venues_seed_csv), source="curated")
+                debug_info["reimport_result"] = f"Imported {imported} venues"
+            else:
+                debug_info["reimport_result"] = "CSV not found"
+
+        if request.args.get("geocode_missing"):
+            from geocode_venues import geocode_address
+
+            venues = load_venues()
+            missing = [v for v in venues if not v.get("latitude") or not v.get("longitude")]
+            debug_info["geocode_total_missing"] = len(missing)
+            geocoded = 0
+            failed = 0
+            results = []
+            import time
+
+            for v in missing[:50]:
+                name = v.get("name", "")
+                city = v.get("city", "")
+                country = v.get("country", "")
+                lat, lng = geocode_address(name, city, country)
+                if lat and lng:
+                    db.update_venue_coordinates(v["id"], lat, lng)
+                    geocoded += 1
+                    results.append(f"✓ {name}: {lat:.4f}, {lng:.4f}")
+                else:
+                    lat, lng = geocode_address("", city, country)
+                    if lat and lng:
+                        db.update_venue_coordinates(v["id"], lat, lng)
+                        geocoded += 1
+                        results.append(f"✓ {name} (city-level): {lat:.4f}, {lng:.4f}")
+                    else:
+                        failed += 1
+                        results.append(f"✗ {name}: NOT FOUND")
+                time.sleep(1.1)
+
+            import agents.explore.handler as explore_handler
+
+            explore_handler._venues_cache = None
+            debug_info["geocode_result"] = f"Geocoded {geocoded}, failed {failed}"
+            debug_info["geocode_details"] = results
+
+        venue_count = db.get_venue_count()
+        debug_info["venue_count"] = venue_count
+        debug_info["venues_seed_csv"] = str(venues_seed_csv)
+        debug_info["venues_seed_exists"] = venues_seed_csv.exists()
+
+        if venue_count > 0:
+            stats = db.get_venue_stats()
+            debug_info["venues_by_state"] = dict(list(stats.get("by_state", {}).items())[:15])
+            debug_info["venues_by_country"] = stats.get("by_country", {})
+
+    except Exception as e:
+        debug_info["venue_error"] = str(e)
+
+    return json_ok(debug_info)
+
+
+@admin_bp.post("/api/regenerate-all-trips")
+@require_auth
+def regenerate_all_trips():
+    from agents.admin.handler import regenerate_all_trip_html
+
+    results = regenerate_all_trip_html(g.user_id)
+    return json_ok(
+        {
+            "success": True,
+            "regenerated": results["regenerated"],
+            "skipped": results["skipped"],
+            "errors": results["errors"],
+        }
+    )
