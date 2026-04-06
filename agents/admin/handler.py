@@ -46,7 +46,9 @@ def regenerate_all_trip_html(user_id: int | None = None) -> dict:
                     else itinerary_data_raw
                 )
 
-                itinerary = _convert_to_itinerary({"itinerary_data": itinerary_data, "title": title})
+                itinerary = _convert_to_itinerary(
+                    {"itinerary_data": itinerary_data, "title": title}
+                )
 
                 if not itinerary or not itinerary.items:
                     results["skipped"] += 1
@@ -61,11 +63,16 @@ def regenerate_all_trip_html(user_id: int | None = None) -> dict:
                 print(f"[REGEN] Regenerated {link}")
 
                 # Fix dates and days in DB if needed
-                needs_date_fix = not current_dates or current_dates in (
-                    "Date unknown",
-                    "None",
-                    "",
-                ) or " - " in current_dates
+                needs_date_fix = (
+                    not current_dates
+                    or current_dates
+                    in (
+                        "Date unknown",
+                        "None",
+                        "",
+                    )
+                    or " - " in current_dates
+                )
                 update_data: dict = {}
 
                 if needs_date_fix:

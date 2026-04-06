@@ -199,7 +199,9 @@ Return venues in a JSON block with source tags:
                 web_fetch_context = {"url": url, "title": fetch_result.get("title", url)}
                 tool_result_content = f"Successfully fetched page: {fetch_result['title']}\n\nContent:\n{fetch_result['text']}"
             else:
-                tool_result_content = f"Failed to fetch page: {fetch_result.get('error', 'Unknown error')}"
+                tool_result_content = (
+                    f"Failed to fetch page: {fetch_result.get('error', 'Unknown error')}"
+                )
 
             messages.append({"role": "assistant", "content": response.content})
             messages.append(
@@ -275,7 +277,11 @@ Return venues in a JSON block with source tags:
                 if not matched:
                     for v in venues:
                         v_name_lower = v["name"].lower()
-                        if len(v_name_lower) >= 5 and v_name_lower in name_lower and _city_matches(v):
+                        if (
+                            len(v_name_lower) >= 5
+                            and v_name_lower in name_lower
+                            and _city_matches(v)
+                        ):
                             _append_curated(v)
                             matched = True
                             break

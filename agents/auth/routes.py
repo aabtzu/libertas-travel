@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from flask import Blueprint, request, session
+
 import auth
 from agents.common.flask_utils import json_err, json_ok
-from flask import Blueprint, jsonify, request, session
 
 auth_bp = Blueprint("auth", __name__)
 

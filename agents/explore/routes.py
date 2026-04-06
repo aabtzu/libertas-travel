@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from flask import Blueprint, request
+
 from agents.common.flask_utils import json_err, json_ok
 from agents.explore.handler import explore_chat_handler, load_venues
-from flask import Blueprint, request
 
 explore_bp = Blueprint("explore", __name__)
 

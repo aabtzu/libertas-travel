@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import os
 import subprocess
-import traceback
 from pathlib import Path
 
-import database as db
-import geocoding_worker
-from agents.common.flask_utils import json_err, json_ok, require_auth
 from flask import Blueprint, g, request
+
+import database as db
+from agents.common.flask_utils import json_ok, require_auth
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -76,8 +75,8 @@ def debug():
         venues_seed_csv = Path(__file__).parent.parent.parent / "data" / "venues_seed.csv"
 
         if request.args.get("reimport_venues"):
-            from agents.explore.handler import _venues_cache as _vc  # noqa: F401
             import agents.explore.handler as explore_handler
+            from agents.explore.handler import _venues_cache as _vc  # noqa: F401
 
             explore_handler._venues_cache = None
             if venues_seed_csv.exists():

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 
+from flask import Blueprint, Response, g, redirect
+
 import database as db
 from agents.common.flask_utils import require_auth
 from agents.common.templates import (
@@ -15,7 +17,6 @@ from agents.common.templates import (
 )
 from agents.explore.templates import generate_explore_page
 from agents.itinerary.templates import generate_trips_page
-from flask import Blueprint, Response, g, redirect, request
 
 pages_bp = Blueprint("pages", __name__)
 
@@ -122,9 +123,8 @@ def trip_html(trip_name: str):
     if not itinerary_data:
         return "Trip has no itinerary data", 404
 
-    from geocoding_worker import _convert_itinerary_data_to_worker_format, deserialize_itinerary
-
     from agents.itinerary.web_view import ItineraryWebView
+    from geocoding_worker import _convert_itinerary_data_to_worker_format, deserialize_itinerary
 
     worker_format = _convert_itinerary_data_to_worker_format(itinerary_data, trip.get("title"))
     if not worker_format:

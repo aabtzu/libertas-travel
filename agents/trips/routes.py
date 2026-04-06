@@ -8,12 +8,13 @@ import re
 import traceback
 from pathlib import Path
 
+from flask import Blueprint, g, request
+
 import database as db
 import geocoding_worker
 from agents.common.flask_utils import json_err, json_ok, require_auth
 from agents.create import handler as create_handler
 from agents.trips.ics import generate_ics
-from flask import Blueprint, g, jsonify, request, send_file
 
 trips_bp = Blueprint("trips", __name__)
 
@@ -192,7 +193,9 @@ def copy_trip():
                 "success": True,
                 "new_link": new_link,
                 "was_copied": was_copied,
-                "message": "Trip copied to your trips" if was_copied else "You already own this trip",
+                "message": "Trip copied to your trips"
+                if was_copied
+                else "You already own this trip",
             }
         )
     except Exception as e:
@@ -275,7 +278,9 @@ def retry_geocoding():
     from agents.create.handler import _convert_to_itinerary
     from agents.itinerary.mapper import ItineraryMapper
 
-    itinerary = _convert_to_itinerary({"itinerary_data": itinerary_data, "title": trip.get("title", "Trip")})
+    itinerary = _convert_to_itinerary(
+        {"itinerary_data": itinerary_data, "title": trip.get("title", "Trip")}
+    )
     if not itinerary:
         return json_err("Could not parse itinerary data")
 
@@ -287,7 +292,9 @@ def retry_geocoding():
         db.update_trip_itinerary_data(g.user_id, link, itinerary_data)
         db.update_trip_map_status(g.user_id, link, "ready", None)
         markers_count = len(map_data.get("markers", []))
-        return json_ok({"success": True, "message": f"Map regenerated with {markers_count} locations."})
+        return json_ok(
+            {"success": True, "message": f"Map regenerated with {markers_count} locations."}
+        )
     except Exception as e:
         traceback.print_exc()
         db.update_trip_map_status(g.user_id, link, "error", str(e))
@@ -308,7 +315,13 @@ def share_trip():
     try:
         if share_with_all:
             shared_count = db.share_trip_with_all(g.user_id, link)
-            return json_ok({"success": True, "message": f"Trip shared with {shared_count} users", "sharedCount": shared_count})
+            return json_ok(
+                {
+                    "success": True,
+                    "message": f"Trip shared with {shared_count} users",
+                    "sharedCount": shared_count,
+                }
+            )
         elif target_user_id:
             result = db.copy_trip_to_user(g.user_id, link, target_user_id)
             if result:
@@ -334,7 +347,13 @@ def toggle_public():
     try:
         updated = db.set_trip_public(g.user_id, link, is_public)
         if updated:
-            return json_ok({"success": True, "message": f"Trip {'made public' if is_public else 'made private'}", "isPublic": is_public})
+            return json_ok(
+                {
+                    "success": True,
+                    "message": f"Trip {'made public' if is_public else 'made private'}",
+                    "isPublic": is_public,
+                }
+            )
         return json_err("Trip not found")
     except Exception as e:
         traceback.print_exc()
