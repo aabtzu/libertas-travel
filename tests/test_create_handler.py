@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.create.handler import (
+from agents.create.chat_handler import (
     _clean_response_text,
     _cross_reference_curated,
     _parse_suggested_items,
