@@ -1,8 +1,9 @@
 """Data models for itinerary parsing."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import date, time, datetime
-from typing import Optional
+from datetime import date, time
 
 
 @dataclass
@@ -10,10 +11,10 @@ class Location:
     """A geographic location."""
 
     name: str
-    address: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    location_type: Optional[str] = None  # hotel, restaurant, attraction, airport, etc.
+    address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    location_type: str | None = None  # hotel, restaurant, attraction, airport, etc.
 
     @property
     def has_coordinates(self) -> bool:
@@ -35,17 +36,17 @@ class ItineraryItem:
 
     title: str
     location: Location
-    date: Optional[date] = None
-    end_date: Optional[date] = None  # checkout date for hotels, return date for rentals
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
-    description: Optional[str] = None
-    category: Optional[str] = None  # flight, hotel, activity, meal, transport, etc.
-    confirmation_number: Optional[str] = None
-    notes: Optional[str] = None
-    day_number: Optional[int] = None
+    date: date | None = None
+    end_date: date | None = None  # checkout date for hotels, return date for rentals
+    start_time: time | None = None
+    end_time: time | None = None
+    description: str | None = None
+    category: str | None = None  # flight, hotel, activity, meal, transport, etc.
+    confirmation_number: str | None = None
+    notes: str | None = None
+    day_number: int | None = None
     is_home_location: bool = False  # True if this is the traveler's home/origin
-    website_url: Optional[str] = None  # Direct link to hotel/activity website if available
+    website_url: str | None = None  # Direct link to hotel/activity website if available
 
     def to_dict(self) -> dict:
         return {
@@ -71,13 +72,13 @@ class Itinerary:
 
     title: str
     items: list[ItineraryItem] = field(default_factory=list)
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: date | None = None
+    end_date: date | None = None
     travelers: list[str] = field(default_factory=list)
-    source_file: Optional[str] = None
+    source_file: str | None = None
 
     @property
-    def duration_days(self) -> Optional[int]:
+    def duration_days(self) -> int | None:
         if self.start_date and self.end_date:
             return (self.end_date - self.start_date).days + 1
         return None

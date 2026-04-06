@@ -3,7 +3,6 @@
 import os
 import secrets
 import time
-from typing import Optional, Dict
 
 import database as db
 
@@ -15,7 +14,7 @@ SESSION_COOKIE_NAME = "libertas_session"
 _sessions = {}  # type: Dict[str, dict]
 
 
-def verify_credentials(username: str, password: str) -> Optional[Dict]:
+def verify_credentials(username: str, password: str) -> dict | None:
     """Verify username and password against database.
     Returns user dict if successful, None otherwise.
     """
@@ -48,7 +47,7 @@ def register_user(username: str, email: str, password: str) -> tuple:
         return False, "Failed to create user"
 
 
-def create_session(user: Dict) -> str:
+def create_session(user: dict) -> str:
     """Create a new session and return the session token."""
     token = secrets.token_urlsafe(32)
     _sessions[token] = {
@@ -60,7 +59,7 @@ def create_session(user: Dict) -> str:
     return token
 
 
-def validate_session(token: Optional[str]) -> Optional[dict]:
+def validate_session(token: str | None) -> dict | None:
     """Validate a session token and return session data if valid."""
     if not token:
         return None
@@ -77,7 +76,7 @@ def validate_session(token: Optional[str]) -> Optional[dict]:
     return session
 
 
-def get_session_user_id(token: Optional[str]) -> Optional[int]:
+def get_session_user_id(token: str | None) -> int | None:
     """Get the user_id from a session token."""
     session = validate_session(token)
     if session:
@@ -96,9 +95,7 @@ def destroy_session(token: str) -> bool:
 def get_session_cookie_header(token, secure=False):
     # type: (str, bool) -> str
     """Generate Set-Cookie header value for session."""
-    cookie = "{name}={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={duration}".format(
-        name=SESSION_COOKIE_NAME, token=token, duration=SESSION_DURATION
-    )
+    cookie = f"{SESSION_COOKIE_NAME}={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age={SESSION_DURATION}"
     if secure:
         cookie += "; Secure"
     return cookie
@@ -107,7 +104,7 @@ def get_session_cookie_header(token, secure=False):
 def get_logout_cookie_header():
     # type: () -> str
     """Generate Set-Cookie header to clear the session cookie."""
-    return "{name}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0".format(name=SESSION_COOKIE_NAME)
+    return f"{SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
 
 
 def parse_cookies(cookie_header):
@@ -140,4 +137,4 @@ def ensure_default_user():
         if user_id:
             print(f"[AUTH] Created default user: {default_username}")
         else:
-            print(f"[AUTH] Failed to create default user")
+            print("[AUTH] Failed to create default user")

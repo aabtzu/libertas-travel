@@ -1,18 +1,20 @@
 """Tests for itinerary parser — unit tests run without API, integration tests need ANTHROPIC_API_KEY."""
 
 import json
-import pytest
+import os
+import sys
 from datetime import date, time
 
-import sys, os
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.itinerary.parser import fix_json_string, ItineraryParser
-
+from agents.itinerary.parser import ItineraryParser, fix_json_string
 
 # ---------------------------------------------------------------------------
 # Unit tests — no API calls
 # ---------------------------------------------------------------------------
+
 
 class TestFixJsonString:
     def test_removes_trailing_comma_in_object(self):
@@ -20,7 +22,7 @@ class TestFixJsonString:
         assert json.loads(fix_json_string(raw)) == {"a": 1, "b": 2}
 
     def test_removes_trailing_comma_in_array(self):
-        raw = '[1, 2, 3,]'
+        raw = "[1, 2, 3,]"
         assert json.loads(fix_json_string(raw)) == [1, 2, 3]
 
     def test_removes_trailing_comma_nested(self):
@@ -58,7 +60,7 @@ class TestBuildItinerary:
                     "end_time": "16:30",
                     "is_home_location": False,
                 }
-            ]
+            ],
         }
         itinerary = self.parser._build_itinerary(data, "test.pdf")
         assert itinerary.title == "Tokyo Trip"
@@ -77,9 +79,17 @@ class TestBuildItinerary:
         data = {
             "title": "Trip",
             "items": [
-                {"title": "Home Departure", "location_name": "Denver, CO", "is_home_location": True},
-                {"title": "Hotel Tokyo", "location_name": "Tokyo, Japan", "is_home_location": False},
-            ]
+                {
+                    "title": "Home Departure",
+                    "location_name": "Denver, CO",
+                    "is_home_location": True,
+                },
+                {
+                    "title": "Hotel Tokyo",
+                    "location_name": "Tokyo, Japan",
+                    "is_home_location": False,
+                },
+            ],
         }
         itinerary = self.parser._build_itinerary(data, "test.pdf")
         assert itinerary.items[0].is_home_location is True
@@ -110,6 +120,7 @@ class TestBuildItinerary:
 # ---------------------------------------------------------------------------
 # Integration tests — require live API
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 def test_parse_text_basic():

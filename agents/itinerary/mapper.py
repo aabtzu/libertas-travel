@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import os
-import json
 import html
-import requests
 import time
-from pathlib import Path
-from typing import Optional, Union
 
-from .models import Itinerary, Location
+import requests
 
+from .models import Itinerary
 
 # Maximum number of locations to geocode (to avoid long waits)
 MAX_GEOCODE_LOCATIONS = 50
@@ -21,24 +17,24 @@ NOMINATIM_DELAY = 1.1
 
 # Marker colors by category
 MARKER_COLORS = {
-    "hotel": "#4285F4",      # Google blue
+    "hotel": "#4285F4",  # Google blue
     "lodging": "#4285F4",
-    "restaurant": "#FF9800", # Orange
+    "restaurant": "#FF9800",  # Orange
     "meal": "#FF9800",
-    "attraction": "#34A853", # Google green
+    "attraction": "#34A853",  # Google green
     "activity": "#34A853",
-    "airport": "#EA4335",    # Google red
+    "airport": "#EA4335",  # Google red
     "flight": "#EA4335",
-    "train_station": "#9C27B0", # Purple
+    "train_station": "#9C27B0",  # Purple
     "transport": "#757575",  # Gray
-    "other": "#00BCD4",      # Cyan
+    "other": "#00BCD4",  # Cyan
 }
 
 
 class ItineraryMapper:
     """Generate interactive maps from itineraries using OpenStreetMap/Nominatim."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         # api_key kept for backwards compatibility but not used (Nominatim is free)
         self._geocode_failures = 0
         self._cached_region_hint = None  # Cache region hint to avoid duplicate LLM calls
@@ -47,38 +43,49 @@ class ItineraryMapper:
 
     def geocode_locations(self, itinerary: Itinerary) -> Itinerary:
         """Add coordinates to all locations in the itinerary using Nominatim (OpenStreetMap)."""
-        print(f"[GEOCODING] Starting geocode_locations with {len(itinerary.items)} items", flush=True)
+        print(
+            f"[GEOCODING] Starting geocode_locations with {len(itinerary.items)} items", flush=True
+        )
 
         # Determine the trip's region for biasing geocoding results
         region_hint = self._get_region_hint(itinerary)
         print(f"[GEOCODING] Region hint: {region_hint}", flush=True)
 
         # Limit geocoding to avoid long waits
-        items_to_geocode = [
-            item for item in itinerary.items
-            if not item.location.has_coordinates
-        ]
+        items_to_geocode = [item for item in itinerary.items if not item.location.has_coordinates]
         print(f"[GEOCODING] Items needing geocoding: {len(items_to_geocode)}", flush=True)
 
         # Log first few items for debugging
         for item in items_to_geocode[:3]:
             loc = item.location
-            print(f"[GEOCODING] Item: '{item.title}' category='{item.category}' location='{loc.name if loc else None}'", flush=True)
+            print(
+                f"[GEOCODING] Item: '{item.title}' category='{item.category}' location='{loc.name if loc else None}'",
+                flush=True,
+            )
 
         # Only geocode up to MAX_GEOCODE_LOCATIONS
         for item in items_to_geocode[:MAX_GEOCODE_LOCATIONS]:
             # Stop if too many failures (likely network/rate limit issue)
             if self._geocode_failures >= 5:  # Increased from 3
-                print(f"[GEOCODING] Stopping after {self._geocode_failures} consecutive failures", flush=True)
+                print(
+                    f"[GEOCODING] Stopping after {self._geocode_failures} consecutive failures",
+                    flush=True,
+                )
                 break
             self._geocode_item(item, region_hint)
 
         if len(items_to_geocode) > MAX_GEOCODE_LOCATIONS:
-            print(f"[GEOCODING] Note: Only geocoded {MAX_GEOCODE_LOCATIONS} of {len(items_to_geocode)} locations", flush=True)
+            print(
+                f"[GEOCODING] Note: Only geocoded {MAX_GEOCODE_LOCATIONS} of {len(items_to_geocode)} locations",
+                flush=True,
+            )
 
         # Count successful geocodes
         geocoded_count = sum(1 for item in itinerary.items if item.location.has_coordinates)
-        print(f"[GEOCODING] Completed: {geocoded_count}/{len(itinerary.items)} items have coordinates", flush=True)
+        print(
+            f"[GEOCODING] Completed: {geocoded_count}/{len(itinerary.items)} items have coordinates",
+            flush=True,
+        )
 
         return itinerary
 
@@ -95,7 +102,7 @@ class ItineraryMapper:
             context_parts.append(f"Trip title: {itinerary.title}")
 
         # Get non-flight items (flights often have origin city)
-        non_flight_items = [item for item in itinerary.items if item.category != 'flight'][:15]
+        non_flight_items = [item for item in itinerary.items if item.category != "flight"][:15]
         if non_flight_items:
             items_text = []
             for item in non_flight_items:
@@ -127,7 +134,7 @@ class ItineraryMapper:
 
     def _extract_destination_with_llm(self, context: str) -> str:
         """Use LLM to extract the primary destination from trip context."""
-        from agents.common.llm import make_llm, SONNET
+        from agents.common.llm import SONNET, make_llm
 
         prompt = f"""Based on this trip information, identify the PRIMARY DESTINATION city and country.
 Ignore origin/departure locations (like home airports). Focus on where the traveler is actually visiting.
@@ -138,11 +145,10 @@ Respond with ONLY the destination in format: "City, Country" (e.g., "Vienna, Aus
 If multiple destinations, pick the main one. If unclear, respond with just the country."""
 
         result = make_llm(model=SONNET, max_tokens=50).call_api(
-            system_prompt="",
-            messages=[{"role": "user", "content": prompt}]
+            system_prompt="", messages=[{"role": "user", "content": prompt}]
         )
         # Clean up response - remove quotes, periods, etc.
-        result = result.strip('"\'.')
+        result = result.strip("\"'.")
         return result if result and len(result) < 100 else ""
 
     # Cache for IATA code lookups to avoid repeated LLM calls
@@ -161,13 +167,13 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
             return self._iata_cache[cache_key]
 
         # Skip common non-airport 3-letter words
-        skip_words = {'THE', 'AND', 'FOR', 'DAY', 'VIA', 'NON', 'ONE', 'TWO', 'NEW', 'OLD'}
+        skip_words = {"THE", "AND", "FOR", "DAY", "VIA", "NON", "ONE", "TWO", "NEW", "OLD"}
         if iata in skip_words:
             self._iata_cache[cache_key] = ""
             return ""
 
         try:
-            from agents.common.llm import make_llm, SONNET
+            from agents.common.llm import SONNET, make_llm
 
             # Build a smarter prompt with context
             prompt = f"""What airport has the IATA code "{iata}"?
@@ -175,7 +181,7 @@ If multiple destinations, pick the main one. If unclear, respond with just the c
 IATA codes are official 3-letter airport identifiers assigned by the International Air Transport Association.
 Be precise - many codes are similar but refer to different airports.
 
-{f'Context: This is for a flight with details: {context}' if context else ''}
+{f"Context: This is for a flight with details: {context}" if context else ""}
 
 Reply with ONLY the full airport name and location in this format:
 "Airport Name, City, Country/State"
@@ -187,11 +193,12 @@ Examples:
 
 If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
-            result = make_llm(model=SONNET, max_tokens=100).call_api(
-                system_prompt="",
-                messages=[{"role": "user", "content": prompt}]
-            ).strip('"')
-            if result and 'NONE' not in result.upper() and len(result) < 150:
+            result = (
+                make_llm(model=SONNET, max_tokens=100)
+                .call_api(system_prompt="", messages=[{"role": "user", "content": prompt}])
+                .strip('"')
+            )
+            if result and "NONE" not in result.upper() and len(result) < 150:
                 self._iata_cache[cache_key] = result
                 print(f"[GEOCODING] Resolved IATA {iata} -> {result}")
                 return result
@@ -207,13 +214,18 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             return ""
 
         try:
-            from agents.common.llm import make_llm, HAIKU
+            from agents.common.llm import HAIKU, make_llm
 
             result = make_llm(model=HAIKU, max_tokens=30).call_api(
                 system_prompt="",
-                messages=[{"role": "user", "content": f"What country is this trip to? '{itinerary.title}'. Reply with ONLY the country name, or 'UNKNOWN' if unclear."}]
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"What country is this trip to? '{itinerary.title}'. Reply with ONLY the country name, or 'UNKNOWN' if unclear.",
+                    }
+                ],
             )
-            if result and 'UNKNOWN' not in result.upper() and len(result) < 50:
+            if result and "UNKNOWN" not in result.upper() and len(result) < 50:
                 print(f"[GEOCODING] Fallback resolved region: {result}")
                 return result
         except Exception as e:
@@ -224,21 +236,21 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
     def _geocode_item(self, item, region_hint: str = "") -> None:
         """Geocode an item using its title and location info."""
         location = item.location
-        category = item.category or 'other'
+        category = item.category or "other"
 
         # Build smart queries based on category
         queries = []
 
         # Get location context
-        loc_name = location.name or ''
-        title = item.title or ''
+        loc_name = location.name or ""
+        title = item.title or ""
 
         # For flights, use special airport logic
-        if category == 'flight':
+        if category == "flight":
             queries = self._build_flight_queries(item, loc_name, region_hint)
 
         # For hotels/lodging - search venue name + city
-        elif category in ('hotel', 'lodging'):
+        elif category in ("hotel", "lodging"):
             if title and loc_name:
                 queries.append(f"{title}, {loc_name}")  # "Sofitel Munich, Munich"
                 queries.append(f"{title} Hotel, {loc_name}")  # "Sofitel Munich Hotel, Munich"
@@ -250,7 +262,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
                 queries.append(loc_name)
 
         # For restaurants/meals - search venue name + city
-        elif category in ('restaurant', 'meal'):
+        elif category in ("restaurant", "meal"):
             if title and loc_name:
                 queries.append(f"{title}, {loc_name}")
                 queries.append(f"{title} Restaurant, {loc_name}")
@@ -262,7 +274,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
                 queries.append(loc_name)
 
         # For attractions/activities - location name is usually the place itself
-        elif category in ('attraction', 'activity'):
+        elif category in ("attraction", "activity"):
             # If location looks like a specific place, search it directly
             if loc_name:
                 if region_hint and region_hint.lower() not in loc_name.lower():
@@ -277,7 +289,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
                 queries.append(title)
 
         # For transport (trains, etc)
-        elif category in ('transport', 'train_station'):
+        elif category in ("transport", "train_station"):
             if loc_name:
                 queries.append(f"{loc_name} Station")
                 queries.append(f"{loc_name} Train Station")
@@ -315,6 +327,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
     def _build_flight_queries(self, item, loc_name: str, region_hint: str) -> list:
         """Build geocoding queries for flight items."""
         import re
+
         queries = []
 
         # Build context for smarter IATA resolution
@@ -327,8 +340,8 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
         # PRIORITY 1: Use the location field if it's an IATA code (this is the DESTINATION)
         print(f"[GEOCODING] _build_flight_queries: loc_name='{loc_name}', title='{item.title}'")
-        loc_stripped = loc_name.strip() if loc_name else ''
-        is_iata = bool(re.match(r'^[A-Z]{3}$', loc_stripped))
+        loc_stripped = loc_name.strip() if loc_name else ""
+        is_iata = bool(re.match(r"^[A-Z]{3}$", loc_stripped))
         print(f"[GEOCODING] loc_stripped='{loc_stripped}', is_iata={is_iata}")
 
         if loc_stripped and is_iata:
@@ -341,7 +354,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         # PRIORITY 2: If location isn't an IATA code, try extracting from title (use LAST code = destination)
         if not queries:
             text_to_search = f"{item.title} {loc_name}"
-            iata_codes = re.findall(r'\b([A-Z]{3})\b', text_to_search)
+            iata_codes = re.findall(r"\b([A-Z]{3})\b", text_to_search)
             # Use the LAST IATA code (typically the destination in "DEN → BIH")
             for iata in reversed(iata_codes):
                 airport_name = self._resolve_iata_code(iata, context)
@@ -352,21 +365,21 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
         if loc_name:
             # Extract city from location like "Vienna (Vienna International, Terminal 3)"
-            match = re.match(r'^([^(]+)', loc_name)
+            match = re.match(r"^([^(]+)", loc_name)
             city = match.group(1).strip() if match else loc_name.split()[0]
 
             # Add explicit airport queries
             queries.append(f"{city} International Airport")
             queries.append(f"{city} Airport")
 
-            if 'airport' not in loc_name.lower():
+            if "airport" not in loc_name.lower():
                 queries.append(f"{loc_name} Airport")
 
             queries.append(loc_name)
 
         return queries
 
-    def _do_geocode(self, query: str, region_hint: str = "", category: str = "") -> Optional[dict]:
+    def _do_geocode(self, query: str, region_hint: str = "", category: str = "") -> dict | None:
         """Execute a geocoding request using Nominatim (OpenStreetMap) and return result or None."""
         try:
             # Rate limiting - Nominatim requires max 1 request per second
@@ -379,7 +392,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
                 "q": query,
                 "format": "json",
                 "limit": 10,  # Get more results for better filtering
-                "addressdetails": 1
+                "addressdetails": 1,
             }
             # Add country code bias if available
             if region_hint:
@@ -396,7 +409,10 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
             # Log response status for debugging
             if response.status_code != 200:
-                print(f"[GEOCODING] Nominatim returned status {response.status_code} for: {query}", flush=True)
+                print(
+                    f"[GEOCODING] Nominatim returned status {response.status_code} for: {query}",
+                    flush=True,
+                )
                 # Try Photon fallback with region hint
                 return self._do_geocode_photon(query, category, region_hint)
 
@@ -413,7 +429,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
                     return {
                         "lat": float(best_result["lat"]),
                         "lng": float(best_result["lon"]),
-                        "address": best_result.get("display_name", "")
+                        "address": best_result.get("display_name", ""),
                     }
                 return None
             else:
@@ -427,7 +443,9 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         # Fallback to Photon geocoder (also free, OSM-based)
         return self._do_geocode_photon(query, category, region_hint)
 
-    def _do_geocode_photon(self, query: str, category: str = "", region_hint: str = "") -> Optional[dict]:
+    def _do_geocode_photon(
+        self, query: str, category: str = "", region_hint: str = ""
+    ) -> dict | None:
         """Fallback geocoder using Photon (komoot's free OSM geocoder)."""
         try:
             url = "https://photon.komoot.io/api/"
@@ -493,23 +511,31 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
                             continue
 
                     if len(coords) >= 2:
-                        city = props.get("city", "") or props.get("town", "") or props.get("village", "")
-                        results.append({
-                            "lat": str(coords[1]),
-                            "lon": str(coords[0]),
-                            "class": props.get("osm_key", ""),
-                            "type": props.get("osm_value", ""),
-                            "display_name": f"{props.get('name', '')} {city} {country}".strip(),
-                            "country": country
-                        })
+                        city = (
+                            props.get("city", "")
+                            or props.get("town", "")
+                            or props.get("village", "")
+                        )
+                        results.append(
+                            {
+                                "lat": str(coords[1]),
+                                "lon": str(coords[0]),
+                                "class": props.get("osm_key", ""),
+                                "type": props.get("osm_value", ""),
+                                "display_name": f"{props.get('name', '')} {city} {country}".strip(),
+                                "country": country,
+                            }
+                        )
 
                 best = self._select_best_result(results, category)
                 if best:
-                    print(f"[GEOCODING] Photon found: {best.get('display_name', '')[:60]}", flush=True)
+                    print(
+                        f"[GEOCODING] Photon found: {best.get('display_name', '')[:60]}", flush=True
+                    )
                     return {
                         "lat": float(best["lat"]),
                         "lng": float(best["lon"]),
-                        "address": best.get("display_name", "")
+                        "address": best.get("display_name", ""),
                     }
             print(f"[GEOCODING] Photon no results for: {query}", flush=True)
             return None
@@ -517,7 +543,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             print(f"[GEOCODING] Photon fallback failed: {e}", flush=True)
             return None
 
-    def _select_best_result(self, results: list, category: str) -> Optional[dict]:
+    def _select_best_result(self, results: list, category: str) -> dict | None:
         """Select the best geocoding result based on category."""
         if not results:
             return None
@@ -525,35 +551,64 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         # Define category-specific preferences
         # Each tuple is (class, type) - type can be None to match any type in that class
         category_preferences = {
-            'hotel': [('tourism', 'hotel'), ('tourism', None), ('building', 'hotel'), ('amenity', None)],
-            'lodging': [('tourism', 'hotel'), ('tourism', None), ('building', 'hotel'), ('amenity', None)],
-            'restaurant': [('amenity', 'restaurant'), ('amenity', 'cafe'), ('amenity', 'fast_food'), ('amenity', None)],
-            'meal': [('amenity', 'restaurant'), ('amenity', 'cafe'), ('amenity', None)],
-            'attraction': [('tourism', 'attraction'), ('tourism', None), ('historic', None), ('leisure', None), ('place', 'village'), ('place', 'town'), ('place', None)],
-            'activity': [('tourism', None), ('leisure', None), ('amenity', None), ('place', None)],
-            'flight': [('aeroway', 'aerodrome'), ('aeroway', None)],
-            'transport': [('railway', 'station'), ('railway', None), ('amenity', 'bus_station')],
-            'train_station': [('railway', 'station'), ('railway', None)],
+            "hotel": [
+                ("tourism", "hotel"),
+                ("tourism", None),
+                ("building", "hotel"),
+                ("amenity", None),
+            ],
+            "lodging": [
+                ("tourism", "hotel"),
+                ("tourism", None),
+                ("building", "hotel"),
+                ("amenity", None),
+            ],
+            "restaurant": [
+                ("amenity", "restaurant"),
+                ("amenity", "cafe"),
+                ("amenity", "fast_food"),
+                ("amenity", None),
+            ],
+            "meal": [("amenity", "restaurant"), ("amenity", "cafe"), ("amenity", None)],
+            "attraction": [
+                ("tourism", "attraction"),
+                ("tourism", None),
+                ("historic", None),
+                ("leisure", None),
+                ("place", "village"),
+                ("place", "town"),
+                ("place", None),
+            ],
+            "activity": [("tourism", None), ("leisure", None), ("amenity", None), ("place", None)],
+            "flight": [("aeroway", "aerodrome"), ("aeroway", None)],
+            "transport": [("railway", "station"), ("railway", None), ("amenity", "bus_station")],
+            "train_station": [("railway", "station"), ("railway", None)],
         }
 
         # Default preferences for unknown categories
-        default_preferences = [('tourism', None), ('amenity', None), ('place', None), ('building', None), ('leisure', None)]
+        default_preferences = [
+            ("tourism", None),
+            ("amenity", None),
+            ("place", None),
+            ("building", None),
+            ("leisure", None),
+        ]
 
         preferences = category_preferences.get(category, default_preferences)
 
         # Try to find a result matching our preferences (in order)
         for pref_class, pref_type in preferences:
             for result in results:
-                r_class = result.get('class', '')
-                r_type = result.get('type', '')
+                r_class = result.get("class", "")
+                r_type = result.get("type", "")
                 if r_class == pref_class:
                     if pref_type is None or r_type == pref_type:
                         return result
 
         # Fallback: avoid streets/highways, prefer places
-        avoid_classes = ['highway', 'boundary', 'landuse']
+        avoid_classes = ["highway", "boundary", "landuse"]
         for result in results:
-            if result.get('class', '') not in avoid_classes:
+            if result.get("class", "") not in avoid_classes:
                 return result
 
         # Last resort: return first result
@@ -592,16 +647,39 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         We want to EXCLUDE origin cities, home airports, transit/connecting stops,
         and departure points that are not part of the actual trip destination.
         """
-        category = (item.category or '').lower()
-        title = (item.title or '').lower()
-        location = item.location.name or ''
+        category = (item.category or "").lower()
+        title = (item.title or "").lower()
+        location = item.location.name or ""
 
         # Log every item for debugging
-        print(f"[MAP DEBUG] Item: '{item.title}' category='{category}' location='{location}'", flush=True)
+        print(
+            f"[MAP DEBUG] Item: '{item.title}' category='{category}' location='{location}'",
+            flush=True,
+        )
 
         # Check all transport modes: flights, trains, cars, buses, ferries
-        transport_categories = ['flight', 'air', 'plane', 'airport', 'transport', 'train', 'car', 'bus', 'ferry']
-        transport_keywords = ['flight', 'fly', 'airport', 'train', 'rail', 'rental car', 'car rental', 'ferry', 'bus']
+        transport_categories = [
+            "flight",
+            "air",
+            "plane",
+            "airport",
+            "transport",
+            "train",
+            "car",
+            "bus",
+            "ferry",
+        ]
+        transport_keywords = [
+            "flight",
+            "fly",
+            "airport",
+            "train",
+            "rail",
+            "rental car",
+            "car rental",
+            "ferry",
+            "bus",
+        ]
 
         is_transport_category = category in transport_categories
         is_transport_title = any(kw in title for kw in transport_keywords)
@@ -610,27 +688,35 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             return False
 
         if not destination:
-            print(f"[MAP DEBUG] No destination set, keeping item", flush=True)
+            print("[MAP DEBUG] No destination set, keeping item", flush=True)
             return False
 
         if not location:
-            print(f"[MAP DEBUG] No location for item, keeping item", flush=True)
+            print("[MAP DEBUG] No location for item, keeping item", flush=True)
             return False
 
         # Quick check: if destination name appears in location, keep it
         dest_lower = destination.lower()
         loc_lower = location.lower()
         if dest_lower in loc_lower:
-            print(f"[MAP DEBUG] Destination '{destination}' found in location '{location}', keeping item", flush=True)
+            print(
+                f"[MAP DEBUG] Destination '{destination}' found in location '{location}', keeping item",
+                flush=True,
+            )
             return False
 
         # Check if location is in destination region using LLM
         print(f"[MAP DEBUG] Checking if '{location}' is in '{destination}' via LLM...", flush=True)
-        is_in_destination = self._is_location_in_destination(location, item.title or '', destination)
+        is_in_destination = self._is_location_in_destination(
+            location, item.title or "", destination
+        )
 
         # If location is NOT in destination, filter it out (origin, home city, transit stop, etc.)
         if not is_in_destination:
-            print(f"[MAP] Filtering transport outside destination: '{item.title}' at '{location}' (not in {destination})", flush=True)
+            print(
+                f"[MAP] Filtering transport outside destination: '{item.title}' at '{location}' (not in {destination})",
+                flush=True,
+            )
             return True
 
         print(f"[MAP DEBUG] Keeping item: '{item.title}' - location is in destination", flush=True)
@@ -644,7 +730,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             return self._origin_check_cache[cache_key]
 
         try:
-            from agents.common.llm import make_llm, HAIKU
+            from agents.common.llm import HAIKU, make_llm
 
             prompt = f"""Is the location "{location}" part of the trip destination {destination}?
 
@@ -661,10 +747,12 @@ Examples where destination is "Sweden":
 - "New York JFK" → NO (USA, likely home/end destination)
 - "Copenhagen" → NO (Denmark, not Sweden — even if geographically close)"""
 
-            answer = make_llm(model=HAIKU, max_tokens=10).call_api(
-                system_prompt="",
-                messages=[{"role": "user", "content": prompt}]
-            ).strip().upper()
+            answer = (
+                make_llm(model=HAIKU, max_tokens=10)
+                .call_api(system_prompt="", messages=[{"role": "user", "content": prompt}])
+                .strip()
+                .upper()
+            )
             result = answer.startswith("YES")
 
             # Cache the result
@@ -689,7 +777,7 @@ Examples where destination is "Sweden":
         """
         # Clear the origin check cache to ensure fresh LLM calls
         self._origin_check_cache.clear()
-        print(f"[MAP] === Starting create_map_data ===", flush=True)
+        print("[MAP] === Starting create_map_data ===", flush=True)
         print(f"[MAP] Trip title: '{itinerary.title}'", flush=True)
         print(f"[MAP] Total items: {len(itinerary.items)}", flush=True)
 
@@ -701,7 +789,7 @@ Examples where destination is "Sweden":
         print(f"[MAP] Destination region identified: '{destination}'", flush=True)
 
         # Log all items with coordinates before filtering
-        print(f"[MAP] === Checking items for origin flights ===", flush=True)
+        print("[MAP] === Checking items for origin flights ===", flush=True)
 
         # Get locations with coordinates, excluding home locations and origin flights
         locations_with_coords = []
@@ -716,7 +804,10 @@ Examples where destination is "Sweden":
                 continue
             locations_with_coords.append((item, item.location))
 
-        print(f"[MAP] === Items remaining after filtering: {len(locations_with_coords)} ===", flush=True)
+        print(
+            f"[MAP] === Items remaining after filtering: {len(locations_with_coords)} ===",
+            flush=True,
+        )
 
         if not locations_with_coords:
             return {
@@ -724,7 +815,7 @@ Examples where destination is "Sweden":
                 "zoom": 2,
                 "markers": [],
                 "route": [],
-                "error": "No locations could be geocoded"
+                "error": "No locations could be geocoded",
             }
 
         # Calculate map center and bounds
@@ -768,13 +859,15 @@ Examples where destination is "Sweden":
             # Build info window content
             info_html = self._build_info_window(item, idx)
 
-            markers.append({
-                "position": {"lat": location.latitude, "lng": location.longitude},
-                "title": item.title,
-                "category": category,
-                "color": color,
-                "info": info_html,
-            })
+            markers.append(
+                {
+                    "position": {"lat": location.latitude, "lng": location.longitude},
+                    "title": item.title,
+                    "category": category,
+                    "color": color,
+                    "info": info_html,
+                }
+            )
 
         return {
             "center": {"lat": center_lat, "lng": center_lon},
@@ -788,14 +881,16 @@ Examples where destination is "Sweden":
 
         location_name = item.location.name or item.title
         lines = [
-            f'<div style="font-family: Arial, sans-serif; max-width: 320px; font-size: 15px;">',
+            '<div style="font-family: Arial, sans-serif; max-width: 320px; font-size: 15px;">',
             f'<h4 style="margin: 0 0 10px 0; color: #1a73e8; font-size: 17px;">{idx}. {html.escape(item.title)}</h4>',
             f'<p style="margin: 0 0 6px 0; font-weight: bold; font-size: 15px;">{html.escape(location_name)}</p>',
         ]
 
         if item.date:
             date_str = item.date.strftime("%B %d, %Y")
-            lines.append(f'<p style="margin: 0 0 6px 0; color: #666; font-size: 14px;"><em>{date_str}</em></p>')
+            lines.append(
+                f'<p style="margin: 0 0 6px 0; color: #666; font-size: 14px;"><em>{date_str}</em></p>'
+            )
 
         if item.start_time:
             time_str = item.start_time.strftime("%I:%M %p")
@@ -810,19 +905,29 @@ Examples where destination is "Sweden":
             lines.append(f'<p style="margin: 0 0 6px 0; font-size: 14px;">{desc}</p>')
 
         if item.confirmation_number:
-            lines.append(f'<p style="margin: 0 0 6px 0; font-size: 13px; color: #888;">Conf: {html.escape(item.confirmation_number)}</p>')
+            lines.append(
+                f'<p style="margin: 0 0 6px 0; font-size: 13px; color: #888;">Conf: {html.escape(item.confirmation_number)}</p>'
+            )
 
         if item.location.address:
-            lines.append(f'<p style="margin: 0 0 10px 0; font-size: 13px; color: #888;">{html.escape(item.location.address)}</p>')
+            lines.append(
+                f'<p style="margin: 0 0 10px 0; font-size: 13px; color: #888;">{html.escape(item.location.address)}</p>'
+            )
 
         # Add action links
-        lines.append('<div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee;">')
+        lines.append(
+            '<div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee;">'
+        )
 
         # Google Maps link - search by place name for better results
         query = urllib.parse.quote(f"{item.title} {location_name}")
         maps_url = f"https://www.google.com/maps/search/?api=1&query={query}"
-        maps_link_text = html.escape(location_name[:30]) + ("..." if len(location_name) > 30 else "")
-        lines.append(f'<a href="{maps_url}" target="_blank" style="display: block; margin-bottom: 8px; color: #1a73e8; text-decoration: none; font-size: 14px;"><i class="fas fa-map-marker-alt" style="margin-right: 6px;"></i>{maps_link_text}</a>')
+        maps_link_text = html.escape(location_name[:30]) + (
+            "..." if len(location_name) > 30 else ""
+        )
+        lines.append(
+            f'<a href="{maps_url}" target="_blank" style="display: block; margin-bottom: 8px; color: #1a73e8; text-decoration: none; font-size: 14px;"><i class="fas fa-map-marker-alt" style="margin-right: 6px;"></i>{maps_link_text}</a>'
+        )
 
         # Website link (for hotels, restaurants, activities)
         if item.category in ("hotel", "lodging", "meal", "restaurant", "activity", "attraction"):
@@ -833,8 +938,10 @@ Examples where destination is "Sweden":
                 # Fall back to DuckDuckGo's "I'm Feeling Ducky" redirect
                 search_query = urllib.parse.quote(f"{item.title} {location_name} official site")
                 website_link = f"https://duckduckgo.com/?q=\\{search_query}"
-            lines.append(f'<a href="{website_link}" target="_blank" style="display: block; color: #1a73e8; text-decoration: none; font-size: 14px;"><i class="fas fa-globe" style="margin-right: 6px;"></i>Website</a>')
+            lines.append(
+                f'<a href="{website_link}" target="_blank" style="display: block; color: #1a73e8; text-decoration: none; font-size: 14px;"><i class="fas fa-globe" style="margin-right: 6px;"></i>Website</a>'
+            )
 
-        lines.append('</div>')
-        lines.append('</div>')
+        lines.append("</div>")
+        lines.append("</div>")
         return "".join(lines)

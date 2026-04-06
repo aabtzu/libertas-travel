@@ -3,10 +3,13 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
+
+from agents.common.templates import get_nav_html
+from agents.common.templates import get_static_css as common_get_static_css
+from agents.common.templates import get_static_js as common_get_static_js
 
 
-def format_trip_date(date_str: Optional[str]) -> str:
+def format_trip_date(date_str: str | None) -> str:
     """Format a date string as 'Mon YYYY' (e.g., 'Dec 2025')."""
     if not date_str:
         return "Date unknown"
@@ -18,7 +21,7 @@ def format_trip_date(date_str: Optional[str]) -> str:
         return "Date unknown"
 
 
-def get_trip_start_date(itinerary_data: dict) -> Optional[str]:
+def get_trip_start_date(itinerary_data: dict) -> str | None:
     """Extract start date from itinerary_data, checking multiple locations."""
     if not itinerary_data:
         return None
@@ -33,23 +36,17 @@ def get_trip_start_date(itinerary_data: dict) -> Optional[str]:
             return first_day["date"]
     return None
 
-# Import shared components from common
-from agents.common.templates import (
-    get_static_css as common_get_static_css,
-    get_static_js as common_get_static_js,
-    get_nav_html,
-)
 
 # Category icons mapping (shared with frontend)
 CATEGORY_ICONS = {
-    'meal': 'fa-utensils',
-    'hotel': 'fa-bed',
-    'lodging': 'fa-bed',
-    'transport': 'fa-car',
-    'flight': 'fa-plane',
-    'activity': 'fa-star',
-    'attraction': 'fa-landmark',
-    'other': 'fa-calendar-day',
+    "meal": "fa-utensils",
+    "hotel": "fa-bed",
+    "lodging": "fa-bed",
+    "transport": "fa-car",
+    "flight": "fa-plane",
+    "activity": "fa-star",
+    "attraction": "fa-landmark",
+    "other": "fa-calendar-day",
 }
 
 # Path to itinerary-specific static files and templates
@@ -91,6 +88,7 @@ def _get_trip_card_template() -> str:
 def _get_public_trip_card_template() -> str:
     """Get the public trip card template from external file."""
     return get_template("public_trip_card.html")
+
 
 # Destination-specific background images (using Unsplash for free images)
 DESTINATION_IMAGES = {
@@ -150,13 +148,20 @@ def get_destination_image(title: str):
 def get_region_icon(title: str) -> str:
     """Get an appropriate icon based on trip title/region."""
     title_lower = title.lower()
-    if any(x in title_lower for x in ["india", "delhi", "agra", "jaipur", "jaisalmer", "rajasthan"]):
+    if any(
+        x in title_lower for x in ["india", "delhi", "agra", "jaipur", "jaisalmer", "rajasthan"]
+    ):
         return "om"
     elif "alaska" in title_lower:
         return "mountain"
-    elif any(x in title_lower for x in ["asia", "vietnam", "cambodia", "thailand", "japan", "china", "singapore"]):
+    elif any(
+        x in title_lower
+        for x in ["asia", "vietnam", "cambodia", "thailand", "japan", "china", "singapore"]
+    ):
         return "torii-gate"
-    elif any(x in title_lower for x in ["europe", "france", "italy", "spain", "germany", "uk", "rome"]):
+    elif any(
+        x in title_lower for x in ["europe", "france", "italy", "spain", "germany", "uk", "rome"]
+    ):
         return "landmark"
     elif any(x in title_lower for x in ["africa", "safari", "kenya", "tanzania"]):
         return "globe-africa"
@@ -182,7 +187,7 @@ def get_region_name(title: str) -> str:
     return title.split()[0] if title else "Trip"
 
 
-def extract_category_counts(itinerary_data: Optional[Union[str, dict]]) -> dict:
+def extract_category_counts(itinerary_data: str | dict | None) -> dict:
     """Extract category counts from itinerary_data JSON.
 
     Returns dict with category names as keys and counts as values.
@@ -201,41 +206,39 @@ def extract_category_counts(itinerary_data: Optional[Union[str, dict]]) -> dict:
     counts = {}
 
     # Count items in days
-    for day in data.get('days', []):
-        for item in day.get('items', []):
-            category = item.get('category', 'other')
+    for day in data.get("days", []):
+        for item in day.get("items", []):
+            category = item.get("category", "other")
             counts[category] = counts.get(category, 0) + 1
 
     # Count items in ideas pile
-    for item in data.get('ideas', []):
-        category = item.get('category', 'other')
+    for item in data.get("ideas", []):
+        category = item.get("category", "other")
         counts[category] = counts.get(category, 0) + 1
 
     return counts
 
 
 def generate_category_stats_html(
-    category_counts: dict,
-    locations: int = 0,
-    activities: int = 0
+    category_counts: dict, locations: int = 0, activities: int = 0
 ) -> str:
     """Generate HTML for category stats icons.
 
     If category_counts is empty, falls back to locations/activities numbers.
     """
     # Category display order
-    DISPLAY_ORDER = ['attraction', 'activity', 'meal', 'hotel', 'transport', 'flight', 'other']
+    DISPLAY_ORDER = ["attraction", "activity", "meal", "hotel", "transport", "flight", "other"]
 
     # Category tooltips
     TOOLTIPS = {
-        'meal': 'Meals',
-        'hotel': 'Hotels',
-        'lodging': 'Lodging',
-        'transport': 'Transport',
-        'flight': 'Flights',
-        'activity': 'Activities',
-        'attraction': 'Attractions',
-        'other': 'Other',
+        "meal": "Meals",
+        "hotel": "Hotels",
+        "lodging": "Lodging",
+        "transport": "Transport",
+        "flight": "Flights",
+        "activity": "Activities",
+        "attraction": "Attractions",
+        "other": "Other",
     }
 
     if category_counts:
@@ -244,13 +247,13 @@ def generate_category_stats_html(
         for cat in DISPLAY_ORDER:
             count = category_counts.get(cat, 0)
             if count > 0:
-                icon = CATEGORY_ICONS.get(cat, 'fa-calendar-day')
+                icon = CATEGORY_ICONS.get(cat, "fa-calendar-day")
                 tooltip = TOOLTIPS.get(cat, cat.title())
                 html_parts.append(
                     f'<span class="category-stat cat-{cat}" title="{tooltip}">'
                     f'<i class="fas {icon}"></i> {count}</span>'
                 )
-        return '\n                            '.join(html_parts)
+        return "\n                            ".join(html_parts)
     else:
         # Fallback to locations/activities
         html_parts = []
@@ -264,7 +267,7 @@ def generate_category_stats_html(
                 f'<span class="category-stat cat-activity" title="Activities">'
                 f'<i class="fas fa-star"></i> {activities}</span>'
             )
-        return '\n                            '.join(html_parts)
+        return "\n                            ".join(html_parts)
 
 
 def generate_trip_card(
@@ -277,7 +280,7 @@ def generate_trip_card(
     index: int = 0,
     is_public: bool = False,
     is_draft: bool = False,
-    itinerary_data: Optional[Union[str, dict]] = None
+    itinerary_data: str | dict | None = None,
 ) -> str:
     """Generate HTML for a single trip card."""
     # Use gradient colors (light colors with icon look good)
@@ -286,15 +289,21 @@ def generate_trip_card(
     region = get_region_name(title)
 
     # Public visibility settings
-    public_badge = '<span class="public-badge"><i class="fas fa-globe"></i></span>' if is_public else ''
-    public_class = 'active' if is_public else ''
-    public_icon = 'globe' if is_public else 'lock'
-    public_title = 'Make private' if is_public else 'Make public'
+    public_badge = (
+        '<span class="public-badge"><i class="fas fa-globe"></i></span>' if is_public else ""
+    )
+    public_class = "active" if is_public else ""
+    public_icon = "globe" if is_public else "lock"
+    public_title = "Make private" if is_public else "Make public"
 
     # Draft settings - drafts link to create/edit page
-    draft_badge = '<span class="draft-badge"><i class="fas fa-pencil-alt"></i> Draft</span>' if is_draft else ''
-    draft_class = ' is-draft' if is_draft else ''
-    card_link = f'/create.html?edit={link}' if is_draft else link
+    draft_badge = (
+        '<span class="draft-badge"><i class="fas fa-pencil-alt"></i> Draft</span>'
+        if is_draft
+        else ""
+    )
+    draft_class = " is-draft" if is_draft else ""
+    card_link = f"/create.html?edit={link}" if is_draft else link
 
     # Generate category stats (icons with counts)
     category_counts = extract_category_counts(itinerary_data)
@@ -316,10 +325,10 @@ def generate_trip_card(
         public_class=public_class,
         public_icon=public_icon,
         public_title=public_title,
-        is_public='true' if is_public else 'false',
+        is_public="true" if is_public else "false",
         draft_badge=draft_badge,
         draft_class=draft_class,
-        is_draft='true' if is_draft else 'false',
+        is_draft="true" if is_draft else "false",
     )
 
 
@@ -332,7 +341,7 @@ def generate_public_trip_card(
     activities: int,
     owner_username: str,
     index: int = 0,
-    itinerary_data: Optional[Union[str, dict]] = None
+    itinerary_data: str | dict | None = None,
 ) -> str:
     """Generate HTML for a public trip card (from another user)."""
     gradient = TRIP_GRADIENTS[index % len(TRIP_GRADIENTS)]
@@ -385,7 +394,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
             if isinstance(itinerary_data, str):
                 try:
                     itinerary_data = json.loads(itinerary_data)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     itinerary_data = {}
             start_date = get_trip_start_date(itinerary_data) or trip.get("start_date")
             formatted_date = format_trip_date(start_date)
@@ -419,7 +428,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
                 if isinstance(pub_itinerary_data, str):
                     try:
                         pub_itinerary_data = json.loads(pub_itinerary_data)
-                    except:
+                    except (json.JSONDecodeError, ValueError):
                         pub_itinerary_data = {}
                 pub_start_date = get_trip_start_date(pub_itinerary_data) or trip.get("start_date")
                 pub_formatted_date = format_trip_date(pub_start_date)

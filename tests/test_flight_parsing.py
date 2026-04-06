@@ -5,20 +5,23 @@ Run with: .venv/bin/python3 -m pytest tests/test_flight_parsing.py -m integratio
 """
 
 import json
+import os
+import sys
+
 import pytest
 
-import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.common.llm import make_llm, SONNET
+from agents.common.llm import SONNET, make_llm
 
 
 @pytest.mark.integration
 def test_file_upload_parsing():
     """File upload prompt keeps IATA codes as-is — BIH stays 'BIH', not 'Birmingham'."""
     from datetime import datetime
+
     current_year = datetime.now().year
-    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_date = datetime.now().strftime("%Y-%m-%d")
     next_year = current_year + 1
 
     system_prompt = f"""You are a travel document parser. Extract travel-related items from the uploaded document.
@@ -49,7 +52,12 @@ United · Operated by SkyWest DBA United Express    DEN-BIH"""
     llm = make_llm(model=SONNET, max_tokens=500)
     result = llm.call_api(
         system_prompt=system_prompt,
-        messages=[{"role": "user", "content": f"Extract travel items from this document:\n\n{flight_text}"}]
+        messages=[
+            {
+                "role": "user",
+                "content": f"Extract travel items from this document:\n\n{flight_text}",
+            }
+        ],
     )
 
     # Strip markdown fences if present
@@ -61,9 +69,9 @@ United · Operated by SkyWest DBA United Express    DEN-BIH"""
     items = json.loads(result.strip())
     assert len(items) > 0, "No items parsed from flight text"
 
-    location = items[0].get('location', '')
-    assert 'birmingham' not in location.lower(), f"Location expanded to Birmingham: {location!r}"
-    assert location.upper() == 'BIH', f"Expected 'BIH', got {location!r}"
+    location = items[0].get("location", "")
+    assert "birmingham" not in location.lower(), f"Location expanded to Birmingham: {location!r}"
+    assert location.upper() == "BIH", f"Expected 'BIH', got {location!r}"
 
 
 @pytest.mark.integration
@@ -84,23 +92,31 @@ def test_chat_tool_flow():
                                 "title": {"type": "string"},
                                 "category": {
                                     "type": "string",
-                                    "enum": ["flight", "meal", "hotel", "activity", "attraction", "transport", "other"]
+                                    "enum": [
+                                        "flight",
+                                        "meal",
+                                        "hotel",
+                                        "activity",
+                                        "attraction",
+                                        "transport",
+                                        "other",
+                                    ],
                                 },
                                 "location": {
                                     "type": "string",
-                                    "description": "For FLIGHTS: use IATA airport code only (e.g. 'BIH', 'LAX') - do NOT expand to city names"
+                                    "description": "For FLIGHTS: use IATA airport code only (e.g. 'BIH', 'LAX') - do NOT expand to city names",
                                 },
                                 "notes": {"type": "string"},
                                 "day": {"type": "integer"},
                                 "time": {"type": "string"},
-                                "end_time": {"type": "string"}
+                                "end_time": {"type": "string"},
                             },
-                            "required": ["title", "category"]
-                        }
+                            "required": ["title", "category"],
+                        },
                     }
                 },
-                "required": ["items"]
-            }
+                "required": ["items"],
+            },
         }
     ]
 
@@ -127,18 +143,18 @@ United · Operated by SkyWest DBA United Express    DEN-BIH"""
         system_prompt=system_prompt,
         messages=[{"role": "user", "content": message}],
         tools=tools,
-        return_full_response=True
+        return_full_response=True,
     )
 
     tool_call = next((b for b in response.content if b.type == "tool_use"), None)
     assert tool_call is not None, "Expected a tool_use block but got none"
 
-    items = tool_call.input.get('items', [])
+    items = tool_call.input.get("items", [])
     assert len(items) > 0, "No items in tool call"
 
-    location = items[0].get('location', '')
-    assert 'birmingham' not in location.lower(), f"Location expanded to Birmingham: {location!r}"
-    assert 'BIH' in location.upper(), f"Expected 'BIH' in location, got {location!r}"
+    location = items[0].get("location", "")
+    assert "birmingham" not in location.lower(), f"Location expanded to Birmingham: {location!r}"
+    assert "BIH" in location.upper(), f"Expected 'BIH' in location, got {location!r}"
 
 
 @pytest.mark.integration
@@ -165,10 +181,7 @@ Examples:
 If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
     llm = make_llm(model=SONNET, max_tokens=100)
-    result = llm.call_api(
-        system_prompt="",
-        messages=[{"role": "user", "content": prompt}]
-    )
+    result = llm.call_api(system_prompt="", messages=[{"role": "user", "content": prompt}])
 
-    assert 'birmingham' not in result.lower(), f"Resolved to Birmingham: {result!r}"
-    assert 'bishop' in result.lower(), f"Expected Bishop CA, got: {result!r}"
+    assert "birmingham" not in result.lower(), f"Resolved to Birmingham: {result!r}"
+    assert "bishop" in result.lower(), f"Expected Bishop CA, got: {result!r}"
