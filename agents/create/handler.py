@@ -8,7 +8,7 @@ import urllib.request
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from anthropic import Anthropic
+from agents.common.llm import make_llm, SONNET
 
 import database as db
 
@@ -602,7 +602,7 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
     ]
 
     try:
-        client = Anthropic()
+        llm = make_llm(model=SONNET, max_tokens=2048)
 
         # Tool use loop - handle multiple rounds if Claude calls tools
         max_iterations = 3
@@ -611,12 +611,11 @@ def create_chat_handler(user_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         response_text = ""
 
         for iteration in range(max_iterations):
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=2048,
-                system=system_prompt,
+            response = llm.call_api(
+                system_prompt=system_prompt,
                 messages=messages,
-                tools=tools
+                tools=tools,
+                return_full_response=True
             )
 
             # Process response blocks
@@ -1640,7 +1639,7 @@ If you cannot extract any travel items, return an empty array: []
 Only return the JSON array, no other text."""
 
     try:
-        client = Anthropic()
+        llm = make_llm(model=SONNET, max_tokens=2048)
 
         if image_data:
             # Use vision for images
@@ -1668,11 +1667,10 @@ Only return the JSON array, no other text."""
                 'content': f'Extract travel items from this document (filename: {filename}):\n\n{content_for_llm[:10000]}'  # Limit content
             }]
 
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2048,
-            system=system_prompt,
-            messages=messages
+        response = llm.call_api(
+            system_prompt=system_prompt,
+            messages=messages,
+            return_full_response=True
         )
 
         response_text = response.content[0].text.strip()

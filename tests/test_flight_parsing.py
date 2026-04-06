@@ -1,24 +1,26 @@
-#!/usr/bin/env python3
-"""Test flight parsing to ensure IATA codes are handled correctly."""
+"""Regression tests for flight parsing — IATA code handling (BIH = Bishop CA, not Birmingham).
 
-import sys
-import os
+These tests call the live API and are marked @pytest.mark.integration.
+Run with: .venv/bin/python3 -m pytest tests/test_flight_parsing.py -m integration -v
+"""
+
+import json
+import pytest
+
+import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from anthropic import Anthropic
-import json
+from agents.common.llm import make_llm, SONNET
 
-client = Anthropic()
 
+@pytest.mark.integration
 def test_file_upload_parsing():
-    """Test the file upload parsing prompt."""
+    """File upload prompt keeps IATA codes as-is — BIH stays 'BIH', not 'Birmingham'."""
     from datetime import datetime
-
     current_year = datetime.now().year
     current_date = datetime.now().strftime('%Y-%m-%d')
     next_year = current_year + 1
 
-    # This is the EXACT prompt from handler.py
     system_prompt = f"""You are a travel document parser. Extract travel-related items from the uploaded document.
 
 Today's date is {current_date} (December {current_year}).
@@ -34,107 +36,64 @@ For each item you find, extract:
 - time: Start/departure/pickup time (HH:MM format, 24-hour)
 - end_time: End/arrival/dropoff time if available (HH:MM format, 24-hour)
 - location: City or address (pickup location for rentals, destination airport CODE for flights - keep as IATA code like "BIH", do NOT expand to city name)
-- notes: Any additional relevant details (confirmation numbers, vehicle type, drop-off location if different, etc.)
+- notes: Any additional relevant details
 
-For FLIGHTS and TRAINS: Always extract both departure time (time) and arrival time (end_time) if shown.
-For FLIGHTS: Keep airport IATA codes as-is (e.g., "DEN", "BIH", "LAX"). Do NOT try to expand airport codes to city names - just use the 3-letter code.
-For CAR RENTALS: Extract pickup date/time as date/time, drop-off date/time as end_date/end_time. Include confirmation number and vehicle type in notes.
+For FLIGHTS: Keep airport IATA codes as-is (e.g., "DEN", "BIH", "LAX"). Do NOT expand airport codes to city names.
 
-Return your response as a JSON array of items. Example:
-```json
-[
-  {{
-    "title": "LH 2416 MUC → ARN",
-    "category": "flight",
-    "date": "2025-12-17",
-    "time": "12:10",
-    "end_time": "14:25",
-    "location": "ARN",
-    "notes": "Lufthansa, Airbus A321, Economy, 2h 15m nonstop"
-  }}
-]
-```
-
-If you cannot extract any travel items, return an empty array: []
+Return your response as a JSON array of items.
 Only return the JSON array, no other text."""
 
     flight_text = """Fri, Mar 20 · 11:36 AM – 1:24 PM    2 hr 48 min    Nonstop
 United · Operated by SkyWest DBA United Express    DEN-BIH"""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=500,
-        system=system_prompt,
+    llm = make_llm(model=SONNET, max_tokens=500)
+    result = llm.call_api(
+        system_prompt=system_prompt,
         messages=[{"role": "user", "content": f"Extract travel items from this document:\n\n{flight_text}"}]
     )
 
-    result = response.content[0].text
-
-    # Parse JSON
+    # Strip markdown fences if present
     if "```json" in result:
-        json_str = result.split("```json")[1].split("```")[0].strip()
+        result = result.split("```json")[1].split("```")[0].strip()
     elif "```" in result:
-        json_str = result.split("```")[1].split("```")[0].strip()
-    else:
-        json_str = result.strip()
+        result = result.split("```")[1].split("```")[0].strip()
 
-    items = json.loads(json_str)
+    items = json.loads(result.strip())
+    assert len(items) > 0, "No items parsed from flight text"
 
-    print("=== File Upload Parsing Test ===")
-    print(f"Input: DEN-BIH flight")
-
-    if items:
-        location = items[0].get('location', '')
-        print(f"Location field: {location}")
-
-        if location == 'BIH':
-            print("✅ PASS: Location is 'BIH'")
-            return True
-        elif 'birmingham' in location.lower():
-            print("❌ FAIL: Location expanded to Birmingham")
-            return False
-        else:
-            print(f"⚠️ WARNING: Location is '{location}'")
-            return False
-    else:
-        print("❌ FAIL: No items parsed")
-        return False
+    location = items[0].get('location', '')
+    assert 'birmingham' not in location.lower(), f"Location expanded to Birmingham: {location!r}"
+    assert location.upper() == 'BIH', f"Expected 'BIH', got {location!r}"
 
 
+@pytest.mark.integration
 def test_chat_tool_flow():
-    """Test the chat tool flow."""
-
-    # This matches the actual tool definition from handler.py
+    """Chat tool uses IATA destination code — adds BIH not Birmingham when adding a DEN-BIH flight."""
     tools = [
         {
             "name": "add_to_itinerary",
-            "description": "Add one or more items to the user's trip itinerary. Use this tool whenever the user asks to add, include, schedule, book, or plan something for their trip.",
+            "description": "Add one or more items to the user's trip itinerary.",
             "input_schema": {
                 "type": "object",
                 "properties": {
                     "items": {
                         "type": "array",
-                        "description": "List of items to add to the trip",
                         "items": {
                             "type": "object",
                             "properties": {
-                                "title": {
-                                    "type": "string",
-                                    "description": "Name of the place or activity"
-                                },
+                                "title": {"type": "string"},
                                 "category": {
                                     "type": "string",
-                                    "enum": ["flight", "meal", "hotel", "activity", "attraction", "transport", "other"],
-                                    "description": "Type of item"
+                                    "enum": ["flight", "meal", "hotel", "activity", "attraction", "transport", "other"]
                                 },
                                 "location": {
                                     "type": "string",
-                                    "description": "City/address. For FLIGHTS: use IATA airport code only (e.g. 'BIH', 'LAX') - do NOT expand to city names"
+                                    "description": "For FLIGHTS: use IATA airport code only (e.g. 'BIH', 'LAX') - do NOT expand to city names"
                                 },
-                                "notes": {"type": "string", "description": "Additional details about the item"},
-                                "day": {"type": "integer", "description": "Day number to add to (1, 2, 3...). Omit to add to Ideas pile."},
-                                "time": {"type": "string", "description": "Time in 24-hour format like '14:30' (optional)"},
-                                "end_time": {"type": "string", "description": "End/arrival time in 24-hour format (optional)"}
+                                "notes": {"type": "string"},
+                                "day": {"type": "integer"},
+                                "time": {"type": "string"},
+                                "end_time": {"type": "string"}
                             },
                             "required": ["title", "category"]
                         }
@@ -145,65 +104,46 @@ def test_chat_tool_flow():
         }
     ]
 
-    # This matches the actual system prompt section from handler.py
     system_prompt = """You are a helpful travel planning assistant for Libertas, a travel itinerary app.
-
-You have the ability to add items to the user's itinerary using the add_to_itinerary tool.
 
 Current trip context:
 - Destination: Mammoth, California
 - Dates: Mar 20-25, 2026
 
-Categories: flight, meal, hotel, activity, attraction, transport, other
-
 ## FLIGHTS
 When adding flights:
 - category: "flight"
-- location: Use the DESTINATION airport IATA code only (e.g., for "DEN-BIH" use "BIH"). Do NOT expand to city name, do NOT use origin airport.
+- location: Use the DESTINATION airport IATA code only (e.g., for "DEN-BIH" use "BIH"). Do NOT expand to city name.
 - title: Include route like "United DEN → BIH"
 - time: Departure time
-- end_time: Arrival time
-- notes: Airline, flight number, duration"""
+- end_time: Arrival time"""
 
     message = """Add this flight to my trip:
 Fri, Mar 20 · 11:36 AM – 1:24 PM    2 hr 48 min    Nonstop
 United · Operated by SkyWest DBA United Express    DEN-BIH"""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1000,
-        system=system_prompt,
+    llm = make_llm(model=SONNET, max_tokens=1000)
+    response = llm.call_api(
+        system_prompt=system_prompt,
+        messages=[{"role": "user", "content": message}],
         tools=tools,
-        messages=[{"role": "user", "content": message}]
+        return_full_response=True
     )
 
-    print("\n=== Chat Tool Flow Test ===")
-    print(f"Input: DEN-BIH flight")
+    tool_call = next((b for b in response.content if b.type == "tool_use"), None)
+    assert tool_call is not None, "Expected a tool_use block but got none"
 
-    for block in response.content:
-        if block.type == "tool_use":
-            items = block.input.get('items', [])
-            if items:
-                location = items[0].get('location', '')
-                print(f"Location field: {location}")
+    items = tool_call.input.get('items', [])
+    assert len(items) > 0, "No items in tool call"
 
-                if location == 'BIH':
-                    print("✅ PASS: Location is 'BIH'")
-                    return True
-                elif 'birmingham' in location.lower():
-                    print("❌ FAIL: Location expanded to Birmingham")
-                    return False
-                else:
-                    print(f"⚠️ WARNING: Location is '{location}'")
-                    return 'BIH' in location.upper()
-
-    print("❌ FAIL: No tool call made")
-    return False
+    location = items[0].get('location', '')
+    assert 'birmingham' not in location.lower(), f"Location expanded to Birmingham: {location!r}"
+    assert 'BIH' in location.upper(), f"Expected 'BIH' in location, got {location!r}"
 
 
+@pytest.mark.integration
 def test_iata_resolution():
-    """Test the IATA code resolution."""
-
+    """IATA resolver identifies BIH as Bishop, CA — not Birmingham."""
     iata = "BIH"
     context = "Flight: DEN → BIH, Trip destination: Mammoth, California"
 
@@ -224,55 +164,11 @@ Examples:
 
 If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=100,
+    llm = make_llm(model=SONNET, max_tokens=100)
+    result = llm.call_api(
+        system_prompt="",
         messages=[{"role": "user", "content": prompt}]
     )
 
-    result = response.content[0].text.strip()
-
-    print("\n=== IATA Resolution Test ===")
-    print(f"Input: BIH")
-    print(f"Result: {result}")
-
-    if 'bishop' in result.lower():
-        print("✅ PASS: Resolved to Bishop, CA")
-        return True
-    elif 'birmingham' in result.lower():
-        print("❌ FAIL: Resolved to Birmingham")
-        return False
-    else:
-        print(f"⚠️ WARNING: Unexpected result")
-        return False
-
-
-if __name__ == "__main__":
-    print("=" * 50)
-    print("FLIGHT PARSING TESTS")
-    print("=" * 50)
-
-    results = []
-
-    results.append(("File Upload Parsing", test_file_upload_parsing()))
-    results.append(("Chat Tool Flow", test_chat_tool_flow()))
-    results.append(("IATA Resolution", test_iata_resolution()))
-
-    print("\n" + "=" * 50)
-    print("SUMMARY")
-    print("=" * 50)
-
-    all_passed = True
-    for name, passed in results:
-        status = "✅ PASS" if passed else "❌ FAIL"
-        print(f"{name}: {status}")
-        if not passed:
-            all_passed = False
-
-    print()
-    if all_passed:
-        print("All tests passed!")
-        sys.exit(0)
-    else:
-        print("Some tests failed!")
-        sys.exit(1)
+    assert 'birmingham' not in result.lower(), f"Resolved to Birmingham: {result!r}"
+    assert 'bishop' in result.lower(), f"Expected Bishop CA, got: {result!r}"

@@ -1,10 +1,8 @@
 """Generate text summaries of itineraries using Claude."""
 
-import os
 from typing import Optional
 
-import anthropic
-
+from agents.common.llm import make_llm, SONNET
 from .models import Itinerary
 
 
@@ -26,29 +24,16 @@ class ItinerarySummarizer:
     """Generate text summaries of itineraries."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not self.api_key:
-            raise ValueError(
-                "Anthropic API key required. Set ANTHROPIC_API_KEY env var or pass api_key."
-            )
-        self.client = anthropic.Anthropic(api_key=self.api_key)
+        # api_key param kept for backwards compatibility; fla reads ANTHROPIC_API_KEY from env
+        self.llm = make_llm(model=SONNET, max_tokens=2048)
 
     def summarize(self, itinerary: Itinerary) -> str:
         """Generate a text summary of the itinerary."""
         itinerary_json = self._format_itinerary_for_prompt(itinerary)
-
-        message = self.client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=2048,
-            messages=[
-                {
-                    "role": "user",
-                    "content": SUMMARY_PROMPT + itinerary_json,
-                }
-            ],
+        return self.llm.call_api(
+            system_prompt="",
+            messages=[{"role": "user", "content": SUMMARY_PROMPT + itinerary_json}],
         )
-
-        return message.content[0].text
 
     def _format_itinerary_for_prompt(self, itinerary: Itinerary) -> str:
         """Format itinerary data for the summary prompt."""

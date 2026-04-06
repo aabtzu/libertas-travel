@@ -4,13 +4,19 @@
 PORT=${PORT:-5555}
 export AUTH_DISABLED=true
 
+# Use venv if present
+PYTHON="python3"
+if [ -f ".venv/bin/python3" ]; then
+  PYTHON=".venv/bin/python3"
+fi
+
 case "$1" in
   start)
     # Kill any existing server on the port
     lsof -ti:$PORT | xargs kill 2>/dev/null
     sleep 1
     echo "Starting server on port $PORT..."
-    python3 server.py
+    $PYTHON server.py
     ;;
 
   bg)
@@ -18,7 +24,7 @@ case "$1" in
     lsof -ti:$PORT | xargs kill 2>/dev/null
     sleep 1
     echo "Starting server in background on port $PORT..."
-    python3 server.py > /tmp/libertas.log 2>&1 &
+    $PYTHON server.py > /tmp/libertas.log 2>&1 &
     echo "PID: $!"
     echo "Logs: tail -f /tmp/libertas.log"
     ;;
@@ -35,8 +41,8 @@ case "$1" in
     ;;
 
   test)
-    echo "Running flight parsing tests..."
-    python3 tests/test_flight_parsing.py
+    echo "Running tests..."
+    $PYTHON -m pytest tests/ -x -q
     ;;
 
   *)
