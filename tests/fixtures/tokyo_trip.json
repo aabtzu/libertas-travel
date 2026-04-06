@@ -1,0 +1,82 @@
+{
+  "title": "Tokyo & Kyoto Adventure",
+  "startDate": "2026-10-01",
+  "endDate": "2026-10-10",
+  "items": [
+    {
+      "title": "Fly JFK to NRT",
+      "category": "flight",
+      "date": "2026-10-01",
+      "time": "11:00",
+      "end_time": "15:30",
+      "location": "NRT",
+      "notes": "JAL JL 5, nonstop"
+    },
+    {
+      "title": "Park Hyatt Tokyo",
+      "category": "hotel",
+      "date": "2026-10-02",
+      "location": "Tokyo, Japan",
+      "notes": "Check-in Oct 2, check-out Oct 6. Confirmation PH-88123."
+    },
+    {
+      "title": "Senso-ji Temple",
+      "category": "attraction",
+      "date": "2026-10-02",
+      "time": "09:00",
+      "location": "Asakusa, Tokyo"
+    },
+    {
+      "title": "Tsukiji Outer Market",
+      "category": "meal",
+      "date": "2026-10-03",
+      "time": "07:30",
+      "location": "Tsukiji, Tokyo"
+    },
+    {
+      "title": "teamLab Borderless",
+      "category": "activity",
+      "date": "2026-10-03",
+      "time": "14:00",
+      "location": "Odaiba, Tokyo"
+    },
+    {
+      "title": "Shinkansen Tokyo to Kyoto",
+      "category": "transport",
+      "date": "2026-10-06",
+      "time": "09:03",
+      "end_time": "11:17",
+      "location": "Kyoto, Japan",
+      "notes": "Nozomi 11, reserved seats"
+    },
+    {
+      "title": "The Ritz-Carlton Kyoto",
+      "category": "hotel",
+      "date": "2026-10-06",
+      "location": "Kyoto, Japan",
+      "notes": "Check-in Oct 6, check-out Oct 9. Confirmation RC-KY-44201."
+    },
+    {
+      "title": "Fushimi Inari Shrine",
+      "category": "attraction",
+      "date": "2026-10-07",
+      "time": "07:00",
+      "location": "Fushimi, Kyoto"
+    },
+    {
+      "title": "Arashiyama Bamboo Grove",
+      "category": "attraction",
+      "date": "2026-10-08",
+      "time": "08:00",
+      "location": "Arashiyama, Kyoto"
+    },
+    {
+      "title": "Fly KIX to JFK",
+      "category": "flight",
+      "date": "2026-10-09",
+      "time": "17:00",
+      "location": "KIX",
+      "notes": "JAL JL 60 via Tokyo, arrives JFK Oct 10"
+    }
+  ]
+}
