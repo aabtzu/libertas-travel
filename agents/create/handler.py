@@ -1870,7 +1870,9 @@ _DATA_DIR = Path(__file__).parent.parent.parent / "data"
 _AIRLINE_CODES_CSV = _DATA_DIR / "airline_codes.csv"
 
 # Cached lookup tables
-_airline_names: dict[str, str] | None = None  # IATA code -> display name (e.g. "AA" -> "American Airlines")
+_airline_names: dict[str, str] | None = (
+    None  # IATA code -> display name (e.g. "AA" -> "American Airlines")
+)
 _airline_url_names: dict[str, str] | None = None  # IATA code -> URL-encoded name for flightera URLs
 _airports_db: dict | None = None  # airportsdata IATA lookup, loaded on first use
 
@@ -2103,9 +2105,7 @@ def download_from_url(url: str) -> tuple[bytes, str, str]:
         return response.read(), filename, content_type
 
 
-def lookup_flight_times(
-    airline_code: str, flight_num: str, origin: str, dest: str
-) -> dict | None:
+def lookup_flight_times(airline_code: str, flight_num: str, origin: str, dest: str) -> dict | None:
     """Look up departure/arrival times for a flight from flightera.net."""
     _, airline_url_names = _load_airline_codes()
     try:
@@ -2231,9 +2231,9 @@ def upload_file_handler(
     import tempfile
     import time
 
+    import geocoding_worker
     from agents.itinerary.parser import ItineraryParser
     from agents.itinerary.web_view import ItineraryWebView
-    import geocoding_worker
 
     out_dir = output_dir or OUTPUT_DIR
     suffix = Path(filename).suffix.lower()
@@ -2275,7 +2275,9 @@ def upload_file_handler(
                 return {"error": "Could not parse trip data from JSON"}, 400
 
             web_view = ItineraryWebView()
-            web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+            web_view.generate(
+                itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+            )
 
             locations = {
                 item.location.name.split(",")[0]
@@ -2313,17 +2315,23 @@ def upload_file_handler(
             if is_html_file:
                 html_text = extract_text_from_html(file_data)
                 if len(html_text) < 100:
-                    return {"error": "Could not extract meaningful content from the HTML file."}, 400
+                    return {
+                        "error": "Could not extract meaningful content from the HTML file."
+                    }, 400
                 itinerary = parser.parse_text(html_text, source_url=filename)
             else:
                 itinerary = parser.parse_file(tmp_path)
-            print(f"[UPLOAD] Step 1 done: {time.time() - start_time:.1f}s - {len(itinerary.items)} items")
+            print(
+                f"[UPLOAD] Step 1 done: {time.time() - start_time:.1f}s - {len(itinerary.items)} items"
+            )
 
             print("[UPLOAD] Step 2: Generating web view...")
             slug = slugify(itinerary.title)
             output_file = f"{slug}.html"
             web_view = ItineraryWebView()
-            web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+            web_view.generate(
+                itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+            )
             print(f"[UPLOAD] Step 2 done: {time.time() - start_time:.1f}s")
 
             locations = {
@@ -2354,21 +2362,20 @@ def upload_file_handler(
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         return {"error": str(e)}, 500
 
 
-def url_import_handler(
-    user_id: int, url: str, output_dir: Path | None = None
-) -> tuple[dict, int]:
+def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -> tuple[dict, int]:
     """Import an itinerary from a URL. Returns (result, status_code)."""
     import tempfile
+    from datetime import time as dt_time
 
+    import geocoding_worker
     from agents.itinerary.models import Itinerary, ItineraryItem, Location
     from agents.itinerary.parser import ItineraryParser
     from agents.itinerary.web_view import ItineraryWebView
-    import geocoding_worker
-    from datetime import time as dt_time
 
     out_dir = output_dir or OUTPUT_DIR
 
@@ -2378,6 +2385,7 @@ def url_import_handler(
         return {"error": str(e)}, 400
 
     if google_flights:
+
         def _parse_time(time_str):
             if not time_str:
                 return None
@@ -2410,13 +2418,13 @@ def url_import_handler(
             title = "Flight Itinerary"
 
         dates = [datetime.strptime(f["date"], "%Y-%m-%d").date() for f in google_flights]
-        itinerary = Itinerary(
-            title=title, items=items, start_date=min(dates), end_date=max(dates)
-        )
+        itinerary = Itinerary(title=title, items=items, start_date=min(dates), end_date=max(dates))
         slug = slugify(itinerary.title)
         output_file = f"{slug}.html"
         web_view = ItineraryWebView()
-        web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+        web_view.generate(
+            itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+        )
 
         itinerary_data = itinerary_to_data(itinerary)
         start_d, end_d = min(dates), max(dates)
@@ -2458,7 +2466,9 @@ def url_import_handler(
             if not suffix or suffix not in (".pdf", ".xlsx", ".xls"):
                 suffix = ".xlsx" if is_xlsx else ".pdf" if is_pdf else None
             if not suffix:
-                return {"error": "Could not determine file type. Please use PDF, Excel, or HTML pages."}, 400
+                return {
+                    "error": "Could not determine file type. Please use PDF, Excel, or HTML pages."
+                }, 400
 
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
                 tmp.write(file_data)
@@ -2473,7 +2483,9 @@ def url_import_handler(
         slug = slugify(itinerary.title)
         output_file = f"{slug}.html"
         web_view = ItineraryWebView()
-        web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+        web_view.generate(
+            itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+        )
 
         locations = {
             item.location.name.split(",")[0]
@@ -2497,6 +2509,7 @@ def url_import_handler(
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         return {"error": str(e)}, 500
     finally:

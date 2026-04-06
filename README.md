@@ -6,149 +6,83 @@ Named after the Roman goddess of liberty, alongside Abeona (goddess of outward j
 
 ## Features
 
-### Trip Management
-- **Import trips** from PDF files, Excel spreadsheets, Google Drive, TripIt, or web pages
+- **Import trips** from PDF, Excel, Google Drive, TripIt, or any web page
 - **Create trips** from scratch with an AI-powered chat assistant
-- **Export/Import** trips as JSON for backup and sharing between environments
+- **Export/Import** trips as JSON for backup and sharing
 - **Multiple views**: List, Grid, Calendar, and interactive Map
 - **Edit trips** inline with drag-and-drop reordering
 - **Share trips** with other users or make them public
-
-### AI-Powered Features
-- **Smart parsing** - AI extracts dates, locations, activities from uploaded documents
-- **Trip assistant** - Chat-based help for building itineraries on the Create page
-- **Explore destinations** - Discover restaurants, hotels, attractions with the Explore chat
-
-### Maps & Visualization
-- **Interactive maps** with Leaflet showing all trip locations
-- **Day-by-day routes** with colored markers by category
-- **Background geocoding** - locations are geocoded asynchronously
-- **Calendar view** - see your trip laid out on a monthly calendar
-
-### Mobile Responsive
-- **Hamburger navigation** on all pages
-- **Slide-in chat trays** on Create and Explore pages
-- **Touch-friendly** buttons and controls
-- **Responsive layouts** - cards stack on mobile, tables scroll horizontally
+- **Explore destinations** — discover restaurants, hotels, and attractions via AI chat
+- **Background geocoding** — locations geocoded asynchronously with Nominatim
 
 ## Quick Start
 
 ```bash
 # Install dependencies
-pip install -e .
+pip install -r requirements.txt
 
-# Set up environment variables
+# Set required environment variables
 export ANTHROPIC_API_KEY=your_api_key
-export GOOGLE_MAPS_API_KEY=your_maps_key  # Optional, for maps
+export SECRET_KEY=your_secret_key
 
-# Start the server
-python server.py --port 8000
+# Start the server (dev mode — auth disabled)
+./dev.sh start
 ```
 
-Then open http://localhost:8000 in your browser.
+Then open http://localhost:5555 in your browser.
 
 ## Project Structure
 
 ```
 libertas/
-├── server.py                 # HTTP server with API endpoints
-├── database.py               # SQLite database operations
+├── app.py                    # Flask app factory, blueprint registration
+├── auth.py                   # User credentials and registration
+├── database.py               # SQLite / PostgreSQL operations
 ├── geocoding_worker.py       # Background geocoding service
 ├── agents/
-│   ├── common/               # Shared templates and components
-│   │   ├── templates.py      # Navigation, page templates
-│   │   └── templates/        # HTML templates (home, about, login)
-│   ├── itinerary/            # Trip viewing and management
-│   │   ├── parser.py         # PDF/Excel/HTML parsing with AI
-│   │   ├── mapper.py         # Geocoding and map generation
-│   │   ├── templates.py      # Trip HTML generation
-│   │   └── web_view.py       # Trip page rendering
-│   ├── create/               # Trip creation with AI assistant
-│   │   └── handler.py        # Chat and itinerary building
-│   └── explore/              # Venue discovery
-│       ├── handler.py        # Search and chat logic
-│       └── templates.py      # Explore page generation
+│   ├── auth/                 # Login, register, logout routes
+│   ├── trips/                # Trip CRUD, export, ICS, geocoding routes
+│   ├── create/               # Trip creation chat, file upload routes
+│   ├── explore/              # Venue discovery routes and handler
+│   ├── pages/                # HTML page routes (home, trips, create, etc.)
+│   ├── admin/                # Debug and admin utility routes
+│   ├── itinerary/            # Parser, mapper, models, web view
+│   └── common/               # Shared Flask utils, templates
 ├── static/
-│   ├── css/                  # Global stylesheets
-│   └── js/                   # Global JavaScript
-├── data/
-│   └── venues.json           # Curated venue database
-└── output/                   # Generated trip HTML files
+│   ├── css/
+│   └── js/
+└── data/
+    ├── venues_seed.csv       # Curated venue database
+    └── airline_codes.csv     # Airline display names for flight parsing
 ```
-
-## Pages
-
-| Page | Description |
-|------|-------------|
-| `/` | Home page with feature overview |
-| `/trips.html` | My Trips - view, import, manage trips |
-| `/create.html` | Create Trip - build itineraries with AI chat |
-| `/explore.html` | Explore - discover venues and destinations |
-| `/about.html` | About page with project background |
-| `/{trip}.html` | Individual trip view with map |
-
-## API Endpoints
-
-### Trip Management
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/upload` | POST | Upload PDF/Excel/HTML file |
-| `/api/import-url` | POST | Import from URL (Drive, TripIt) |
-| `/api/trips` | GET | List user's trips |
-| `/api/trip/{link}` | GET | Get trip details |
-| `/api/update-trip` | POST | Update trip metadata |
-| `/api/delete-trip` | POST | Delete a trip |
-| `/api/copy-trip` | POST | Duplicate a trip |
-| `/api/export-trip/{link}` | GET | Export trip as JSON |
-
-### Create Trip
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/create/new` | POST | Create new empty trip |
-| `/api/create/chat` | POST | Chat with trip assistant |
-| `/api/create/save` | POST | Save trip itinerary |
-| `/api/create/publish` | POST | Publish trip to view |
-
-### Explore
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/explore/chat` | POST | Chat to search venues |
-| `/api/explore/venues` | GET | Get all venues |
-
-### Maps
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/regenerate-map/{link}` | POST | Regenerate trip map |
-| `/api/geocoding/status` | GET | Check geocoding queue |
-
-## Supported Import Sources
-
-- **PDF files** - Travel agency itineraries, booking confirmations
-- **Excel files** (.xlsx, .xls) - Spreadsheet itineraries
-- **Word documents** (.docx) - Text itineraries
-- **HTML files** - Web page exports
-- **ICS files** - Calendar exports
-- **JSON files** - Libertas export files
-- **Email files** (.eml) - Booking confirmation emails
-- **Google Drive** - Shared PDF/Excel links
-- **TripIt** - Public trip links
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Claude API key for AI features |
-| `GOOGLE_MAPS_API_KEY` | No | Google Maps for geocoding and maps |
-| `SESSION_SECRET` | No | Secret for session cookies |
+| `SECRET_KEY` | Yes | Flask session signing key |
+| `AUTH_DISABLED` | No | Set to `true` to skip login in dev |
+| `OUTPUT_DIR` | No | Path for generated HTML files (default: `./output`) |
+| `DATABASE_URL` | No | PostgreSQL URL (defaults to SQLite) |
+| `GOOGLE_MAPS_API_KEY` | No | Used in explore page map embed |
 
 ## Tech Stack
 
-- **Backend**: Python with http.server
-- **Database**: SQLite
-- **AI**: Claude (Anthropic) for parsing and chat
+- **Backend**: Python / Flask with blueprint-per-feature structure
+- **Database**: SQLite (dev) / PostgreSQL (production)
+- **AI**: Claude via fiat-lux-agents
 - **Maps**: Leaflet.js with OpenStreetMap tiles
 - **Frontend**: Vanilla JavaScript, CSS3
-- **Deployment**: Render.com
+- **Deployment**: Render.com (gunicorn)
+
+## Running Tests
+
+```bash
+./dev.sh test
+# or
+.venv/bin/python3 -m pytest tests/ -x -q
+```
 
 ## License
 
