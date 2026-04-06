@@ -10,7 +10,7 @@
 - `static/` — frontend assets (js, css)
 - `tests/` — test scripts
 - `scripts/` — one-off utility scripts
-- Keep root clean — no new files at root unless essential (app.py, auth.py, database.py are intentional)
+- Keep root clean — no new files at root unless essential (app.py, auth.py are intentional; database is a package at `database/`)
 
 ## Server
 - Flask app with blueprint-per-feature structure (`agents/*/routes.py`)
@@ -65,6 +65,17 @@
 - No hardcoded config values, URLs, paths, or magic strings — use environment variables or named constants
 - Write comments explaining *why*, not just *what*
 - Keep handlers small — blueprint routes thin, handler.py contains logic
-- Keep files focused and short — if a file is getting long, split by responsibility
 - Prefer reusable helpers over copy-pasted logic — if the same pattern appears twice, extract it
 - No duplicate logic across handlers — shared behavior belongs in `agents/common/`
+
+## SQL Style
+- SQL queries must be defined as module-level named constants, never inline inside functions
+- Name them descriptively in SCREAMING_SNAKE_CASE, e.g. `_SQL_INSERT_TRIP`, `_SQL_GET_USER_BY_ID`
+- Functions call the constant: `cursor.execute(_SQL_INSERT_TRIP, (...))`
+- This applies to both PostgreSQL and SQLite variants — define separate constants when the SQL differs
+
+## File Length
+- Target: no file longer than 500 lines; hard limit 800 lines
+- If a file exceeds 500 lines, split it by responsibility before adding more code
+- Python: split by domain (e.g. `trips.py`, `users.py`); JS: split by feature area (e.g. `create-chat.js`, `create-map.js`)
+- Prefer many small focused files over one large file
