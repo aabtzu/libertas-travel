@@ -26,7 +26,7 @@ def test_download(url: str) -> tuple[bytes, str]:
     print("\n=== STEP 1: Download from URL ===")
     print(f"URL: {url}")
 
-    from server import download_from_url
+    from agents.create.handler import download_from_url
 
     try:
         file_data, filename, content_type = download_from_url(url)

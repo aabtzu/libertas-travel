@@ -13,6 +13,9 @@ def load_current_user() -> None:
     g.user_id = session.get("user_id")
     g.username = session.get("username")
     g.auth_disabled = os.environ.get("AUTH_DISABLED", "").lower() == "true"
+    # When auth is disabled (dev mode), default to user_id=1 — matches old server.py behaviour
+    if g.auth_disabled and not g.user_id:
+        g.user_id = 1
 
 
 def require_auth(f):
