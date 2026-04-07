@@ -6,19 +6,7 @@
 const CalendarView = (function() {
     'use strict';
 
-    const CATEGORY_ICONS = {
-        'travel': 'fa-plane',
-        'flight': 'fa-plane',
-        'transport': 'fa-car',
-        'train': 'fa-train',
-        'bus': 'fa-bus',
-        'hotel': 'fa-bed',
-        'lodging': 'fa-bed',
-        'meal': 'fa-utensils',
-        'activity': 'fa-star',
-        'attraction': 'fa-landmark',
-        'other': 'fa-calendar-day'
-    };
+    // CATEGORY_ICONS is defined in main.js
 
     /**
      * Escape HTML to prevent XSS

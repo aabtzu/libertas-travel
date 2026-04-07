@@ -16,7 +16,7 @@ body {
 
 /* ==================== Navigation ==================== */
 .libertas-nav {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: #1a1a2e;
     padding: 0 40px;
     display: flex;
     align-items: center;
@@ -82,7 +82,7 @@ body {
 
 /* ==================== Trip View ==================== */
 .trip-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     padding: 20px 40px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -384,7 +384,7 @@ body {
         right: -280px;
         width: 280px;
         height: 100vh;
-        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        background: #1a1a2e;
         flex-direction: column;
         padding: 80px 20px 20px;
         gap: 0;
@@ -588,7 +588,7 @@ body {
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border: none;
     box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
@@ -738,7 +738,7 @@ body {
 }
 
 .source-badge.curated {
-    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    background: #4CAF50;
     color: white;
 }
 
@@ -750,7 +750,7 @@ body {
 }
 
 .source-badge.ai-pick {
-    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    background: #FF9800;
     color: white;
 }
 
@@ -782,4 +782,100 @@ body {
     align-items: center;
     gap: 4px;
     flex-wrap: wrap;
+}
+
+/* ==================== App Modal (replaces browser confirm/alert) ==================== */
+.app-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: modal-fade-in 0.15s ease;
+}
+
+@keyframes modal-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.app-modal {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    max-width: 420px;
+    width: 100%;
+    padding: 28px 28px 20px;
+    font-family: inherit;
+    animation: modal-slide-in 0.15s ease;
+}
+
+@keyframes modal-slide-in {
+    from { transform: translateY(-12px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}
+
+.app-modal-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0 0 10px;
+    line-height: 1.4;
+}
+
+.app-modal-message {
+    font-size: 0.92rem;
+    color: #555;
+    margin: 0 0 22px;
+    line-height: 1.6;
+}
+
+.app-modal-message strong {
+    color: #1a1a2e;
+}
+
+.app-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.app-modal-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+
+.app-modal-btn-cancel {
+    background: #f0f0f5;
+    color: #444;
+}
+
+.app-modal-btn-cancel:hover {
+    background: #e2e2ea;
+}
+
+.app-modal-btn-confirm {
+    background: #667eea;
+    color: #fff;
+}
+
+.app-modal-btn-confirm:hover {
+    background: #5a6fd6;
+}
+
+.app-modal-btn-confirm.danger {
+    background: #ef4444;
+}
+
+.app-modal-btn-confirm.danger:hover {
+    background: #dc2626;
 }

@@ -2,10 +2,105 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import re
 from datetime import datetime
 from typing import Any
+
+from agents.common.categories import normalize_category
+
+# Single source of truth for supported upload extensions — used by all upload
+# handlers and the frontend (via LibertasUpload in main.js, which must stay in sync).
+SUPPORTED_EXTENSIONS = [
+    ".pdf", ".txt", ".png", ".jpg", ".jpeg", ".html", ".htm",
+    ".eml", ".ics", ".json", ".xlsx", ".xls", ".docx",
+]
+
+
+def extract_file_content(file_data: bytes, ext: str) -> dict[str, Any]:
+    """Extract content from an uploaded file for LLM processing.
+
+    Returns a dict with one or more of:
+      - "text": str          — text content to pass as a message
+      - "image_data": str    — base64-encoded image (for vision models)
+      - "media_type": str    — MIME type of image_data
+      - "items": list        — pre-parsed items (ICS/JSON fast path)
+      - "error": str         — error message if extraction failed
+    """
+    ext = ext.lower().lstrip(".")
+
+    if ext in ("txt", "html", "htm", "eml"):
+        try:
+            return {"text": file_data.decode("utf-8")}
+        except UnicodeDecodeError:
+            return {"text": file_data.decode("latin-1")}
+
+    if ext in ("png", "jpg", "jpeg", "gif", "webp"):
+        img = base64.standard_b64encode(file_data).decode("utf-8")
+        mime = f"image/{ext}" if ext != "jpg" else "image/jpeg"
+        return {"image_data": img, "media_type": mime}
+
+    if ext == "ics":
+        try:
+            items = _parse_ics_file(file_data)
+            if items:
+                return {"items": items}
+        except Exception:
+            pass
+        try:
+            return {"text": file_data.decode("utf-8")}
+        except UnicodeDecodeError:
+            return {"text": file_data.decode("latin-1")}
+
+    if ext == "json":
+        try:
+            items = _parse_json_trip(file_data)
+            if items:
+                return {"items": items}
+        except Exception:
+            pass
+        try:
+            return {"text": file_data.decode("utf-8")}
+        except UnicodeDecodeError:
+            return {"error": "Invalid JSON file encoding"}
+
+    if ext in ("xlsx", "xls"):
+        try:
+            return {"text": _parse_excel_to_text(file_data, ext)}
+        except ImportError:
+            return {"error": "Excel processing unavailable — install openpyxl"}
+        except Exception as e:
+            return {"error": f"Error reading Excel file: {e}"}
+
+    if ext in ("docx", "doc"):
+        try:
+            return {"text": _parse_word_to_text(file_data, ext)}
+        except ImportError:
+            return {"error": "Word processing unavailable — install python-docx"}
+        except Exception as e:
+            return {"error": f"Error reading Word document: {e}"}
+
+    if ext == "pdf":
+        try:
+            import fitz  # PyMuPDF
+
+            doc = fitz.open(stream=file_data, filetype="pdf")
+            text = "\n".join(page.get_text() for page in doc)
+            if text.strip():
+                doc.close()
+                return {"text": text}
+            # Scanned PDF — fall back to image of first page
+            pix = doc[0].get_pixmap(matrix=fitz.Matrix(2, 2))
+            img = base64.standard_b64encode(pix.tobytes("png")).decode("utf-8")
+            doc.close()
+            return {"image_data": img, "media_type": "image/png"}
+        except ImportError:
+            return {"error": "PDF processing unavailable — install pymupdf"}
+        except Exception as e:
+            return {"error": f"Error reading PDF: {e}"}
+
+    return {"error": f"Unsupported file type: .{ext}"}
 
 
 def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -22,21 +117,9 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     )
 
     # Category normalization
-    cat = (item.get("category") or item.get("type") or "").lower()
-    if cat in ["flight", "air", "plane"]:
-        normalized["category"] = "flight"
-    elif cat in ["train", "bus", "car", "transport", "transportation", "transfer"]:
-        normalized["category"] = "transport"
-    elif cat in ["hotel", "accommodation", "lodging", "stay", "hostel"]:
-        normalized["category"] = "hotel"
-    elif cat in ["meal", "restaurant", "food", "dining", "breakfast", "lunch", "dinner"]:
-        normalized["category"] = "meal"
-    elif cat in ["attraction", "sightseeing", "museum", "tour"]:
-        normalized["category"] = "attraction"
-    elif cat in ["activity", "event"]:
-        normalized["category"] = "activity"
-    else:
-        normalized["category"] = cat or "activity"
+    # normalize_category is the single source of truth — defined in agents/common/categories.py
+    cat = item.get("category") or item.get("type") or ""
+    normalized["category"] = normalize_category(cat)
 
     # Date handling
     date = item.get("date") or item.get("start_date") or item.get("startDate")
@@ -126,10 +209,11 @@ def _parse_ics_file(file_data: bytes) -> list[dict[str, Any]]:
                 category = "activity"
                 if any(w in combined for w in ["flight", "airline", "airport", "terminal"]):
                     category = "flight"
-                elif any(
-                    w in combined
-                    for w in ["train", "bus", "car rental", "uber", "taxi", "transfer"]
-                ):
+                elif any(w in combined for w in ["train", "rail", "tgv", "ave ", "eurostar", "amtrak"]):
+                    category = "train"
+                elif any(w in combined for w in ["bus", "coach"]):
+                    category = "bus"
+                elif any(w in combined for w in ["car rental", "uber", "taxi", "transfer"]):
                     category = "transport"
                 elif any(
                     w in combined
@@ -364,9 +448,22 @@ def _parse_word_to_text(file_data: bytes, ext: str) -> str:
 
         for table in doc.tables:
             text_parts.append("\n--- Table ---")
-            for row in table.rows:
-                row_text = [cell.text.strip() for cell in row.cells]
-                text_parts.append(" | ".join(row_text))
+            headers: list[str] = []
+            for row_idx, row in enumerate(table.rows):
+                cells = [cell.text.strip() for cell in row.cells]
+                if row_idx == 0:
+                    # Treat first row as headers for context
+                    headers = cells
+                    text_parts.append(" | ".join(cells))
+                elif headers:
+                    # Annotate each cell with its column name for LLM clarity
+                    annotated = [
+                        f"{headers[i]}: {cell}" if i < len(headers) and headers[i] and cell else cell
+                        for i, cell in enumerate(cells)
+                    ]
+                    text_parts.append(" | ".join(annotated))
+                else:
+                    text_parts.append(" | ".join(cells))
 
         return "\n".join(text_parts)
 

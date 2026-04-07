@@ -16,19 +16,7 @@ const AUTOSAVE_DELAY = 2000;
 let autoSaveTimer = null;
 
 // Category icons mapping
-const CATEGORY_ICONS = {
-    'travel': 'fa-plane',
-    'flight': 'fa-plane',
-    'transport': 'fa-car',
-    'train': 'fa-train',
-    'bus': 'fa-bus',
-    'hotel': 'fa-bed',
-    'lodging': 'fa-bed',
-    'meal': 'fa-utensils',
-    'activity': 'fa-star',
-    'attraction': 'fa-landmark',
-    'other': 'fa-calendar-day'
-};
+// CATEGORY_ICONS and CATEGORY_COLORS are defined in main.js
 
 // Valid category values for the dropdown
 const VALID_CATEGORIES = ['activity', 'meal', 'hotel', 'attraction', 'flight', 'transport', 'train', 'bus', 'other'];
@@ -239,6 +227,16 @@ function initEventListeners() {
     document.getElementById('cancel-item-btn')?.addEventListener('click', hideAddItemModal);
     document.getElementById('add-item-form')?.addEventListener('submit', handleAddItem);
 
+    // Close item modal on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('add-item-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                hideAddItemModal();
+            }
+        }
+    });
+
     // Upload plan button
     document.getElementById('upload-plan-btn')?.addEventListener('click', () => {
         document.getElementById('plan-file-input').click();
@@ -303,11 +301,8 @@ function setupFileDragDrop() {
  */
 async function handleDroppedFile(file) {
     // Check file type
-    const allowedTypes = ['.pdf', '.txt', '.png', '.jpg', '.jpeg', '.html', '.htm', '.eml', '.ics', '.json', '.xlsx', '.xls', '.docx'];
-    const ext = '.' + file.name.split('.').pop().toLowerCase();
-
-    if (!allowedTypes.includes(ext)) {
-        addChatMessage('assistant', `Unsupported file type: **${file.name}**\n\nSupported formats: PDF, images (PNG, JPG), text, HTML, email, calendar (ICS), JSON, Excel, Word`);
+    if (!LibertasUpload.isAllowed(file.name)) {
+        addChatMessage('assistant', `Unsupported file type: **${file.name}**\n\nSupported formats: ${LibertasUpload.DESCRIPTION}`);
         return;
     }
 
@@ -377,7 +372,7 @@ async function handleCreateTrip(e) {
     const numDays = document.getElementById('num-days').value || null;
 
     if (!title) {
-        alert('Please enter a trip name');
+        LibertasModal.alert('Please enter a trip name');
         return;
     }
 
@@ -430,11 +425,11 @@ async function handleCreateTrip(e) {
             hideCreateDialog();
             showWelcomeMessage();
         } else {
-            alert(data.error || 'Failed to create trip');
+            LibertasModal.alert(data.error || 'Failed to create trip');
         }
     } catch (error) {
         console.error('Create trip error:', error);
-        alert('Failed to create trip. Please try again.');
+        LibertasModal.alert('Failed to create trip. Please try again.');
     }
 }
 
@@ -813,17 +808,18 @@ function addDay() {
  * Delete a day
  */
 function deleteDay(index) {
-    if (!confirm('Delete this day and all its items?')) return;
+    LibertasModal.confirm('Delete this day and all its items?', { danger: true }).then(function(confirmed) {
+        if (!confirmed) return;
+        currentTrip.days.splice(index, 1);
 
-    currentTrip.days.splice(index, 1);
+        // Renumber remaining days
+        currentTrip.days.forEach((day, i) => {
+            day.day_number = i + 1;
+        });
 
-    // Renumber remaining days
-    currentTrip.days.forEach((day, i) => {
-        day.day_number = i + 1;
+        renderDays();
+        triggerAutoSave();
     });
-
-    renderDays();
-    triggerAutoSave();
 }
 
 /**
@@ -832,7 +828,7 @@ function deleteDay(index) {
 function showDayPickerDialog(item, triggerButton) {
     // If no days exist, prompt to create a day first
     if (currentTrip.days.length === 0) {
-        alert('Please add at least one day to your trip first.');
+        LibertasModal.alert('Please add at least one day to your trip first.');
         return;
     }
 
@@ -1441,7 +1437,8 @@ async function publishTrip() {
         ? 'Republish this trip? This will regenerate the trip page with your latest changes.'
         : 'Publish this trip? It will be visible in your trips list.';
 
-    if (!confirm(confirmMsg)) return;
+    const confirmed = await LibertasModal.confirm(confirmMsg);
+    if (!confirmed) return;
 
     try {
         // Save first
@@ -1456,7 +1453,7 @@ async function publishTrip() {
 
         if (data.success) {
             const successMsg = isRepublish ? 'Trip republished successfully!' : 'Trip published successfully!';
-            alert(successMsg);
+            await LibertasModal.alert(successMsg);
             if (isRepublish) {
                 // For republish, open the trip view to see changes
                 window.open(`/trip/${currentTrip.link}`, '_blank');
@@ -1464,11 +1461,11 @@ async function publishTrip() {
                 window.location.href = '/trips.html';
             }
         } else {
-            alert(data.error || 'Failed to publish trip');
+            LibertasModal.alert(data.error || 'Failed to publish trip');
         }
     } catch (error) {
         console.error('Publish error:', error);
-        alert('Failed to publish trip. Please try again.');
+        LibertasModal.alert('Failed to publish trip. Please try again.');
     }
 }
 

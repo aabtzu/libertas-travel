@@ -1,7 +1,7 @@
 /* Libertas - Home Page Styles */
 
 .home-hero {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: #1a1a2e;
     color: white;
     padding: 40px 40px;
     text-align: center;
@@ -135,23 +135,23 @@
 }
 
 .home-card-icon.purple {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
 }
 
 .home-card-icon.green {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    background: #43a047;
 }
 
 .home-card-icon.orange {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    background: #fa709a;
 }
 
 .home-card-icon.blue {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    background: #1976d2;
 }
 
 .home-card-icon.gray {
-    background: linear-gradient(135deg, #a0a0a0 0%, #c0c0c0 100%);
+    background: #a0a0a0;
 }
 
 .home-card-content h3 {
@@ -182,7 +182,7 @@
 
 /* Quote section */
 .home-quote {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     padding: 60px 40px;
     text-align: center;
@@ -241,7 +241,7 @@
 .step-number {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     font-size: 1.5rem;
     font-weight: 600;
@@ -359,7 +359,7 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     padding: 16px 32px;
     border-radius: 30px;

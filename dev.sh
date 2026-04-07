@@ -1,9 +1,10 @@
 #!/bin/bash
 # Development helper script for Libertas
 
-PORT=${PORT:-5555}
+PORT=${PORT:-8080}
 export AUTH_DISABLED=true
 export SECRET_KEY=${SECRET_KEY:-dev-secret-not-for-prod}
+export FLASK_DEBUG=true
 
 # Use venv if present
 PYTHON="python3"

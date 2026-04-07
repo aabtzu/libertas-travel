@@ -1,7 +1,7 @@
 /* Libertas - About Page Styles */
 
 .about-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     padding: 80px 40px;
     text-align: center;
@@ -73,7 +73,7 @@
 }
 
 .deity-card {
-    background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%);
+    background: #f8f9ff;
     border: 1px solid #e8eaff;
     border-radius: 12px;
     padding: 30px;
@@ -98,7 +98,7 @@
 }
 
 .libertas-coin-card {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: #1a1a2e;
     border: 1px solid #e8eaff;
     border-radius: 12px;
     padding: 30px;
@@ -147,7 +147,7 @@
 
 /* ==================== Quote Box ==================== */
 .quote-box {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: #1a1a2e;
     color: white;
     padding: 40px;
     border-radius: 12px;

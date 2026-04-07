@@ -91,7 +91,7 @@ function renderGrid() {
             if (cat === 'flight') {
                 travelItems.push(item);
                 hasFlight = true;
-            } else if (cat === 'transport') {
+            } else if (cat === 'transport' || cat === 'train' || cat === 'bus') {
                 travelItems.push(item);
             } else if (cat === 'hotel' || cat === 'lodging') {
                 lodgingItems.push(item);
@@ -275,7 +275,7 @@ function renderItemCard(item, options = {}) {
     if (item.time) {
         timeStr = formatTime12Hour(item.time);
         if (item.end_time) {
-            const isTravel = (cat === 'travel' || cat === 'flight' || cat === 'transport');
+            const isTravel = (cat === 'travel' || cat === 'flight' || cat === 'transport' || cat === 'train' || cat === 'bus');
             const separator = isTravel ? ' → ' : ' - ';
             timeStr += separator + formatTime12Hour(item.end_time);
         }

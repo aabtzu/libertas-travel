@@ -68,7 +68,7 @@ Return a JSON object with this exact structure:
             "start_time": "HH:MM (24hr) or null",
             "end_time": "HH:MM (24hr) or null",
             "description": "Brief description",
-            "category": "flight|hotel|activity|meal|transport|home|other",
+            "category": "flight|train|bus|hotel|activity|meal|transport|home|other",
             "confirmation_number": "if available or null",
             "notes": "any additional notes",
             "day_number": day number as integer or null,
@@ -84,7 +84,9 @@ Important:
 - Mark home/departure locations with is_home_location: true (these are typically the origin city at start/end of trip)
 - For HOTELS/ACCOMMODATIONS: Extract the ACTUAL hotel name and set end_date to the checkout date if available. (e.g. "Taj Palace", "ITC Mughal", "Marriott") NOT generic descriptions like "Hotel stay in Delhi". The hotel name should go in the "title" field.
 - For FLIGHTS: start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available. Title should include flight number and route (e.g. "UA 123 SFO → JFK"). Keep IATA airport codes as-is in the title - do NOT try to expand them to city names (e.g. keep "DEN → BIH" not "Denver → Birmingham"). The location_name should be the destination airport code only (e.g. "BIH" not "Birmingham")
-- For TRAINS: start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available.
+- For TRAINS (AVE, TGV, Eurostar, Amtrak, subway, metro, rail, etc.): set category to "train". start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available.
+- For BUSES (coach, intercity bus): set category to "bus".
+- Use "transport" only for car rentals, taxis, and transfers that are not trains or buses.
 - For MEALS/RESERVATIONS: start_time is reservation time, end_time can be estimated end (e.g. +2 hours for dinner)
 - If information is not available, use null
 - Ensure the JSON is valid

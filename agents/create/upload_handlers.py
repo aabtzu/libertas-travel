@@ -12,10 +12,8 @@ from typing import Any
 import database as db
 from agents.common.llm import SONNET, make_llm
 from agents.create.file_parsers import (
-    _parse_excel_to_text,
-    _parse_ics_file,
-    _parse_json_trip,
-    _parse_word_to_text,
+    SUPPORTED_EXTENSIONS,
+    extract_file_content,
 )
 from agents.create.flight_utils import parse_google_flights_url
 from agents.create.itinerary_utils import format_dates, itinerary_to_data, slugify
@@ -24,97 +22,43 @@ from agents.create.web_utils import download_from_url, extract_text_from_html
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
 
 
+def _parse_json_with_recovery(text: str) -> list[dict]:
+    """Parse a JSON array from LLM output, recovering from truncated responses.
+
+    When max_tokens is hit mid-stream the JSON array is cut off.  We try a
+    clean parse first; if that fails we trim back to the last complete object
+    (last `}`) and close the array so we keep whatever items were fully output.
+    """
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Find the last complete object boundary and close the array
+        last_brace = text.rfind("}")
+        if last_brace == -1:
+            raise  # nothing recoverable
+        recovered = text[: last_brace + 1] + "\n]"
+        result = json.loads(recovered)  # raises if still invalid
+        print(f"[UPLOAD] Recovered truncated JSON — kept {len(result)} items")
+        return result
+
+
 def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str) -> dict[str, Any]:
     """Handle uploaded file and extract trip items using LLM.
 
     Returns extracted items or error.
     """
-    import base64
+    extracted = extract_file_content(file_data, ext)
 
-    content_for_llm = None
-    image_data = None
-    media_type = None
+    if "error" in extracted:
+        return {"error": extracted["error"]}, 400
 
-    if ext in ["txt", "html", "htm", "eml"]:
-        try:
-            content_for_llm = file_data.decode("utf-8")
-        except UnicodeDecodeError:
-            content_for_llm = file_data.decode("latin-1")
+    # ICS/JSON fast path — items already parsed, skip LLM
+    if "items" in extracted:
+        return {"success": True, "items": extracted["items"], "filename": filename}, 200
 
-    elif ext in ["png", "jpg", "jpeg", "gif", "webp"]:
-        image_data = base64.standard_b64encode(file_data).decode("utf-8")
-        media_type = f"image/{ext}" if ext != "jpg" else "image/jpeg"
-
-    elif ext == "ics":
-        try:
-            pre_parsed_items = _parse_ics_file(file_data)
-            if pre_parsed_items:
-                return {"success": True, "items": pre_parsed_items, "filename": filename}, 200
-        except Exception:
-            pass
-        try:
-            content_for_llm = file_data.decode("utf-8")
-        except UnicodeDecodeError:
-            content_for_llm = file_data.decode("latin-1")
-
-    elif ext == "json":
-        try:
-            pre_parsed_items = _parse_json_trip(file_data)
-            if pre_parsed_items:
-                return {"success": True, "items": pre_parsed_items, "filename": filename}, 200
-        except Exception:
-            pass
-        try:
-            content_for_llm = file_data.decode("utf-8")
-        except UnicodeDecodeError:
-            return {"error": "Invalid JSON file encoding"}, 400
-
-    elif ext in ["xlsx", "xls"]:
-        try:
-            content_for_llm = _parse_excel_to_text(file_data, ext)
-        except ImportError:
-            return {
-                "error": "Excel processing not available. Please install openpyxl: pip install openpyxl"
-            }, 500
-        except Exception as e:
-            return {"error": f"Error reading Excel file: {str(e)}"}, 400
-
-    elif ext in ["docx", "doc"]:
-        try:
-            content_for_llm = _parse_word_to_text(file_data, ext)
-        except ImportError:
-            return {
-                "error": "Word document processing not available. Please install python-docx: pip install python-docx"
-            }, 500
-        except Exception as e:
-            return {"error": f"Error reading Word document: {str(e)}"}, 400
-
-    elif ext == "pdf":
-        try:
-            import fitz  # PyMuPDF
-
-            doc = fitz.open(stream=file_data, filetype="pdf")
-            text_content = []
-            for page in doc:
-                text_content.append(page.get_text())
-            content_for_llm = "\n".join(text_content)
-
-            if not content_for_llm.strip():
-                page = doc[0]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                image_data = base64.standard_b64encode(pix.tobytes("png")).decode("utf-8")
-                media_type = "image/png"
-
-            doc.close()
-        except ImportError:
-            return {
-                "error": "PDF processing not available. Please install PyMuPDF: pip install pymupdf"
-            }, 500
-        except Exception as e:
-            return {"error": f"Error reading PDF: {str(e)}"}, 400
-
-    else:
-        return {"error": f"Unsupported file type: {ext}"}, 400
+    content_for_llm = extracted.get("text")
+    image_data = extracted.get("image_data")
+    media_type = extracted.get("media_type")
 
     current_year = datetime.now().year
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -147,7 +91,9 @@ IMPORTANT: For DAY-BY-DAY NARRATIVE ITINERARIES (expedition, adventure, tour iti
 - Look for: rafting, kayaking, hiking, yoga, meals, scenic drives, flights, transfers, etc.
 - Use category "activity" for adventure activities (rafting, hiking, kayaking, etc.)
 - Use category "meal" for specific meals mentioned (welcome dinner, farewell breakfast, etc.)
-- Use category "transport" for drives and transfers
+- Use category "train" for any train (AVE, TGV, Eurostar, Amtrak, regional rail, etc.)
+- Use category "bus" for buses or coaches
+- Use category "transport" for car drives, rentals, and transfers only
 - Use category "flight" for flights
 - Include the day number from "Day 1", "Day 2", etc.
 
@@ -178,7 +124,8 @@ If you cannot extract any travel items, return an empty array: []
 Only return the JSON array, no other text."""
 
     try:
-        llm = make_llm(model=SONNET, max_tokens=2048)
+        # 4096 tokens accommodates large trips (20+ items); 2048 caused truncation
+        llm = make_llm(model=SONNET, max_tokens=4096)
 
         if image_data:
             messages = [
@@ -218,7 +165,7 @@ Only return the JSON array, no other text."""
             lines = response_text.split("\n")
             response_text = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
 
-        items = json.loads(response_text)
+        items = _parse_json_with_recovery(response_text)
         print(f"[UPLOAD] Parsed {len(items)} items from {filename}")
         for item in items:
             print(
@@ -232,7 +179,7 @@ Only return the JSON array, no other text."""
 
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}")
-        print(f"Response was: {response_text}")
+        print(f"Response was: {response_text if 'response_text' in dir() else '<not set>'}")
         return {"error": "Failed to parse extracted items"}, 500
     except Exception as e:
         print(f"Upload plan error: {e}")
@@ -254,9 +201,8 @@ def upload_file_handler(
 
     out_dir = output_dir or OUTPUT_DIR
     suffix = Path(filename).suffix.lower()
-    valid_extensions = [".pdf", ".xlsx", ".xls", ".html", ".htm", ".json"]
-    if suffix not in valid_extensions:
-        return {"error": f"Invalid file type '{suffix}'. Supported: PDF, Excel, HTML, JSON"}, 400
+    if suffix not in SUPPORTED_EXTENSIONS:
+        return {"error": f"Unsupported file type '{suffix}'"}, 400
 
     uploads_dir = out_dir / "uploads"
     uploads_dir.mkdir(exist_ok=True)
@@ -267,7 +213,6 @@ def upload_file_handler(
 
     try:
         start_time = time.time()
-        is_html_file = suffix in (".html", ".htm")
         is_json_file = suffix == ".json"
 
         if is_json_file:
@@ -321,21 +266,27 @@ def upload_file_handler(
 
         tmp_path = None
         try:
-            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                tmp.write(file_data)
-                tmp_path = tmp.name
-
             print("[UPLOAD] Step 1: Parsing file...")
+            extracted = extract_file_content(file_data, suffix.lstrip("."))
+            if "error" in extracted:
+                return {"error": extracted["error"]}, 400
+
             parser = ItineraryParser()
-            if is_html_file:
-                html_text = extract_text_from_html(file_data)
-                if len(html_text) < 100:
-                    return {
-                        "error": "Could not extract meaningful content from the HTML file."
-                    }, 400
-                itinerary = parser.parse_text(html_text, source_url=filename)
-            else:
+            if "text" in extracted:
+                text = extracted["text"]
+                if suffix in (".html", ".htm"):
+                    text = extract_text_from_html(file_data)
+                    if len(text) < 100:
+                        return {"error": "Could not extract meaningful content from the HTML file."}, 400
+                itinerary = parser.parse_text(text, source_url=filename)
+            elif "image_data" in extracted:
+                # Scanned PDF or image — write to tmp for parse_file
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                    tmp.write(file_data)
+                    tmp_path = tmp.name
                 itinerary = parser.parse_file(tmp_path)
+            else:
+                return {"error": "Could not extract content from file"}, 400
             print(
                 f"[UPLOAD] Step 1 done: {time.time() - start_time:.1f}s - {len(itinerary.items)} items"
             )

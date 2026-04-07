@@ -1,18 +1,7 @@
 /* Shared Item Detail Popup - Libertas */
 /* Used by both trip view and create trip pages */
 
-// Category icon mapping
-var itemDetailIcons = {
-    'flight': 'fa-plane',
-    'hotel': 'fa-bed',
-    'lodging': 'fa-bed',
-    'meal': 'fa-utensils',
-    'restaurant': 'fa-utensils',
-    'activity': 'fa-star',
-    'attraction': 'fa-landmark',
-    'transport': 'fa-car',
-    'other': 'fa-calendar-day'
-};
+// CATEGORY_ICONS is defined in main.js
 
 /**
  * Show item detail popup for a data-attribute based element
@@ -50,7 +39,7 @@ function showItemDetailFromData(data, anchorElement) {
  * Internal function to create and display the popup
  */
 function _createAndShowPopup(data, anchorElement) {
-    var iconClass = itemDetailIcons[data.category] || 'fa-calendar-day';
+    var iconClass = CATEGORY_ICONS[data.category] || 'fa-calendar-day';
 
     // Create overlay
     var overlay = document.createElement('div');

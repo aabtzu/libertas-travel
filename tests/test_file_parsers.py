@@ -43,8 +43,8 @@ class TestNormalizeItemCategory:
             ("flight", "flight"),
             ("air", "flight"),
             ("plane", "flight"),
-            ("train", "transport"),
-            ("bus", "transport"),
+            ("train", "train"),
+            ("bus", "bus"),
             ("car", "transport"),
             ("transport", "transport"),
             ("transportation", "transport"),
@@ -75,7 +75,7 @@ class TestNormalizeItemCategory:
 
     def test_unknown_category_passed_through(self):
         result = _normalize_item({"title": "X", "category": "yoga"})
-        assert result["category"] == "yoga"
+        assert result["category"] == "activity"  # unknown values default to activity
 
     def test_missing_category_defaults_to_activity(self):
         result = _normalize_item({"title": "X"})

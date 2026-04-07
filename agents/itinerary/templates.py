@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from agents.common.categories import CATEGORY_ICONS  # noqa: F401 – re-exported for callers
 from agents.common.templates import get_nav_html
 from agents.common.templates import get_static_css as common_get_static_css
 from agents.common.templates import get_static_js as common_get_static_js
@@ -37,17 +38,7 @@ def get_trip_start_date(itinerary_data: dict) -> str | None:
     return None
 
 
-# Category icons mapping (shared with frontend)
-CATEGORY_ICONS = {
-    "meal": "fa-utensils",
-    "hotel": "fa-bed",
-    "lodging": "fa-bed",
-    "transport": "fa-car",
-    "flight": "fa-plane",
-    "activity": "fa-star",
-    "attraction": "fa-landmark",
-    "other": "fa-calendar-day",
-}
+# CATEGORY_ICONS imported from agents.common.categories — do not redefine here
 
 # Path to itinerary-specific static files and templates
 STATIC_DIR = Path(__file__).parent / "static"
@@ -112,14 +103,14 @@ DESTINATION_IMAGES = {
     "caribbean": "https://images.unsplash.com/photo-1548574505-5e239809ee19?w=600&q=80",  # Tropical beach
 }
 
-# Fallback gradient colors for trip cards (when no image matches)
-TRIP_GRADIENTS = [
-    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-    "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-    "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-    "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-    "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+# Fallback accent colors for trip cards (when no image matches)
+TRIP_COLORS = [
+    "#667eea",
+    "#f5576c",
+    "#1976d2",
+    "#43a047",
+    "#fa709a",
+    "#26a69a",
 ]
 
 # Icons for different regions
@@ -227,15 +218,17 @@ def generate_category_stats_html(
     If category_counts is empty, falls back to locations/activities numbers.
     """
     # Category display order
-    DISPLAY_ORDER = ["attraction", "activity", "meal", "hotel", "transport", "flight", "other"]
+    DISPLAY_ORDER = ["attraction", "activity", "meal", "hotel", "flight", "train", "bus", "transport", "other"]
 
     # Category tooltips
     TOOLTIPS = {
         "meal": "Meals",
         "hotel": "Hotels",
         "lodging": "Lodging",
-        "transport": "Transport",
         "flight": "Flights",
+        "train": "Trains",
+        "bus": "Buses",
+        "transport": "Transport",
         "activity": "Activities",
         "attraction": "Attractions",
         "other": "Other",
@@ -283,8 +276,8 @@ def generate_trip_card(
     itinerary_data: str | dict | None = None,
 ) -> str:
     """Generate HTML for a single trip card."""
-    # Use gradient colors (light colors with icon look good)
-    gradient = TRIP_GRADIENTS[index % len(TRIP_GRADIENTS)]
+    # Use accent colors for trip card backgrounds
+    color = TRIP_COLORS[index % len(TRIP_COLORS)]
     icon = get_region_icon(title)
     region = get_region_name(title)
 
@@ -312,7 +305,7 @@ def generate_trip_card(
     return _get_trip_card_template().format(
         link=link,
         card_link=card_link,
-        gradient=gradient,
+        color=color,
         icon=icon,
         region=region,
         title=title,
@@ -344,7 +337,7 @@ def generate_public_trip_card(
     itinerary_data: str | dict | None = None,
 ) -> str:
     """Generate HTML for a public trip card (from another user)."""
-    gradient = TRIP_GRADIENTS[index % len(TRIP_GRADIENTS)]
+    color = TRIP_COLORS[index % len(TRIP_COLORS)]
     icon = get_region_icon(title)
     region = get_region_name(title)
 
@@ -354,7 +347,7 @@ def generate_public_trip_card(
 
     return _get_public_trip_card_template().format(
         link=link,
-        gradient=gradient,
+        color=color,
         icon=icon,
         region=region,
         title=title,

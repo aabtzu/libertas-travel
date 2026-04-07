@@ -36,6 +36,22 @@
 - `create.js` handles the trip editor — versioned with `?v=N` on script tag
 - Use `novalidate` on forms where JS handles validation
 
+## JS Shared Constants — Single Source of Truth
+Every shared lookup table, config object, or utility must be defined **once** and imported/referenced everywhere else. Defining the same data in two places is never acceptable — it causes silent drift and wastes time chasing down which copy is stale.
+
+**Current canonical locations — do not redefine these anywhere:**
+- `CATEGORY_ICONS` — defined in `static/js/main.js`; maps category → FontAwesome class
+- `CATEGORY_COLORS` — defined in `static/js/main.js`; maps category → hex color
+- `LibertasUpload` — defined in `static/js/main.js`; allowed file extensions, accept attr, isAllowed()
+- `LibertasChat` — defined in `static/js/main.js`; chat input history + cancel support
+- `LibertasMap` — defined in `static/js/main.js`; Leaflet tile config
+
+**Rules:**
+- If you need a new shared constant, add it to `main.js` (loaded on every page) and reference the global
+- If a file has its own local copy of something already in `main.js`, delete the local copy — the global wins
+- Leave a comment `// defined in main.js` where the local copy was, so the next reader knows it's intentional
+- For Python: `CATEGORY_ICONS` and `CATEGORY_COLORS` live in `agents/common/categories.py`; import from there — never redefine locally. File-type lists live in `agents/create/file_parsers.py`
+
 ## Auth
 - Controlled by `AUTH_DISABLED=true` env var (set automatically in `dev.sh`)
 - Never hardcode credentials

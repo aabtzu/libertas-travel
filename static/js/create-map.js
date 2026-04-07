@@ -28,17 +28,7 @@ function saveGeocodeCache() {
     }
 }
 
-// Category colors for map markers
-const CATEGORY_COLORS = {
-    'flight': '#3b82f6',
-    'transport': '#f59e0b',
-    'hotel': '#8b5cf6',
-    'lodging': '#8b5cf6',
-    'meal': '#ef4444',
-    'activity': '#22c55e',
-    'attraction': '#06b6d4',
-    'other': '#6b7280'
-};
+// CATEGORY_COLORS is defined in main.js
 
 function updateMapDaySelector() {
     const select = document.getElementById('map-day-select');

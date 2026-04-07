@@ -9,6 +9,8 @@ import os
 from datetime import date
 from pathlib import Path
 
+from agents.common.categories import CATEGORY_ICONS
+
 from .mapper import ItineraryMapper
 from .models import Itinerary, ItineraryItem
 from .summarizer import ItinerarySummarizer
@@ -280,10 +282,12 @@ class ItineraryWebView:
         """Get display label for a category."""
         labels = {
             "flight": "Flight",
+            "train": "Train",
+            "bus": "Bus",
+            "transport": "Transport",
             "hotel": "Lodging",
             "lodging": "Lodging",
             "activity": "Activity",
-            "transport": "Travel",
             "meal": "Meal",
             "home": "Home",
             "other": "Other",
@@ -291,19 +295,12 @@ class ItineraryWebView:
         return labels.get(category.lower(), category.title())
 
     def _get_category_icon(self, category: str) -> str:
-        """Get Font Awesome icon class for a category."""
-        icons = {
-            "flight": "fa-plane",
-            "hotel": "fa-bed",
-            "lodging": "fa-bed",
-            "activity": "fa-star",
-            "attraction": "fa-landmark",
-            "transport": "fa-car",
-            "meal": "fa-utensils",
-            "home": "fa-home",
-            "other": "fa-calendar-day",
-        }
-        return icons.get(category.lower(), "fa-calendar-day")
+        """Get Font Awesome icon class for a category.
+
+        Uses the canonical mapping from agents.common.categories — do not
+        add a local copy here.
+        """
+        return CATEGORY_ICONS.get(category.lower(), "fa-calendar-day")
 
     def _get_category_html(self, category: str) -> str:
         """Get icon-based HTML for a category badge."""

@@ -1,7 +1,7 @@
 /* Libertas - My Trips Page Styles */
 
 .trips-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     padding: 60px 40px;
     text-align: center;
@@ -28,7 +28,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    background: #e53935;
     color: #fff;
     padding: 12px 24px;
     border-radius: 25px;
@@ -453,7 +453,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border: none;
     padding: 8px 16px;
@@ -576,7 +576,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border: none;
     padding: 10px 16px;
@@ -691,7 +691,7 @@
 }
 
 .modal-btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     border: none;
     color: white;
 }
@@ -886,7 +886,7 @@
 .share-option-btn {
     width: 100%;
     padding: 14px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border: none;
     border-radius: 8px;

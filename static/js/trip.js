@@ -78,7 +78,8 @@ function editTrip() {
                 window.location.href = '/create.html?edit=' + encodeURIComponent(tripLink);
             } else {
                 // User doesn't own - ask to copy first
-                if (confirm('This is a shared trip. Would you like to copy it to your trips before editing?')) {
+                LibertasModal.confirm('This is a shared trip. Would you like to copy it to your trips before editing?').then(function(confirmed) {
+                    if (!confirmed) return;
                     // Copy the trip first
                     fetch('/api/copy-trip', {
                         method: 'POST',
@@ -91,13 +92,13 @@ function editTrip() {
                             // Edit the copy
                             window.location.href = '/create.html?edit=' + encodeURIComponent(copyData.new_link);
                         } else {
-                            alert('Failed to copy trip: ' + (copyData.error || 'Unknown error'));
+                            LibertasModal.alert('Failed to copy trip: ' + (copyData.error || 'Unknown error'));
                         }
                     })
                     .catch(function(err) {
-                        alert('Failed to copy trip: ' + err);
+                        LibertasModal.alert('Failed to copy trip: ' + err);
                     });
-                }
+                });
             }
         })
         .catch(function(err) {
@@ -134,12 +135,12 @@ function regenerateMap() {
                 mapPolling.startFastPolling();
             }
         } else {
-            alert('Failed to regenerate map: ' + (data.error || 'Unknown error'));
+            LibertasModal.alert('Failed to regenerate map: ' + (data.error || 'Unknown error'));
             if (mapLoading) mapLoading.classList.add('hidden');
         }
     })
     .catch(function(err) {
-        alert('Failed to regenerate map: ' + err);
+        LibertasModal.alert('Failed to regenerate map: ' + err);
         if (mapLoading) mapLoading.classList.add('hidden');
     });
 }
@@ -179,21 +180,9 @@ function initMap() {
     LibertasMap.addTileLayer(map);
 
     // Category icon mapping
-    var categoryIcons = {
-        'flight': 'fa-plane',
-        'hotel': 'fa-bed',
-        'lodging': 'fa-bed',
-        'meal': 'fa-utensils',
-        'restaurant': 'fa-utensils',
-        'activity': 'fa-star',
-        'attraction': 'fa-landmark',
-        'transport': 'fa-car',
-        'other': 'fa-map-marker-alt'
-    };
-
     // Add markers with category icons
     mapData.markers.forEach(function(markerData, index) {
-        var iconClass = categoryIcons[markerData.category] || 'fa-map-marker-alt';
+        var iconClass = CATEGORY_ICONS[markerData.category] || 'fa-map-marker-alt';
 
         // Create custom div icon for Leaflet
         var icon = L.divIcon({
@@ -317,19 +306,6 @@ function showCalendarMorePopup(element) {
         return;
     }
 
-    // Category icon mapping
-    var categoryIcons = {
-        'flight': 'fa-plane',
-        'hotel': 'fa-bed',
-        'lodging': 'fa-bed',
-        'meal': 'fa-utensils',
-        'restaurant': 'fa-utensils',
-        'activity': 'fa-star',
-        'attraction': 'fa-landmark',
-        'transport': 'fa-car',
-        'other': 'fa-calendar-day'
-    };
-
     // Create overlay
     var overlay = document.createElement('div');
     overlay.className = 'item-detail-overlay';
@@ -343,7 +319,7 @@ function showCalendarMorePopup(element) {
 
     var itemsHtml = '<div class="more-items-list">';
     _hiddenItemsData.forEach(function(item, index) {
-        var iconClass = categoryIcons[item.category] || 'fa-calendar-day';
+        var iconClass = CATEGORY_ICONS[item.category] || 'fa-calendar-day';
         var detailParts = [];
         if (item.time) detailParts.push(item.time);
         if (item.location) detailParts.push(item.location);

@@ -81,22 +81,8 @@ function initUpload() {
  * @param {File} file - The uploaded file
  */
 function handleFile(file) {
-    const uploadStatus = document.getElementById('upload-status');
-    const validTypes = [
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-excel',
-        'text/html',
-        'application/json'
-    ];
-    const validExtensions = ['.pdf', '.xlsx', '.xls', '.html', '.htm', '.json'];
-
-    // Check file type
-    const fileName = file.name.toLowerCase();
-    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
-
-    if (!hasValidExtension) {
-        showStatus('error', `Invalid file type. Please upload a PDF, Excel, HTML, or JSON file.`);
+    if (!LibertasUpload.isAllowed(file.name)) {
+        showStatus('error', `Unsupported file type. Supported: ${LibertasUpload.DESCRIPTION}`);
         return;
     }
 
@@ -297,9 +283,9 @@ function initTripActions() {
             const wrapper = btn.closest('.trip-card-wrapper');
             const title = wrapper.querySelector('.trip-card-title')?.textContent || 'this trip';
 
-            if (confirm(`Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`)) {
-                deleteTrip(link, wrapper);
-            }
+            LibertasModal.confirm(`Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`, { danger: true }).then(function(confirmed) {
+                if (confirmed) deleteTrip(link, wrapper);
+            });
         });
     });
 

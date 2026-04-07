@@ -197,7 +197,7 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
 }
 
@@ -562,7 +562,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
 }
 
@@ -842,7 +842,7 @@
 
 .sidebar-header {
     padding: 20px;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: #1a1a2e;
     color: white;
 }
 
@@ -891,7 +891,7 @@
 }
 
 .chat-message.assistant .avatar {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
 }
 
@@ -914,7 +914,7 @@
 }
 
 .chat-message.user .bubble {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border-bottom-right-radius: 4px;
 }
@@ -982,7 +982,7 @@
 .btn-add-to-itinerary {
     font-size: 0.85rem;
     padding: 6px 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border: none;
     border-radius: 6px;
@@ -1055,7 +1055,7 @@
 }
 
 .day-picker-option:hover {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    background: rgba(102, 126, 234, 0.08);
 }
 
 .day-picker-option strong {
@@ -1151,7 +1151,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border: none;
     cursor: pointer;
@@ -1166,11 +1166,11 @@
 }
 
 .chat-send-btn.cancel-mode {
-    background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+    background: #e53935;
 }
 
 .chat-send-btn.cancel-mode:hover {
-    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    background: #e53935;
 }
 
 /* ==================== Chat Continue Indicator ==================== */
@@ -1178,7 +1178,7 @@
     text-align: center;
     padding: 12px 16px;
     margin: 16px 0;
-    background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+    background: #f0f4ff;
     border-radius: 8px;
     color: #667eea;
     font-size: 0.85rem;
@@ -1236,7 +1236,7 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border: none;
     box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
@@ -1428,7 +1428,7 @@
 }
 
 .grid-card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     padding: 16px 20px;
 }
@@ -1854,7 +1854,7 @@
 }
 
 .calendar-day.trip-start {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
 }
 
@@ -1864,7 +1864,7 @@
 }
 
 .calendar-day.trip-end {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: #f5576c;
     color: white;
 }
 
