@@ -5,10 +5,9 @@ from __future__ import annotations
 import os
 
 import pytest
-from flask import Flask, g, session
+from flask import Flask, g
 
 from agents.common.flask_utils import json_err, json_ok, load_current_user, require_auth
-
 
 # ---------------------------------------------------------------------------
 # App fixture

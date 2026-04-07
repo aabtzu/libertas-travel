@@ -6,7 +6,6 @@ import pytest
 
 from agents.create.file_parsers import _normalize_item
 
-
 # ---------------------------------------------------------------------------
 # Title normalisation
 # ---------------------------------------------------------------------------
@@ -38,35 +37,38 @@ class TestNormalizeItemTitle:
 
 
 class TestNormalizeItemCategory:
-    @pytest.mark.parametrize("raw,expected", [
-        ("flight", "flight"),
-        ("air", "flight"),
-        ("plane", "flight"),
-        ("train", "transport"),
-        ("bus", "transport"),
-        ("car", "transport"),
-        ("transport", "transport"),
-        ("transportation", "transport"),
-        ("transfer", "transport"),
-        ("hotel", "hotel"),
-        ("accommodation", "hotel"),
-        ("lodging", "hotel"),
-        ("stay", "hotel"),
-        ("hostel", "hotel"),
-        ("meal", "meal"),
-        ("restaurant", "meal"),
-        ("food", "meal"),
-        ("dining", "meal"),
-        ("breakfast", "meal"),
-        ("lunch", "meal"),
-        ("dinner", "meal"),
-        ("attraction", "attraction"),
-        ("sightseeing", "attraction"),
-        ("museum", "attraction"),
-        ("tour", "attraction"),
-        ("activity", "activity"),
-        ("event", "activity"),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("flight", "flight"),
+            ("air", "flight"),
+            ("plane", "flight"),
+            ("train", "transport"),
+            ("bus", "transport"),
+            ("car", "transport"),
+            ("transport", "transport"),
+            ("transportation", "transport"),
+            ("transfer", "transport"),
+            ("hotel", "hotel"),
+            ("accommodation", "hotel"),
+            ("lodging", "hotel"),
+            ("stay", "hotel"),
+            ("hostel", "hotel"),
+            ("meal", "meal"),
+            ("restaurant", "meal"),
+            ("food", "meal"),
+            ("dining", "meal"),
+            ("breakfast", "meal"),
+            ("lunch", "meal"),
+            ("dinner", "meal"),
+            ("attraction", "attraction"),
+            ("sightseeing", "attraction"),
+            ("museum", "attraction"),
+            ("tour", "attraction"),
+            ("activity", "activity"),
+            ("event", "activity"),
+        ],
+    )
     def test_category_mapping(self, raw, expected):
         result = _normalize_item({"title": "X", "category": raw})
         assert result["category"] == expected

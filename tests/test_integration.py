@@ -11,7 +11,6 @@ default test run.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -39,7 +38,9 @@ def test_parse_text_fixture_paris_trip():
 
     assert status == 200, f"Handler error: {result}"
     items = result.get("items", [])
-    assert len(items) >= 5, f"Expected ≥5 items, got {len(items)}: {[i.get('title') for i in items]}"
+    assert len(items) >= 5, (
+        f"Expected ≥5 items, got {len(items)}: {[i.get('title') for i in items]}"
+    )
 
     # Should find at least one flight, hotel, and activity
     categories = {i.get("category") for i in items}
@@ -197,9 +198,10 @@ def test_explore_chat_returns_venue_recommendations():
     reply = result.get("reply", "")
     assert len(reply) > 20, f"Reply too short: {reply!r}"
     # Should mention some place or provide useful context
-    assert any(kw in reply.lower() for kw in ("paris", "restaurant", "café", "bistro", "michelin", "recommend")), (
-        f"Reply doesn't seem to contain restaurant recommendation: {reply[:200]!r}"
-    )
+    assert any(
+        kw in reply.lower()
+        for kw in ("paris", "restaurant", "café", "bistro", "michelin", "recommend")
+    ), f"Reply doesn't seem to contain restaurant recommendation: {reply[:200]!r}"
 
 
 @pytest.mark.integration
@@ -209,7 +211,10 @@ def test_explore_chat_handles_followup():
 
     history = [
         {"role": "user", "content": "Recommend a restaurant in Tokyo"},
-        {"role": "assistant", "content": "I recommend Sukiyabashi Jiro in Ginza, Tokyo — one of the world's most renowned sushi restaurants with three Michelin stars."},
+        {
+            "role": "assistant",
+            "content": "I recommend Sukiyabashi Jiro in Ginza, Tokyo — one of the world's most renowned sushi restaurants with three Michelin stars.",
+        },
     ]
 
     result, status = explore_chat_handler(

@@ -12,7 +12,6 @@ from agents.common.llm import SONNET, make_llm
 from agents.create.upload_handlers import upload_plan_handler
 from agents.itinerary.mapper import ItineraryMapper
 
-
 _FLIGHT_TEXT = """\
 Fri, Mar 20 · 11:36 AM – 1:24 PM    2 hr 48 min    Nonstop
 United · Operated by SkyWest DBA United Express    DEN-BIH
@@ -34,8 +33,13 @@ _CHAT_TOOLS = [
                             "category": {
                                 "type": "string",
                                 "enum": [
-                                    "flight", "meal", "hotel", "activity",
-                                    "attraction", "transport", "other",
+                                    "flight",
+                                    "meal",
+                                    "hotel",
+                                    "activity",
+                                    "attraction",
+                                    "transport",
+                                    "other",
                                 ],
                             },
                             "location": {
@@ -123,7 +127,9 @@ def test_iata_resolution():
     ItineraryMapper._iata_cache.clear()
     mapper = ItineraryMapper()
 
-    result = mapper._resolve_iata_code("BIH", context="Flight: DEN → BIH, Trip destination: Mammoth, California")
+    result = mapper._resolve_iata_code(
+        "BIH", context="Flight: DEN → BIH, Trip destination: Mammoth, California"
+    )
 
     assert result != "", "Expected a non-empty resolution for BIH"
     assert "birmingham" not in result.lower(), f"Resolved to Birmingham: {result!r}"

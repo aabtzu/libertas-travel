@@ -1,0 +1,228 @@
+/* Libertas - How It Works Page */
+
+.hiw-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 80px 40px;
+    text-align: center;
+}
+
+.hiw-hero h1 {
+    font-size: 2.8rem;
+    margin-bottom: 16px;
+    font-weight: 300;
+    letter-spacing: 3px;
+}
+
+.hiw-hero .subtitle {
+    font-size: 1.15rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* ==================== CTA strip ==================== */
+.hiw-cta-strip {
+    background: #1a1a2e;
+    padding: 28px 40px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.hiw-cta-strip p {
+    color: #ccc;
+    margin: 0;
+    font-size: 1rem;
+}
+
+.hiw-cta-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 28px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: opacity 0.2s;
+}
+
+.hiw-cta-btn:hover {
+    opacity: 0.88;
+    color: white;
+    text-decoration: none;
+}
+
+/* ==================== Steps ==================== */
+.hiw-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 60px 40px;
+}
+
+.hiw-step {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 32px;
+    background: white;
+    border-radius: 14px;
+    padding: 40px;
+    margin-bottom: 28px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+    align-items: start;
+}
+
+.hiw-step-number {
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.hiw-step-body h2 {
+    color: #333;
+    font-size: 1.35rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hiw-step-body h2 i {
+    color: #667eea;
+    font-size: 1.1rem;
+}
+
+.hiw-step-body p {
+    color: #555;
+    line-height: 1.75;
+    margin-bottom: 16px;
+}
+
+.hiw-step-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* ==================== Screenshot placeholder ==================== */
+.hiw-screenshot {
+    width: 100%;
+    background: #f4f6ff;
+    border: 2px dashed #c5caf5;
+    border-radius: 10px;
+    padding: 48px 20px;
+    text-align: center;
+    color: #8891d4;
+    font-size: 0.9rem;
+    margin-top: 20px;
+}
+
+.hiw-screenshot i {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 10px;
+    opacity: 0.5;
+}
+
+.hiw-screenshot img {
+    width: 100%;
+    border-radius: 8px;
+    display: block;
+}
+
+/* ==================== Input methods pills ==================== */
+.hiw-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.hiw-pill {
+    background: #f0f2ff;
+    color: #667eea;
+    border: 1px solid #d0d5f5;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ==================== Feedback box ==================== */
+.hiw-feedback {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    border-radius: 14px;
+    padding: 44px 40px;
+    text-align: center;
+    margin-top: 40px;
+}
+
+.hiw-feedback h2 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+}
+
+.hiw-feedback p {
+    color: #bbb;
+    line-height: 1.7;
+    margin-bottom: 24px;
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hiw-feedback .hiw-cta-btn {
+    margin: 0 8px;
+}
+
+.hiw-feedback .hiw-cta-btn.secondary {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.hiw-feedback .hiw-cta-btn.secondary:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 600px) {
+    .hiw-step {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .hiw-step-number {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+
+    .hiw-hero h1 {
+        font-size: 2rem;
+    }
+
+    .hiw-content {
+        padding: 40px 20px;
+    }
+
+    .hiw-cta-strip {
+        flex-direction: column;
+        gap: 14px;
+    }
+}

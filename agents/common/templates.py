@@ -38,6 +38,7 @@ def get_nav_html(active_page: str = "") -> str:
         trips_active="active" if active_page == "trips" else "",
         create_active="active" if active_page == "create" else "",
         explore_active="active" if active_page == "explore" else "",
+        hiw_active="active" if active_page == "how-it-works" else "",
         about_active="active" if active_page == "about" else "",
     )
 
@@ -59,6 +60,7 @@ NAV_HTML = """
         <a href="/trips.html" class="nav-link {trips_active}"><i class="fas fa-route"></i> My Trips</a>
         <a href="/create.html" class="nav-link {create_active}"><i class="fas fa-plus-circle"></i> Create</a>
         <a href="/explore.html" class="nav-link {explore_active}"><i class="fas fa-compass"></i> Explore</a>
+        <a href="/how-it-works" class="nav-link {hiw_active}"><i class="fas fa-play-circle"></i> How It Works</a>
         <a href="/about.html" class="nav-link {about_active}"><i class="fas fa-scroll"></i> About</a>
         <a href="#" class="nav-link logout-link" onclick="logout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
@@ -72,6 +74,12 @@ function logout() {{
 }}
 </script>
 """
+
+
+def generate_how_it_works_page() -> str:
+    """Generate the How It Works page HTML."""
+    template = get_template("how-it-works.html")
+    return template.format(nav_html=get_nav_html("how-it-works"))
 
 
 def generate_about_page() -> str:

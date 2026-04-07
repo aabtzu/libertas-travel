@@ -6,22 +6,24 @@ LLM calls are patched out wherever mapper methods would invoke them.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from agents.itinerary.mapper import ItineraryMapper
 from agents.itinerary.models import Itinerary, ItineraryItem, Location
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_item(title: str, location: str = "Paris", category: str = "activity",
-               lat: float | None = 48.8, lng: float | None = 2.3,
-               is_home: bool = False) -> ItineraryItem:
+def _make_item(
+    title: str,
+    location: str = "Paris",
+    category: str = "activity",
+    lat: float | None = 48.8,
+    lng: float | None = 2.3,
+    is_home: bool = False,
+) -> ItineraryItem:
     loc = Location(name=location, address=None, location_type=category)
     if lat is not None:
         loc.latitude = lat
@@ -70,14 +72,18 @@ class TestIataCache:
 
     def test_cache_key_includes_context(self):
         mapper = ItineraryMapper()
-        ItineraryMapper._iata_cache["BIH|Flight: DEN → BIH"] = "Eastern Sierra Regional Airport, Bishop, CA"
+        ItineraryMapper._iata_cache["BIH|Flight: DEN → BIH"] = (
+            "Eastern Sierra Regional Airport, Bishop, CA"
+        )
         result = mapper._resolve_iata_code("BIH", context="Flight: DEN → BIH")
         assert "Bishop" in result
 
     def test_llm_failure_caches_empty(self):
         mapper = ItineraryMapper()
-        with patch("agents.itinerary.mapper.ItineraryMapper._resolve_iata_code",
-                   wraps=mapper._resolve_iata_code):
+        with patch(
+            "agents.itinerary.mapper.ItineraryMapper._resolve_iata_code",
+            wraps=mapper._resolve_iata_code,
+        ):
             with patch("agents.common.llm.make_llm") as mock_make_llm:
                 mock_make_llm.return_value.call_api.side_effect = Exception("API error")
                 result = mapper._resolve_iata_code("XYZ")
@@ -102,7 +108,9 @@ class TestRegionHintCache:
         mapper = ItineraryMapper()
         itinerary = _make_itinerary("Tokyo Trip", [_make_item("Sushi dinner", "Tokyo")])
 
-        with patch.object(mapper, "_extract_destination_with_llm", return_value="Japan") as mock_llm:
+        with patch.object(
+            mapper, "_extract_destination_with_llm", return_value="Japan"
+        ) as mock_llm:
             result1 = mapper._get_region_hint(itinerary)
             result2 = mapper._get_region_hint(itinerary)
 
@@ -115,7 +123,9 @@ class TestRegionHintCache:
         itin1 = _make_itinerary("Tokyo Trip", [_make_item("Sushi", "Tokyo")])
         itin2 = _make_itinerary("Paris Trip", [_make_item("Croissant", "Paris")])
 
-        with patch.object(mapper, "_extract_destination_with_llm", return_value="somewhere") as mock_llm:
+        with patch.object(
+            mapper, "_extract_destination_with_llm", return_value="somewhere"
+        ) as mock_llm:
             mapper._get_region_hint(itin1)
             mapper._get_region_hint(itin2)
 
@@ -138,7 +148,9 @@ class TestRegionHintCache:
         itinerary = _make_itinerary("Tokyo Trip", [_make_item("Sushi", "Tokyo")])
 
         with patch.object(mapper, "_extract_destination_with_llm", side_effect=Exception("fail")):
-            with patch.object(mapper, "_get_region_hint_fallback", return_value="Japan") as mock_fallback:
+            with patch.object(
+                mapper, "_get_region_hint_fallback", return_value="Japan"
+            ) as mock_fallback:
                 result = mapper._get_region_hint(itinerary)
 
         mock_fallback.assert_called_once()

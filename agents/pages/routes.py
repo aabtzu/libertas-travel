@@ -11,6 +11,7 @@ from agents.common.flask_utils import require_auth
 from agents.common.templates import (
     generate_about_page,
     generate_home_page,
+    generate_how_it_works_page,
     generate_login_page,
     generate_register_page,
     get_nav_html,
@@ -29,6 +30,11 @@ def _html(content: str) -> Response:
 @pages_bp.get("/index.html")
 def home():
     return _html(generate_home_page())
+
+
+@pages_bp.get("/how-it-works")
+def how_it_works():
+    return _html(generate_how_it_works_page())
 
 
 @pages_bp.get("/about")
@@ -93,7 +99,7 @@ def trip_html(trip_name: str):
         link = link[5:]
 
     # Reserved page names — let 404 fall through; they have dedicated routes above
-    reserved = {"index", "about", "trips", "login", "register", "create", "explore"}
+    reserved = {"index", "about", "how-it-works", "trips", "login", "register", "create", "explore"}
     if link in reserved:
         return "Not found", 404
 
