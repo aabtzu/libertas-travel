@@ -17,6 +17,12 @@
 - `scripts/` — one-off utility scripts
 - Keep root clean — no new files at root unless essential (app.py, auth.py are intentional; database is a package at `database/`)
 
+## Deploy Discipline
+- **Test locally before pushing to Render** — Render redeploys take several minutes; don't push for every small change
+- Workflow: implement → test locally (`./dev.sh start`) → get user approval → then push
+- Batch related changes into one push rather than pushing after each individual fix
+- Only push when: the user explicitly says to, or a coherent feature/fix is complete and locally verified
+
 ## Server
 - Flask app with blueprint-per-feature structure (`agents/*/routes.py`)
 - `app.py` — Flask factory, registers all blueprints, handles `before_request`

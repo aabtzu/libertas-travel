@@ -227,3 +227,28 @@
         gap: 14px;
     }
 }
+
+.hiw-demo {
+    background: #16213e;
+    color: white;
+    border-radius: 14px;
+    padding: 44px 40px;
+    text-align: center;
+    margin-top: 40px;
+}
+
+.hiw-demo h2 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+}
+
+.hiw-demo p {
+    color: #bbb;
+    line-height: 1.7;
+    margin-bottom: 24px;
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+}

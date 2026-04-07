@@ -629,6 +629,67 @@ function shareWithAll() {
 }
 
 /**
+ * Copy the public link for the current trip, making it public first if needed.
+ * Called from the share modal.
+ */
+function copyPublicLink() {
+    const wrapper = document.querySelector(`.trip-card-wrapper [data-link="${currentShareLink}"]`)
+        ?.closest('.trip-card-wrapper');
+    const publicBtn = wrapper?.querySelector('.public-btn');
+    const isAlreadyPublic = publicBtn?.dataset.public === 'true';
+
+    function doCopy() {
+        const url = window.location.origin + '/' + currentShareLink;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url)
+                .then(() => { closeShareModal(); LibertasModal.alert('Link copied!\n' + url); })
+                .catch(() => { _fallbackCopy(url); });
+        } else {
+            _fallbackCopy(url);
+        }
+    }
+
+    function _fallbackCopy(url) {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.cssText = 'position:fixed;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch(e) {}
+        document.body.removeChild(ta);
+        closeShareModal();
+        LibertasModal.alert('Link copied!\n' + url);
+    }
+
+    if (isAlreadyPublic) {
+        doCopy();
+    } else {
+        // Make public first, then copy
+        fetch('/api/toggle-public', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ link: currentShareLink, isPublic: true })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Update the card's lock button state
+                if (publicBtn) {
+                    publicBtn.dataset.public = 'true';
+                    publicBtn.classList.add('active');
+                    publicBtn.title = 'Make private';
+                    publicBtn.innerHTML = '<i class="fas fa-globe"></i>';
+                }
+                doCopy();
+            } else {
+                LibertasModal.alert(data.error || 'Failed to make trip public');
+            }
+        })
+        .catch(() => LibertasModal.alert('Failed to make trip public'));
+    }
+}
+
+/**
  * Toggle public visibility of a trip
  */
 function togglePublic(btn) {

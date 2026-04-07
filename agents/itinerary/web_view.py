@@ -17,6 +17,38 @@ from .summarizer import ItinerarySummarizer
 from .templates import get_nav_html, get_template
 
 
+def _build_viewer_buttons_html(is_owner: bool, is_authenticated: bool, trip_link: str) -> str:
+    """Single source of truth for the header action buttons on the trip view page.
+
+    Returns different buttons depending on who is viewing:
+    - Owner: full controls + Copy Link
+    - Logged-in non-owner: Copy to My Trips
+    - Anonymous: Sign in to edit CTA
+    """
+    if is_owner:
+        return (
+            '<button class="export-btn" onclick="editTrip()" title="Edit this trip">'
+            '<i class="fas fa-edit"></i> Edit</button>'
+            '<button class="export-btn" onclick="regenerateMap()" title="Regenerate map">'
+            '<i class="fas fa-sync-alt"></i> Regen Map</button>'
+            '<button class="export-btn" onclick="exportTrip()" title="Download trip data">'
+            '<i class="fas fa-download"></i> Export</button>'
+            '<button class="export-btn" onclick="copyShareLink()" title="Copy shareable link">'
+            '<i class="fas fa-link"></i> Copy Link</button>'
+        )
+    if is_authenticated:
+        return (
+            '<button class="export-btn" onclick="copyTripToMyTrips()" title="Add a copy to your trips">'
+            '<i class="fas fa-copy"></i> Copy to My Trips</button>'
+        )
+    # Anonymous viewer
+    redirect = html_module.escape(f"/trip/{trip_link}" if trip_link else "/trips")
+    return (
+        f'<a class="export-btn" href="/login?redirect={redirect}" style="text-decoration:none;">'
+        '<i class="fas fa-sign-in-alt"></i> Sign in to edit</a>'
+    )
+
+
 class ItineraryWebView:
     """Generate a unified web page with tabs for summary and map using Google Maps."""
 
@@ -29,6 +61,9 @@ class ItineraryWebView:
         self,
         itinerary: Itinerary,
         map_data: dict | None = None,
+        is_owner: bool = False,
+        is_authenticated: bool = False,
+        trip_link: str = "",
     ) -> str:
         """Render trip HTML without writing to file.
 
@@ -76,6 +111,9 @@ class ItineraryWebView:
             column_html=column_html,
             calendar_html=calendar_html,
             map_data_json=json.dumps(map_data),
+            viewer_buttons_html=_build_viewer_buttons_html(is_owner, is_authenticated, trip_link),
+            is_owner_json="true" if is_owner else "false",
+            is_authenticated_json="true" if is_authenticated else "false",
         )
 
     def generate(
