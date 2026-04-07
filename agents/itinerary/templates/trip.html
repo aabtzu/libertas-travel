@@ -20,15 +20,7 @@
                 <div class="meta">{meta_info}</div>
             </div>
             <div class="header-actions">
-                <button class="export-btn" onclick="editTrip()" title="Edit this trip">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="export-btn" onclick="regenerateMap()" title="Regenerate map with fresh geocoding">
-                    <i class="fas fa-sync-alt"></i> Regen Map
-                </button>
-                <button class="export-btn" onclick="exportTrip()" title="Download trip data as JSON">
-                    <i class="fas fa-download"></i> Export
-                </button>
+                {viewer_buttons_html}
             </div>
         </div>
     </div>
@@ -99,10 +91,11 @@
     </div>
 
     <script>var mapData = {map_data_json};</script>
+    <script>var tripViewerContext = {{ isOwner: {is_owner_json}, isAuthenticated: {is_authenticated_json} }};</script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="/static/js/main.js?v=5"></script>
     <script src="/static/js/calendar.js?v=2"></script>
     <script src="/static/js/item-detail.js?v=1"></script>
-    <script src="/static/js/trip.js?v=10"></script>
+    <script src="/static/js/trip.js?v=11"></script>
 </body>
 </html>

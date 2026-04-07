@@ -64,47 +64,82 @@ function downloadExport(format) {
     }
 }
 
-// Edit trip - navigate to create page with trip loaded
-// If user doesn't own the trip, copy it first
+// Shared helper — copy a trip to the current user's account then open editor.
+// Used by both editTrip() (non-owner path) and copyTripToMyTrips().
+function _copyTripAndEdit(tripLink) {
+    fetch('/api/copy-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: tripLink })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(copyData) {
+        if (copyData.success && copyData.new_link) {
+            window.location.href = '/create.html?edit=' + encodeURIComponent(copyData.new_link);
+        } else {
+            LibertasModal.alert('Failed to copy trip: ' + (copyData.error || 'Unknown error'));
+        }
+    })
+    .catch(function(err) {
+        LibertasModal.alert('Failed to copy trip: ' + err);
+    });
+}
+
+// Edit trip - navigate to create page with trip loaded.
+// If user doesn't own the trip, copy it first.
 function editTrip() {
     var tripLink = window.location.pathname.split('/').pop();
 
-    // First check if we can edit this trip directly
     fetch('/api/trip/' + encodeURIComponent(tripLink) + '/can-edit')
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.canEdit) {
-                // User owns the trip - edit directly
                 window.location.href = '/create.html?edit=' + encodeURIComponent(tripLink);
             } else {
-                // User doesn't own - ask to copy first
                 LibertasModal.confirm('This is a shared trip. Would you like to copy it to your trips before editing?').then(function(confirmed) {
-                    if (!confirmed) return;
-                    // Copy the trip first
-                    fetch('/api/copy-trip', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ link: tripLink })
-                    })
-                    .then(function(r) { return r.json(); })
-                    .then(function(copyData) {
-                        if (copyData.success && copyData.new_link) {
-                            // Edit the copy
-                            window.location.href = '/create.html?edit=' + encodeURIComponent(copyData.new_link);
-                        } else {
-                            LibertasModal.alert('Failed to copy trip: ' + (copyData.error || 'Unknown error'));
-                        }
-                    })
-                    .catch(function(err) {
-                        LibertasModal.alert('Failed to copy trip: ' + err);
-                    });
+                    if (confirmed) _copyTripAndEdit(tripLink);
                 });
             }
         })
-        .catch(function(err) {
-            // If check fails, try to edit anyway (will fail server-side if not owner)
+        .catch(function() {
+            // If check fails, try to edit anyway (server will reject if not owner)
             window.location.href = '/create.html?edit=' + encodeURIComponent(tripLink);
         });
+}
+
+// Copy a public trip to the current user's account (shown to logged-in non-owners).
+function copyTripToMyTrips() {
+    var tripLink = window.location.pathname.split('/').pop();
+    LibertasModal.confirm('Copy this trip to your account?').then(function(confirmed) {
+        if (confirmed) _copyTripAndEdit(tripLink);
+    });
+}
+
+// Copy the current trip URL to clipboard (shown to owners).
+function copyShareLink() {
+    var url = window.location.href;
+    function showConfirm() {
+        LibertasModal.alert('Link copied!\n' + url);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(showConfirm).catch(function() {
+            _fallbackCopyToClipboard(url);
+            showConfirm();
+        });
+    } else {
+        _fallbackCopyToClipboard(url);
+        showConfirm();
+    }
+}
+
+function _fallbackCopyToClipboard(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
 }
 
 // Regenerate map with fresh geocoding

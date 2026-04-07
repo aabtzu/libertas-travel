@@ -110,6 +110,7 @@ def trip_html(trip_name: str):
 
     user_id = g.user_id
     trip = None
+    owner_id = None  # always defined so we can use it for is_owner check below
 
     if user_id:
         trip = db.get_trip_by_link(user_id, link)
@@ -130,6 +131,11 @@ def trip_html(trip_name: str):
     if not trip:
         return "Trip not found", 404
 
+    # Determine viewer context — used by web_view to render the right header buttons
+    is_authenticated = user_id is not None
+    trip_owner_id = owner_id or db.get_trip_owner(link)
+    is_owner = is_authenticated and (user_id == trip_owner_id)
+
     itinerary_data = trip.get("itinerary_data")
     if not itinerary_data:
         return "Trip has no itinerary data", 404
@@ -144,5 +150,10 @@ def trip_html(trip_name: str):
     itinerary = deserialize_itinerary(worker_format)
     map_data = itinerary_data.get("map_data")
     web_view = ItineraryWebView()
-    html = web_view.render_html(itinerary, map_data)
+    html = web_view.render_html(
+        itinerary, map_data,
+        is_owner=is_owner,
+        is_authenticated=is_authenticated,
+        trip_link=link,
+    )
     return _html(html)
