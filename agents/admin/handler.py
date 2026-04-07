@@ -162,13 +162,22 @@ def seed_demo_trips(force: bool = False) -> dict:
         itinerary_data = itinerary_to_data(itinerary)
         itinerary_data["title"] = "Paris & Provence Adventure"
 
+        # locations and activities are INTEGER counts in the DB schema
+        location_count = len(
+            {item.get("location") for day in itinerary_data.get("days", [])
+             for item in day.get("items", []) if item.get("location")}
+        )
+        activity_count = sum(
+            len(day.get("items", [])) for day in itinerary_data.get("days", [])
+        )
+
         trip_data = {
             "title": "Paris & Provence Adventure",
             "link": _PARIS_DEMO_LINK,
             "dates": itinerary.start_date.strftime("%b %d, %Y") if itinerary.start_date else "",
             "days": itinerary.duration_days or len(itinerary_data.get("days", [])),
-            "locations": "Paris, Provence",
-            "activities": "Louvre, TGV, Versailles, Les Baux",
+            "locations": location_count,
+            "activities": activity_count,
             "map_status": "pending",
         }
 
