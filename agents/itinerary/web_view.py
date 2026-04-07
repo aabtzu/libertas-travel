@@ -9,7 +9,7 @@ import os
 from datetime import date
 from pathlib import Path
 
-from agents.common.categories import CATEGORY_ICONS
+from agents.common.categories import CATEGORY_ICONS, TRAVEL_CATEGORIES
 
 from .mapper import ItineraryMapper
 from .models import Itinerary, ItineraryItem
@@ -202,7 +202,7 @@ class ItineraryWebView:
                     if item.end_time:
                         end_time_str = item.end_time.strftime("%I:%M %p").lstrip("0")
                         # For flights/transport, use arrow; for others use dash
-                        if item.category in ("flight", "transport"):
+                        if item.category in TRAVEL_CATEGORIES:
                             time_str = f"{time_str} → {end_time_str}"
                         else:
                             time_str = f"{time_str} - {end_time_str}"
@@ -258,7 +258,7 @@ class ItineraryWebView:
                     if item.end_time:
                         end_time_str = item.end_time.strftime("%I:%M %p").lstrip("0")
                         # For flights/transport, use arrow; for others use dash
-                        if item.category in ("flight", "transport"):
+                        if item.category in TRAVEL_CATEGORIES:
                             time_str = f"{time_str} → {end_time_str}"
                         else:
                             time_str = f"{time_str} - {end_time_str}"
@@ -390,7 +390,7 @@ class ItineraryWebView:
                 if cat == "flight":
                     travel_items.append(item)
                     has_flight = True
-                elif cat == "transport":
+                elif cat in TRAVEL_CATEGORIES:
                     travel_items.append(item)
                 elif cat in ("hotel", "lodging"):
                     lodging_items.append(item)

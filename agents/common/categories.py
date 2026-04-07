@@ -63,6 +63,10 @@ def normalize_category(raw: str) -> str:
     return _CATEGORY_ALIASES.get(key, "activity")
 
 
+# Categories that represent transport/travel (go in the Travel column, use arrow separator).
+# Add any new transport type here — web_view.py and other renderers import this.
+TRAVEL_CATEGORIES: frozenset[str] = frozenset(["flight", "transport", "train", "bus"])
+
 CATEGORY_ICONS: dict[str, str] = {
     "flight": "fa-plane",
     "travel": "fa-plane",
