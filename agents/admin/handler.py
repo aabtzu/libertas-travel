@@ -11,6 +11,14 @@ import database as db
 
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
 
+# Fixture paths for seeded demo trips
+_FIXTURES_DIR = Path(__file__).parent.parent.parent / "tests" / "fixtures"
+
+# Fixed link for the Paris demo trip referenced in how-it-works.html.
+# Must include .html suffix — that's how all trips are stored in the DB,
+# and the route strips .html from the URL then appends it for the DB lookup.
+_PARIS_DEMO_LINK = "paris_provence_adventure.html"
+
 
 def regenerate_all_trip_html(user_id: int | None = None) -> dict:
     """Regenerate HTML for all trips from their itinerary_data.
@@ -103,6 +111,88 @@ def regenerate_all_trip_html(user_id: int | None = None) -> dict:
     except Exception as e:
         results["errors"].append(f"Fatal error: {str(e)}")
         print(f"[REGEN] Fatal error: {e}")
+        traceback.print_exc()
+
+    return results
+
+
+def seed_demo_trips(force: bool = False) -> dict:
+    """Create (or re-seed) the demo trips owned by the system demo user.
+
+    The demo user is created automatically if it doesn't exist.  The Paris &
+    Provence demo trip is parsed from ``tests/fixtures/paris_trip.txt`` using
+    Claude and then published + made public so anyone can view it at
+    ``/paris_provence_adventure.html``.
+
+    Args:
+        force: Re-seed even if the trip already exists.
+
+    Returns:
+        Dict with keys ``seeded``, ``skipped``, ``errors``.
+    """
+    from agents.create.itinerary_utils import itinerary_to_data
+    from agents.itinerary.parser import ItineraryParser
+    from agents.itinerary.web_view import ItineraryWebView
+
+    results: dict = {"seeded": [], "skipped": [], "errors": []}
+
+    demo_user_id = db.ensure_demo_user()
+
+    # --- Paris & Provence demo trip ---
+    paris_fixture = _FIXTURES_DIR / "paris_trip.txt"
+    if not paris_fixture.exists():
+        results["errors"].append(f"Fixture not found: {paris_fixture}")
+        return results
+
+    existing = db.get_trip_by_link(demo_user_id, _PARIS_DEMO_LINK)
+    if existing and not force:
+        print(f"[SEED] Paris demo trip already exists, skipping (pass force=True to re-seed)")
+        results["skipped"].append(_PARIS_DEMO_LINK)
+        return results
+
+    try:
+        text = paris_fixture.read_text(encoding="utf-8")
+        parser = ItineraryParser()
+        itinerary = parser.parse_text(text, source_url="demo_fixture")
+
+        if not itinerary or not itinerary.items:
+            results["errors"].append("Paris fixture parsed to empty itinerary")
+            return results
+
+        itinerary_data = itinerary_to_data(itinerary)
+        itinerary_data["title"] = "Paris & Provence Adventure"
+
+        trip_data = {
+            "title": "Paris & Provence Adventure",
+            "link": _PARIS_DEMO_LINK,
+            "dates": itinerary.start_date.strftime("%b %d, %Y") if itinerary.start_date else "",
+            "days": itinerary.duration_days or len(itinerary_data.get("days", [])),
+            "locations": "Paris, Provence",
+            "activities": "Louvre, TGV, Versailles, Les Baux",
+            "map_status": "pending",
+        }
+
+        db.add_trip(demo_user_id, trip_data, itinerary_data)
+        print(f"[SEED] Saved Paris demo trip for demo user {demo_user_id}")
+
+        # Generate HTML
+        trip_row = db.get_trip_by_link(demo_user_id, _PARIS_DEMO_LINK)
+        if trip_row:
+            web_view = ItineraryWebView()
+            web_view.generate(
+                itinerary,
+                OUTPUT_DIR / _PARIS_DEMO_LINK,
+                use_ai_summary=False,
+                skip_geocoding=True,
+            )
+            db.publish_draft(demo_user_id, _PARIS_DEMO_LINK)
+            db.set_trip_public(demo_user_id, _PARIS_DEMO_LINK, True)
+            print(f"[SEED] Published and made public: {_PARIS_DEMO_LINK}")
+
+        results["seeded"].append(_PARIS_DEMO_LINK)
+
+    except Exception as e:
+        results["errors"].append(f"Paris trip: {str(e)}")
         traceback.print_exc()
 
     return results

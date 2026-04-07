@@ -129,6 +129,28 @@ def email_exists(email: str) -> bool:
         return cursor.fetchone() is not None
 
 
+def ensure_demo_user() -> int:
+    """Get or create the system demo user. Returns the user ID.
+
+    The demo user owns public sample trips (e.g. the Paris demo trip).
+    It has no real email and a random password that is never used for login.
+    """
+    import uuid
+
+    username = "demo"
+    existing = get_user_by_username(username)
+    if existing:
+        return existing["id"]
+
+    # Create the demo user with a random password (never used for login)
+    password = str(uuid.uuid4())
+    user_id = create_user(username, "demo@libertas.app", password)
+    if user_id is None:
+        raise RuntimeError("Failed to create demo system user")
+    print(f"[SEED] Created demo system user with id={user_id}")
+    return user_id
+
+
 def get_all_users() -> list[dict[str, Any]]:
     """Get list of all users (id and username only, for sharing)."""
     with get_db() as conn:

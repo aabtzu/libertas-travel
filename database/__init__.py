@@ -40,6 +40,7 @@ from database.users import (  # noqa: F401
     authenticate_user,
     create_user,
     email_exists,
+    ensure_demo_user,
     get_all_users,
     get_user_by_id,
     get_user_by_username,

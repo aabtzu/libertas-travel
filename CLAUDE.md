@@ -23,6 +23,14 @@
 - Batch related changes into one push rather than pushing after each individual fix
 - Only push when: the user explicitly says to, or a coherent feature/fix is complete and locally verified
 
+## No Manual Production Steps
+- **Never require manual actions on the production server** — no SSH, no copy-pasting data into a console
+- Any production data setup (demo trips, seed data, config) must be handled by a script or admin route
+- Demo/seed trips are owned by the `demo` system user and seeded via `POST /api/admin/seed` (protected by `X-Admin-Key: $SECRET_KEY`)
+- Calling the seed endpoint on Render: `curl -X POST https://<host>/api/admin/seed -H "X-Admin-Key: $SECRET_KEY"`
+- Re-seed (overwrite existing): add `?force=true` to the above URL
+- Fixtures live in `tests/fixtures/` — one `.txt` file per demo trip
+
 ## Server
 - Flask app with blueprint-per-feature structure (`agents/*/routes.py`)
 - `app.py` — Flask factory, registers all blueprints, handles `before_request`

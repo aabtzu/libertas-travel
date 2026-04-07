@@ -138,6 +138,27 @@ def debug():
     return json_ok(debug_info)
 
 
+@admin_bp.post("/api/admin/seed")
+def seed_demo():
+    """Seed (or re-seed) demo trips owned by the system demo user.
+
+    Protected by SECRET_KEY: caller must send ``X-Admin-Key: <SECRET_KEY>``
+    header so this endpoint is safe to expose without login.
+    """
+    import os
+
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_ok({"error": "Unauthorized"}), 401
+
+    force = request.args.get("force", "").lower() in ("1", "true", "yes")
+    from agents.admin.handler import seed_demo_trips
+
+    results = seed_demo_trips(force=force)
+    return json_ok({"success": True, **results})
+
+
 @admin_bp.post("/api/regenerate-all-trips")
 @require_auth
 def regenerate_all_trips():
