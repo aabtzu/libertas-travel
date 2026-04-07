@@ -5,6 +5,11 @@
 - Templates live in `agents/<agent>/templates/`, static assets in `static/js/` and `static/css/`
 - Bump JS version query strings (e.g. `?v=40`) when editing JS files so browsers pick up changes
 
+## CSS / Visual Style
+- **No gradients** — use solid colors only. Gradients are not wanted anywhere in the UI.
+- Color palette: `#1a1a2e` (dark navy, hero/dark sections), `#667eea` (purple accent, buttons, icons), `#f0c674` (gold highlight), white cards on `#f8f9fa` backgrounds
+- Hover states: darken the solid color (e.g. `#667eea` → `#5a6fd6`), never add a gradient on hover
+
 ## Project Structure
 - `agents/` — feature modules (auth, create, explore, itinerary, trips, pages, admin, common)
 - `static/` — frontend assets (js, css)

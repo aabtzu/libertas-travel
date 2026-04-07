@@ -1,7 +1,7 @@
 /* Libertas - How It Works Page */
 
 .hiw-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a1a2e;
     color: white;
     padding: 80px 40px;
     text-align: center;
@@ -24,7 +24,8 @@
 
 /* ==================== CTA strip ==================== */
 .hiw-cta-strip {
-    background: #1a1a2e;
+    background: #16213e;
+    border-top: 1px solid rgba(255,255,255,0.07);
     padding: 28px 40px;
     text-align: center;
     display: flex;
@@ -42,18 +43,18 @@
 
 .hiw-cta-btn {
     display: inline-block;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     padding: 12px 28px;
     border-radius: 8px;
     text-decoration: none;
     font-weight: 600;
     font-size: 0.95rem;
-    transition: opacity 0.2s;
+    transition: background 0.2s;
 }
 
 .hiw-cta-btn:hover {
-    opacity: 0.88;
+    background: #5a6fd6;
     color: white;
     text-decoration: none;
 }
@@ -80,7 +81,7 @@
 .hiw-step-number {
     width: 52px;
     height: 52px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     border-radius: 50%;
     display: flex;
@@ -163,7 +164,7 @@
 
 /* ==================== Feedback box ==================== */
 .hiw-feedback {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: #1a1a2e;
     color: white;
     border-radius: 14px;
     padding: 44px 40px;
