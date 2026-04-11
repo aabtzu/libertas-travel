@@ -19,7 +19,10 @@
 
 ## Deploy Discipline
 - **Test locally before pushing to Render** — Render redeploys take several minutes; don't push for every small change
-- Workflow: implement → test locally (`./dev.sh start`) → get user approval → then push
+- Workflow: implement → test locally (`./dev.sh start`) → get user approval → push → verify on Render
+- **After every push, verify the change works on Render** — curl the affected API endpoint or open the page in a browser
+- Production URL: `https://libertas-travel.onrender.com` (e.g. explore at `/explore.html`)
+- To smoke-test the explore chat on Render: `curl -X POST https://libertas-travel.onrender.com/api/explore/chat -H "Content-Type: application/json" -d '{"message": "restaurants in Paris", "history": []}'`
 - Batch related changes into one push rather than pushing after each individual fix
 - Only push when: the user explicitly says to, or a coherent feature/fix is complete and locally verified
 

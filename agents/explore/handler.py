@@ -53,7 +53,7 @@ def load_venues() -> list[dict]:
 def explore_chat_handler(message: str, history: list[dict]) -> tuple[dict, int]:
     """Handle an explore chat message. Returns (result, status_code)."""
     from agents.common.llm import SONNET, make_llm
-    from agents.create.handler import fetch_webpage_for_chat
+    from agents.create.web_utils import fetch_webpage_for_chat
 
     venues = load_venues()
 

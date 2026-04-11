@@ -24,7 +24,13 @@ def explore_chat():
     if not message:
         return json_err("No message provided")
 
-    result, status = explore_chat_handler(message, history)
+    try:
+        result, status = explore_chat_handler(message, history)
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        return json_err(f"Chat handler error: {e}", status=500)
     if status == 200:
         return json_ok(result)
     return json_err(result.get("error", "Unknown error"), status=status)

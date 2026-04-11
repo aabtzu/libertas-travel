@@ -195,7 +195,7 @@ def test_explore_chat_returns_venue_recommendations():
     )
 
     assert status == 200, f"Handler error: {result}"
-    reply = result.get("reply", "")
+    reply = result.get("response", "")
     assert len(reply) > 20, f"Reply too short: {reply!r}"
     # Should mention some place or provide useful context
     assert any(
@@ -223,5 +223,5 @@ def test_explore_chat_handles_followup():
     )
 
     assert status == 200, f"Handler error: {result}"
-    reply = result.get("reply", "")
+    reply = result.get("response", "")
     assert len(reply) > 20, f"Reply too short: {reply!r}"
