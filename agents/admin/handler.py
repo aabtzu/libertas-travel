@@ -146,9 +146,12 @@ def seed_demo_trips(force: bool = False) -> dict:
 
     existing = db.get_trip_by_link(demo_user_id, _PARIS_DEMO_LINK)
     if existing and not force:
-        print(f"[SEED] Paris demo trip already exists, skipping (pass force=True to re-seed)")
+        print("[SEED] Paris demo trip already exists, skipping (pass force=True to re-seed)")
         results["skipped"].append(_PARIS_DEMO_LINK)
         return results
+    if existing and force:
+        db.delete_trip(demo_user_id, _PARIS_DEMO_LINK)
+        print("[SEED] Deleted existing Paris demo trip for re-seed")
 
     try:
         text = paris_fixture.read_text(encoding="utf-8")
@@ -164,12 +167,14 @@ def seed_demo_trips(force: bool = False) -> dict:
 
         # locations and activities are INTEGER counts in the DB schema
         location_count = len(
-            {item.get("location") for day in itinerary_data.get("days", [])
-             for item in day.get("items", []) if item.get("location")}
+            {
+                item.get("location")
+                for day in itinerary_data.get("days", [])
+                for item in day.get("items", [])
+                if item.get("location")
+            }
         )
-        activity_count = sum(
-            len(day.get("items", [])) for day in itinerary_data.get("days", [])
-        )
+        activity_count = sum(len(day.get("items", [])) for day in itinerary_data.get("days", []))
 
         trip_data = {
             "title": "Paris & Provence Adventure",
