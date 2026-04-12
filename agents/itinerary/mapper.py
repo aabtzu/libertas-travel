@@ -245,6 +245,25 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         loc_name = location.name or ""
         title = item.title or ""
 
+        # For restaurant/meal items, strip common meal-prefix words so "Dinner at
+        # Le Mas Tourteron" becomes "Le Mas Tourteron" for geocoding queries.
+        _MEAL_PREFIXES = (
+            "dinner at ",
+            "lunch at ",
+            "breakfast at ",
+            "brunch at ",
+            "dinner - ",
+            "lunch - ",
+            "breakfast - ",
+        )
+        venue_title = title
+        if category in ("restaurant", "meal"):
+            lower = title.lower()
+            for prefix in _MEAL_PREFIXES:
+                if lower.startswith(prefix):
+                    venue_title = title[len(prefix) :]
+                    break
+
         # For flights, use special airport logic
         if category == "flight":
             queries = self._build_flight_queries(item, loc_name, region_hint)
@@ -253,8 +272,9 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
         elif category in ("hotel", "lodging"):
             # Structured search first: separates venue name from city so Nominatim
             # can't fuzzy-match the city to a similarly-named place elsewhere.
-            if title and loc_name:
-                result = self._do_geocode_structured(title, loc_name, region_hint, category)
+            city_only = loc_name.split(",")[0].strip() if loc_name else ""
+            if title and city_only:
+                result = self._do_geocode_structured(title, city_only, region_hint, category)
                 if result:
                     location.latitude = result["lat"]
                     location.longitude = result["lng"]
@@ -262,6 +282,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
                         location.address = result.get("address", "")
                     self._geocode_failures = 0
                     return
+            if title and loc_name:
                 queries.append(f"{title}, {loc_name}")  # "Sofitel Munich, Munich"
                 queries.append(f"{title} Hotel, {loc_name}")  # "Sofitel Munich Hotel, Munich"
             if title:
@@ -276,8 +297,10 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             # Structured search first: separates venue name from city so Nominatim
             # can't fuzzy-match the city to a similarly-named place elsewhere.
             # e.g. "Le Mas Tourteron, Gordes" was matching "Gorges" (Loire-Atlantique).
-            if title and loc_name:
-                result = self._do_geocode_structured(title, loc_name, region_hint, category)
+            # Use venue_title (prefix-stripped) and extract just the city from loc_name.
+            city_only = loc_name.split(",")[0].strip() if loc_name else ""
+            if venue_title and city_only:
+                result = self._do_geocode_structured(venue_title, city_only, region_hint, category)
                 if result:
                     location.latitude = result["lat"]
                     location.longitude = result["lng"]
@@ -285,12 +308,13 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
                         location.address = result.get("address", "")
                     self._geocode_failures = 0
                     return
-                queries.append(f"{title}, {loc_name}")
-                queries.append(f"{title} Restaurant, {loc_name}")
-            if title:
-                queries.append(title)
+            if venue_title and loc_name:
+                queries.append(f"{venue_title}, {loc_name}")
+                queries.append(f"{venue_title} Restaurant, {loc_name}")
+            if venue_title:
+                queries.append(venue_title)
                 if region_hint:
-                    queries.append(f"{title}, {region_hint}")
+                    queries.append(f"{venue_title}, {region_hint}")
             if loc_name:
                 queries.append(loc_name)
 
