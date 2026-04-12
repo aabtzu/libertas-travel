@@ -9,7 +9,7 @@ from pathlib import Path
 from flask import Blueprint, g, request
 
 import database as db
-from agents.common.flask_utils import json_ok, require_auth
+from agents.common.flask_utils import json_err, json_ok, require_auth
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -150,7 +150,7 @@ def seed_demo():
     secret_key = os.environ.get("SECRET_KEY", "")
     provided = request.headers.get("X-Admin-Key", "")
     if not secret_key or provided != secret_key:
-        return json_ok({"error": "Unauthorized"}), 401
+        return json_err("Unauthorized", status=401)
 
     force = request.args.get("force", "").lower() in ("1", "true", "yes")
     from agents.admin.handler import seed_demo_trips
@@ -170,14 +170,14 @@ def admin_retry_geocoding():
     secret_key = os.environ.get("SECRET_KEY", "")
     provided = request.headers.get("X-Admin-Key", "")
     if not secret_key or provided != secret_key:
-        return json_ok({"error": "Unauthorized"}), 401
+        return json_err("Unauthorized", status=401)
 
     from agents.admin.handler import admin_retry_geocoding as _retry
 
     data = request.get_json(silent=True) or {}
     link = data.get("link", "").strip()
     if not link:
-        return json_ok({"error": "No trip link provided"}), 400
+        return json_err("No trip link provided")
 
     result = _retry(link)
     return json_ok(result)
