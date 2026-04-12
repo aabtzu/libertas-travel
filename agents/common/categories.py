@@ -44,11 +44,20 @@ _CATEGORY_ALIASES: dict[str, str] = {
 }
 
 # The set of canonical category names (values in CATEGORY_ICONS).
-CANONICAL_CATEGORIES = frozenset([
-    "flight", "train", "bus", "transport",
-    "hotel", "meal", "activity", "attraction",
-    "home", "other",
-])
+CANONICAL_CATEGORIES = frozenset(
+    [
+        "flight",
+        "train",
+        "bus",
+        "transport",
+        "hotel",
+        "meal",
+        "activity",
+        "attraction",
+        "home",
+        "other",
+    ]
+)
 
 
 def normalize_category(raw: str) -> str:

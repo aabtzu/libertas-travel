@@ -80,6 +80,8 @@ For each item you find, extract:
 - time: Start/departure/pickup time (HH:MM format, 24-hour)
 - end_time: End/arrival/dropoff time if available (HH:MM format, 24-hour)
 - location: City or address (pickup location for rentals, destination airport CODE for flights - keep as IATA code like "BIH", do NOT expand to city name)
+- latitude: Latitude coordinate if present in the source data (decimal number like 48.8566). Only include if the source data explicitly contains coordinates.
+- longitude: Longitude coordinate if present in the source data (decimal number like 2.2945). Only include if the source data explicitly contains coordinates.
 - notes: Any additional relevant details (confirmation numbers, vehicle type, drop-off location if different, etc.)
 
 For FLIGHTS and TRAINS: Always extract both departure time (time) and arrival time (end_time) if shown.
@@ -115,6 +117,8 @@ Return your response as a JSON array of items. Example:
     "date": "2026-01-11",
     "day": 4,
     "location": "Futaleufu, Chile",
+    "latitude": -43.1833,
+    "longitude": -71.8667,
     "notes": "Three-mile canyon of Class V whitewater"
   }}
 ]
@@ -277,7 +281,9 @@ def upload_file_handler(
                 if suffix in (".html", ".htm"):
                     text = extract_text_from_html(file_data)
                     if len(text) < 100:
-                        return {"error": "Could not extract meaningful content from the HTML file."}, 400
+                        return {
+                            "error": "Could not extract meaningful content from the HTML file."
+                        }, 400
                 itinerary = parser.parse_text(text, source_url=filename)
             elif "image_data" in extracted:
                 # Scanned PDF or image — write to tmp for parse_file

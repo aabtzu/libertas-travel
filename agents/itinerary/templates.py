@@ -218,7 +218,17 @@ def generate_category_stats_html(
     If category_counts is empty, falls back to locations/activities numbers.
     """
     # Category display order
-    DISPLAY_ORDER = ["attraction", "activity", "meal", "hotel", "flight", "train", "bus", "transport", "other"]
+    DISPLAY_ORDER = [
+        "attraction",
+        "activity",
+        "meal",
+        "hotel",
+        "flight",
+        "train",
+        "bus",
+        "transport",
+        "other",
+    ]
 
     # Category tooltips
     TOOLTIPS = {

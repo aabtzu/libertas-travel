@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agents.create.file_parsers import _normalize_item
+from agents.create.file_parsers import _normalize_item, extract_coords_from_url
 
 # ---------------------------------------------------------------------------
 # Title normalisation
@@ -221,3 +221,176 @@ class TestNormalizeItemMisc:
     def test_day_number_field(self):
         result = _normalize_item({"title": "X", "day_number": 5})
         assert result["day"] == 5
+
+
+# ---------------------------------------------------------------------------
+# Coordinate extraction
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeItemCoordinates:
+    def test_latitude_longitude_fields(self):
+        result = _normalize_item({"title": "X", "latitude": 48.8566, "longitude": 2.3522})
+        assert result["latitude"] == 48.8566
+        assert result["longitude"] == 2.3522
+
+    def test_lat_lng_fields(self):
+        result = _normalize_item({"title": "X", "lat": 48.8566, "lng": 2.3522})
+        assert result["latitude"] == 48.8566
+        assert result["longitude"] == 2.3522
+
+    def test_string_coordinates_converted(self):
+        result = _normalize_item({"title": "X", "latitude": "48.8566", "longitude": "2.3522"})
+        assert result["latitude"] == 48.8566
+        assert result["longitude"] == 2.3522
+
+    def test_missing_longitude_omits_both(self):
+        result = _normalize_item({"title": "X", "latitude": 48.8566})
+        assert "latitude" not in result
+        assert "longitude" not in result
+
+    def test_missing_latitude_omits_both(self):
+        result = _normalize_item({"title": "X", "longitude": 2.3522})
+        assert "latitude" not in result
+        assert "longitude" not in result
+
+    def test_invalid_latitude_range_omitted(self):
+        result = _normalize_item({"title": "X", "latitude": 999, "longitude": 2.35})
+        assert "latitude" not in result
+
+    def test_invalid_longitude_range_omitted(self):
+        result = _normalize_item({"title": "X", "latitude": 48.8, "longitude": 999})
+        assert "latitude" not in result
+
+    def test_non_numeric_omitted(self):
+        result = _normalize_item({"title": "X", "latitude": "abc", "longitude": "def"})
+        assert "latitude" not in result
+
+    def test_dict_location_with_coordinates(self):
+        loc = {"name": "Eiffel Tower", "latitude": 48.8584, "longitude": 2.2945}
+        result = _normalize_item({"title": "X", "location": loc})
+        assert result["latitude"] == 48.8584
+        assert result["longitude"] == 2.2945
+        assert result["location"] == "Eiffel Tower"
+
+    def test_google_maps_url_extraction(self):
+        result = _normalize_item(
+            {
+                "title": "X",
+                "url": "https://www.google.com/maps/place/Eiffel+Tower/@48.8584,2.2945,17z",
+            }
+        )
+        assert result["latitude"] == 48.8584
+        assert result["longitude"] == 2.2945
+
+    def test_google_maps_url_in_google_maps_url_field(self):
+        result = _normalize_item(
+            {
+                "title": "X",
+                "google_maps_url": "https://www.google.com/maps/place/X/@40.7484,-73.9857,15z",
+            }
+        )
+        assert result["latitude"] == 40.7484
+        assert result["longitude"] == -73.9857
+
+    def test_explicit_coords_take_priority_over_url(self):
+        result = _normalize_item(
+            {
+                "title": "X",
+                "latitude": 1.0,
+                "longitude": 2.0,
+                "url": "https://www.google.com/maps/place/X/@48.8,2.3,15z",
+            }
+        )
+        assert result["latitude"] == 1.0
+        assert result["longitude"] == 2.0
+
+    def test_negative_coordinates(self):
+        result = _normalize_item({"title": "X", "latitude": -33.8688, "longitude": 151.2093})
+        assert result["latitude"] == -33.8688
+        assert result["longitude"] == 151.2093
+
+
+# ---------------------------------------------------------------------------
+# Google Maps URL coordinate extraction
+# ---------------------------------------------------------------------------
+
+
+class TestExtractCoordsFromUrl:
+    def test_at_sign_format(self):
+        url = "https://www.google.com/maps/place/Eiffel+Tower/@48.8584,2.2945,17z"
+        assert extract_coords_from_url(url) == (48.8584, 2.2945)
+
+    def test_query_format(self):
+        url = "https://maps.google.com/?q=48.8566,2.3522"
+        assert extract_coords_from_url(url) == (48.8566, 2.3522)
+
+    def test_negative_coords(self):
+        url = "https://www.google.com/maps/place/X/@-33.8688,151.2093,15z"
+        assert extract_coords_from_url(url) == (-33.8688, 151.2093)
+
+    def test_non_google_url_returns_none(self):
+        assert extract_coords_from_url("https://example.com/@48.8,2.3") is None
+
+    def test_none_input(self):
+        assert extract_coords_from_url(None) is None
+
+    def test_empty_string(self):
+        assert extract_coords_from_url("") is None
+
+    def test_no_coords_in_google_url(self):
+        assert extract_coords_from_url("https://www.google.com/maps") is None
+
+
+# ---------------------------------------------------------------------------
+# Coordinate round-trip through itinerary serialization
+# ---------------------------------------------------------------------------
+
+
+class TestCoordinateRoundTrip:
+    def test_coordinates_survive_serialization(self):
+        """Coords set on Location survive itinerary_to_data -> _create_itinerary_item."""
+        from agents.create.itinerary_utils import _create_itinerary_item, itinerary_to_data
+        from agents.itinerary.models import Itinerary, ItineraryItem, Location
+
+        loc = Location(name="Eiffel Tower", latitude=48.8584, longitude=2.2945)
+        item = ItineraryItem(
+            title="Visit Eiffel Tower",
+            location=loc,
+            category="attraction",
+            day_number=1,
+        )
+        itinerary = Itinerary(title="Paris Trip", items=[item])
+
+        data = itinerary_to_data(itinerary)
+        day_items = data["days"][0]["items"]
+        assert day_items[0]["latitude"] == 48.8584
+        assert day_items[0]["longitude"] == 2.2945
+        # location field stays a string for frontend compatibility
+        assert day_items[0]["location"] == "Eiffel Tower"
+
+        restored = _create_itinerary_item(day_items[0], 1, None)
+        assert restored.location.latitude == 48.8584
+        assert restored.location.longitude == 2.2945
+        assert restored.location.has_coordinates
+
+    def test_no_coordinates_remains_none(self):
+        """Items without coords don't get spurious lat/lng."""
+        from agents.create.itinerary_utils import _create_itinerary_item, itinerary_to_data
+        from agents.itinerary.models import Itinerary, ItineraryItem, Location
+
+        loc = Location(name="Paris")
+        item = ItineraryItem(
+            title="Walk around",
+            location=loc,
+            category="activity",
+            day_number=1,
+        )
+        itinerary = Itinerary(title="Trip", items=[item])
+
+        data = itinerary_to_data(itinerary)
+        day_items = data["days"][0]["items"]
+        assert day_items[0]["latitude"] is None
+
+        restored = _create_itinerary_item(day_items[0], 1, None)
+        assert not restored.location.has_coordinates

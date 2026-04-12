@@ -13,9 +13,25 @@ from agents.common.categories import normalize_category
 # Single source of truth for supported upload extensions — used by all upload
 # handlers and the frontend (via LibertasUpload in main.js, which must stay in sync).
 SUPPORTED_EXTENSIONS = [
-    ".pdf", ".txt", ".png", ".jpg", ".jpeg", ".html", ".htm",
-    ".eml", ".ics", ".json", ".xlsx", ".xls", ".docx",
+    ".pdf",
+    ".txt",
+    ".csv",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".html",
+    ".htm",
+    ".eml",
+    ".ics",
+    ".json",
+    ".xlsx",
+    ".xls",
+    ".docx",
 ]
+
+# Regex patterns for extracting coordinates from Google Maps URLs
+_GOOGLE_MAPS_COORD_RE = re.compile(r"@(-?\d+\.\d+),(-?\d+\.\d+)")
+_GOOGLE_MAPS_QUERY_RE = re.compile(r"[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)")
 
 
 def extract_file_content(file_data: bytes, ext: str) -> dict[str, Any]:
@@ -30,7 +46,7 @@ def extract_file_content(file_data: bytes, ext: str) -> dict[str, Any]:
     """
     ext = ext.lower().lstrip(".")
 
-    if ext in ("txt", "html", "htm", "eml"):
+    if ext in ("txt", "html", "htm", "eml", "csv", "kml"):
         try:
             return {"text": file_data.decode("utf-8")}
         except UnicodeDecodeError:
@@ -101,6 +117,19 @@ def extract_file_content(file_data: bytes, ext: str) -> dict[str, Any]:
             return {"error": f"Error reading PDF: {e}"}
 
     return {"error": f"Unsupported file type: .{ext}"}
+
+
+def extract_coords_from_url(url: str | None) -> tuple[float, float] | None:
+    """Extract lat/lng from a Google Maps URL, or return None."""
+    if not url or not isinstance(url, str) or "google" not in url.lower():
+        return None
+    for pattern in (_GOOGLE_MAPS_COORD_RE, _GOOGLE_MAPS_QUERY_RE):
+        m = pattern.search(url)
+        if m:
+            lat, lng = float(m.group(1)), float(m.group(2))
+            if -90 <= lat <= 90 and -180 <= lng <= 180:
+                return (lat, lng)
+    return None
 
 
 def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -174,6 +203,33 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     if item.get("day") or item.get("day_number"):
         normalized["day"] = item.get("day") or item.get("day_number")
 
+    # Coordinates — Google Maps exports use lat/latitude, lng/longitude/lon
+    lat = item.get("latitude") or item.get("lat")
+    lng = item.get("longitude") or item.get("lng") or item.get("lon")
+
+    # Also check if location was a dict with coordinate sub-fields
+    if (lat is None or lng is None) and isinstance(loc, dict):
+        lat = lat or loc.get("latitude") or loc.get("lat")
+        lng = lng or loc.get("longitude") or loc.get("lng") or loc.get("lon")
+
+    # Validate both present, numeric, and in range
+    if lat is not None and lng is not None:
+        try:
+            lat_f, lng_f = float(lat), float(lng)
+            if -90 <= lat_f <= 90 and -180 <= lng_f <= 180:
+                normalized["latitude"] = lat_f
+                normalized["longitude"] = lng_f
+        except (ValueError, TypeError):
+            pass
+
+    # Fallback: extract coordinates from Google Maps URLs in url/link fields
+    if "latitude" not in normalized:
+        for url_field in ("url", "website", "link", "google_maps_url"):
+            coords = extract_coords_from_url(item.get(url_field))
+            if coords:
+                normalized["latitude"], normalized["longitude"] = coords
+                break
+
     return normalized
 
 
@@ -209,7 +265,9 @@ def _parse_ics_file(file_data: bytes) -> list[dict[str, Any]]:
                 category = "activity"
                 if any(w in combined for w in ["flight", "airline", "airport", "terminal"]):
                     category = "flight"
-                elif any(w in combined for w in ["train", "rail", "tgv", "ave ", "eurostar", "amtrak"]):
+                elif any(
+                    w in combined for w in ["train", "rail", "tgv", "ave ", "eurostar", "amtrak"]
+                ):
                     category = "train"
                 elif any(w in combined for w in ["bus", "coach"]):
                     category = "bus"
@@ -458,7 +516,9 @@ def _parse_word_to_text(file_data: bytes, ext: str) -> str:
                 elif headers:
                     # Annotate each cell with its column name for LLM clarity
                     annotated = [
-                        f"{headers[i]}: {cell}" if i < len(headers) and headers[i] and cell else cell
+                        f"{headers[i]}: {cell}"
+                        if i < len(headers) and headers[i] and cell
+                        else cell
                         for i, cell in enumerate(cells)
                     ]
                     text_parts.append(" | ".join(annotated))

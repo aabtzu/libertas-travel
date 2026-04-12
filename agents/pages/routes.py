@@ -151,7 +151,8 @@ def trip_html(trip_name: str):
     map_data = itinerary_data.get("map_data")
     web_view = ItineraryWebView()
     html = web_view.render_html(
-        itinerary, map_data,
+        itinerary,
+        map_data,
         is_owner=is_owner,
         is_authenticated=is_authenticated,
         trip_link=link,

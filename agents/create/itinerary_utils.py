@@ -43,6 +43,8 @@ def itinerary_to_data(itinerary) -> dict:
             "title": item.title,
             "category": item.category or "activity",
             "location": item.location.name if item.location else "",
+            "latitude": item.location.latitude if item.location else None,
+            "longitude": item.location.longitude if item.location else None,
             "time": item.start_time.strftime("%H:%M") if item.start_time else None,
             "notes": item.notes or item.description,
         }
@@ -97,7 +99,17 @@ def _create_itinerary_item(
     else:
         location_name = str(location_data) if location_data else ""
 
-    location = Location(name=location_name, address=None, location_type=item_data.get("category"))
+    # Restore coordinates if stored (from Google Maps exports or prior geocoding)
+    latitude = item_data.get("latitude")
+    longitude = item_data.get("longitude")
+
+    location = Location(
+        name=location_name,
+        address=None,
+        location_type=item_data.get("category"),
+        latitude=latitude,
+        longitude=longitude,
+    )
 
     start_time = None
     time_str = item_data.get("time")
