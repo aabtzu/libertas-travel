@@ -159,6 +159,30 @@ def seed_demo():
     return json_ok({"success": True, **results})
 
 
+@admin_bp.post("/api/admin/retry-geocoding")
+def admin_retry_geocoding():
+    """Re-geocode a trip by link. Protected by SECRET_KEY (X-Admin-Key header).
+
+    Body JSON: {"link": "paris_provence_adventure.html"}
+    """
+    import os
+
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_ok({"error": "Unauthorized"}), 401
+
+    from agents.admin.handler import admin_retry_geocoding as _retry
+
+    data = request.get_json(silent=True) or {}
+    link = data.get("link", "").strip()
+    if not link:
+        return json_ok({"error": "No trip link provided"}), 400
+
+    result = _retry(link)
+    return json_ok(result)
+
+
 @admin_bp.post("/api/regenerate-all-trips")
 @require_auth
 def regenerate_all_trips():

@@ -116,6 +116,52 @@ def regenerate_all_trip_html(user_id: int | None = None) -> dict:
     return results
 
 
+def admin_retry_geocoding(link: str) -> dict:
+    """Re-geocode a trip by link (any user). Finds trip owner automatically."""
+    trip_owner = db.get_trip_owner(link)
+    if trip_owner is None:
+        return {"success": False, "error": "Trip not found"}
+
+    trip = db.get_trip_by_link(trip_owner, link)
+    if not trip:
+        return {"success": False, "error": "Trip not found"}
+
+    itinerary_data = trip.get("itinerary_data")
+    if not itinerary_data:
+        return {"success": False, "error": "No itinerary data"}
+
+    if isinstance(itinerary_data, str):
+        itinerary_data = json.loads(itinerary_data)
+
+    # Clear existing map data to force full re-geocode
+    if "map_data" in itinerary_data:
+        del itinerary_data["map_data"]
+        db.update_trip_itinerary_data(trip_owner, link, itinerary_data)
+
+    from agents.create.handler import _convert_to_itinerary
+    from agents.itinerary.mapper import ItineraryMapper
+
+    itinerary = _convert_to_itinerary(
+        {"itinerary_data": itinerary_data, "title": trip.get("title", "Trip")}
+    )
+    if not itinerary:
+        return {"success": False, "error": "Could not parse itinerary data"}
+
+    db.update_trip_map_status(trip_owner, link, "processing", None)
+    try:
+        mapper = ItineraryMapper()
+        map_data = mapper.create_map_data(itinerary)
+        itinerary_data["map_data"] = map_data
+        db.update_trip_itinerary_data(trip_owner, link, itinerary_data)
+        db.update_trip_map_status(trip_owner, link, "ready", None)
+        markers_count = len(map_data.get("markers", []))
+        return {"success": True, "message": f"Re-geocoded with {markers_count} markers"}
+    except Exception as e:
+        traceback.print_exc()
+        db.update_trip_map_status(trip_owner, link, "error", str(e))
+        return {"success": False, "error": str(e)}
+
+
 def seed_demo_trips(force: bool = False) -> dict:
     """Create (or re-seed) the demo trips owned by the system demo user.
 
