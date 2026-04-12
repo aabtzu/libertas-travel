@@ -251,7 +251,17 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
         # For hotels/lodging - search venue name + city
         elif category in ("hotel", "lodging"):
+            # Structured search first: separates venue name from city so Nominatim
+            # can't fuzzy-match the city to a similarly-named place elsewhere.
             if title and loc_name:
+                result = self._do_geocode_structured(title, loc_name, region_hint, category)
+                if result:
+                    location.latitude = result["lat"]
+                    location.longitude = result["lng"]
+                    if not location.address:
+                        location.address = result.get("address", "")
+                    self._geocode_failures = 0
+                    return
                 queries.append(f"{title}, {loc_name}")  # "Sofitel Munich, Munich"
                 queries.append(f"{title} Hotel, {loc_name}")  # "Sofitel Munich Hotel, Munich"
             if title:
@@ -263,7 +273,18 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
         # For restaurants/meals - search venue name + city
         elif category in ("restaurant", "meal"):
+            # Structured search first: separates venue name from city so Nominatim
+            # can't fuzzy-match the city to a similarly-named place elsewhere.
+            # e.g. "Le Mas Tourteron, Gordes" was matching "Gorges" (Loire-Atlantique).
             if title and loc_name:
+                result = self._do_geocode_structured(title, loc_name, region_hint, category)
+                if result:
+                    location.latitude = result["lat"]
+                    location.longitude = result["lng"]
+                    if not location.address:
+                        location.address = result.get("address", "")
+                    self._geocode_failures = 0
+                    return
                 queries.append(f"{title}, {loc_name}")
                 queries.append(f"{title} Restaurant, {loc_name}")
             if title:
@@ -378,6 +399,62 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             queries.append(loc_name)
 
         return queries
+
+    def _do_geocode_structured(
+        self, venue_name: str, city: str, region_hint: str = "", category: str = ""
+    ) -> dict | None:
+        """Nominatim structured search: passes venue name and city as separate parameters.
+
+        This avoids free-text fuzzy matching where a city like "Gordes" gets confused
+        with a similarly-named place like "Gorges" in a different region.
+        """
+        try:
+            elapsed = time.time() - self._last_geocode_time
+            if elapsed < NOMINATIM_DELAY:
+                time.sleep(NOMINATIM_DELAY - elapsed)
+
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                "amenity": venue_name,
+                "city": city,
+                "format": "json",
+                "limit": 5,
+                "addressdetails": 1,
+            }
+            if region_hint:
+                country_code = self._get_region_code(region_hint)
+                if country_code:
+                    params["countrycodes"] = country_code
+
+            headers = {
+                "User-Agent": "Libertas-Travel/1.0 (https://github.com/aabtzu/libertas-travel)"
+            }
+            self._last_geocode_time = time.time()
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            if response.status_code != 200:
+                return None
+
+            data = response.json()
+            if data:
+                print(
+                    f"[GEOCODING] Structured '{venue_name}' in '{city}' → {len(data)} results",
+                    flush=True,
+                )
+                best = self._select_best_result(data, category)
+                if best:
+                    print(
+                        f"[GEOCODING] Structured selected: {best.get('display_name', '')[:60]}",
+                        flush=True,
+                    )
+                    return {
+                        "lat": float(best["lat"]),
+                        "lng": float(best["lon"]),
+                        "address": best.get("display_name", ""),
+                    }
+            return None
+        except Exception as e:
+            print(f"[GEOCODING] Structured search failed for '{venue_name}' in '{city}': {e}")
+            return None
 
     def _do_geocode(self, query: str, region_hint: str = "", category: str = "") -> dict | None:
         """Execute a geocoding request using Nominatim (OpenStreetMap) and return result or None."""

@@ -30,10 +30,21 @@ def login():
 
 @auth_bp.post("/api/register")
 def register():
+    import os
+
     data = request.get_json(silent=True) or {}
     username = data.get("username", "").strip()
     email = data.get("email", "").strip()
     password = data.get("password", "").strip()
+    invite_code = data.get("invite_code", "").strip()
+
+    # If INVITE_CODE env var is set, require a matching code to register.
+    expected = os.environ.get("INVITE_CODE", "")
+    if expected:
+        if not invite_code:
+            return json_err("An invite code is required to register.")
+        if invite_code != expected:
+            return json_err("Invalid invite code.")
 
     success, error = auth.register_user(username, email, password)
     if success:

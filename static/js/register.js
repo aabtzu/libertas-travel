@@ -6,6 +6,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirm-password').value;
+    const inviteCode = document.getElementById('invite-code').value;
     const errorDiv = document.getElementById('register-error');
     const successDiv = document.getElementById('register-success');
     const errorMsg = document.getElementById('error-message');
@@ -23,7 +24,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ username, email, password }),
+            body: JSON.stringify({ username, email, password, invite_code: inviteCode }),
         });
 
         const data = await response.json();
