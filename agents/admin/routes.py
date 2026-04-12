@@ -183,6 +183,37 @@ def admin_retry_geocoding():
     return json_ok(result)
 
 
+@admin_bp.post("/api/admin/add-venues")
+def admin_add_venues():
+    """Bulk-add curated venues. Protected by SECRET_KEY (X-Admin-Key header).
+
+    Body JSON: {"venues": [{"name": "...", "city": "...", ...}, ...]}
+    """
+    import os
+
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    venues = data.get("venues", [])
+    if not venues:
+        return json_err("No venues provided")
+
+    added = 0
+    skipped = 0
+    for v in venues:
+        existing = db.find_venue_by_name_and_city(v.get("name", ""), v.get("city", ""))
+        if existing:
+            skipped += 1
+            continue
+        db.add_venue(v)
+        added += 1
+
+    return json_ok({"success": True, "added": added, "skipped": skipped})
+
+
 @admin_bp.post("/api/regenerate-all-trips")
 @require_auth
 def regenerate_all_trips():
