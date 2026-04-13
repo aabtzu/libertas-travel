@@ -464,6 +464,23 @@
     background: #1565c0;
 }
 
+.venue-action-btn.add-to-trip {
+    color: #667eea;
+    border-color: #667eea;
+}
+
+.venue-action-btn.add-to-trip:hover {
+    background: #667eea;
+    color: white;
+}
+
+.venue-action-btn.added {
+    background: #4caf50;
+    color: white;
+    border-color: #4caf50;
+    cursor: default;
+}
+
 /* Empty state */
 .empty-results {
     text-align: center;

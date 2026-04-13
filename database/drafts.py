@@ -213,18 +213,19 @@ def publish_draft(user_id: int, link: str) -> bool:
 
 
 def add_item_to_trip(user_id: int, link: str, item: dict) -> bool:
-    """Add an item to a trip's itinerary_data."""
+    """Add an item to a trip's ideas list (unscheduled items)."""
     trip = get_trip_by_link(user_id, link)
     if not trip:
         return False
 
     itinerary_data = trip.get("itinerary_data") or {
         "title": trip["title"],
-        "items": [],
+        "days": [],
+        "ideas": [],
         "travelers": [],
     }
-    if "items" not in itinerary_data:
-        itinerary_data["items"] = []
+    if "ideas" not in itinerary_data:
+        itinerary_data["ideas"] = []
 
-    itinerary_data["items"].append(item)
+    itinerary_data["ideas"].append(item)
     return update_trip_itinerary_data(user_id, link, itinerary_data)

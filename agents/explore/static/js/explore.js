@@ -466,6 +466,9 @@ function createVenueCard(venue) {
                     <button class="venue-action-btn website">
                         <i class="fas fa-globe"></i> Website
                     </button>
+                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude}).replace(/'/g, "&#39;")}'>
+                        <i class="fas fa-plus"></i> Trip
+                    </button>
                 </div>
             </div>
         </div>
@@ -715,6 +718,85 @@ function openWebsite(venue) {
         window.open(`https://www.google.com/search?q=${query}`, '_blank');
     }
 }
+
+/**
+ * Add venue to a trip's ideas list
+ */
+let _tripsCache = null;
+
+async function addToTrip(btn) {
+    const venueData = JSON.parse(btn.dataset.venue);
+
+    // Fetch trips list (cached)
+    if (!_tripsCache) {
+        try {
+            const res = await fetch('/api/trips/list');
+            if (res.status === 401) {
+                alert('Sign in to add venues to a trip.');
+                return;
+            }
+            const data = await res.json();
+            _tripsCache = data.trips || [];
+        } catch {
+            alert('Could not load trips.');
+            return;
+        }
+    }
+
+    if (_tripsCache.length === 0) {
+        alert('No trips yet. Create a trip first.');
+        return;
+    }
+
+    // If only one trip, use it directly; otherwise show picker
+    let tripLink;
+    if (_tripsCache.length === 1) {
+        tripLink = _tripsCache[0].link;
+    } else {
+        const names = _tripsCache.map((t, i) => `${i + 1}. ${t.title}`).join('\n');
+        const choice = prompt(`Which trip?\n\n${names}\n\nEnter number:`);
+        if (!choice) return;
+        const idx = parseInt(choice, 10) - 1;
+        if (idx < 0 || idx >= _tripsCache.length) return;
+        tripLink = _tripsCache[idx].link;
+    }
+
+    // Map venue to itinerary item
+    const item = {
+        title: venueData.name,
+        category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
+        location: venueData.city || '',
+        latitude: venueData.latitude || null,
+        longitude: venueData.longitude || null,
+        notes: venueData.cuisine_type ? `${venueData.cuisine_type}` : '',
+    };
+
+    try {
+        const res = await fetch(`/api/trips/${tripLink}/items`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({item}),
+        });
+        if (res.ok) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Added';
+            btn.disabled = true;
+            btn.classList.add('added');
+        } else {
+            alert('Failed to add venue.');
+        }
+    } catch {
+        alert('Failed to add venue.');
+    }
+}
+
+// Delegate click for add-to-trip buttons
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.add-to-trip');
+    if (btn) {
+        e.stopPropagation();
+        addToTrip(btn);
+    }
+});
 
 // Export initMap for manual initialization if needed
 window.initMap = initMap;

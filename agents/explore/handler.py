@@ -117,7 +117,8 @@ Return venues in a JSON block with source tags:
 - Route queries: Include intermediate stops (SF to Alaska = Oregon, Washington, Vancouver, etc.)
 - Up to 30 venues for route queries, 20 for regular searches
 - Curated venues should appear first in the list
-- Be concise and practical, no flowery language"""
+- Be concise and practical, no flowery language
+- Venue cards are displayed in the main panel (not in the chat). Tell the user to check the main panel for full details, especially on mobile where the chat overlays the panel."""
 
     tools = [
         {
