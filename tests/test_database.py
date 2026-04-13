@@ -435,7 +435,7 @@ class TestAddItemToTrip:
         )
         assert result is True
         trip = get_trip_by_link(user_id, draft["link"])
-        assert any(i["title"] == "Eiffel Tower" for i in trip["itinerary_data"]["items"])
+        assert any(i["title"] == "Eiffel Tower" for i in trip["itinerary_data"]["ideas"])
 
     def test_missing_trip_returns_false(self, user_id):
         from database.drafts import add_item_to_trip
