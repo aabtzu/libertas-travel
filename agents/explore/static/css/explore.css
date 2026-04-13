@@ -481,6 +481,85 @@
     cursor: default;
 }
 
+/* Trip picker modal */
+.trip-picker-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.trip-picker {
+    background: white;
+    border-radius: 14px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 70vh;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+}
+
+.trip-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.trip-picker-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.trip-picker-close {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.trip-picker-close:hover {
+    color: #333;
+}
+
+.trip-picker-list {
+    overflow-y: auto;
+    max-height: 50vh;
+    padding: 8px;
+}
+
+.trip-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    border: none;
+    background: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    color: #333;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.trip-picker-item:hover {
+    background: #f0f2ff;
+}
+
+.trip-picker-item i {
+    color: #667eea;
+    font-size: 1rem;
+}
+
 /* Empty state */
 .empty-results {
     text-align: center;

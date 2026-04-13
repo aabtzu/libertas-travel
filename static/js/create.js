@@ -511,17 +511,21 @@ async function loadTrip(link) {
 function initializeDays() {
     if (!currentTrip.start_date || !currentTrip.end_date) return;
 
-    const start = new Date(currentTrip.start_date);
-    const end = new Date(currentTrip.end_date);
+    // Use noon to avoid UTC midnight timezone rollover (the classic off-by-one bug)
+    const start = new Date(currentTrip.start_date + 'T12:00:00');
+    const end = new Date(currentTrip.end_date + 'T12:00:00');
     const days = [];
 
     let current = new Date(start);
     let dayNum = 1;
 
     while (current <= end) {
+        const yyyy = current.getFullYear();
+        const mm = String(current.getMonth() + 1).padStart(2, '0');
+        const dd = String(current.getDate()).padStart(2, '0');
         days.push({
             day_number: dayNum,
-            date: current.toISOString().split('T')[0],
+            date: `${yyyy}-${mm}-${dd}`,
             items: []
         });
         current.setDate(current.getDate() + 1);
@@ -785,9 +789,12 @@ function addDay() {
     let newDate = null;
 
     if (lastDay && lastDay.date) {
-        const d = new Date(lastDay.date);
+        const d = new Date(lastDay.date + 'T12:00:00');
         d.setDate(d.getDate() + 1);
-        newDate = d.toISOString().split('T')[0];
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        newDate = `${yyyy}-${mm}-${dd}`;
 
         // Also update end_date
         currentTrip.end_date = newDate;
@@ -1475,7 +1482,7 @@ async function publishTrip() {
  * Format date for display
  */
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
+    const date = new Date(dateStr + 'T12:00:00');
     return date.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',

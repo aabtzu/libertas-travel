@@ -723,52 +723,58 @@ function openWebsite(venue) {
  * Add venue to a trip's ideas list
  */
 let _tripsCache = null;
+let _pendingBtn = null;
 
-async function addToTrip(btn) {
-    const venueData = JSON.parse(btn.dataset.venue);
+function showTripPicker(trips, onSelect) {
+    // Remove existing picker
+    const old = document.getElementById('trip-picker-modal');
+    if (old) old.remove();
 
-    // Fetch trips list (cached)
-    if (!_tripsCache) {
-        try {
-            const res = await fetch('/api/trips/list');
-            if (res.status === 401) {
-                alert('Sign in to add venues to a trip.');
-                return;
-            }
-            const data = await res.json();
-            _tripsCache = data.trips || [];
-        } catch {
-            alert('Could not load trips.');
-            return;
+    const overlay = document.createElement('div');
+    overlay.id = 'trip-picker-modal';
+    overlay.className = 'trip-picker-overlay';
+    overlay.innerHTML = `
+        <div class="trip-picker">
+            <div class="trip-picker-header">
+                <h3>Add to trip</h3>
+                <button class="trip-picker-close" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="trip-picker-list">
+                ${trips.map(t => `
+                    <button class="trip-picker-item" data-link="${t.link}">
+                        <i class="fas fa-suitcase"></i>
+                        <span>${t.title}</span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    // Close on overlay click, close button, or Escape
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.closest('.trip-picker-close')) {
+            overlay.remove();
         }
-    }
+        const item = e.target.closest('.trip-picker-item');
+        if (item) {
+            overlay.remove();
+            onSelect(item.dataset.link);
+        }
+    });
+    const onEsc = (e) => { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onEsc); } };
+    document.addEventListener('keydown', onEsc);
 
-    if (_tripsCache.length === 0) {
-        alert('No trips yet. Create a trip first.');
-        return;
-    }
+    document.body.appendChild(overlay);
+}
 
-    // If only one trip, use it directly; otherwise show picker
-    let tripLink;
-    if (_tripsCache.length === 1) {
-        tripLink = _tripsCache[0].link;
-    } else {
-        const names = _tripsCache.map((t, i) => `${i + 1}. ${t.title}`).join('\n');
-        const choice = prompt(`Which trip?\n\n${names}\n\nEnter number:`);
-        if (!choice) return;
-        const idx = parseInt(choice, 10) - 1;
-        if (idx < 0 || idx >= _tripsCache.length) return;
-        tripLink = _tripsCache[idx].link;
-    }
-
-    // Map venue to itinerary item
+async function sendToTrip(btn, tripLink, venueData) {
     const item = {
         title: venueData.name,
         category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
         location: venueData.city || '',
         latitude: venueData.latitude || null,
         longitude: venueData.longitude || null,
-        notes: venueData.cuisine_type ? `${venueData.cuisine_type}` : '',
+        notes: venueData.cuisine_type || '',
     };
 
     try {
@@ -781,11 +787,37 @@ async function addToTrip(btn) {
             btn.innerHTML = '<i class="fas fa-check"></i> Added';
             btn.disabled = true;
             btn.classList.add('added');
-        } else {
-            alert('Failed to add venue.');
         }
-    } catch {
-        alert('Failed to add venue.');
+    } catch { /* silently fail */ }
+}
+
+async function addToTrip(btn) {
+    const venueData = JSON.parse(btn.dataset.venue);
+
+    if (!_tripsCache) {
+        try {
+            const res = await fetch('/api/trips/list');
+            if (res.status === 401) {
+                window.location.href = '/login?redirect=/explore.html';
+                return;
+            }
+            const data = await res.json();
+            _tripsCache = data.trips || [];
+        } catch { return; }
+    }
+
+    if (_tripsCache.length === 0) {
+        window.location.href = '/create.html';
+        return;
+    }
+
+    if (_tripsCache.length === 1) {
+        sendToTrip(btn, _tripsCache[0].link, venueData);
+    } else {
+        _pendingBtn = btn;
+        showTripPicker(_tripsCache, (link) => {
+            sendToTrip(_pendingBtn, link, venueData);
+        });
     }
 }
 
