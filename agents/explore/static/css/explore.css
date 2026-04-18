@@ -668,20 +668,19 @@
     }
 }
 
-/* Inline note input on venue cards */
+/* Inline note input — replaces action buttons when adding to trip */
 .add-note-inline {
     display: flex;
     gap: 6px;
-    margin-top: 8px;
-    width: 100%;
+    padding: 8px 0 0;
 }
 
 .add-note-input {
     flex: 1;
     border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 0.8rem;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
     outline: none;
 }
 
@@ -689,18 +688,28 @@
     border-color: #667eea;
 }
 
+.add-note-submit,
+.add-note-cancel {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
 .add-note-submit {
     background: #667eea;
     color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 10px;
-    cursor: pointer;
 }
 
-.add-note-submit:hover {
-    background: #5a6fd6;
+.add-note-submit:hover { background: #5a6fd6; }
+
+.add-note-cancel {
+    background: #f0f0f0;
+    color: #999;
 }
+
+.add-note-cancel:hover { background: #e0e0e0; color: #666; }
 
 /* Trip picker modal */
 .trip-picker-overlay {

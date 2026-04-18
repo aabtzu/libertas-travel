@@ -827,25 +827,35 @@ function showTripPicker(trips, onSelect) {
  * Show an inline note input below the + Trip button before adding.
  */
 function showAddNoteInput(btn, venueData) {
-    // Append to the card content area, not the button row
-    const card = btn.closest('.venue-card-content') || btn.parentElement;
-    if (card.querySelector('.add-note-inline')) return;
+    const actionsRow = btn.closest('.venue-card-actions');
+    if (!actionsRow || actionsRow.parentElement.querySelector('.add-note-inline')) return;
+
+    // Replace the actions row with the note input
+    actionsRow.style.display = 'none';
 
     const wrapper = document.createElement('div');
     wrapper.className = 'add-note-inline';
     wrapper.innerHTML = `
-        <input type="text" class="add-note-input" placeholder="Add a note (optional)..." >
-        <button class="add-note-submit"><i class="fas fa-check"></i></button>
+        <input type="text" class="add-note-input" placeholder="Add a note (optional), Enter to save" >
+        <button class="add-note-submit" title="Add"><i class="fas fa-check"></i></button>
+        <button class="add-note-cancel" title="Cancel"><i class="fas fa-times"></i></button>
     `;
-    card.appendChild(wrapper);
+    actionsRow.parentElement.appendChild(wrapper);
 
     const input = wrapper.querySelector('input');
     const submitBtn = wrapper.querySelector('.add-note-submit');
+    const cancelBtn = wrapper.querySelector('.add-note-cancel');
     input.focus();
+
+    const doCancel = () => {
+        wrapper.remove();
+        actionsRow.style.display = '';
+    };
 
     const doAdd = async () => {
         const note = input.value.trim();
         wrapper.remove();
+        actionsRow.style.display = '';
         await sendToTripWithNote(btn, _pinnedTrip.link, venueData, note);
         if (typeof _pinnedItems !== 'undefined') {
             _pinnedItems.push({
@@ -859,10 +869,11 @@ function showAddNoteInput(btn, venueData) {
     };
 
     submitBtn.addEventListener('click', (e) => { e.stopPropagation(); doAdd(); });
+    cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); doCancel(); });
     input.addEventListener('keydown', (e) => {
         e.stopPropagation();
         if (e.key === 'Enter') doAdd();
-        if (e.key === 'Escape') wrapper.remove();
+        if (e.key === 'Escape') doCancel();
     });
     input.addEventListener('keyup', (e) => e.stopPropagation());
     input.addEventListener('keypress', (e) => e.stopPropagation());
