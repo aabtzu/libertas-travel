@@ -129,9 +129,18 @@ function markAddedVenues() {
     });
 }
 
-// Close button minimizes (keeps trip pinned); toggle button re-opens
+// Close minimizes; toggle re-opens; switch shows trip picker to change target
 document.getElementById('trip-panel-close')?.addEventListener('click', minimizeTripPanel);
 document.getElementById('trip-panel-toggle')?.addEventListener('click', showTripPanel);
+document.getElementById('trip-panel-switch')?.addEventListener('click', () => {
+    // Unpin current, show picker for new selection
+    unpinTrip();
+    // Force re-fetch trips list and show picker
+    _tripsCache = null;
+    // Trigger a fake add-to-trip to open the picker
+    const firstBtn = document.querySelector('.venue-action-btn.add-to-trip');
+    if (firstBtn) addToTrip(firstBtn);
+});
 
 // Re-mark venues after new search results are displayed
 const _origDisplayVenues = typeof displayVenues === 'function' ? displayVenues : null;
