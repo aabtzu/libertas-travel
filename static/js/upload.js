@@ -639,7 +639,8 @@ function copyPublicLink() {
     const isAlreadyPublic = publicBtn?.dataset.public === 'true';
 
     function doCopy() {
-        const url = window.location.origin + '/' + currentShareLink;
+        const recLink = currentShareLink.replace('.html', '');
+        const url = window.location.origin + '/r/' + recLink;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url)
                 .then(() => { closeShareModal(); LibertasModal.alert('Link copied!\n' + url); })
