@@ -627,7 +627,7 @@
 .trip-panel-toggle {
     position: absolute;
     top: 8px;
-    left: 8px;
+    left: 50px;
     background: white;
     color: #667eea;
     border: 1px solid #ddd;
