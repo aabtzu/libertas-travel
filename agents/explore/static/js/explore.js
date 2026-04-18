@@ -890,6 +890,13 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
         mapsLink = `https://www.google.com/maps/search/?api=1&query=${q}`;
     }
 
+    // Build website link — use venue website, or Google search as fallback
+    let website = venueData.website || '';
+    if (!website) {
+        const q = encodeURIComponent(`${venueData.name} ${venueData.city || ''}`);
+        website = `https://www.google.com/search?q=${q}`;
+    }
+
     const item = {
         title: venueData.name,
         category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
@@ -897,7 +904,7 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
         latitude: venueData.latitude || null,
         longitude: venueData.longitude || null,
         notes: note || venueData.cuisine_type || '',
-        website: venueData.website || '',
+        website: website,
         google_maps_link: mapsLink,
     };
 
