@@ -26,7 +26,18 @@ OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.pare
 def list_trips():
     """Return lightweight list of user's trips (for dropdowns)."""
     trips = db.get_user_trips(g.user_id)
-    return json_ok({"trips": [{"link": t["link"], "title": t["title"]} for t in trips]})
+    return json_ok(
+        {
+            "trips": [
+                {
+                    "link": t["link"],
+                    "title": t["title"],
+                    "trip_type": t.get("trip_type", "itinerary"),
+                }
+                for t in trips
+            ]
+        }
+    )
 
 
 @trips_bp.get("/api/trips/<link>/data")

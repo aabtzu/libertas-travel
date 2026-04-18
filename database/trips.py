@@ -10,17 +10,17 @@ from database.connection import USE_POSTGRES, get_db
 # --- SQL constants ---
 
 _SQL_PG_GET_USER_TRIPS = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data, trip_type
     FROM trips WHERE user_id = %s ORDER BY created_at DESC
 """
 _SQL_SQLITE_GET_USER_TRIPS = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data, trip_type
     FROM trips WHERE user_id = ? ORDER BY created_at DESC
 """
 
 _SQL_PG_ADD_TRIP = """
-    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, trip_type)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (user_id, link) DO UPDATE SET
         title = EXCLUDED.title,
         dates = EXCLUDED.dates,
@@ -28,20 +28,21 @@ _SQL_PG_ADD_TRIP = """
         locations = EXCLUDED.locations,
         activities = EXCLUDED.activities,
         map_status = EXCLUDED.map_status,
-        itinerary_data = EXCLUDED.itinerary_data
+        itinerary_data = EXCLUDED.itinerary_data,
+        trip_type = EXCLUDED.trip_type
     RETURNING id
 """
 _SQL_SQLITE_ADD_TRIP = """
-    INSERT OR REPLACE INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, trip_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 _SQL_PG_GET_TRIP_BY_LINK = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type
     FROM trips WHERE user_id = %s AND link = %s
 """
 _SQL_SQLITE_GET_TRIP_BY_LINK = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type
     FROM trips WHERE user_id = ? AND link = ?
 """
 
@@ -87,6 +88,7 @@ def get_user_trips(user_id: int) -> list[dict[str, Any]]:
                 "is_public",
                 "is_draft",
                 "itinerary_data",
+                "trip_type",
             ]
             return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
@@ -103,6 +105,8 @@ def add_trip(
         try:
             itinerary_json = json.dumps(itinerary_data) if itinerary_data else None
 
+            trip_type = trip_data.get("trip_type", "itinerary")
+
             if USE_POSTGRES:
                 cursor.execute(
                     _SQL_PG_ADD_TRIP,
@@ -116,6 +120,7 @@ def add_trip(
                         trip_data.get("activities"),
                         trip_data.get("map_status", "pending"),
                         itinerary_json,
+                        trip_type,
                     ),
                 )
                 return cursor.fetchone()[0]
@@ -132,6 +137,7 @@ def add_trip(
                         trip_data.get("activities"),
                         trip_data.get("map_status", "pending"),
                         itinerary_json,
+                        trip_type,
                     ),
                 )
                 return cursor.lastrowid
@@ -160,6 +166,7 @@ def get_trip_by_link(user_id: int, link: str) -> dict[str, Any] | None:
                     "map_error",
                     "itinerary_data",
                     "is_draft",
+                    "trip_type",
                 ]
                 trip = dict(zip(columns, row, strict=False))
                 if trip["itinerary_data"]:

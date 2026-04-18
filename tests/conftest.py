@@ -17,6 +17,10 @@ def app():
 
     from app import create_app
 
+    import database as db
+
+    db.init_db()
+
     flask_app = create_app()
     flask_app.config["TESTING"] = True
     yield flask_app
