@@ -147,6 +147,42 @@ def publish_trip(link: str):
     return json_err(result.get("error", "Unknown error"), status=status)
 
 
+@trips_bp.post("/api/trips/clone-ideas")
+@require_auth
+def clone_ideas():
+    """Copy all ideas from a public source trip into a target trip."""
+    data = request.get_json(silent=True) or {}
+    source_link = data.get("source_link", "").strip()
+    target_link = data.get("target_link", "").strip()
+
+    if not source_link or not target_link:
+        return json_err("source_link and target_link required")
+
+    # Get source trip (must be public)
+    owner_id = db.get_trip_owner(source_link)
+    if not owner_id:
+        return json_err("Source trip not found")
+    source = db.get_trip_by_link(owner_id, source_link)
+    if not source or not source.get("is_public"):
+        return json_err("Source trip not found")
+
+    source_data = source.get("itinerary_data") or {}
+    if isinstance(source_data, str):
+        source_data = json.loads(source_data)
+    source_ideas = source_data.get("ideas", [])
+
+    if not source_ideas:
+        return json_err("No ideas to clone")
+
+    # Add each idea to the target trip
+    added = 0
+    for idea in source_ideas:
+        db.add_item_to_trip(g.user_id, target_link, idea)
+        added += 1
+
+    return json_ok({"success": True, "added": added})
+
+
 @trips_bp.post("/api/trips/<link>/items")
 @require_auth
 def add_trip_item(link: str):

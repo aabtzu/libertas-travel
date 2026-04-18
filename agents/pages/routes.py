@@ -188,5 +188,7 @@ def recommendation_view(rec_name: str):
 
         itinerary_data = json.loads(itinerary_data)
 
-    html = generate_recommendation_page(trip.get("title", "Recommendations"), itinerary_data)
+    html = generate_recommendation_page(
+        trip.get("title", "Recommendations"), itinerary_data, trip_link=link
+    )
     return _html(html)

@@ -13,7 +13,9 @@ def _esc(text: str) -> str:
     return html_mod.escape(str(text)) if text else ""
 
 
-def generate_recommendation_page(title: str, itinerary_data: dict[str, Any]) -> str:
+def generate_recommendation_page(
+    title: str, itinerary_data: dict[str, Any], trip_link: str = ""
+) -> str:
     """Build a public recommendation page from trip ideas."""
     ideas = itinerary_data.get("ideas", [])
     tips = itinerary_data.get("tips", [])
@@ -122,6 +124,22 @@ def generate_recommendation_page(title: str, itinerary_data: dict[str, Any]) -> 
             letter-spacing: 1px;
         }}
         .rec-hero p {{ color: #aaa; margin-top: 8px; }}
+        .rec-save-btn {{
+            margin-top: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 600;
+        }}
+        .rec-save-btn:hover {{ background: #5a6fd6; }}
+        .rec-save-btn.saved {{
+            background: #4caf50;
+            cursor: default;
+        }}
         .rec-content {{
             max-width: 800px;
             margin: 0 auto;
@@ -210,6 +228,9 @@ def generate_recommendation_page(title: str, itinerary_data: dict[str, Any]) -> 
     <div class="rec-hero">
         <h1>{_esc(title)}</h1>
         <p>{len(ideas)} recommendations</p>
+        <button class="rec-save-btn" id="rec-save-btn" data-source="{_esc(trip_link)}">
+            <i class="fas fa-plus"></i> Save to my trips
+        </button>
     </div>
 
     <div class="rec-content">
@@ -246,6 +267,68 @@ def generate_recommendation_page(title: str, itinerary_data: dict[str, Any]) -> 
         }} else {{
             document.getElementById('rec-map').style.display = 'none';
         }}
+
+        // Save to my trips
+        document.getElementById('rec-save-btn')?.addEventListener('click', async function() {{
+            const btn = this;
+            const sourceLink = btn.dataset.source;
+
+            // Check if logged in
+            const listRes = await fetch('/api/trips/list');
+            if (listRes.status === 401) {{
+                window.location.href = '/register?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+            }}
+
+            const listData = await listRes.json();
+            const trips = listData.trips || [];
+
+            // Create a new trip or pick existing
+            let targetLink;
+            if (trips.length === 0) {{
+                // Create new trip with same title
+                const createRes = await fetch('/api/trips/create', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{title: '{_esc(title)}'}})
+                }});
+                const createData = await createRes.json();
+                targetLink = createData.trip?.link || createData.link;
+            }} else {{
+                const names = trips.map((t, i) => `${{i+1}}. ${{t.title}}`).join('\\n');
+                const choice = prompt(`Save to which trip?\\n\\n0. Create new trip\\n${{names}}\\n\\nEnter number:`);
+                if (choice === null) return;
+                const idx = parseInt(choice, 10);
+                if (idx === 0) {{
+                    const createRes = await fetch('/api/trips/create', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify({{title: '{_esc(title)}'}})
+                    }});
+                    const createData = await createRes.json();
+                    targetLink = createData.trip?.link || createData.link;
+                }} else if (idx > 0 && idx <= trips.length) {{
+                    targetLink = trips[idx - 1].link;
+                }} else {{
+                    return;
+                }}
+            }}
+
+            if (!targetLink) return;
+
+            // Clone ideas
+            const res = await fetch('/api/trips/clone-ideas', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{source_link: sourceLink, target_link: targetLink}})
+            }});
+            const data = await res.json();
+            if (data.success) {{
+                btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                btn.classList.add('saved');
+                btn.disabled = true;
+            }}
+        }});
     </script>
 </body>
 </html>"""
