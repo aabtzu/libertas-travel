@@ -18,6 +18,7 @@ from agents.common.templates import (
 )
 from agents.explore.templates import generate_explore_page
 from agents.itinerary.templates import generate_trips_page
+from agents.pages.recommendation_view import generate_recommendation_page
 
 pages_bp = Blueprint("pages", __name__)
 
@@ -157,4 +158,35 @@ def trip_html(trip_name: str):
         is_authenticated=is_authenticated,
         trip_link=link,
     )
+    return _html(html)
+
+
+@pages_bp.get("/r/<path:rec_name>.html")
+@pages_bp.get("/r/<path:rec_name>")
+def recommendation_view(rec_name: str):
+    """Public recommendation view — no login required."""
+    link = rec_name
+    if not link.endswith(".html"):
+        link = link + ".html"
+
+    # Find the trip by link (any owner)
+    owner_id = db.get_trip_owner(link)
+    if owner_id is None:
+        return "Not found", 404
+
+    trip = db.get_trip_by_link(owner_id, link)
+    if not trip:
+        return "Not found", 404
+
+    # Must be public
+    if not trip.get("is_public"):
+        return "Not found", 404
+
+    itinerary_data = trip.get("itinerary_data") or {}
+    if isinstance(itinerary_data, str):
+        import json
+
+        itinerary_data = json.loads(itinerary_data)
+
+    html = generate_recommendation_page(trip.get("title", "Recommendations"), itinerary_data)
     return _html(html)

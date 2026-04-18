@@ -180,6 +180,35 @@ document.getElementById('trip-panel-switch')?.addEventListener('click', async ()
     });
 });
 
+// Share button: publish trip and show shareable link
+document.getElementById('trip-panel-share')?.addEventListener('click', async () => {
+    if (!_pinnedTrip) return;
+
+    try {
+        // Make trip public
+        await fetch('/api/toggle-public', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({link: _pinnedTrip.link, isPublic: true}),
+        });
+
+        // Build shareable URL
+        const recLink = _pinnedTrip.link.replace('.html', '');
+        const url = `${window.location.origin}/r/${recLink}`;
+
+        // Copy to clipboard and show confirmation
+        await navigator.clipboard.writeText(url);
+        const btn = document.getElementById('trip-panel-share');
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-share-alt"></i> Share'; }, 2000);
+
+        // Also open in new tab
+        window.open(url, '_blank');
+    } catch (e) {
+        console.error('Share failed:', e);
+    }
+});
+
 // Re-mark venues after new search results are displayed
 const _origDisplayVenues = typeof displayVenues === 'function' ? displayVenues : null;
 if (_origDisplayVenues) {

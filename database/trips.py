@@ -38,11 +38,11 @@ _SQL_SQLITE_ADD_TRIP = """
 """
 
 _SQL_PG_GET_TRIP_BY_LINK = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type, is_public
     FROM trips WHERE user_id = %s AND link = %s
 """
 _SQL_SQLITE_GET_TRIP_BY_LINK = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type, is_public
     FROM trips WHERE user_id = ? AND link = ?
 """
 
@@ -167,6 +167,7 @@ def get_trip_by_link(user_id: int, link: str) -> dict[str, Any] | None:
                     "itinerary_data",
                     "is_draft",
                     "trip_type",
+                    "is_public",
                 ]
                 trip = dict(zip(columns, row, strict=False))
                 if trip["itinerary_data"]:
