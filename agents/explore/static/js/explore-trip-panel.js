@@ -30,12 +30,32 @@ async function pinTrip(link, title) {
 }
 
 /**
- * Unpin the current trip.
+ * Minimize the panel (keep trip pinned, hide panel, show toggle button).
+ */
+function minimizeTripPanel() {
+    document.getElementById('trip-panel').style.display = 'none';
+    const toggle = document.getElementById('trip-panel-toggle');
+    toggle.style.display = 'flex';
+    const countEl = document.getElementById('trip-panel-toggle-count');
+    if (countEl) countEl.textContent = _pinnedItems.length || '';
+}
+
+/**
+ * Re-open the minimized panel.
+ */
+function showTripPanel() {
+    document.getElementById('trip-panel').style.display = 'flex';
+    document.getElementById('trip-panel-toggle').style.display = 'none';
+}
+
+/**
+ * Fully unpin the current trip.
  */
 function unpinTrip() {
     _pinnedTrip = null;
     _pinnedItems = [];
     document.getElementById('trip-panel').style.display = 'none';
+    document.getElementById('trip-panel-toggle').style.display = 'none';
     document.querySelectorAll('.venue-action-btn.added').forEach(btn => {
         btn.innerHTML = '<i class="fas fa-plus"></i> Trip';
         btn.disabled = false;
@@ -109,8 +129,9 @@ function markAddedVenues() {
     });
 }
 
-// Close button
-document.getElementById('trip-panel-close')?.addEventListener('click', unpinTrip);
+// Close button minimizes (keeps trip pinned); toggle button re-opens
+document.getElementById('trip-panel-close')?.addEventListener('click', minimizeTripPanel);
+document.getElementById('trip-panel-toggle')?.addEventListener('click', showTripPanel);
 
 // Re-mark venues after new search results are displayed
 const _origDisplayVenues = typeof displayVenues === 'function' ? displayVenues : null;
