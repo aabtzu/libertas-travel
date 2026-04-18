@@ -827,6 +827,13 @@ async function addToTrip(btn) {
 
     // If a trip is pinned (from explore-trip-panel.js), add directly
     if (typeof _pinnedTrip !== 'undefined' && _pinnedTrip) {
+        // Skip if already in this trip
+        if (typeof isAlreadyInTrip === 'function' && isAlreadyInTrip(venueData.name)) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Added';
+            btn.disabled = true;
+            btn.classList.add('added');
+            return;
+        }
         await sendToTrip(btn, _pinnedTrip.link, venueData);
         if (typeof _pinnedItems !== 'undefined') {
             _pinnedItems.push({

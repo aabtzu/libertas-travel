@@ -1,7 +1,7 @@
 /**
  * Pinned trip panel for Explore.
  * When a trip is pinned, shows current ideas and marks already-added venues.
- * Depends on globals from explore.js: sendToTrip, displayVenues
+ * Depends on globals from explore.js: sendToTrip, showTripPicker, _tripsCache
  * Depends on globals from main.js: escapeHtml, CATEGORY_ICONS
  */
 
@@ -25,6 +25,8 @@ async function pinTrip(link, title) {
         _pinnedItems = [];
     }
 
+    // Hide toggle if visible, show panel
+    document.getElementById('trip-panel-toggle').style.display = 'none';
     renderTripPanel();
     markAddedVenues();
 }
@@ -44,7 +46,8 @@ function minimizeTripPanel() {
  * Re-open the minimized panel.
  */
 function showTripPanel() {
-    document.getElementById('trip-panel').style.display = 'flex';
+    if (!_pinnedTrip) return;
+    renderTripPanel();
     document.getElementById('trip-panel-toggle').style.display = 'none';
 }
 
@@ -61,6 +64,15 @@ function unpinTrip() {
         btn.disabled = false;
         btn.classList.remove('added');
     });
+}
+
+/**
+ * Check if a venue name is already in the pinned trip.
+ */
+function isAlreadyInTrip(name) {
+    if (!_pinnedTrip || !name) return false;
+    const lower = name.toLowerCase();
+    return _pinnedItems.some(i => i.title.toLowerCase() === lower);
 }
 
 /**
@@ -108,6 +120,10 @@ function renderTripPanel() {
     }
 
     itemsEl.innerHTML = html;
+
+    // Also update toggle count if it's visible
+    const countEl = document.getElementById('trip-panel-toggle-count');
+    if (countEl) countEl.textContent = _pinnedItems.length || '';
 }
 
 /**
@@ -115,12 +131,10 @@ function renderTripPanel() {
  */
 function markAddedVenues() {
     if (!_pinnedTrip) return;
-    const addedNames = new Set(_pinnedItems.map(i => i.title.toLowerCase()));
-
     document.querySelectorAll('.venue-action-btn.add-to-trip').forEach(btn => {
         try {
             const venue = JSON.parse(btn.dataset.venue);
-            if (addedNames.has(venue.name.toLowerCase())) {
+            if (isAlreadyInTrip(venue.name)) {
                 btn.innerHTML = '<i class="fas fa-check"></i> Added';
                 btn.disabled = true;
                 btn.classList.add('added');
@@ -129,17 +143,27 @@ function markAddedVenues() {
     });
 }
 
-// Close minimizes; toggle re-opens; switch shows trip picker to change target
+// --- Event listeners ---
+
 document.getElementById('trip-panel-close')?.addEventListener('click', minimizeTripPanel);
 document.getElementById('trip-panel-toggle')?.addEventListener('click', showTripPanel);
-document.getElementById('trip-panel-switch')?.addEventListener('click', () => {
-    // Unpin current, show picker for new selection
+
+// Switch button: show trip picker to change target
+document.getElementById('trip-panel-switch')?.addEventListener('click', async () => {
     unpinTrip();
-    // Force re-fetch trips list and show picker
-    _tripsCache = null;
-    // Trigger a fake add-to-trip to open the picker
-    const firstBtn = document.querySelector('.venue-action-btn.add-to-trip');
-    if (firstBtn) addToTrip(firstBtn);
+    // Fetch fresh trips list
+    try {
+        const res = await fetch('/api/trips/list');
+        if (res.ok) {
+            const data = await res.json();
+            _tripsCache = data.trips || [];
+        }
+    } catch { return; }
+
+    showTripPicker(_tripsCache || [], async (link) => {
+        const trip = (_tripsCache || []).find(t => t.link === link);
+        if (trip) pinTrip(link, trip.title);
+    });
 });
 
 // Re-mark venues after new search results are displayed
