@@ -12,6 +12,7 @@ let _pinnedItems = [];     // items already in the trip
  * Pin a trip as the active building target and load its ideas.
  */
 async function pinTrip(link, title) {
+    console.log('[trip-panel] pinTrip:', link, title);
     _pinnedTrip = {link, title};
     // Persist across page navigation
     sessionStorage.setItem('pinnedTrip', JSON.stringify(_pinnedTrip));
@@ -190,15 +191,18 @@ if (_origDisplayVenues) {
 }
 
 // Restore pinned trip from sessionStorage on page load
-(function restorePinnedTrip() {
+(async function restorePinnedTrip() {
     try {
         const saved = sessionStorage.getItem('pinnedTrip');
-        if (saved) {
-            const {link, title} = JSON.parse(saved);
-            if (link && title) {
-                // Restore in minimized state (toggle visible, panel hidden)
-                pinTrip(link, title).then(() => minimizeTripPanel());
-            }
-        }
-    } catch {}
+        if (!saved) return;
+        const {link, title} = JSON.parse(saved);
+        if (!link || !title) return;
+
+        await pinTrip(link, title);
+        // Show in minimized state so it's not intrusive on return
+        minimizeTripPanel();
+    } catch (e) {
+        console.warn('[trip-panel] restore failed:', e);
+        sessionStorage.removeItem('pinnedTrip');
+    }
 })();
