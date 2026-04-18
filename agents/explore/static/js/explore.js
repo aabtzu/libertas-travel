@@ -527,7 +527,16 @@ function updateMap(venueList) {
     // Filter venues with coordinates
     const venuesWithCoords = venueList.filter(v => v.latitude && v.longitude);
 
-    if (venuesWithCoords.length === 0) return;
+    // If no venues have coords, try to center map on the shared city
+    if (venuesWithCoords.length === 0) {
+        const cities = [...new Set(venueList.map(v => v.city).filter(c => c))];
+        if (cities.length > 0) {
+            geocodeCity(cities[0]).then(coords => {
+                if (coords && map) map.setView([coords.lat, coords.lng], 12);
+            });
+        }
+        return;
+    }
 
     // Create bounds array for fitting
     const boundsArray = [];
@@ -691,6 +700,22 @@ function openInGoogleMaps(venue) {
 }
 
 /**
+ * Geocode a city name to get coordinates for map centering.
+ */
+async function geocodeCity(city) {
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`, {
+            headers: {'User-Agent': 'Libertas-Travel/1.0'}
+        });
+        const data = await res.json();
+        if (data.length > 0) {
+            return {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
+        }
+    } catch {}
+    return null;
+}
+
+/**
  * Open venue website
  */
 function openWebsite(venue) {
@@ -802,16 +827,17 @@ function showTripPicker(trips, onSelect) {
  * Show an inline note input below the + Trip button before adding.
  */
 function showAddNoteInput(btn, venueData) {
-    // Don't show twice
-    if (btn.parentElement.querySelector('.add-note-inline')) return;
+    // Append to the card content area, not the button row
+    const card = btn.closest('.venue-card-content') || btn.parentElement;
+    if (card.querySelector('.add-note-inline')) return;
 
     const wrapper = document.createElement('div');
     wrapper.className = 'add-note-inline';
     wrapper.innerHTML = `
-        <input type="text" class="add-note-input" placeholder="Note (optional)..." >
+        <input type="text" class="add-note-input" placeholder="Add a note (optional)..." >
         <button class="add-note-submit"><i class="fas fa-check"></i></button>
     `;
-    btn.parentElement.appendChild(wrapper);
+    card.appendChild(wrapper);
 
     const input = wrapper.querySelector('input');
     const submitBtn = wrapper.querySelector('.add-note-submit');
