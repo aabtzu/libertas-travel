@@ -269,54 +269,7 @@ def generate_recommendation_page(
         }}
 
         // Save to my trips
-        document.getElementById('rec-save-btn')?.addEventListener('click', async function() {{
-            const btn = this;
-            const sourceLink = btn.dataset.source;
-
-            // Check if logged in
-            const listRes = await fetch('/api/trips/list');
-            if (listRes.status === 401) {{
-                window.location.href = '/register?redirect=' + encodeURIComponent(window.location.pathname);
-                return;
-            }}
-
-            const listData = await listRes.json();
-            const trips = listData.trips || [];
-
-            // Create a new trip or pick existing
-            let targetLink;
-            if (trips.length === 0) {{
-                // Create new trip with same title
-                const createRes = await fetch('/api/trips/create', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{title: '{_esc(title)}'}})
-                }});
-                const createData = await createRes.json();
-                targetLink = createData.trip?.link || createData.link;
-            }} else {{
-                const names = trips.map((t, i) => `${{i+1}}. ${{t.title}}`).join('\\n');
-                const choice = prompt(`Save to which trip?\\n\\n0. Create new trip\\n${{names}}\\n\\nEnter number:`);
-                if (choice === null) return;
-                const idx = parseInt(choice, 10);
-                if (idx === 0) {{
-                    const createRes = await fetch('/api/trips/create', {{
-                        method: 'POST',
-                        headers: {{'Content-Type': 'application/json'}},
-                        body: JSON.stringify({{title: '{_esc(title)}'}})
-                    }});
-                    const createData = await createRes.json();
-                    targetLink = createData.trip?.link || createData.link;
-                }} else if (idx > 0 && idx <= trips.length) {{
-                    targetLink = trips[idx - 1].link;
-                }} else {{
-                    return;
-                }}
-            }}
-
-            if (!targetLink) return;
-
-            // Clone ideas
+        async function cloneToTrip(sourceLink, targetLink, btn) {{
             const res = await fetch('/api/trips/clone-ideas', {{
                 method: 'POST',
                 headers: {{'Content-Type': 'application/json'}},
@@ -327,6 +280,82 @@ def generate_recommendation_page(
                 btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
                 btn.classList.add('saved');
                 btn.disabled = true;
+            }}
+        }}
+
+        async function createAndClone(sourceLink, title, btn) {{
+            const res = await fetch('/api/trips/create', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{title: title}})
+            }});
+            const data = await res.json();
+            const link = data.trip?.link || data.link;
+            if (link) await cloneToTrip(sourceLink, link, btn);
+        }}
+
+        function showSaveModal(trips, sourceLink, btn) {{
+            const old = document.getElementById('save-modal');
+            if (old) old.remove();
+
+            const overlay = document.createElement('div');
+            overlay.id = 'save-modal';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000';
+            overlay.innerHTML = `
+                <div style="background:white;border-radius:14px;width:90%;max-width:400px;max-height:70vh;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.2)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #eee">
+                        <h3 style="margin:0;font-size:1.1rem;color:#333">Save to trip</h3>
+                        <button id="save-modal-close" style="background:none;border:none;font-size:1.1rem;color:#999;cursor:pointer;padding:4px 8px"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div style="overflow-y:auto;max-height:50vh;padding:8px">
+                        <button class="save-modal-item" data-action="new" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:#667eea;cursor:pointer;text-align:left;font-weight:600;border-bottom:1px solid #eee">
+                            <i class="fas fa-plus-circle"></i> New trip
+                        </button>
+                        ${{trips.map(t => `
+                            <button class="save-modal-item" data-link="${{t.link}}" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:#333;cursor:pointer;text-align:left">
+                                <i class="fas fa-suitcase" style="color:#667eea"></i> ${{t.title}}
+                            </button>
+                        `).join('')}}
+                    </div>
+                </div>
+            `;
+
+            overlay.addEventListener('click', async (e) => {{
+                if (e.target === overlay || e.target.closest('#save-modal-close')) {{
+                    overlay.remove();
+                    return;
+                }}
+                const item = e.target.closest('.save-modal-item');
+                if (!item) return;
+                overlay.remove();
+                if (item.dataset.action === 'new') {{
+                    await createAndClone(sourceLink, '{_esc(title)}', btn);
+                }} else {{
+                    await cloneToTrip(sourceLink, item.dataset.link, btn);
+                }}
+            }});
+
+            const onEsc = (e) => {{ if (e.key === 'Escape') {{ overlay.remove(); document.removeEventListener('keydown', onEsc); }} }};
+            document.addEventListener('keydown', onEsc);
+            document.body.appendChild(overlay);
+        }}
+
+        document.getElementById('rec-save-btn')?.addEventListener('click', async function() {{
+            const btn = this;
+            const sourceLink = btn.dataset.source;
+
+            const listRes = await fetch('/api/trips/list');
+            if (listRes.status === 401) {{
+                window.location.href = '/register?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+            }}
+
+            const trips = (await listRes.json()).trips || [];
+
+            if (trips.length === 0) {{
+                await createAndClone(sourceLink, '{_esc(title)}', btn);
+            }} else {{
+                showSaveModal(trips, sourceLink, btn);
             }}
         }});
     </script>

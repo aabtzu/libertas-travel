@@ -7,6 +7,7 @@
 
 ## CSS / Visual Style
 - **No gradients** — use solid colors only. Gradients are not wanted anywhere in the UI.
+- **No browser dialogs** — never use `alert()`, `confirm()`, or `prompt()`. All modals and dialogs must be custom HTML/CSS matching the app's design language (white card, rounded corners, `#667eea` accent buttons, close/cancel with Escape key support).
 - Color palette: `#1a1a2e` (dark navy, hero/dark sections), `#667eea` (purple accent, buttons, icons), `#f0c674` (gold highlight), white cards on `#f8f9fa` backgrounds
 - Hover states: darken the solid color (e.g. `#667eea` → `#5a6fd6`), never add a gradient on hover
 
