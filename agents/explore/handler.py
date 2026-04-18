@@ -46,6 +46,8 @@ def load_venues() -> list[dict]:
             "source": v.get("source") or "curated",
             "latitude": v.get("latitude"),
             "longitude": v.get("longitude"),
+            "website": v.get("website") or "",
+            "google_maps_link": v.get("google_maps_link") or "",
         }
         for v in venues
     ]

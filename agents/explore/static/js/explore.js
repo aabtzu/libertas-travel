@@ -466,7 +466,7 @@ function createVenueCard(venue) {
                     <button class="venue-action-btn website">
                         <i class="fas fa-globe"></i> Website
                     </button>
-                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude}).replace(/'/g, "&#39;")}'>
+                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude, website: venue.website, google_maps_link: venue.google_maps_link}).replace(/'/g, "&#39;")}'>
                         <i class="fas fa-plus"></i> Trip
                     </button>
                 </div>
@@ -881,6 +881,15 @@ function showAddNoteInput(btn, venueData) {
 }
 
 async function sendToTripWithNote(btn, tripLink, venueData, note) {
+    // Build Google Maps link from coordinates or name
+    let mapsLink = venueData.google_maps_link || '';
+    if (!mapsLink && venueData.latitude && venueData.longitude) {
+        mapsLink = `https://www.google.com/maps/search/?api=1&query=${venueData.latitude},${venueData.longitude}`;
+    } else if (!mapsLink) {
+        const q = encodeURIComponent(`${venueData.name} ${venueData.city || ''}`);
+        mapsLink = `https://www.google.com/maps/search/?api=1&query=${q}`;
+    }
+
     const item = {
         title: venueData.name,
         category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
@@ -888,6 +897,8 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
         latitude: venueData.latitude || null,
         longitude: venueData.longitude || null,
         notes: note || venueData.cuisine_type || '',
+        website: venueData.website || '',
+        google_maps_link: mapsLink,
     };
 
     try {
