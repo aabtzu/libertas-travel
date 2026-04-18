@@ -16,27 +16,27 @@ function initDragDrop() {
  */
 function setupIdeaDragHandlers() {
     const ideaItems = document.querySelectorAll('#ideas-list .item-card');
-    ideaItems.forEach((item, index) => {
+    ideaItems.forEach((item) => {
+        // Use the original array index from data attribute (survives category grouping)
+        const ideaIdx = parseInt(item.dataset.ideaIndex);
         item.setAttribute('draggable', 'true');
-        item.dataset.ideaIndex = index;
 
         item.addEventListener('dragstart', handleDragStart);
         item.addEventListener('dragend', handleDragEnd);
 
-        // Click on icon to edit (allows text selection on content)
+        // Click on icon to edit
         const icon = item.querySelector('.item-icon');
         if (icon) {
             icon.addEventListener('click', (e) => {
                 e.stopPropagation();
-                editIdea(index);
+                editIdea(ideaIdx);
             });
         }
 
         // Double-click anywhere on card to edit
         item.addEventListener('dblclick', (e) => {
-            // Don't trigger if clicking buttons
             if (e.target.closest('.item-actions')) return;
-            editIdea(index);
+            editIdea(ideaIdx);
         });
     });
 }
