@@ -13,6 +13,8 @@ let _pinnedItems = [];     // items already in the trip
  */
 async function pinTrip(link, title) {
     _pinnedTrip = {link, title};
+    // Persist across page navigation
+    sessionStorage.setItem('pinnedTrip', JSON.stringify(_pinnedTrip));
 
     try {
         const res = await fetch(`/api/trips/${link}/data`);
@@ -57,6 +59,7 @@ function showTripPanel() {
 function unpinTrip() {
     _pinnedTrip = null;
     _pinnedItems = [];
+    sessionStorage.removeItem('pinnedTrip');
     document.getElementById('trip-panel').style.display = 'none';
     document.getElementById('trip-panel-toggle').style.display = 'none';
     document.querySelectorAll('.venue-action-btn.added').forEach(btn => {
@@ -185,3 +188,17 @@ if (_origDisplayVenues) {
         if (_pinnedTrip) markAddedVenues();
     };
 }
+
+// Restore pinned trip from sessionStorage on page load
+(function restorePinnedTrip() {
+    try {
+        const saved = sessionStorage.getItem('pinnedTrip');
+        if (saved) {
+            const {link, title} = JSON.parse(saved);
+            if (link && title) {
+                // Restore in minimized state (toggle visible, panel hidden)
+                pinTrip(link, title).then(() => minimizeTripPanel());
+            }
+        }
+    } catch {}
+})();
