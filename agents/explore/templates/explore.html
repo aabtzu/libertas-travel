@@ -19,13 +19,18 @@
         <!-- Main Content Area -->
         <main class="explore-main">
             <!-- Map Section -->
-            <div class="explore-map-container">
+            <div class="explore-map-container" style="position:relative">
                 <div id="explore-map" class="explore-map">
                     <div class="map-placeholder">
                         <i class="fas fa-globe-americas"></i>
                         <p>Map will appear when you search for places</p>
                     </div>
                 </div>
+                <!-- Toggle button to re-open minimized trip panel (sits on map) -->
+                <button class="trip-panel-toggle" id="trip-panel-toggle" style="display:none" aria-label="Show trip panel">
+                    <i class="fas fa-suitcase"></i>
+                    <span id="trip-panel-toggle-count"></span>
+                </button>
             </div>
 
             <!-- Results Section -->
@@ -86,11 +91,7 @@
         <i class="fas fa-comments"></i>
     </button>
 
-    <!-- Toggle button to re-open minimized trip panel -->
-    <button class="trip-panel-toggle" id="trip-panel-toggle" style="display:none" aria-label="Show trip panel">
-        <i class="fas fa-suitcase"></i>
-        <span id="trip-panel-toggle-count"></span>
-    </button>
+
 
     <!-- Pinned trip panel (hidden by default, shown when a trip is selected) -->
     <div class="trip-panel" id="trip-panel" style="display:none">
