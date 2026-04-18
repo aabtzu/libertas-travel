@@ -121,6 +121,16 @@ function renderTripPanel() {
 
     itemsEl.innerHTML = html;
 
+    // Show footer with edit/share when items exist
+    const footer = document.getElementById('trip-panel-footer');
+    if (footer) {
+        footer.style.display = _pinnedItems.length > 0 ? 'flex' : 'none';
+    }
+    const editLink = document.getElementById('trip-panel-edit');
+    if (editLink && _pinnedTrip) {
+        editLink.href = `/create.html?edit=${_pinnedTrip.link}`;
+    }
+
     // Also update toggle count if it's visible
     const countEl = document.getElementById('trip-panel-toggle-count');
     if (countEl) countEl.textContent = _pinnedItems.length || '';

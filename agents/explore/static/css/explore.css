@@ -581,6 +581,49 @@
     color: #999;
 }
 
+.trip-panel-footer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.trip-panel-edit-btn,
+.trip-panel-share-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.trip-panel-edit-btn {
+    background: white;
+    color: #667eea;
+    border: 1px solid #667eea;
+}
+
+.trip-panel-edit-btn:hover {
+    background: #f0f2ff;
+}
+
+.trip-panel-share-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+}
+
+.trip-panel-share-btn:hover {
+    background: #5a6fd6;
+}
+
 .trip-panel-toggle {
     position: fixed;
     bottom: 20px;
@@ -623,6 +666,40 @@
         width: 100%;
         max-height: 40vh;
     }
+}
+
+/* Inline note input on venue cards */
+.add-note-inline {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.add-note-input {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    outline: none;
+}
+
+.add-note-input:focus {
+    border-color: #667eea;
+}
+
+.add-note-submit {
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.add-note-submit:hover {
+    background: #5a6fd6;
 }
 
 /* Trip picker modal */

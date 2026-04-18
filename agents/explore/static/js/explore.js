@@ -798,6 +798,75 @@ function showTripPicker(trips, onSelect) {
     document.body.appendChild(overlay);
 }
 
+/**
+ * Show an inline note input below the + Trip button before adding.
+ */
+function showAddNoteInput(btn, venueData) {
+    // Don't show twice
+    if (btn.parentElement.querySelector('.add-note-inline')) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'add-note-inline';
+    wrapper.innerHTML = `
+        <input type="text" class="add-note-input" placeholder="Note (optional)..." >
+        <button class="add-note-submit"><i class="fas fa-check"></i></button>
+    `;
+    btn.parentElement.appendChild(wrapper);
+
+    const input = wrapper.querySelector('input');
+    const submitBtn = wrapper.querySelector('.add-note-submit');
+    input.focus();
+
+    const doAdd = async () => {
+        const note = input.value.trim();
+        wrapper.remove();
+        await sendToTripWithNote(btn, _pinnedTrip.link, venueData, note);
+        if (typeof _pinnedItems !== 'undefined') {
+            _pinnedItems.push({
+                title: venueData.name,
+                category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
+                location: venueData.city || '',
+                notes: note || venueData.cuisine_type || '',
+            });
+            if (typeof renderTripPanel === 'function') renderTripPanel();
+        }
+    };
+
+    submitBtn.addEventListener('click', (e) => { e.stopPropagation(); doAdd(); });
+    input.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') doAdd();
+        if (e.key === 'Escape') wrapper.remove();
+    });
+    input.addEventListener('keyup', (e) => e.stopPropagation());
+    input.addEventListener('keypress', (e) => e.stopPropagation());
+    input.addEventListener('click', (e) => e.stopPropagation());
+}
+
+async function sendToTripWithNote(btn, tripLink, venueData, note) {
+    const item = {
+        title: venueData.name,
+        category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
+        location: venueData.city || '',
+        latitude: venueData.latitude || null,
+        longitude: venueData.longitude || null,
+        notes: note || venueData.cuisine_type || '',
+    };
+
+    try {
+        const res = await fetch(`/api/trips/${tripLink}/items`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({item}),
+        });
+        if (res.ok) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Added';
+            btn.disabled = true;
+            btn.classList.add('added');
+        }
+    } catch { /* silently fail */ }
+}
+
 async function sendToTrip(btn, tripLink, venueData) {
     const item = {
         title: venueData.name,
@@ -834,15 +903,8 @@ async function addToTrip(btn) {
             btn.classList.add('added');
             return;
         }
-        await sendToTrip(btn, _pinnedTrip.link, venueData);
-        if (typeof _pinnedItems !== 'undefined') {
-            _pinnedItems.push({
-                title: venueData.name,
-                category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
-                location: venueData.city || '',
-            });
-            if (typeof renderTripPanel === 'function') renderTripPanel();
-        }
+        // Show inline note input on the card
+        showAddNoteInput(btn, venueData);
         return;
     }
 
