@@ -25,57 +25,76 @@ def generate_recommendation_page(
 
     tips = itinerary_data.get("tips", [])
 
-    # Group by category
-    groups: dict[str, list] = {}
+    # Group by location first, then by category within each location
+    location_groups: dict[str, list] = {}
     for item in all_items:
-        cat = item.get("category", "other")
-        if cat not in groups:
-            groups[cat] = []
-        groups[cat].append(item)
+        loc = item.get("location") or "Other"
+        # Normalize: strip ", France" etc. to group by city
+        loc_key = loc.split(",")[0].strip() if loc else "Other"
+        if loc_key not in location_groups:
+            location_groups[loc_key] = []
+        location_groups[loc_key].append(item)
 
     category_labels = {
         "meal": "Restaurants",
         "activity": "Activities",
         "attraction": "Attractions",
         "hotel": "Hotels",
+        "flight": "Flights",
+        "transport": "Transport",
         "other": "Other",
     }
 
-    # Build items HTML
+    # Skip these categories from grouped display (shown separately or not useful)
+    skip_categories = {"flight", "transport", "home"}
+
+    # Build items HTML — group by location, then category
     items_html = ""
-    for cat, items in groups.items():
-        label = category_labels.get(cat, cat.title())
-        icon = CATEGORY_ICONS.get(cat, "fa-map-marker-alt")
-        items_html += '<div class="rec-group">'
-        items_html += f'<h2 class="rec-group-header"><i class="fas {icon}"></i> {label}</h2>'
+    for loc_name, loc_items in location_groups.items():
+        # Sub-group by category within this location
+        cat_groups: dict[str, list] = {}
+        for item in loc_items:
+            cat = item.get("category", "other")
+            if cat in skip_categories:
+                continue
+            if cat not in cat_groups:
+                cat_groups[cat] = []
+            cat_groups[cat].append(item)
 
-        for item in items:
-            notes_html = ""
-            if item.get("notes"):
-                notes_html = f'<p class="rec-item-notes">{_esc(item["notes"])}</p>'
+        if not cat_groups:
+            continue
 
-            links_html = ""
-            if item.get("website"):
-                links_html += f'<a href="{_esc(item["website"])}" target="_blank" rel="noopener"><i class="fas fa-globe"></i> Website</a>'
-            if item.get("google_maps_link"):
-                links_html += f'<a href="{_esc(item["google_maps_link"])}" target="_blank" rel="noopener"><i class="fas fa-map"></i> Map</a>'
+        items_html += '<div class="rec-location">'
+        items_html += f'<h2 class="rec-location-header"><i class="fas fa-map-marker-alt"></i> {_esc(loc_name)}</h2>'
 
-            location_html = ""
-            if item.get("location"):
-                location_html = f'<span class="rec-item-location"><i class="fas fa-map-pin"></i> {_esc(item["location"])}</span>'
+        for cat, items in cat_groups.items():
+            label = category_labels.get(cat, cat.title())
+            icon = CATEGORY_ICONS.get(cat, "fa-map-marker-alt")
+            items_html += '<div class="rec-group">'
+            items_html += f'<h3 class="rec-group-header"><i class="fas {icon}"></i> {label}</h3>'
 
-            items_html += f"""
+            for item in items:
+                notes_html = ""
+                if item.get("notes"):
+                    notes_html = f'<p class="rec-item-notes">{_esc(item["notes"])}</p>'
+
+                links_html = ""
+                if item.get("website"):
+                    links_html += f'<a href="{_esc(item["website"])}" target="_blank" rel="noopener"><i class="fas fa-globe"></i> Website</a>'
+                if item.get("google_maps_link"):
+                    links_html += f'<a href="{_esc(item["google_maps_link"])}" target="_blank" rel="noopener"><i class="fas fa-map"></i> Map</a>'
+
+                items_html += f"""
                 <div class="rec-item">
-                    <div class="rec-item-header">
-                        <h3 class="rec-item-name">{_esc(item.get("title", ""))}</h3>
-                        {location_html}
-                    </div>
+                    <h3 class="rec-item-name">{_esc(item.get("title", ""))}</h3>
                     {notes_html}
                     <div class="rec-item-links">{links_html}</div>
                 </div>
-            """
+                """
 
-        items_html += "</div>"
+            items_html += "</div>"  # close rec-group
+
+        items_html += "</div>"  # close rec-location
 
     # Tips section
     tips_html = ""
@@ -156,16 +175,34 @@ def generate_recommendation_page(
             margin-bottom: 32px;
             overflow: hidden;
         }}
+        .rec-location {{
+            margin-bottom: 40px;
+        }}
+        .rec-location-header {{
+            font-size: 1.4rem;
+            color: #333;
+            padding-bottom: 8px;
+            border-bottom: 3px solid #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .rec-location-header i {{
+            color: #667eea;
+            font-size: 1.1rem;
+        }}
         .rec-group {{
-            margin-bottom: 32px;
+            margin-bottom: 20px;
+            margin-left: 12px;
         }}
         .rec-group-header {{
-            font-size: 1rem;
+            font-size: 0.85rem;
             color: #667eea;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f0f0f0;
             display: flex;
             align-items: center;
             gap: 8px;
