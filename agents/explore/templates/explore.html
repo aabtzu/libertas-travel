@@ -86,10 +86,29 @@
         <i class="fas fa-comments"></i>
     </button>
 
+    <!-- Pinned trip panel (hidden by default, shown when a trip is selected) -->
+    <div class="trip-panel" id="trip-panel" style="display:none">
+        <div class="trip-panel-header">
+            <div class="trip-panel-title">
+                <i class="fas fa-suitcase"></i>
+                <span id="trip-panel-name">Trip</span>
+            </div>
+            <button class="trip-panel-close" id="trip-panel-close" aria-label="Close panel">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="trip-panel-items" id="trip-panel-items">
+            <div class="trip-panel-empty">No items yet</div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/static/js/main.js?v=5"></script>
+    <script src="/static/js/main.js?v=6"></script>
     <script>
 {explore_js}
+    </script>
+    <script>
+{explore_trip_panel_js}
     </script>
 </body>
 </html>

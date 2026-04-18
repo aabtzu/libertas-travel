@@ -778,6 +778,20 @@ async function sendToTrip(btn, tripLink, venueData) {
 async function addToTrip(btn) {
     const venueData = JSON.parse(btn.dataset.venue);
 
+    // If a trip is pinned (from explore-trip-panel.js), add directly
+    if (typeof _pinnedTrip !== 'undefined' && _pinnedTrip) {
+        await sendToTrip(btn, _pinnedTrip.link, venueData);
+        if (typeof _pinnedItems !== 'undefined') {
+            _pinnedItems.push({
+                title: venueData.name,
+                category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
+                location: venueData.city || '',
+            });
+            if (typeof renderTripPanel === 'function') renderTripPanel();
+        }
+        return;
+    }
+
     if (!_tripsCache) {
         try {
             const res = await fetch('/api/trips/list');
@@ -796,11 +810,16 @@ async function addToTrip(btn) {
     }
 
     if (_tripsCache.length === 1) {
-        sendToTrip(btn, _tripsCache[0].link, venueData);
+        await sendToTrip(btn, _tripsCache[0].link, venueData);
+        // Auto-pin the single trip
+        if (typeof pinTrip === 'function') pinTrip(_tripsCache[0].link, _tripsCache[0].title);
     } else {
         _pendingBtn = btn;
-        showTripPicker(_tripsCache, (link) => {
-            sendToTrip(_pendingBtn, link, venueData);
+        showTripPicker(_tripsCache, async (link) => {
+            await sendToTrip(_pendingBtn, link, venueData);
+            // Pin the selected trip
+            const trip = _tripsCache.find(t => t.link === link);
+            if (trip && typeof pinTrip === 'function') pinTrip(link, trip.title);
         });
     }
 }

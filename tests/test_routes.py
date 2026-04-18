@@ -173,7 +173,7 @@ class TestAdminEndpoints:
             json={
                 "venues": [
                     {
-                        "name": "Test Venue XYZ",
+                        "name": f"Test Venue {id(self)}",
                         "venue_type": "Restaurant",
                         "city": "Test City",
                         "country": "US",
