@@ -13,6 +13,27 @@ def _esc(text: str) -> str:
     return html_mod.escape(str(text)) if text else ""
 
 
+def _extract_city(location: str) -> str:
+    """Extract the city name from a location string.
+
+    Handles patterns like:
+      "Madrid, Spain" → "Madrid"
+      "Plaza Mayor, Madrid, Spain" → "Madrid"
+      "Seville" → "Seville"
+      "" → "Other"
+    """
+    if not location:
+        return "Other"
+    parts = [p.strip() for p in location.split(",")]
+    if len(parts) >= 3:
+        # "Venue, City, Country" → City
+        return parts[-2]
+    if len(parts) == 2:
+        # "City, Country" → City
+        return parts[0]
+    return parts[0]
+
+
 def generate_recommendation_page(
     title: str, itinerary_data: dict[str, Any], trip_link: str = ""
 ) -> str:
@@ -25,12 +46,10 @@ def generate_recommendation_page(
 
     tips = itinerary_data.get("tips", [])
 
-    # Group by location first, then by category within each location
+    # Group by city — extract from location strings like "Venue, City, Country"
     location_groups: dict[str, list] = {}
     for item in all_items:
-        loc = item.get("location") or "Other"
-        # Normalize: strip ", France" etc. to group by city
-        loc_key = loc.split(",")[0].strip() if loc else "Other"
+        loc_key = _extract_city(item.get("location", ""))
         if loc_key not in location_groups:
             location_groups[loc_key] = []
         location_groups[loc_key].append(item)
