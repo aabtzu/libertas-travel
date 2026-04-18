@@ -779,8 +779,13 @@ function showTripPicker(trips, onSelect) {
             };
 
             createBtn.addEventListener('click', (ev) => { ev.stopPropagation(); doCreate(); });
-            input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') doCreate(); });
+            input.addEventListener('keydown', (ev) => {
+                ev.stopPropagation();
+                if (ev.key === 'Enter') doCreate();
+            });
             input.addEventListener('click', (ev) => ev.stopPropagation());
+            input.addEventListener('keyup', (ev) => ev.stopPropagation());
+            input.addEventListener('keypress', (ev) => ev.stopPropagation());
             return;
         }
 
