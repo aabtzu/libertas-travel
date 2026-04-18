@@ -55,23 +55,23 @@ function _createAndShowPopup(data, anchorElement) {
     // Build details HTML
     var detailsHtml = '';
     if (data.time) {
-        detailsHtml += '<div class="popup-detail"><i class="fas fa-clock"></i><span>' + _escapeHtml(data.time) + '</span></div>';
+        detailsHtml += '<div class="popup-detail"><i class="fas fa-clock"></i><span>' + escapeHtml(data.time) + '</span></div>';
     }
     if (data.location) {
-        detailsHtml += '<div class="popup-detail"><i class="fas fa-map-marker-alt"></i><span>' + _escapeHtml(data.location) + '</span></div>';
+        detailsHtml += '<div class="popup-detail"><i class="fas fa-map-marker-alt"></i><span>' + escapeHtml(data.location) + '</span></div>';
     }
     if (data.website) {
-        detailsHtml += '<div class="popup-detail"><i class="fas fa-globe"></i><a href="' + _escapeHtml(data.website) + '" target="_blank" rel="noopener">' + _shortenUrl(data.website) + '</a></div>';
+        detailsHtml += '<div class="popup-detail"><i class="fas fa-globe"></i><a href="' + escapeHtml(data.website) + '" target="_blank" rel="noopener">' + _shortenUrl(data.website) + '</a></div>';
     }
     if (data.notes) {
-        detailsHtml += '<div class="popup-detail popup-notes"><i class="fas fa-sticky-note"></i><span>' + _escapeHtml(data.notes) + '</span></div>';
+        detailsHtml += '<div class="popup-detail popup-notes"><i class="fas fa-sticky-note"></i><span>' + escapeHtml(data.notes) + '</span></div>';
     }
 
     popup.innerHTML =
         '<button class="popup-close" onclick="hideItemDetailPopup()">&times;</button>' +
         '<div class="popup-header">' +
             '<div class="popup-icon ' + data.category + '"><i class="fas ' + iconClass + '"></i></div>' +
-            '<div class="popup-title">' + _escapeHtml(data.title) + '</div>' +
+            '<div class="popup-title">' + escapeHtml(data.title) + '</div>' +
         '</div>' +
         (detailsHtml ? '<div class="popup-details">' + detailsHtml + '</div>' : '');
 
@@ -116,15 +116,7 @@ function hideItemDetailPopup() {
     if (overlay) overlay.remove();
 }
 
-/**
- * Escape HTML to prevent XSS
- */
-function _escapeHtml(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml() — defined in main.js
 
 /**
  * Shorten URL for display

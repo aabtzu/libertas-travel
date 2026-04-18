@@ -245,15 +245,7 @@ function createTripMarker(trip, coords) {
     return marker;
 }
 
-/**
- * Escape HTML special characters
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml() — defined in main.js
 
 // Make switchTripsView globally available
 window.switchTripsView = switchTripsView;

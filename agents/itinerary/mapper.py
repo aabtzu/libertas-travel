@@ -3,17 +3,12 @@
 from __future__ import annotations
 
 import html
-import time
 
-import requests
-
+from .geocoder import Geocoder
 from .models import Itinerary
 
 # Maximum number of locations to geocode (to avoid long waits)
 MAX_GEOCODE_LOCATIONS = 50
-
-# Nominatim requires a delay between requests (1 request per second)
-NOMINATIM_DELAY = 1.1
 
 # Marker colors by category
 MARKER_COLORS = {
@@ -39,7 +34,7 @@ class ItineraryMapper:
         self._geocode_failures = 0
         self._cached_region_hint = None  # Cache region hint to avoid duplicate LLM calls
         self._cached_region_itinerary_id = None  # Track which itinerary the cache is for
-        self._last_geocode_time = 0  # Rate limiting for Nominatim
+        self._geocoder = Geocoder()  # Handles Nominatim/Photon HTTP requests
 
     def geocode_locations(self, itinerary: Itinerary) -> Itinerary:
         """Add coordinates to all locations in the itinerary using Nominatim (OpenStreetMap)."""
@@ -274,7 +269,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             # can't fuzzy-match the city to a similarly-named place elsewhere.
             city_only = loc_name.split(",")[0].strip() if loc_name else ""
             if title and city_only:
-                result = self._do_geocode_structured(title, city_only, region_hint, category)
+                result = self._geocoder.geocode_structured(title, city_only, region_hint, category)
                 if result:
                     location.latitude = result["lat"]
                     location.longitude = result["lng"]
@@ -300,7 +295,9 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
             # Use venue_title (prefix-stripped) and extract just the city from loc_name.
             city_only = loc_name.split(",")[0].strip() if loc_name else ""
             if venue_title and city_only:
-                result = self._do_geocode_structured(venue_title, city_only, region_hint, category)
+                result = self._geocoder.geocode_structured(
+                    venue_title, city_only, region_hint, category
+                )
                 if result:
                     location.latitude = result["lat"]
                     location.longitude = result["lng"]
@@ -357,7 +354,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
         # Try each query until we find a result
         for query in queries:
-            result = self._do_geocode(query, region_hint, category)
+            result = self._geocoder.geocode(query, region_hint, category)
             if result:
                 location.latitude = result["lat"]
                 location.longitude = result["lng"]
@@ -424,321 +421,8 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
 
         return queries
 
-    def _do_geocode_structured(
-        self, venue_name: str, city: str, region_hint: str = "", category: str = ""
-    ) -> dict | None:
-        """Nominatim structured search: passes venue name and city as separate parameters.
+    # Geocoding backends extracted to geocoder.py (self._geocoder)
 
-        This avoids free-text fuzzy matching where a city like "Gordes" gets confused
-        with a similarly-named place like "Gorges" in a different region.
-        """
-        try:
-            elapsed = time.time() - self._last_geocode_time
-            if elapsed < NOMINATIM_DELAY:
-                time.sleep(NOMINATIM_DELAY - elapsed)
-
-            url = "https://nominatim.openstreetmap.org/search"
-            params = {
-                "amenity": venue_name,
-                "city": city,
-                "format": "json",
-                "limit": 5,
-                "addressdetails": 1,
-            }
-            if region_hint:
-                country_code = self._get_region_code(region_hint)
-                if country_code:
-                    params["countrycodes"] = country_code
-
-            headers = {
-                "User-Agent": "Libertas-Travel/1.0 (https://github.com/aabtzu/libertas-travel)"
-            }
-            self._last_geocode_time = time.time()
-            response = requests.get(url, params=params, headers=headers, timeout=10)
-            if response.status_code != 200:
-                return None
-
-            data = response.json()
-            if data:
-                print(
-                    f"[GEOCODING] Structured '{venue_name}' in '{city}' → {len(data)} results",
-                    flush=True,
-                )
-                best = self._select_best_result(data, category)
-                if best:
-                    print(
-                        f"[GEOCODING] Structured selected: {best.get('display_name', '')[:60]}",
-                        flush=True,
-                    )
-                    return {
-                        "lat": float(best["lat"]),
-                        "lng": float(best["lon"]),
-                        "address": best.get("display_name", ""),
-                    }
-            return None
-        except Exception as e:
-            print(f"[GEOCODING] Structured search failed for '{venue_name}' in '{city}': {e}")
-            return None
-
-    def _do_geocode(self, query: str, region_hint: str = "", category: str = "") -> dict | None:
-        """Execute a geocoding request using Nominatim (OpenStreetMap) and return result or None."""
-        try:
-            # Rate limiting - Nominatim requires max 1 request per second
-            elapsed = time.time() - self._last_geocode_time
-            if elapsed < NOMINATIM_DELAY:
-                time.sleep(NOMINATIM_DELAY - elapsed)
-
-            url = "https://nominatim.openstreetmap.org/search"
-            params = {
-                "q": query,
-                "format": "json",
-                "limit": 10,  # Get more results for better filtering
-                "addressdetails": 1,
-            }
-            # Add country code bias if available
-            if region_hint:
-                country_code = self._get_region_code(region_hint)
-                if country_code:
-                    params["countrycodes"] = country_code
-
-            headers = {
-                "User-Agent": "Libertas-Travel/1.0 (https://github.com/aabtzu/libertas-travel)"
-            }
-
-            self._last_geocode_time = time.time()
-            response = requests.get(url, params=params, headers=headers, timeout=10)
-
-            # Log response status for debugging
-            if response.status_code != 200:
-                print(
-                    f"[GEOCODING] Nominatim returned status {response.status_code} for: {query}",
-                    flush=True,
-                )
-                # Try Photon fallback with region hint
-                return self._do_geocode_photon(query, category, region_hint)
-
-            data = response.json()
-
-            if data and len(data) > 0:
-                # Debug: log results
-                print(f"[GEOCODING] Query '{query}' ({category}) returned {len(data)} results")
-
-                # Category-specific result selection
-                best_result = self._select_best_result(data, category)
-                if best_result:
-                    print(f"[GEOCODING] Selected: {best_result.get('display_name', '')[:60]}")
-                    return {
-                        "lat": float(best_result["lat"]),
-                        "lng": float(best_result["lon"]),
-                        "address": best_result.get("display_name", ""),
-                    }
-                return None
-            else:
-                print(f"[GEOCODING] No results for: {query}")
-                return None
-        except requests.Timeout:
-            print(f"[GEOCODING] Nominatim timeout for: {query}", flush=True)
-        except Exception as e:
-            print(f"[GEOCODING] Nominatim failed for {query}: {e}", flush=True)
-
-        # Fallback to Photon geocoder (also free, OSM-based)
-        return self._do_geocode_photon(query, category, region_hint)
-
-    def _do_geocode_photon(
-        self, query: str, category: str = "", region_hint: str = ""
-    ) -> dict | None:
-        """Fallback geocoder using Photon (komoot's free OSM geocoder)."""
-        try:
-            url = "https://photon.komoot.io/api/"
-            params = {"q": query, "limit": 10}
-
-            # Add location bias if we have a region hint
-            # Photon supports lat/lon bias
-            region_coords = {
-                "Germany": (51.1657, 10.4515),
-                "Munich, Germany": (48.1351, 11.5820),
-                "Nuremberg, Germany": (49.4521, 11.0767),
-                "Austria": (47.5162, 14.5501),
-                "Italy": (41.8719, 12.5674),
-                "France": (46.6034, 1.8883),
-                "Spain": (40.4637, -3.7492),
-            }
-
-            if region_hint and region_hint in region_coords:
-                lat, lon = region_coords[region_hint]
-                params["lat"] = lat
-                params["lon"] = lon
-
-            headers = {"User-Agent": "Libertas-Travel/1.0"}
-
-            response = requests.get(url, params=params, headers=headers, timeout=10)
-            if response.status_code != 200:
-                print(f"[GEOCODING] Photon returned status {response.status_code}", flush=True)
-                return None
-
-            data = response.json()
-            features = data.get("features", [])
-            print(f"[GEOCODING] Photon returned {len(features)} features for: {query}", flush=True)
-
-            if features:
-                # Country name mappings (Photon uses local names)
-                country_mappings = {
-                    "Germany": ["germany", "deutschland"],
-                    "Austria": ["austria", "österreich"],
-                    "Italy": ["italy", "italia"],
-                    "France": ["france"],
-                    "Spain": ["spain", "españa"],
-                }
-
-                # Find target countries to match
-                target_countries = []
-                if region_hint:
-                    for country, aliases in country_mappings.items():
-                        if country.lower() in region_hint.lower():
-                            target_countries = aliases
-                            break
-
-                # Convert Photon results to our format for selection
-                results = []
-                for f in features:
-                    props = f.get("properties", {})
-                    coords = f.get("geometry", {}).get("coordinates", [])
-                    country = props.get("country", "")
-
-                    # Skip results from wrong country (only if we have a target and the result has a country)
-                    if target_countries and country:
-                        country_lower = country.lower()
-                        if not any(tc in country_lower for tc in target_countries):
-                            continue
-
-                    if len(coords) >= 2:
-                        city = (
-                            props.get("city", "")
-                            or props.get("town", "")
-                            or props.get("village", "")
-                        )
-                        results.append(
-                            {
-                                "lat": str(coords[1]),
-                                "lon": str(coords[0]),
-                                "class": props.get("osm_key", ""),
-                                "type": props.get("osm_value", ""),
-                                "display_name": f"{props.get('name', '')} {city} {country}".strip(),
-                                "country": country,
-                            }
-                        )
-
-                best = self._select_best_result(results, category)
-                if best:
-                    print(
-                        f"[GEOCODING] Photon found: {best.get('display_name', '')[:60]}", flush=True
-                    )
-                    return {
-                        "lat": float(best["lat"]),
-                        "lng": float(best["lon"]),
-                        "address": best.get("display_name", ""),
-                    }
-            print(f"[GEOCODING] Photon no results for: {query}", flush=True)
-            return None
-        except Exception as e:
-            print(f"[GEOCODING] Photon fallback failed: {e}", flush=True)
-            return None
-
-    def _select_best_result(self, results: list, category: str) -> dict | None:
-        """Select the best geocoding result based on category."""
-        if not results:
-            return None
-
-        # Define category-specific preferences
-        # Each tuple is (class, type) - type can be None to match any type in that class
-        category_preferences = {
-            "hotel": [
-                ("tourism", "hotel"),
-                ("tourism", None),
-                ("building", "hotel"),
-                ("amenity", None),
-            ],
-            "lodging": [
-                ("tourism", "hotel"),
-                ("tourism", None),
-                ("building", "hotel"),
-                ("amenity", None),
-            ],
-            "restaurant": [
-                ("amenity", "restaurant"),
-                ("amenity", "cafe"),
-                ("amenity", "fast_food"),
-                ("amenity", None),
-            ],
-            "meal": [("amenity", "restaurant"), ("amenity", "cafe"), ("amenity", None)],
-            "attraction": [
-                ("tourism", "attraction"),
-                ("tourism", None),
-                ("historic", None),
-                ("leisure", None),
-                ("place", "village"),
-                ("place", "town"),
-                ("place", None),
-            ],
-            "activity": [("tourism", None), ("leisure", None), ("amenity", None), ("place", None)],
-            "flight": [("aeroway", "aerodrome"), ("aeroway", None)],
-            "transport": [("railway", "station"), ("railway", None), ("amenity", "bus_station")],
-            "train_station": [("railway", "station"), ("railway", None)],
-        }
-
-        # Default preferences for unknown categories
-        default_preferences = [
-            ("tourism", None),
-            ("amenity", None),
-            ("place", None),
-            ("building", None),
-            ("leisure", None),
-        ]
-
-        preferences = category_preferences.get(category, default_preferences)
-
-        # Try to find a result matching our preferences (in order)
-        for pref_class, pref_type in preferences:
-            for result in results:
-                r_class = result.get("class", "")
-                r_type = result.get("type", "")
-                if r_class == pref_class:
-                    if pref_type is None or r_type == pref_type:
-                        return result
-
-        # Fallback: avoid streets/highways, prefer places
-        avoid_classes = ["highway", "boundary", "landuse"]
-        for result in results:
-            if result.get("class", "") not in avoid_classes:
-                return result
-
-        # Last resort: return first result
-        return results[0] if results else None
-
-    def _get_region_code(self, region: str) -> str:
-        """Convert region name to ISO 3166-1 alpha-2 code for Google."""
-        codes = {
-            "Italy": "it",
-            "France": "fr",
-            "Spain": "es",
-            "India": "in",
-            "Japan": "jp",
-            "United Kingdom": "gb",
-            "Germany": "de",
-            "USA": "us",
-            "United States": "us",
-            "Austria": "at",
-            "Slovakia": "sk",
-            "Switzerland": "ch",
-            "Netherlands": "nl",
-            "Czech Republic": "cz",
-            "Hungary": "hu",
-            "Greece": "gr",
-            "Portugal": "pt",
-        }
-        return codes.get(region, "")
-
-    # Cache for transport location checks to avoid repeated LLM calls
     _origin_check_cache: dict = {}
 
     def _is_transport_outside_destination(self, item, destination: str) -> bool:

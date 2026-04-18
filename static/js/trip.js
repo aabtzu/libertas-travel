@@ -364,8 +364,8 @@ function showCalendarMorePopup(element) {
         itemsHtml += '<div class="more-item" data-hidden-index="' + index + '" style="cursor:pointer;">' +
             '<div class="more-item-icon ' + item.category + '"><i class="fas ' + iconClass + '"></i></div>' +
             '<div class="more-item-content">' +
-                '<div class="more-item-title">' + _escapeHtmlTrip(item.title) + '</div>' +
-                (detail ? '<div class="more-item-detail">' + _escapeHtmlTrip(detail) + '</div>' : '') +
+                '<div class="more-item-title">' + escapeHtml(item.title) + '</div>' +
+                (detail ? '<div class="more-item-detail">' + escapeHtml(detail) + '</div>' : '') +
                 (item.website ? '<div class="more-item-link"><i class="fas fa-globe"></i></div>' : '') +
             '</div>' +
         '</div>';
@@ -414,13 +414,7 @@ function showCalendarMorePopup(element) {
     popup.style.top = top + 'px';
 }
 
-// Helper to escape HTML
-function _escapeHtmlTrip(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml() — defined in main.js
 
 // Legacy function name for compatibility
 function hideCalendarItemPopup() {

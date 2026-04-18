@@ -616,23 +616,7 @@ function showMapLegend(venueList) {
 
     if (venueTypes.length === 0) return;
 
-    // Legend color mapping
-    const legendColors = {
-        'Restaurant': '#ff6b6b',
-        'Bar': '#9c27b0',
-        'Cafe': '#8d6e63',
-        'Hotel': '#1976d2',
-        'Museum': '#00897b',
-        'Hiking': '#43a047',
-        'Shop': '#fb8c00',
-        'Church': '#5e35b1',
-        'Activity': '#26a69a',
-        'Attraction': '#ef5350',
-        'Transportation': '#607d8b',
-        'Landmark': '#ff7043'
-    };
-
-    // Create custom Leaflet control for legend
+    // Create custom Leaflet control for legend (colors from MARKER_COLORS)
     legendControl = L.control({ position: 'bottomleft' });
 
     legendControl.onAdd = function(map) {
@@ -640,7 +624,7 @@ function showMapLegend(venueList) {
         div.id = 'map-legend';
 
         const legendItems = venueTypes.map(type => {
-            const color = legendColors[type] || '#667eea';
+            const color = MARKER_COLORS[type] || '#667eea';
             return `
                 <div class="map-legend-item">
                     <span class="map-legend-dot" style="background: ${color}"></span>

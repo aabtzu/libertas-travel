@@ -6,35 +6,13 @@
 const CalendarView = (function() {
     'use strict';
 
-    // CATEGORY_ICONS is defined in main.js
-
-    /**
-     * Escape HTML to prevent XSS
-     */
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    // escapeHtml(), formatTime12Hour(), CATEGORY_ICONS — defined in main.js
 
     /**
      * Get category icon class
      */
     function getCategoryIcon(category) {
         return CATEGORY_ICONS[(category || 'other').toLowerCase()] || 'fa-calendar-day';
-    }
-
-    /**
-     * Format time to 12-hour format
-     */
-    function formatTime12Hour(timeStr) {
-        if (!timeStr) return '';
-        const [hours, minutes] = timeStr.split(':');
-        const h = parseInt(hours);
-        const period = h >= 12 ? 'PM' : 'AM';
-        const hour12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
-        return `${hour12}:${minutes} ${period}`;
     }
 
     /**

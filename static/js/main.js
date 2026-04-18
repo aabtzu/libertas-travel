@@ -471,6 +471,27 @@ document.addEventListener('keydown', function(e) {
 });
 
 /**
+ * Shared utility functions — single source of truth.
+ * Used by create.js, trip.js, trips.js, calendar.js, item-detail.js, etc.
+ * Do NOT redefine these in other files.
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatTime12Hour(time24) {
+    if (!time24) return '';
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+}
+
+/**
  * Initialize the page when DOM is ready
  */
 document.addEventListener('DOMContentLoaded', function() {
