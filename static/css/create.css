@@ -767,6 +767,27 @@
     font-size: 0.9rem;
 }
 
+.ideas-group-header {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 4px 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ideas-group-header i { font-size: 0.75rem; }
+
+.item-location {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+.item-location i { font-size: 0.65rem; margin-right: 2px; }
+
 .btn-add-idea {
     width: 100%;
     padding: 10px;

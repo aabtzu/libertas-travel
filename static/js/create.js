@@ -654,30 +654,54 @@ function renderIdeas() {
         return;
     }
 
-    container.innerHTML = currentTrip.ideas.map((item, index) => {
-        const iconClass = getItemIcon(item);
-        const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
+    // Group ideas by category
+    const groups = {};
+    currentTrip.ideas.forEach((item, index) => {
+        const cat = item.category || 'other';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push({item, index});
+    });
 
-        return `
-            <div class="item-card ${item.category || 'other'}" data-idea-index="${index}" draggable="true">
-                <div class="item-icon ${item.category || 'other'}">
-                    <i class="fas ${iconClass}"></i>
+    const categoryLabels = {
+        meal: 'Restaurants', activity: 'Activities', attraction: 'Attractions',
+        hotel: 'Hotels', flight: 'Flights', transport: 'Transport', other: 'Other'
+    };
+
+    let html = '';
+    for (const [cat, entries] of Object.entries(groups)) {
+        const label = categoryLabels[cat] || cat;
+        const icon = CATEGORY_ICONS[cat] || 'fa-map-marker-alt';
+        html += `<div class="ideas-group-header"><i class="fas ${icon}"></i> ${label} (${entries.length})</div>`;
+
+        for (const {item, index} of entries) {
+            const iconClass = getItemIcon(item);
+            const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
+            const mapsStr = item.google_maps_link ? `<a href="${escapeHtml(item.google_maps_link)}" target="_blank" onclick="event.stopPropagation()" title="Google Maps"><i class="fas fa-map-marker-alt"></i></a>` : '';
+
+            html += `
+                <div class="item-card ${cat}" data-idea-index="${index}" draggable="true">
+                    <div class="item-icon ${cat}">
+                        <i class="fas ${iconClass}"></i>
+                    </div>
+                    <div class="item-content">
+                        <div class="item-title">${escapeHtml(item.title)} ${websiteStr} ${mapsStr}</div>
+                        ${item.location ? `<div class="item-location"><i class="fas fa-map-pin"></i> ${escapeHtml(item.location)}</div>` : ''}
+                        ${item.notes ? `<div class="item-meta">${escapeHtml(item.notes.substring(0, 80))}</div>` : ''}
+                    </div>
+                    <div class="item-actions">
+                        <button onclick="editIdea(${index})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteIdea(${index})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="item-content">
-                    <div class="item-title">${escapeHtml(item.title)} ${websiteStr}</div>
-                    ${item.notes ? `<div class="item-meta">${escapeHtml(item.notes.substring(0, 50))}...</div>` : ''}
-                </div>
-                <div class="item-actions">
-                    <button onclick="editIdea(${index})" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="deleteIdea(${index})" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }
+    }
+
+    container.innerHTML = html;
 
     // Set up drag handlers after rendering
     setupIdeaDragHandlers();
