@@ -16,13 +16,18 @@ def _esc(text: str) -> str:
 def generate_recommendation_page(
     title: str, itinerary_data: dict[str, Any], trip_link: str = ""
 ) -> str:
-    """Build a public recommendation page from trip ideas."""
-    ideas = itinerary_data.get("ideas", [])
+    """Build a public recommendation page from trip ideas and day items."""
+    # Collect all items — ideas pile + items from scheduled days
+    all_items = list(itinerary_data.get("ideas", []))
+    for day in itinerary_data.get("days", []):
+        for item in day.get("items", []):
+            all_items.append(item)
+
     tips = itinerary_data.get("tips", [])
 
     # Group by category
     groups: dict[str, list] = {}
-    for item in ideas:
+    for item in all_items:
         cat = item.get("category", "other")
         if cat not in groups:
             groups[cat] = []
@@ -82,7 +87,7 @@ def generate_recommendation_page(
 
     # Map data — collect items with coordinates
     markers_js = "[]"
-    map_items = [i for i in ideas if i.get("latitude") and i.get("longitude")]
+    map_items = [i for i in all_items if i.get("latitude") and i.get("longitude")]
     if map_items:
         import json
 
@@ -227,7 +232,7 @@ def generate_recommendation_page(
 
     <div class="rec-hero">
         <h1>{_esc(title)}</h1>
-        <p>{len(ideas)} recommendations</p>
+        <p>{len(all_items)} recommendations</p>
         <button class="rec-save-btn" id="rec-save-btn" data-source="{_esc(trip_link)}">
             <i class="fas fa-plus"></i> Save to my trips
         </button>
