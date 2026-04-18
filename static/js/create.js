@@ -10,6 +10,7 @@ let currentTrip = {
     end_date: null,
     days: [],
     ideas: [],
+    tips: [],
     chatHistory: []
 };
 const AUTOSAVE_DELAY = 2000;
@@ -216,6 +217,12 @@ function initEventListeners() {
     // Add idea button
     document.getElementById('add-idea-btn')?.addEventListener('click', () => showAddItemModal(null));
 
+    // Tips
+    document.getElementById('add-tip-btn')?.addEventListener('click', addTip);
+    document.getElementById('tip-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTip();
+    });
+
     // Preview button
     document.getElementById('preview-btn')?.addEventListener('click', previewTrip);
 
@@ -376,6 +383,7 @@ async function loadTrip(link) {
                 is_draft: trip.is_draft,
                 days: itineraryData?.days || [],
                 ideas: itineraryData?.ideas || [],
+                tips: itineraryData?.tips || [],
                 chatHistory: itineraryData?.chatHistory || []
             };
 
@@ -509,6 +517,7 @@ function updateEditorUI() {
 
     renderDays();
     renderIdeas();
+    renderTips();
 }
 
 /**
@@ -637,6 +646,43 @@ function renderDayItems(items, dayIndex) {
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Render tips list
+ */
+function renderTips() {
+    const container = document.getElementById('tips-list');
+    if (!container) return;
+
+    if (!currentTrip.tips || currentTrip.tips.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = currentTrip.tips.map((tip, i) => `
+        <div class="tip-item">
+            <span class="tip-text">${escapeHtml(tip)}</span>
+            <button class="tip-delete" onclick="deleteTip(${i})" title="Remove"><i class="fas fa-times"></i></button>
+        </div>
+    `).join('');
+}
+
+function addTip() {
+    const input = document.getElementById('tip-input');
+    const text = input.value.trim();
+    if (!text) return;
+    if (!currentTrip.tips) currentTrip.tips = [];
+    currentTrip.tips.push(text);
+    input.value = '';
+    renderTips();
+    triggerAutoSave();
+}
+
+function deleteTip(index) {
+    currentTrip.tips.splice(index, 1);
+    renderTips();
+    triggerAutoSave();
 }
 
 /**

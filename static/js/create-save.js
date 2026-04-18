@@ -27,6 +27,7 @@ async function performAutoSave() {
                 itinerary_data: {
                     days: currentTrip.days,
                     ideas: currentTrip.ideas,
+                    tips: currentTrip.tips,
                     chatHistory: currentTrip.chatHistory
                 }
             })

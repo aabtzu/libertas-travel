@@ -788,6 +788,75 @@
 
 .item-location i { font-size: 0.65rem; margin-right: 2px; }
 
+/* Tips section */
+.tips-section {
+    margin-top: 16px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.tips-section .section-header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 8px;
+}
+
+.tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.tip-text {
+    flex: 1;
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+.tip-delete {
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.75rem;
+}
+
+.tip-delete:hover { color: #e74c3c; }
+
+.tips-add {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.tip-input {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.tip-input:focus { border-color: #667eea; }
+
+.btn-add-tip {
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.btn-add-tip:hover { background: #5a6fd6; }
+
 .btn-add-idea {
     width: 100%;
     padding: 10px;
