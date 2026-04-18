@@ -639,8 +639,16 @@ function copyPublicLink() {
     const isAlreadyPublic = publicBtn?.dataset.public === 'true';
 
     function doCopy() {
-        const recLink = currentShareLink.replace('.html', '');
-        const url = window.location.origin + '/r/' + recLink;
+        // Use /r/ for recommendations, direct link for itineraries
+        const wrapper = document.querySelector(`.trip-card-wrapper[data-link="${currentShareLink}"]`);
+        const tripType = wrapper?.dataset.tripType || 'itinerary';
+        let url;
+        if (tripType === 'recommendation') {
+            const recLink = currentShareLink.replace('.html', '');
+            url = window.location.origin + '/r/' + recLink;
+        } else {
+            url = window.location.origin + '/' + currentShareLink;
+        }
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url)
                 .then(() => { closeShareModal(); LibertasModal.alert('Link copied!\n' + url); })

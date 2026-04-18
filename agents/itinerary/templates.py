@@ -284,6 +284,7 @@ def generate_trip_card(
     is_public: bool = False,
     is_draft: bool = False,
     itinerary_data: str | dict | None = None,
+    trip_type: str = "itinerary",
 ) -> str:
     """Generate HTML for a single trip card."""
     # Use accent colors for trip card backgrounds
@@ -332,6 +333,7 @@ def generate_trip_card(
         draft_badge=draft_badge,
         draft_class=draft_class,
         is_draft="true" if is_draft else "false",
+        trip_type=trip_type,
     )
 
 
@@ -413,6 +415,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
                 is_public=is_public,
                 is_draft=is_draft,
                 itinerary_data=trip.get("itinerary_data"),
+                trip_type=trip.get("trip_type", "itinerary"),
             )
             trip_cards_list.append(card)
         except Exception as e:
