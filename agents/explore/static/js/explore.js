@@ -724,6 +724,10 @@ function showTripPicker(trips, onSelect) {
                 <button class="trip-picker-close" aria-label="Close"><i class="fas fa-times"></i></button>
             </div>
             <div class="trip-picker-list">
+                <button class="trip-picker-item trip-picker-new" data-action="new">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>New trip</span>
+                </button>
                 ${trips.map(t => `
                     <button class="trip-picker-item" data-link="${t.link}">
                         <i class="fas fa-suitcase"></i>
@@ -735,15 +739,53 @@ function showTripPicker(trips, onSelect) {
     `;
 
     // Close on overlay click, close button, or Escape
-    overlay.addEventListener('click', (e) => {
+    overlay.addEventListener('click', async (e) => {
         if (e.target === overlay || e.target.closest('.trip-picker-close')) {
             overlay.remove();
+            return;
         }
         const item = e.target.closest('.trip-picker-item');
-        if (item) {
-            overlay.remove();
-            onSelect(item.dataset.link);
+        if (!item) return;
+
+        if (item.dataset.action === 'new') {
+            // Show inline name input
+            const newBtn = item;
+            newBtn.innerHTML = `
+                <input type="text" class="trip-picker-name-input" placeholder="Trip name..." autofocus>
+                <button class="trip-picker-create-btn"><i class="fas fa-check"></i></button>
+            `;
+            const input = newBtn.querySelector('input');
+            const createBtn = newBtn.querySelector('.trip-picker-create-btn');
+            input.focus();
+
+            const doCreate = async () => {
+                const title = input.value.trim();
+                if (!title) return;
+                try {
+                    const res = await fetch('/api/trips/create', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({title, trip_type: 'recommendation'}),
+                    });
+                    const data = await res.json();
+                    const link = data.trip?.link || data.link;
+                    if (link) {
+                        // Add to cache
+                        if (_tripsCache) _tripsCache.unshift({link, title, trip_type: 'recommendation'});
+                        overlay.remove();
+                        onSelect(link);
+                    }
+                } catch {}
+            };
+
+            createBtn.addEventListener('click', (ev) => { ev.stopPropagation(); doCreate(); });
+            input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') doCreate(); });
+            input.addEventListener('click', (ev) => ev.stopPropagation());
+            return;
         }
+
+        overlay.remove();
+        onSelect(item.dataset.link);
     });
     const onEsc = (e) => { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onEsc); } };
     document.addEventListener('keydown', onEsc);
@@ -804,8 +846,14 @@ async function addToTrip(btn) {
         } catch { return; }
     }
 
+    // Show picker even with 0 trips — "New trip" option is always available
     if (_tripsCache.length === 0) {
-        window.location.href = '/create.html';
+        _pendingBtn = btn;
+        showTripPicker([], async (link) => {
+            await sendToTrip(_pendingBtn, link, venueData);
+            const trip = _tripsCache?.find(t => t.link === link);
+            if (trip && typeof pinTrip === 'function') pinTrip(link, trip.title);
+        });
         return;
     }
 

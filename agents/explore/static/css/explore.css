@@ -659,6 +659,39 @@
     font-size: 1rem;
 }
 
+.trip-picker-new {
+    color: #667eea;
+    font-weight: 600;
+    border-bottom: 1px solid #eee;
+}
+
+.trip-picker-name-input {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.trip-picker-name-input:focus {
+    border-color: #667eea;
+}
+
+.trip-picker-create-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.trip-picker-create-btn:hover {
+    background: #5a6fd6;
+}
+
 /* Empty state */
 .empty-results {
     text-align: center;
