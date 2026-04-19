@@ -827,7 +827,27 @@
     font-size: 0.75rem;
 }
 
+.tip-edit {
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.7rem;
+}
+
+.tip-edit:hover { color: #667eea; }
+
 .tip-delete:hover { color: #e74c3c; }
+
+.tip-edit-input {
+    flex: 1;
+    border: 1px solid #667eea;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    outline: none;
+}
 
 .tips-add {
     display: flex;

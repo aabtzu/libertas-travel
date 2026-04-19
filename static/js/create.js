@@ -662,7 +662,8 @@ function renderTips() {
 
     container.innerHTML = currentTrip.tips.map((tip, i) => `
         <div class="tip-item">
-            <span class="tip-text">${escapeHtml(tip)}</span>
+            <span class="tip-text" ondblclick="editTip(${i})">${escapeHtml(tip)}</span>
+            <button class="tip-edit" onclick="editTip(${i})" title="Edit"><i class="fas fa-pen"></i></button>
             <button class="tip-delete" onclick="deleteTip(${i})" title="Remove"><i class="fas fa-times"></i></button>
         </div>
     `).join('');
@@ -675,6 +676,38 @@ function addTip() {
     if (!currentTrip.tips) currentTrip.tips = [];
     currentTrip.tips.push(text);
     input.value = '';
+    renderTips();
+    triggerAutoSave();
+}
+
+function editTip(index) {
+    const container = document.getElementById('tips-list');
+    const items = container.querySelectorAll('.tip-item');
+    const item = items[index];
+    if (!item) return;
+
+    const currentText = currentTrip.tips[index];
+    item.innerHTML = `
+        <input type="text" class="tip-edit-input" value="${escapeHtml(currentText)}">
+        <button class="btn-add-tip" onclick="saveTip(${index})"><i class="fas fa-check"></i></button>
+    `;
+    const input = item.querySelector('input');
+    input.focus();
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveTip(index);
+        if (e.key === 'Escape') renderTips();
+    });
+}
+
+function saveTip(index) {
+    const input = document.querySelector('.tip-edit-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (text) {
+        currentTrip.tips[index] = text;
+    } else {
+        currentTrip.tips.splice(index, 1);
+    }
     renderTips();
     triggerAutoSave();
 }
