@@ -425,10 +425,7 @@ function createVenueCard(venue) {
         ? `<span class="venue-card-tag">${venue.cuisine_type}</span>`
         : '';
 
-    // Location string
-    const location = [venue.city, venue.state, venue.country]
-        .filter(x => x)
-        .join(', ');
+    const location = buildVenueLocation(venue);
 
     // Description (truncated to ~100 chars)
     let description = venue.description || venue.notes || '';
@@ -880,10 +877,18 @@ function showAddNoteInput(btn, venueData) {
     input.addEventListener('click', (e) => e.stopPropagation());
 }
 
-async function sendToTripWithNote(btn, tripLink, venueData, note) {
-    // Build full location: "City, State" or "City, Country"
-    const locParts = [venueData.city, venueData.state, venueData.country].filter(x => x);
-    const location = locParts.join(', ') || '';
+/**
+ * Build a full location string from venue data parts.
+ */
+function buildVenueLocation(venueData) {
+    return [venueData.city, venueData.state, venueData.country].filter(x => x).join(', ');
+}
+
+/**
+ * Add a venue to a trip. Single function for both with-note and without-note flows.
+ */
+async function sendToTrip(btn, tripLink, venueData, note) {
+    const location = buildVenueLocation(venueData);
 
     // Build Google Maps link from coordinates or name
     let mapsLink = venueData.google_maps_link || '';
@@ -894,9 +899,6 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
         mapsLink = `https://www.google.com/maps/search/?api=1&query=${q}`;
     }
 
-    // Use real website URL only — no Google search fallback
-    const website = venueData.website || '';
-
     const item = {
         title: venueData.name,
         category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
@@ -904,7 +906,7 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
         latitude: venueData.latitude || null,
         longitude: venueData.longitude || null,
         notes: note || venueData.cuisine_type || '',
-        website: website,
+        website: venueData.website || '',
         google_maps_link: mapsLink,
     };
 
@@ -922,29 +924,9 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
     } catch { /* silently fail */ }
 }
 
-async function sendToTrip(btn, tripLink, venueData) {
-    const locParts = [venueData.city, venueData.state, venueData.country].filter(x => x);
-    const item = {
-        title: venueData.name,
-        category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
-        location: locParts.join(', ') || '',
-        latitude: venueData.latitude || null,
-        longitude: venueData.longitude || null,
-        notes: venueData.cuisine_type || '',
-    };
-
-    try {
-        const res = await fetch(`/api/trips/${tripLink}/items`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({item}),
-        });
-        if (res.ok) {
-            btn.innerHTML = '<i class="fas fa-check"></i> Added';
-            btn.disabled = true;
-            btn.classList.add('added');
-        }
-    } catch { /* silently fail */ }
+// Legacy alias
+async function sendToTripWithNote(btn, tripLink, venueData, note) {
+    return sendToTrip(btn, tripLink, venueData, note);
 }
 
 async function addToTrip(btn) {

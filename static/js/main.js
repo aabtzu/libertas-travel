@@ -509,6 +509,114 @@ function mdToHtml(text) {
 }
 
 /**
+ * Initialize a Leaflet map with circle markers from a markers array.
+ * Used by /r/ and /w/ recommendation pages.
+ * @param {string} containerId - DOM element ID for the map
+ * @param {Array} markers - [{lat, lng, title, category}, ...]
+ */
+function initRecommendationMap(containerId, markers) {
+    if (!markers || markers.length === 0) {
+        const el = document.getElementById(containerId);
+        if (el) el.style.display = 'none';
+        return null;
+    }
+    const map = L.map(containerId);
+    L.tileLayer(LibertasMap.tileUrl, LibertasMap.tileOptions).addTo(map);
+
+    const colors = {
+        meal: '#FF9800', activity: '#34A853', attraction: '#34A853',
+        hotel: '#4285F4', other: '#667eea'
+    };
+    const bounds = [];
+    markers.forEach(m => {
+        const color = colors[m.category] || '#667eea';
+        L.circleMarker([m.lat, m.lng], {
+            radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9
+        }).addTo(map).bindPopup(m.title);
+        bounds.push([m.lat, m.lng]);
+    });
+    if (bounds.length === 1) map.setView(bounds[0], 13);
+    else map.fitBounds(bounds, { padding: [30, 30] });
+    return map;
+}
+
+/**
+ * Show a styled "Save to my trips" modal. Used by /r/ and /w/ pages.
+ * @param {string} sourceLink - trip link to clone from
+ * @param {string} title - trip title for creating new trips
+ * @param {HTMLElement} btn - button to update on success
+ */
+async function showSaveToTripModal(sourceLink, title, btn) {
+    const listRes = await fetch('/api/trips/list');
+    if (listRes.status === 401) {
+        window.location.href = '/register?redirect=' + encodeURIComponent(window.location.pathname);
+        return;
+    }
+    const trips = (await listRes.json()).trips || [];
+
+    async function doClone(targetLink) {
+        const res = await fetch('/api/trips/clone-ideas', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({source_link: sourceLink, target_link: targetLink})
+        });
+        const data = await res.json();
+        if (data.success) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+            btn.classList.add('saved');
+            btn.disabled = true;
+        }
+    }
+
+    async function createAndClone() {
+        const res = await fetch('/api/trips/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({title: title})
+        });
+        const data = await res.json();
+        const link = data.trip?.link || data.link;
+        if (link) await doClone(link);
+    }
+
+    if (trips.length === 0) {
+        await createAndClone();
+        return;
+    }
+
+    // Show styled modal
+    const old = document.getElementById('save-modal');
+    if (old) old.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'save-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000';
+    overlay.innerHTML =
+        '<div style="background:white;border-radius:14px;width:90%;max-width:400px;max-height:70vh;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.2)">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #eee">' +
+        '<h3 style="margin:0;font-size:1.1rem;color:#333">Save to trip</h3>' +
+        '<button id="save-modal-close" style="background:none;border:none;font-size:1.1rem;color:#999;cursor:pointer;padding:4px 8px"><i class="fas fa-times"></i></button></div>' +
+        '<div style="overflow-y:auto;max-height:50vh;padding:8px">' +
+        '<button class="save-pick" data-action="new" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:#667eea;cursor:pointer;text-align:left;font-weight:600;border-bottom:1px solid #eee"><i class="fas fa-plus-circle"></i> New trip</button>' +
+        trips.map(t =>
+            '<button class="save-pick" data-link="' + t.link + '" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:#333;cursor:pointer;text-align:left"><i class="fas fa-suitcase" style="color:#667eea"></i> ' + escapeHtml(t.title) + '</button>'
+        ).join('') +
+        '</div></div>';
+
+    overlay.addEventListener('click', async (e) => {
+        if (e.target === overlay || e.target.closest('#save-modal-close')) { overlay.remove(); return; }
+        const item = e.target.closest('.save-pick');
+        if (!item) return;
+        overlay.remove();
+        if (item.dataset.action === 'new') await createAndClone();
+        else await doClone(item.dataset.link);
+    });
+    document.addEventListener('keydown', function esc(e) {
+        if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); }
+    });
+    document.body.appendChild(overlay);
+}
+
+/**
  * Initialize the page when DOM is ready
  */
 document.addEventListener('DOMContentLoaded', function() {
