@@ -699,6 +699,39 @@ function copyRecommendationLink() {
     _ensurePublicThenCopy(() => window.location.origin + '/r/' + recLink);
 }
 
+async function generateShareWriteup() {
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+    try {
+        const res = await fetch(`/api/trips/${currentShareLink}/writeup`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        const data = await res.json();
+        if (data.success && data.writeup) {
+            document.getElementById('share-writeup-text').textContent = data.writeup;
+            document.getElementById('share-writeup-result').style.display = 'block';
+        } else {
+            LibertasModal.alert(data.error || 'Failed to generate write-up');
+        }
+    } catch {
+        LibertasModal.alert('Failed to generate write-up');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
+}
+
+function copyShareWriteup() {
+    const text = document.getElementById('share-writeup-text')?.textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        closeShareModal();
+        LibertasModal.alert('Write-up copied to clipboard!');
+    });
+}
+
 // Legacy — used by explore panel
 function copyPublicLink() {
     copyRecommendationLink();
