@@ -466,7 +466,7 @@ function createVenueCard(venue) {
                     <button class="venue-action-btn website">
                         <i class="fas fa-globe"></i> Website
                     </button>
-                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude, website: venue.website, google_maps_link: venue.google_maps_link}).replace(/'/g, "&#39;")}'>
+                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, state: venue.state, country: venue.country, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude, website: venue.website, google_maps_link: venue.google_maps_link}).replace(/'/g, "&#39;")}'>
                         <i class="fas fa-plus"></i> Trip
                     </button>
                 </div>
@@ -881,26 +881,30 @@ function showAddNoteInput(btn, venueData) {
 }
 
 async function sendToTripWithNote(btn, tripLink, venueData, note) {
+    // Build full location: "City, State" or "City, Country"
+    const locParts = [venueData.city, venueData.state, venueData.country].filter(x => x);
+    const location = locParts.join(', ') || '';
+
     // Build Google Maps link from coordinates or name
     let mapsLink = venueData.google_maps_link || '';
     if (!mapsLink && venueData.latitude && venueData.longitude) {
         mapsLink = `https://www.google.com/maps/search/?api=1&query=${venueData.latitude},${venueData.longitude}`;
     } else if (!mapsLink) {
-        const q = encodeURIComponent(`${venueData.name} ${venueData.city || ''}`);
+        const q = encodeURIComponent(`${venueData.name} ${location}`);
         mapsLink = `https://www.google.com/maps/search/?api=1&query=${q}`;
     }
 
     // Build website link — use venue website, or Google search as fallback
     let website = venueData.website || '';
     if (!website) {
-        const q = encodeURIComponent(`${venueData.name} ${venueData.city || ''}`);
+        const q = encodeURIComponent(`${venueData.name} ${location}`);
         website = `https://www.google.com/search?q=${q}`;
     }
 
     const item = {
         title: venueData.name,
         category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
-        location: venueData.city || '',
+        location: location,
         latitude: venueData.latitude || null,
         longitude: venueData.longitude || null,
         notes: note || venueData.cuisine_type || '',
@@ -923,10 +927,11 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
 }
 
 async function sendToTrip(btn, tripLink, venueData) {
+    const locParts = [venueData.city, venueData.state, venueData.country].filter(x => x);
     const item = {
         title: venueData.name,
         category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
-        location: venueData.city || '',
+        location: locParts.join(', ') || '',
         latitude: venueData.latitude || null,
         longitude: venueData.longitude || null,
         notes: venueData.cuisine_type || '',
