@@ -241,22 +241,21 @@ function initStyleControls() {
     if (!checkbox) return;
 
     // Check if user already has a style profile
-    fetch('/api/trips/list').then(r => r.json()).then(data => {
-        const hasProfile = (data.trips || []).some(t => t.link === '__style_profile__.html');
-        if (hasProfile) {
+    fetch('/api/user/profile').then(r => {
+        if (r.ok) return r.json();
+        return {};
+    }).then(data => {
+        if (data.profile?.style_profile) {
             checkbox.parentElement.title = 'Write in your personal voice (style saved)';
         }
     }).catch(() => {});
 
     checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
-            // Check if profile exists
-            fetch('/api/trips/__style_profile__.html/data').then(r => {
-                if (r.ok) {
-                    // Profile exists, just use it
+            fetch('/api/user/profile').then(r => r.ok ? r.json() : {}).then(data => {
+                if (data.profile?.style_profile) {
                     setup.style.display = 'none';
                 } else {
-                    // No profile, show setup
                     setup.style.display = 'block';
                 }
             }).catch(() => { setup.style.display = 'block'; });

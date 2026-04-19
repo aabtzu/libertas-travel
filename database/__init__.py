@@ -44,7 +44,9 @@ from database.users import (  # noqa: F401
     get_all_users,
     get_user_by_id,
     get_user_by_username,
+    get_user_profile,
     hash_password,
+    set_user_profile,
     username_exists,
     verify_password,
 )

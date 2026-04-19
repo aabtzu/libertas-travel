@@ -446,12 +446,9 @@ def generate_trip_writeup(link: str):
         style_profile = None
         personalize = request.args.get("personalize", "").lower() in ("1", "true")
         if personalize:
-            style_trip = db.get_trip_by_link(g.user_id, "__style_profile__.html")
-            if style_trip:
-                style_data = style_trip.get("itinerary_data") or {}
-                if isinstance(style_data, str):
-                    style_data = json.loads(style_data)
-                style_profile = style_data.get("style_profile")
+            profile = db.get_user_profile(g.user_id)
+            if profile:
+                style_profile = profile.get("style_profile")
 
         text = generate_writeup(
             trip.get("title", "Trip"), itinerary_data, style_profile=style_profile
@@ -485,6 +482,14 @@ def fill_trip_links(link: str):
         return json_err(f"Link resolution failed: {e}")
 
 
+@trips_bp.get("/api/user/profile")
+@require_auth
+def get_user_profile_api():
+    """Get user profile data."""
+    profile = db.get_user_profile(g.user_id)
+    return json_ok({"profile": profile or {}})
+
+
 @trips_bp.post("/api/user/extract-style")
 @require_auth
 def extract_writing_style():
@@ -499,22 +504,11 @@ def extract_writing_style():
 
         profile = extract_style_profile(samples)
 
-        # Store in user record (using itinerary_data field on a special trip)
-        # For now, store as a "meta" trip with link __style_profile__
-        style_data = {"style_profile": profile, "samples_preview": samples[:200]}
-        existing = db.get_trip_by_link(g.user_id, "__style_profile__.html")
-        if existing:
-            db.update_trip_itinerary_data(g.user_id, "__style_profile__.html", style_data)
-        else:
-            db.add_trip(
-                g.user_id,
-                {
-                    "title": "__style_profile__",
-                    "link": "__style_profile__.html",
-                    "trip_type": "system",
-                },
-                style_data,
-            )
+        # Store in user profile column
+        existing_profile = db.get_user_profile(g.user_id) or {}
+        existing_profile["style_profile"] = profile
+        existing_profile["samples_preview"] = samples[:200]
+        db.set_user_profile(g.user_id, existing_profile)
 
         return json_ok({"success": True, "profile": profile})
     except Exception as e:
@@ -533,20 +527,9 @@ def save_user_profile():
     if not style_profile:
         return json_err("No profile data provided")
 
-    profile_data = {"style_profile": style_profile, "samples_preview": samples_preview}
-
-    existing = db.get_trip_by_link(g.user_id, "__style_profile__.html")
-    if existing:
-        db.update_trip_itinerary_data(g.user_id, "__style_profile__.html", profile_data)
-    else:
-        db.add_trip(
-            g.user_id,
-            {
-                "title": "__style_profile__",
-                "link": "__style_profile__.html",
-                "trip_type": "system",
-            },
-            profile_data,
-        )
+    existing_profile = db.get_user_profile(g.user_id) or {}
+    existing_profile["style_profile"] = style_profile
+    existing_profile["samples_preview"] = samples_preview
+    db.set_user_profile(g.user_id, existing_profile)
 
     return json_ok({"success": True})

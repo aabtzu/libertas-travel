@@ -151,6 +151,45 @@ def ensure_demo_user() -> int:
     return user_id
 
 
+_SQL_PG_GET_USER_PROFILE = "SELECT profile FROM users WHERE id = %s"
+_SQL_SQLITE_GET_USER_PROFILE = "SELECT profile FROM users WHERE id = ?"
+
+_SQL_PG_SET_USER_PROFILE = "UPDATE users SET profile = %s WHERE id = %s"
+_SQL_SQLITE_SET_USER_PROFILE = "UPDATE users SET profile = ? WHERE id = ?"
+
+
+def get_user_profile(user_id: int) -> dict[str, Any] | None:
+    """Get user profile data (style, preferences)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GET_USER_PROFILE, (user_id,))
+        else:
+            cursor.execute(_SQL_SQLITE_GET_USER_PROFILE, (user_id,))
+        row = cursor.fetchone()
+        if row and row[0]:
+            if isinstance(row[0], str):
+                import json
+
+                return json.loads(row[0])
+            return row[0]  # JSONB auto-parses in psycopg2
+        return None
+
+
+def set_user_profile(user_id: int, profile_data: dict[str, Any]) -> bool:
+    """Save user profile data."""
+    import json
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        profile_json = json.dumps(profile_data)
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_SET_USER_PROFILE, (profile_json, user_id))
+        else:
+            cursor.execute(_SQL_SQLITE_SET_USER_PROFILE, (profile_json, user_id))
+        return cursor.rowcount > 0
+
+
 def get_all_users() -> list[dict[str, Any]]:
     """Get list of all users (id and username only, for sharing)."""
     with get_db() as conn:

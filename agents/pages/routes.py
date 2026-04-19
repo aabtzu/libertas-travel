@@ -71,16 +71,7 @@ def register():
 @pages_bp.get("/profile")
 @require_auth
 def profile():
-    # Load existing style profile
-    style_trip = db.get_trip_by_link(g.user_id, "__style_profile__.html")
-    profile_data = {}
-    if style_trip:
-        idata = style_trip.get("itinerary_data") or {}
-        if isinstance(idata, str):
-            import json
-
-            idata = json.loads(idata)
-        profile_data = idata
+    profile_data = db.get_user_profile(g.user_id) or {}
 
     return _html(generate_profile_page(profile_data))
 
@@ -243,14 +234,9 @@ def writeup_view(rec_name: str):
             from agents.trips.writeup import generate_writeup
 
             style_profile = None
-            style_trip = db.get_trip_by_link(owner_id, "__style_profile__.html")
-            if style_trip:
-                style_data = style_trip.get("itinerary_data") or {}
-                if isinstance(style_data, str):
-                    import json as _json
-
-                    style_data = _json.loads(style_data)
-                style_profile = style_data.get("style_profile")
+            owner_profile = db.get_user_profile(owner_id)
+            if owner_profile:
+                style_profile = owner_profile.get("style_profile")
 
             writeup_text = generate_writeup(
                 trip.get("title", "Recommendations"),
