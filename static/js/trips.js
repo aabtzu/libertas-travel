@@ -119,16 +119,17 @@ async function loadTripMarkers() {
         const dates = card.querySelector('.trip-card-meta span')?.textContent || '';
         const href = link?.getAttribute('href') || '#';
 
-        // Extract destination from title for geocoding
-        trips.push({ title, dates, href });
+        const mapLocation = card.closest('.trip-card-wrapper')?.dataset.mapLocation || '';
+        trips.push({ title, dates, href, mapLocation });
     });
 
     // Geocode trip destinations in parallel
     const geocodePromises = trips.map(async (trip) => {
-        const destination = extractDestination(trip.title);
-        if (!destination) return { trip, coords: null };
+        // Prefer the map location from itinerary data (e.g. "Jackson, NH")
+        const query = trip.mapLocation || extractDestination(trip.title);
+        if (!query) return { trip, coords: null };
 
-        const coords = await geocodeLocation(destination);
+        const coords = await geocodeLocation(query);
         return { trip, coords };
     });
 

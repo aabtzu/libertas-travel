@@ -273,6 +273,43 @@ def generate_category_stats_html(
         return "\n                            ".join(html_parts)
 
 
+def _extract_map_location(itinerary_data) -> str:
+    """Extract a representative location string from itinerary data for the trips map.
+
+    Looks for the most common location across items, preferring ones with state/country.
+    """
+    if not itinerary_data:
+        return ""
+
+    if isinstance(itinerary_data, str):
+        import json
+
+        try:
+            itinerary_data = json.loads(itinerary_data)
+        except (json.JSONDecodeError, ValueError):
+            return ""
+
+    locations: list[str] = []
+    for day in itinerary_data.get("days", []):
+        for item in day.get("items", []):
+            loc = item.get("location", "")
+            if loc:
+                locations.append(loc)
+    for item in itinerary_data.get("ideas", []):
+        loc = item.get("location", "")
+        if loc:
+            locations.append(loc)
+
+    if not locations:
+        return ""
+
+    # Prefer locations with commas (more specific — "Jackson, NH" > "Jackson")
+    with_context = [loc for loc in locations if "," in loc]
+    if with_context:
+        return with_context[0]
+    return locations[0]
+
+
 def generate_trip_card(
     title: str,
     link: str,
@@ -313,6 +350,9 @@ def generate_trip_card(
     category_counts = extract_category_counts(itinerary_data)
     category_stats = generate_category_stats_html(category_counts, locations, activities)
 
+    # Extract a representative location for the trips map
+    map_location = _extract_map_location(itinerary_data)
+
     return _get_trip_card_template().format(
         link=link,
         card_link=card_link,
@@ -334,6 +374,7 @@ def generate_trip_card(
         draft_class=draft_class,
         is_draft="true" if is_draft else "false",
         trip_type=trip_type,
+        map_location=map_location,
     )
 
 
