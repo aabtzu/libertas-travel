@@ -632,23 +632,17 @@ function shareWithAll() {
  * Copy the public link for the current trip, making it public first if needed.
  * Called from the share modal.
  */
-function copyPublicLink() {
+/**
+ * Make trip public (if not already) then call callback with the link.
+ */
+function _ensurePublicThenCopy(buildUrl) {
     const wrapper = document.querySelector(`.trip-card-wrapper [data-link="${currentShareLink}"]`)
         ?.closest('.trip-card-wrapper');
     const publicBtn = wrapper?.querySelector('.public-btn');
     const isAlreadyPublic = publicBtn?.dataset.public === 'true';
 
     function doCopy() {
-        // Use /r/ for recommendations, direct link for itineraries
-        const wrapper = document.querySelector(`.trip-card-wrapper[data-link="${currentShareLink}"]`);
-        const tripType = wrapper?.dataset.tripType || 'itinerary';
-        let url;
-        if (tripType === 'recommendation') {
-            const recLink = currentShareLink.replace('.html', '');
-            url = window.location.origin + '/r/' + recLink;
-        } else {
-            url = window.location.origin + '/' + currentShareLink;
-        }
+        const url = buildUrl();
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url)
                 .then(() => { closeShareModal(); LibertasModal.alert('Link copied!\n' + url); })
@@ -673,7 +667,6 @@ function copyPublicLink() {
     if (isAlreadyPublic) {
         doCopy();
     } else {
-        // Make public first, then copy
         fetch('/api/toggle-public', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -682,7 +675,6 @@ function copyPublicLink() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                // Update the card's lock button state
                 if (publicBtn) {
                     publicBtn.dataset.public = 'true';
                     publicBtn.classList.add('active');
@@ -696,6 +688,20 @@ function copyPublicLink() {
         })
         .catch(() => LibertasModal.alert('Failed to make trip public'));
     }
+}
+
+function copyItineraryLink() {
+    _ensurePublicThenCopy(() => window.location.origin + '/' + currentShareLink);
+}
+
+function copyRecommendationLink() {
+    const recLink = currentShareLink.replace('.html', '');
+    _ensurePublicThenCopy(() => window.location.origin + '/r/' + recLink);
+}
+
+// Legacy — used by explore panel
+function copyPublicLink() {
+    copyRecommendationLink();
 }
 
 /**
