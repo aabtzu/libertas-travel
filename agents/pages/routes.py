@@ -230,5 +230,10 @@ def writeup_view(rec_name: str):
 
     from agents.pages.recommendation_view import render_writeup_page
 
-    html = render_writeup_page(trip.get("title", "Recommendations"), writeup_text)
+    html = render_writeup_page(
+        trip.get("title", "Recommendations"),
+        writeup_text,
+        itinerary_data=itinerary_data,
+        trip_link=link,
+    )
     return _html(html)

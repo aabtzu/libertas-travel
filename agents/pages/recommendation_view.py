@@ -448,10 +448,63 @@ def generate_recommendation_page(
 </html>"""
 
 
-def render_writeup_page(title: str, writeup_text: str) -> str:
-    """Render the AI-generated narrative write-up as a clean page."""
+def render_writeup_page(
+    title: str,
+    writeup_text: str,
+    itinerary_data: dict[str, Any] | None = None,
+    trip_link: str = "",
+) -> str:
+    """Render the AI-generated narrative write-up with map and venue links."""
+    import json
+
     nav = get_nav_html("")
     content = _md_to_html(writeup_text)
+
+    # Collect items for map and venue reference
+    all_items: list = []
+    if itinerary_data:
+        all_items = list(itinerary_data.get("ideas", []))
+        for day in itinerary_data.get("days", []):
+            for item in day.get("items", []):
+                all_items.append(item)
+
+    # Map markers
+    markers_js = "[]"
+    map_items = [i for i in all_items if i.get("latitude") and i.get("longitude")]
+    if map_items:
+        markers = [
+            {
+                "lat": i["latitude"],
+                "lng": i["longitude"],
+                "title": i.get("title", ""),
+                "category": i.get("category", "other"),
+            }
+            for i in map_items
+        ]
+        markers_js = json.dumps(markers)
+
+    # Venue reference links
+    venue_links_html = ""
+    venues_with_links = [i for i in all_items if i.get("website") or i.get("google_maps_link")]
+    if venues_with_links:
+        venue_links_html = '<div class="writeup-venues"><h3>Quick Links</h3>'
+        for item in venues_with_links:
+            links = ""
+            if item.get("website") and "google.com/search" not in item["website"]:
+                links += f'<a href="{_esc(item["website"])}" target="_blank"><i class="fas fa-globe"></i> Website</a>'
+            if item.get("google_maps_link"):
+                links += f'<a href="{_esc(item["google_maps_link"])}" target="_blank"><i class="fas fa-map"></i> Map</a>'
+            if links:
+                venue_links_html += f'<div class="writeup-venue-item"><strong>{_esc(item.get("title", ""))}</strong> {links}</div>'
+        venue_links_html += "</div>"
+
+    # Save button
+    save_btn = ""
+    if trip_link:
+        save_btn = f"""
+        <button class="rec-save-btn" id="rec-save-btn" data-source="{_esc(trip_link)}">
+            <i class="fas fa-plus"></i> Save to my trips
+        </button>"""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -461,6 +514,7 @@ def render_writeup_page(title: str, writeup_text: str) -> str:
     <title>{_esc(title)} - Libertas</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/static/css/main.css?v=9">
     <style>
         .writeup-hero {{
@@ -469,45 +523,141 @@ def render_writeup_page(title: str, writeup_text: str) -> str:
             padding: 48px 40px;
             text-align: center;
         }}
-        .writeup-hero h1 {{
-            font-size: 2rem;
-            font-weight: 300;
-            letter-spacing: 1px;
-        }}
+        .writeup-hero h1 {{ font-size: 2rem; font-weight: 300; letter-spacing: 1px; }}
         .writeup-hero p {{ color: #aaa; margin-top: 8px; }}
+        .rec-save-btn {{
+            margin-top: 20px; background: #667eea; color: white; border: none;
+            padding: 12px 28px; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600;
+        }}
+        .rec-save-btn:hover {{ background: #5a6fd6; }}
+        .rec-save-btn.saved {{ background: #4caf50; cursor: default; }}
+        .writeup-map {{ height: 300px; border-radius: 12px; margin-bottom: 24px; overflow: hidden; }}
+        .writeup-body {{
+            max-width: 700px; margin: 0 auto; padding: 40px 24px;
+        }}
         .writeup-content {{
-            max-width: 700px;
-            margin: 0 auto;
-            padding: 40px 24px;
-            font-size: 1.05rem;
-            color: #333;
-            line-height: 1.8;
+            font-size: 1.05rem; color: #333; line-height: 1.8;
         }}
-        .writeup-content h2 {{
-            color: #667eea;
-            font-size: 1.3rem;
-            margin-top: 32px;
-            margin-bottom: 8px;
-        }}
-        .writeup-content h3 {{
-            color: #555;
-            font-size: 1.1rem;
-            margin-top: 24px;
-            margin-bottom: 6px;
-        }}
+        .writeup-content h1 {{ color: #333; font-size: 1.5rem; margin-top: 32px; }}
+        .writeup-content h2 {{ color: #667eea; font-size: 1.3rem; margin-top: 32px; margin-bottom: 8px; }}
+        .writeup-content h3 {{ color: #555; font-size: 1.1rem; margin-top: 24px; margin-bottom: 6px; }}
         .writeup-content strong {{ color: #222; }}
         .writeup-content p {{ margin-bottom: 12px; }}
+        .writeup-content a {{ color: #667eea; }}
+        .writeup-venues {{
+            margin-top: 32px; padding: 24px; background: #f8f9fa; border-radius: 12px;
+        }}
+        .writeup-venues h3 {{ color: #667eea; font-size: 1rem; margin-bottom: 12px; }}
+        .writeup-venue-item {{
+            padding: 8px 0; border-bottom: 1px solid #eee;
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }}
+        .writeup-venue-item:last-child {{ border-bottom: none; }}
+        .writeup-venue-item a {{
+            color: #667eea; text-decoration: none; font-size: 0.85rem;
+            display: inline-flex; align-items: center; gap: 4px;
+        }}
+        .writeup-venue-item a:hover {{ text-decoration: underline; }}
     </style>
 </head>
 <body>
     {nav}
     <div class="writeup-hero">
         <h1>{_esc(title)}</h1>
-        <p><i class="fas fa-pen-fancy"></i> AI-generated recommendation</p>
+        {save_btn}
     </div>
-    <div class="writeup-content">
-        {content}
+    <div class="writeup-body">
+        <div class="writeup-map" id="writeup-map"></div>
+        <div class="writeup-content">{content}</div>
+        {venue_links_html}
     </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/static/js/main.js?v=6"></script>
+    <script>
+        const markers = {markers_js};
+        if (markers.length > 0) {{
+            const map = L.map('writeup-map');
+            L.tileLayer(LibertasMap.tileUrl, LibertasMap.tileOptions).addTo(map);
+            const colors = {{
+                meal: '#FF9800', activity: '#34A853', attraction: '#34A853',
+                hotel: '#4285F4', other: '#667eea'
+            }};
+            const bounds = [];
+            markers.forEach(m => {{
+                const color = colors[m.category] || '#667eea';
+                L.circleMarker([m.lat, m.lng], {{
+                    radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9
+                }}).addTo(map).bindPopup(m.title);
+                bounds.push([m.lat, m.lng]);
+            }});
+            if (bounds.length === 1) map.setView(bounds[0], 13);
+            else map.fitBounds(bounds, {{ padding: [30, 30] }});
+        }} else {{
+            document.getElementById('writeup-map').style.display = 'none';
+        }}
+
+        // Save to my trips (same logic as /r/ page)
+        document.getElementById('rec-save-btn')?.addEventListener('click', async function() {{
+            const btn = this;
+            const sourceLink = btn.dataset.source;
+            const listRes = await fetch('/api/trips/list');
+            if (listRes.status === 401) {{
+                window.location.href = '/register?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+            }}
+            const trips = (await listRes.json()).trips || [];
+            async function doClone(targetLink) {{
+                const res = await fetch('/api/trips/clone-ideas', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{source_link: sourceLink, target_link: targetLink}})
+                }});
+                const data = await res.json();
+                if (data.success) {{
+                    btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                    btn.classList.add('saved');
+                    btn.disabled = true;
+                }}
+            }}
+            if (trips.length === 0) {{
+                const res = await fetch('/api/trips/create', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{title: '{_esc(title)}'}})
+                }});
+                const data = await res.json();
+                const link = data.trip?.link || data.link;
+                if (link) await doClone(link);
+            }} else {{
+                // Show simple picker
+                const old = document.getElementById('save-modal');
+                if (old) old.remove();
+                const overlay = document.createElement('div');
+                overlay.id = 'save-modal';
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000';
+                overlay.innerHTML = '<div style="background:white;border-radius:14px;width:90%;max-width:400px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.2)">' +
+                    '<div style="display:flex;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #eee"><h3 style="margin:0">Save to trip</h3><button id="save-close" style="background:none;border:none;font-size:1.1rem;color:#999;cursor:pointer"><i class="fas fa-times"></i></button></div>' +
+                    '<div style="padding:8px">' +
+                    '<button class="smi" data-action="new" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:#667eea;cursor:pointer;font-weight:600;border-bottom:1px solid #eee"><i class="fas fa-plus-circle"></i> New trip</button>' +
+                    trips.map(t => '<button class="smi" data-link="' + t.link + '" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:#333;cursor:pointer;text-align:left"><i class="fas fa-suitcase" style="color:#667eea"></i> ' + t.title + '</button>').join('') +
+                    '</div></div>';
+                overlay.addEventListener('click', async (e) => {{
+                    if (e.target === overlay || e.target.closest('#save-close')) {{ overlay.remove(); return; }}
+                    const item = e.target.closest('.smi');
+                    if (!item) return;
+                    overlay.remove();
+                    if (item.dataset.action === 'new') {{
+                        const res = await fetch('/api/trips/create', {{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{title:'{_esc(title)}'}}) }});
+                        const data = await res.json();
+                        const link = data.trip?.link || data.link;
+                        if (link) await doClone(link);
+                    }} else {{ await doClone(item.dataset.link); }}
+                }});
+                document.addEventListener('keydown', function esc(e) {{ if (e.key === 'Escape') {{ overlay.remove(); document.removeEventListener('keydown', esc); }} }});
+                document.body.appendChild(overlay);
+            }}
+        }});
+    </script>
 </body>
 </html>"""
