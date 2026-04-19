@@ -442,13 +442,11 @@ def generate_trip_writeup(link: str):
     try:
         from agents.trips.writeup import generate_writeup
 
-        # Check for personalized style
+        # Auto-personalize if user has a style profile
         style_profile = None
-        personalize = request.args.get("personalize", "").lower() in ("1", "true")
-        if personalize:
-            profile = db.get_user_profile(g.user_id)
-            if profile:
-                style_profile = profile.get("style_profile")
+        profile = db.get_user_profile(g.user_id)
+        if profile:
+            style_profile = profile.get("style_profile")
 
         text = generate_writeup(
             trip.get("title", "Trip"), itinerary_data, style_profile=style_profile

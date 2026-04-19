@@ -227,7 +227,6 @@ function initEventListeners() {
     document.getElementById('fill-links-btn')?.addEventListener('click', fillMissingLinks);
     document.getElementById('generate-writeup-btn')?.addEventListener('click', generateWriteup);
     document.getElementById('copy-writeup-btn')?.addEventListener('click', copyWriteup);
-    initStyleControls();
 
     // Preview button
     document.getElementById('preview-btn')?.addEventListener('click', previewTrip);

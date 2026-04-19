@@ -196,9 +196,7 @@ async function generateWriteup() {
         // Save first so the server has latest data
         await performAutoSave();
 
-        const personalize = document.getElementById('personalize-checkbox')?.checked;
-        const url = `/api/trips/${currentTrip.link}/writeup${personalize ? '?personalize=true' : ''}`;
-        const res = await fetch(url, {
+        const res = await fetch(`/api/trips/${currentTrip.link}/writeup`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
         });
@@ -229,73 +227,6 @@ function copyWriteup() {
         btn.innerHTML = '<i class="fas fa-check"></i>';
         setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 1500);
     });
-}
-
-// ==================== Style Profile ====================
-
-function initStyleControls() {
-    const checkbox = document.getElementById('personalize-checkbox');
-    const setup = document.getElementById('style-setup');
-    const saveBtn = document.getElementById('save-style-btn');
-
-    if (!checkbox) return;
-
-    // Check if user already has a style profile
-    fetch('/api/user/profile').then(r => {
-        if (r.ok) return r.json();
-        return {};
-    }).then(data => {
-        if (data.profile?.style_profile) {
-            checkbox.parentElement.title = 'Write in your personal voice (style saved)';
-        }
-    }).catch(() => {});
-
-    checkbox.addEventListener('change', () => {
-        if (checkbox.checked) {
-            fetch('/api/user/profile').then(r => r.ok ? r.json() : {}).then(data => {
-                if (data.profile?.style_profile) {
-                    setup.style.display = 'none';
-                } else {
-                    setup.style.display = 'block';
-                }
-            }).catch(() => { setup.style.display = 'block'; });
-        } else {
-            setup.style.display = 'none';
-        }
-    });
-
-    if (saveBtn) {
-        saveBtn.addEventListener('click', async () => {
-            const samples = document.getElementById('style-samples')?.value?.trim();
-            if (!samples || samples.length < 50) {
-                LibertasModal.alert('Paste at least a few sentences of your writing.');
-                return;
-            }
-
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
-
-            try {
-                const res = await fetch('/api/user/extract-style', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({samples}),
-                });
-                const data = await res.json();
-                if (data.success) {
-                    setup.style.display = 'none';
-                    saveBtn.innerHTML = '<i class="fas fa-check"></i> Style saved';
-                    LibertasModal.alert('Writing style saved! Your write-ups will now use your voice.');
-                } else {
-                    LibertasModal.alert(data.error || 'Failed to analyze style');
-                    saveBtn.innerHTML = '<i class="fas fa-user-edit"></i> Save My Style';
-                }
-            } catch {
-                saveBtn.innerHTML = '<i class="fas fa-user-edit"></i> Save My Style';
-            }
-            saveBtn.disabled = false;
-        });
-    }
 }
 
 // escapeHtml() and formatTime12Hour() — defined in main.js
