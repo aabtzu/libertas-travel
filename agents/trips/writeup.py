@@ -29,9 +29,15 @@ def generate_writeup(title: str, itinerary_data: dict[str, Any]) -> str:
         cat = item.get("category", "other")
         loc = item.get("location", "")
         notes = item.get("notes", "")
+        website = item.get("website", "")
+        maps_link = item.get("google_maps_link", "")
         line = f"- {item.get('title', 'Untitled')} ({cat})"
         if loc:
             line += f" — {loc}"
+        if website and "google.com/search" not in website:
+            line += f"\n  Website: {website}"
+        if maps_link:
+            line += f"\n  Map: {maps_link}"
         if notes:
             line += f"\n  Notes: {notes}"
         items_text += line + "\n"
@@ -46,6 +52,8 @@ def generate_writeup(title: str, itinerary_data: dict[str, Any]) -> str:
 Group by area/city. Be direct and opinionated — say what's worth doing and why.
 Keep it casual and personal, like an email to a friend. No filler sentences.
 Include the specific notes/tips the recommender provided — those are the good stuff.
+When a website URL is provided, include it as a markdown link: [name](url).
+Skip Google search fallback links — only include real website URLs.
 
 Trip: {title}
 
@@ -53,7 +61,7 @@ Places:
 {items_text}
 {tips_text}
 
-Write the recommendation now. No greeting or sign-off — just the content."""
+Write the recommendation in markdown. No greeting or sign-off — just the content."""
 
     llm = make_llm(model=SONNET, max_tokens=2048)
     response = llm.call_api(

@@ -108,12 +108,13 @@ Return venues in a JSON block with source tags:
 ```json
 {{"venues": [
     {{"name": "Roscioli", "source": "CURATED", "city": "Rome"}},
-    {{"name": "Some AI Pick", "source": "AI_PICK", "city": "Rome", "venue_type": "Restaurant", "notes": "Brief description"}}
+    {{"name": "Some AI Pick", "source": "AI_PICK", "city": "Rome", "venue_type": "Restaurant", "notes": "Brief description", "website": "https://example.com"}}
 ]}}
 ```
 
 - Use "CURATED" for venues from the database (name must match exactly). Always include the city so the correct location is matched.
 - Use "AI_PICK" for recommendations not in the database (include city, venue_type, notes)
+- For AI_PICK: include "website" with the venue's actual website URL if you know it. Do NOT make up URLs.
 - Include collection field if relevant (e.g., "Eater 38 Rome" for web-fetched venues)
 
 ## IMPORTANT RULES
@@ -298,8 +299,10 @@ Return venues in a JSON block with source tags:
                             "source": "AI_PICK",
                             "venue_type": extra.get("venue_type", "Restaurant"),
                             "city": extra.get("city", ""),
+                            "state": extra.get("state", ""),
                             "country": extra.get("country", ""),
                             "notes": extra.get("notes", ""),
+                            "website": extra.get("website", ""),
                             "collection": web_fetch_context.get("title", "")[:50]
                             if web_fetch_context
                             else "",

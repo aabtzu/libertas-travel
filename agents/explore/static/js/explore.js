@@ -894,12 +894,8 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
         mapsLink = `https://www.google.com/maps/search/?api=1&query=${q}`;
     }
 
-    // Build website link — use venue website, or Google search as fallback
-    let website = venueData.website || '';
-    if (!website) {
-        const q = encodeURIComponent(`${venueData.name} ${location}`);
-        website = `https://www.google.com/search?q=${q}`;
-    }
+    // Use real website URL only — no Google search fallback
+    const website = venueData.website || '';
 
     const item = {
         title: venueData.name,

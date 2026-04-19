@@ -15,11 +15,17 @@ def _esc(text: str) -> str:
 
 
 def _md_to_html(text: str) -> str:
-    """Minimal markdown to HTML: bold, italic, headers, line breaks."""
+    """Minimal markdown to HTML: bold, italic, headers, links, line breaks."""
     text = html_mod.escape(text)
-    # Headers: ### Header → <h3>
+    # Headers
     text = re.sub(r"^### (.+)$", r"<h3>\1</h3>", text, flags=re.MULTILINE)
     text = re.sub(r"^## (.+)$", r"<h2>\1</h2>", text, flags=re.MULTILINE)
+    # Links: [text](url) → <a>
+    text = re.sub(
+        r"\[(.+?)\]\((https?://[^\)]+)\)",
+        r'<a href="\2" target="_blank" rel="noopener">\1</a>',
+        text,
+    )
     # Bold: **text** → <strong>
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     # Italic: *text* → <em>
