@@ -903,6 +903,51 @@
 .btn-fill-links:hover { background: #f0f2ff; }
 .btn-fill-links:disabled { opacity: 0.6; cursor: wait; }
 
+.writeup-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.personalize-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #667eea;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.personalize-toggle input { margin: 0; }
+
+.style-setup {
+    margin-top: 8px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.style-setup-label {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 6px;
+}
+
+.style-setup textarea {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 8px;
+}
+
+.style-setup textarea:focus { border-color: #667eea; outline: none; }
+
 /* Write-up */
 .btn-writeup {
     width: 100%;

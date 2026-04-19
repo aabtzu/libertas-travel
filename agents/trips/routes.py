@@ -442,8 +442,21 @@ def generate_trip_writeup(link: str):
     try:
         from agents.trips.writeup import generate_writeup
 
-        text = generate_writeup(trip.get("title", "Trip"), itinerary_data)
-        return json_ok({"success": True, "writeup": text})
+        # Check for personalized style
+        style_profile = None
+        personalize = request.args.get("personalize", "").lower() in ("1", "true")
+        if personalize:
+            style_trip = db.get_trip_by_link(g.user_id, "__style_profile__.html")
+            if style_trip:
+                style_data = style_trip.get("itinerary_data") or {}
+                if isinstance(style_data, str):
+                    style_data = json.loads(style_data)
+                style_profile = style_data.get("style_profile")
+
+        text = generate_writeup(
+            trip.get("title", "Trip"), itinerary_data, style_profile=style_profile
+        )
+        return json_ok({"success": True, "writeup": text, "personalized": bool(style_profile)})
     except Exception as e:
         traceback.print_exc()
         return json_err(f"Write-up generation failed: {e}")
@@ -470,3 +483,40 @@ def fill_trip_links(link: str):
     except Exception as e:
         traceback.print_exc()
         return json_err(f"Link resolution failed: {e}")
+
+
+@trips_bp.post("/api/user/extract-style")
+@require_auth
+def extract_writing_style():
+    """Extract writing style from user-provided samples and store it."""
+    data = request.get_json(silent=True) or {}
+    samples = data.get("samples", "").strip()
+    if not samples or len(samples) < 50:
+        return json_err("Provide at least a few sentences of writing samples")
+
+    try:
+        from agents.trips.writeup import extract_style_profile
+
+        profile = extract_style_profile(samples)
+
+        # Store in user record (using itinerary_data field on a special trip)
+        # For now, store as a "meta" trip with link __style_profile__
+        style_data = {"style_profile": profile, "samples_preview": samples[:200]}
+        existing = db.get_trip_by_link(g.user_id, "__style_profile__.html")
+        if existing:
+            db.update_trip_itinerary_data(g.user_id, "__style_profile__.html", style_data)
+        else:
+            db.add_trip(
+                g.user_id,
+                {
+                    "title": "__style_profile__",
+                    "link": "__style_profile__.html",
+                    "trip_type": "system",
+                },
+                style_data,
+            )
+
+        return json_ok({"success": True, "profile": profile})
+    except Exception as e:
+        traceback.print_exc()
+        return json_err(f"Style extraction failed: {e}")
