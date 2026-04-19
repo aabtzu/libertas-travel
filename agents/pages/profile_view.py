@@ -30,6 +30,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
         if isinstance(style_profile.get("quirks"), list)
         else style_profile.get("quirks", "")
     )
+    rules = _esc(style_profile.get("rules", ""))
     has_profile = "true" if style_profile else "false"
 
     return f"""<!DOCTYPE html>
@@ -199,6 +200,11 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                     <label>Quirks / Other Patterns</label>
                     <textarea id="style-quirks" rows="2" placeholder="e.g. uses dashes heavily, ends conversationally, no capitalization">{quirks}</textarea>
                 </div>
+                <div class="field-group">
+                    <label>Rules</label>
+                    <textarea id="style-rules" rows="3" placeholder="Strict rules the AI must follow, e.g.&#10;- never end with filler like 'worth it' or 'you earned it'&#10;- always include links when available">{rules}</textarea>
+                    <div class="field-hint">These are enforced strictly — use for things the AI keeps getting wrong</div>
+                </div>
             </div>
 
             <div class="profile-actions">
@@ -274,6 +280,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                 emphasis: document.getElementById('style-emphasis').value.trim(),
                 perspective: document.getElementById('style-perspective').value.trim(),
                 quirks: document.getElementById('style-quirks').value.trim(),
+                rules: document.getElementById('style-rules').value.trim(),
             }};
 
             const samples = document.getElementById('style-samples').value.trim();
