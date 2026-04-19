@@ -139,6 +139,47 @@ function formatDate(dateStr) {
     });
 }
 
+// ==================== Fill Missing Links ====================
+
+async function fillMissingLinks() {
+    if (!currentTrip.link) return;
+
+    const btn = document.getElementById('fill-links-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finding links...';
+
+    try {
+        await performAutoSave();
+
+        const res = await fetch(`/api/trips/${currentTrip.link}/fill-links`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Reload trip data to get updated links
+            const tripRes = await fetch(`/api/trips/${currentTrip.link}/data`);
+            const tripData = await tripRes.json();
+            if (tripData.trip?.itinerary_data) {
+                currentTrip.ideas = tripData.trip.itinerary_data.ideas || [];
+                currentTrip.days = tripData.trip.itinerary_data.days || [];
+                renderDays();
+                renderIdeas();
+            }
+            btn.innerHTML = `<i class="fas fa-check"></i> Found ${data.websites_added} websites, ${data.maps_added} maps`;
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-link"></i> Fill Missing Links'; }, 3000);
+        } else {
+            btn.innerHTML = '<i class="fas fa-link"></i> Fill Missing Links';
+            LibertasModal.alert(data.error || 'Failed to fill links');
+        }
+    } catch (e) {
+        console.error('Fill links error:', e);
+        btn.innerHTML = '<i class="fas fa-link"></i> Fill Missing Links';
+    }
+    btn.disabled = false;
+}
+
 // ==================== Write-up ====================
 
 async function generateWriteup() {

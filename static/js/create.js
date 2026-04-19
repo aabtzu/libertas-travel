@@ -223,7 +223,8 @@ function initEventListeners() {
         if (e.key === 'Enter') addTip();
     });
 
-    // Write-up
+    // Fill links + Write-up
+    document.getElementById('fill-links-btn')?.addEventListener('click', fillMissingLinks);
     document.getElementById('generate-writeup-btn')?.addEventListener('click', generateWriteup);
     document.getElementById('copy-writeup-btn')?.addEventListener('click', copyWriteup);
 

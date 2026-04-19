@@ -447,3 +447,26 @@ def generate_trip_writeup(link: str):
     except Exception as e:
         traceback.print_exc()
         return json_err(f"Write-up generation failed: {e}")
+
+
+@trips_bp.post("/api/trips/<link>/fill-links")
+@require_auth
+def fill_trip_links(link: str):
+    """Use LLM to find and fill missing website/maps links for trip items."""
+    trip = db.get_trip_by_link(g.user_id, link)
+    if not trip:
+        return json_err("Trip not found")
+
+    itinerary_data = trip.get("itinerary_data") or {}
+    if isinstance(itinerary_data, str):
+        itinerary_data = json.loads(itinerary_data)
+
+    try:
+        from agents.trips.link_resolver import fill_missing_links
+
+        result = fill_missing_links(itinerary_data)
+        db.update_trip_itinerary_data(g.user_id, link, itinerary_data)
+        return json_ok({"success": True, **result})
+    except Exception as e:
+        traceback.print_exc()
+        return json_err(f"Link resolution failed: {e}")

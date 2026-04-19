@@ -883,6 +883,26 @@
 
 .btn-add-tip:hover { background: #5a6fd6; }
 
+.btn-fill-links {
+    width: 100%;
+    padding: 10px;
+    margin-top: 12px;
+    background: white;
+    color: #667eea;
+    border: 1px solid #667eea;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-fill-links:hover { background: #f0f2ff; }
+.btn-fill-links:disabled { opacity: 0.6; cursor: wait; }
+
 /* Write-up */
 .btn-writeup {
     width: 100%;
