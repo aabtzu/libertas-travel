@@ -643,9 +643,11 @@ function _ensurePublicThenCopy(buildUrl) {
 
     function doCopy() {
         const url = buildUrl();
+        // Copy and open in new tab
+        window.open(url, '_blank');
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url)
-                .then(() => { closeShareModal(); LibertasModal.alert('Link copied!\n' + url); })
+                .then(() => { closeShareModal(); })
                 .catch(() => { _fallbackCopy(url); });
         } else {
             _fallbackCopy(url);
@@ -661,7 +663,6 @@ function _ensurePublicThenCopy(buildUrl) {
         try { document.execCommand('copy'); } catch(e) {}
         document.body.removeChild(ta);
         closeShareModal();
-        LibertasModal.alert('Link copied!\n' + url);
     }
 
     if (isAlreadyPublic) {
@@ -702,41 +703,6 @@ function copyRecommendationLink() {
 function copyWriteupLink() {
     const recLink = currentShareLink.replace('.html', '');
     _ensurePublicThenCopy(() => window.location.origin + '/w/' + recLink);
-}
-
-async function generateShareWriteup() {
-    const btn = event.target.closest('button');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-
-    try {
-        const res = await fetch(`/api/trips/${currentShareLink}/writeup`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-        });
-        const data = await res.json();
-        if (data.success && data.writeup) {
-            const el = document.getElementById('share-writeup-text');
-            el.innerHTML = mdToHtml(data.writeup);
-            el.dataset.raw = data.writeup;
-            document.getElementById('share-writeup-result').style.display = 'block';
-        } else {
-            LibertasModal.alert(data.error || 'Failed to generate write-up');
-        }
-    } catch {
-        LibertasModal.alert('Failed to generate write-up');
-    }
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
-}
-
-function copyShareWriteup() {
-    const text = document.getElementById('share-writeup-text')?.dataset.raw || document.getElementById('share-writeup-text')?.textContent;
-    if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
-        closeShareModal();
-        LibertasModal.alert('Write-up copied to clipboard!');
-    });
 }
 
 // Legacy — used by explore panel
