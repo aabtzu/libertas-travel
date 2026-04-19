@@ -732,7 +732,7 @@ function renderIdeas() {
                     <div class="item-content">
                         <div class="item-title">${escapeHtml(item.title)} ${websiteStr} ${mapsStr}</div>
                         ${item.location ? `<div class="item-location"><i class="fas fa-map-pin"></i> ${escapeHtml(item.location)}</div>` : ''}
-                        ${item.notes ? `<div class="item-meta">${escapeHtml(item.notes.substring(0, 80))}</div>` : ''}
+                        ${item.notes ? `<div class="item-meta">${escapeHtml(item.notes.substring(0, 200))}</div>` : ''}
                     </div>
                     <div class="item-actions">
                         <button onclick="editIdea(${index})" title="Edit">
