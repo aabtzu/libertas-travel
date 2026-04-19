@@ -56,5 +56,9 @@ Places:
 Write the recommendation now. No greeting or sign-off — just the content."""
 
     llm = make_llm(model=SONNET, max_tokens=2048)
-    response = llm.ask(prompt)
-    return response
+    response = llm.call_api(
+        system_prompt="You are a helpful travel writer.",
+        messages=[{"role": "user", "content": prompt}],
+        return_full_response=True,
+    )
+    return response.content[0].text.strip()
