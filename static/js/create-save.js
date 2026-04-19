@@ -139,6 +139,54 @@ function formatDate(dateStr) {
     });
 }
 
+// ==================== Write-up ====================
+
+async function generateWriteup() {
+    if (!currentTrip.link) return;
+
+    const btn = document.getElementById('generate-writeup-btn');
+    const resultDiv = document.getElementById('writeup-result');
+    const textDiv = document.getElementById('writeup-text');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+    try {
+        // Save first so the server has latest data
+        await performAutoSave();
+
+        const res = await fetch(`/api/trips/${currentTrip.link}/writeup`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        const data = await res.json();
+
+        if (data.success && data.writeup) {
+            textDiv.textContent = data.writeup;
+            resultDiv.style.display = 'block';
+            btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Regenerate Write-up';
+        } else {
+            LibertasModal.alert(data.error || 'Failed to generate write-up');
+            btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
+        }
+    } catch (e) {
+        console.error('Write-up error:', e);
+        LibertasModal.alert('Failed to generate write-up');
+        btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
+    }
+    btn.disabled = false;
+}
+
+function copyWriteup() {
+    const text = document.getElementById('writeup-text')?.textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-writeup-btn');
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 1500);
+    });
+}
+
 // escapeHtml() and formatTime12Hour() — defined in main.js
 
 

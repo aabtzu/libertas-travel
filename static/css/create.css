@@ -883,6 +883,68 @@
 
 .btn-add-tip:hover { background: #5a6fd6; }
 
+/* Write-up */
+.btn-writeup {
+    width: 100%;
+    padding: 12px;
+    margin-top: 16px;
+    background: #1a1a2e;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-writeup:hover { background: #2a2a4e; }
+.btn-writeup:disabled { opacity: 0.6; cursor: wait; }
+
+.writeup-result {
+    margin-top: 12px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.writeup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #667eea;
+}
+
+.writeup-copy {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+}
+
+.writeup-copy:hover { color: #5a6fd6; }
+
+.writeup-text {
+    padding: 14px;
+    font-size: 0.9rem;
+    color: #333;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
 .btn-add-idea {
     width: 100%;
     padding: 10px;

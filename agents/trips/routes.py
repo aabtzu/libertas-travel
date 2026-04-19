@@ -425,3 +425,25 @@ def get_users():
     except Exception as e:
         traceback.print_exc()
         return json_err(str(e))
+
+
+@trips_bp.post("/api/trips/<link>/writeup")
+@require_auth
+def generate_trip_writeup(link: str):
+    """Generate an AI narrative write-up from trip ideas and tips."""
+    trip = db.get_trip_by_link(g.user_id, link)
+    if not trip:
+        return json_err("Trip not found")
+
+    itinerary_data = trip.get("itinerary_data") or {}
+    if isinstance(itinerary_data, str):
+        itinerary_data = json.loads(itinerary_data)
+
+    try:
+        from agents.trips.writeup import generate_writeup
+
+        text = generate_writeup(trip.get("title", "Trip"), itinerary_data)
+        return json_ok({"success": True, "writeup": text})
+    except Exception as e:
+        traceback.print_exc()
+        return json_err(f"Write-up generation failed: {e}")
