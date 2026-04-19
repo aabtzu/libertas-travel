@@ -40,6 +40,7 @@ def get_nav_html(active_page: str = "") -> str:
         explore_active="active" if active_page == "explore" else "",
         hiw_active="active" if active_page == "how-it-works" else "",
         about_active="active" if active_page == "about" else "",
+        profile_active="active" if active_page == "profile" else "",
     )
 
 
@@ -62,6 +63,7 @@ NAV_HTML = """
         <a href="/explore.html" class="nav-link {explore_active}"><i class="fas fa-compass"></i> Explore</a>
         <a href="/how-it-works" class="nav-link {hiw_active}"><i class="fas fa-play-circle"></i> How It Works</a>
         <a href="/about.html" class="nav-link {about_active}"><i class="fas fa-scroll"></i> About</a>
+        <a href="/profile" class="nav-link {profile_active}"><i class="fas fa-user-cog"></i> Profile</a>
         <a href="#" class="nav-link logout-link" onclick="logout(); return false;"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
     <div class="nav-overlay" id="nav-overlay"></div>

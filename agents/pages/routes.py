@@ -18,6 +18,7 @@ from agents.common.templates import (
 )
 from agents.explore.templates import generate_explore_page
 from agents.itinerary.templates import generate_trips_page
+from agents.pages.profile_view import generate_profile_page
 from agents.pages.recommendation_view import generate_recommendation_page
 
 pages_bp = Blueprint("pages", __name__)
@@ -65,6 +66,23 @@ def register():
     if g.user_id:
         return redirect("/")
     return _html(generate_register_page())
+
+
+@pages_bp.get("/profile")
+@require_auth
+def profile():
+    # Load existing style profile
+    style_trip = db.get_trip_by_link(g.user_id, "__style_profile__.html")
+    profile_data = {}
+    if style_trip:
+        idata = style_trip.get("itinerary_data") or {}
+        if isinstance(idata, str):
+            import json
+
+            idata = json.loads(idata)
+        profile_data = idata
+
+    return _html(generate_profile_page(profile_data))
 
 
 @pages_bp.get("/trips")
@@ -220,11 +238,25 @@ def writeup_view(rec_name: str):
     writeup_text = itinerary_data.get("writeup", "")
 
     if not writeup_text:
-        # Generate on the fly
+        # Generate on the fly — use owner's style profile if available
         try:
             from agents.trips.writeup import generate_writeup
 
-            writeup_text = generate_writeup(trip.get("title", "Recommendations"), itinerary_data)
+            style_profile = None
+            style_trip = db.get_trip_by_link(owner_id, "__style_profile__.html")
+            if style_trip:
+                style_data = style_trip.get("itinerary_data") or {}
+                if isinstance(style_data, str):
+                    import json as _json
+
+                    style_data = _json.loads(style_data)
+                style_profile = style_data.get("style_profile")
+
+            writeup_text = generate_writeup(
+                trip.get("title", "Recommendations"),
+                itinerary_data,
+                style_profile=style_profile,
+            )
         except Exception:
             writeup_text = "Write-up generation failed. Please try again."
 

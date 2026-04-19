@@ -520,3 +520,33 @@ def extract_writing_style():
     except Exception as e:
         traceback.print_exc()
         return json_err(f"Style extraction failed: {e}")
+
+
+@trips_bp.post("/api/user/save-profile")
+@require_auth
+def save_user_profile():
+    """Save user profile data (style profile, preferences)."""
+    data = request.get_json(silent=True) or {}
+    style_profile = data.get("style_profile")
+    samples_preview = data.get("samples_preview", "")
+
+    if not style_profile:
+        return json_err("No profile data provided")
+
+    profile_data = {"style_profile": style_profile, "samples_preview": samples_preview}
+
+    existing = db.get_trip_by_link(g.user_id, "__style_profile__.html")
+    if existing:
+        db.update_trip_itinerary_data(g.user_id, "__style_profile__.html", profile_data)
+    else:
+        db.add_trip(
+            g.user_id,
+            {
+                "title": "__style_profile__",
+                "link": "__style_profile__.html",
+                "trip_type": "system",
+            },
+            profile_data,
+        )
+
+    return json_ok({"success": True})
