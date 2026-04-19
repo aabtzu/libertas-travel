@@ -498,6 +498,7 @@ function mdToHtml(text) {
     let html = escapeHtml(text);
     html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
     html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
     // Links: [text](url)
     html = html.replace(/\[(.+?)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
