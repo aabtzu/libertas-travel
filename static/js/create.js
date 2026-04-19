@@ -688,19 +688,18 @@ function editTip(index) {
 
     const currentText = currentTrip.tips[index];
     item.innerHTML = `
-        <input type="text" class="tip-edit-input" value="${escapeHtml(currentText)}">
+        <textarea class="tip-edit-input" rows="3">${escapeHtml(currentText)}</textarea>
         <button class="btn-add-tip" onclick="saveTip(${index})"><i class="fas fa-check"></i></button>
     `;
-    const input = item.querySelector('input');
+    const input = item.querySelector('textarea');
     input.focus();
     input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') saveTip(index);
         if (e.key === 'Escape') renderTips();
     });
 }
 
 function saveTip(index) {
-    const input = document.querySelector('.tip-edit-input');
+    const input = document.querySelector('textarea.tip-edit-input');
     if (!input) return;
     const text = input.value.trim();
     if (text) {

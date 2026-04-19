@@ -846,7 +846,9 @@
     border-radius: 6px;
     padding: 6px 10px;
     font-size: 0.85rem;
+    font-family: inherit;
     outline: none;
+    resize: vertical;
 }
 
 .tips-add {
@@ -862,9 +864,13 @@
     padding: 6px 10px;
     font-size: 0.85rem;
     outline: none;
+    font-family: inherit;
+    resize: vertical;
 }
 
 .tip-input:focus { border-color: #667eea; }
+
+.tips-add { align-items: flex-start; }
 
 .btn-add-tip {
     background: #667eea;
