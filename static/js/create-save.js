@@ -162,7 +162,8 @@ async function generateWriteup() {
         const data = await res.json();
 
         if (data.success && data.writeup) {
-            textDiv.textContent = data.writeup;
+            textDiv.innerHTML = mdToHtml(data.writeup);
+            textDiv.dataset.raw = data.writeup;
             resultDiv.style.display = 'block';
             btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Regenerate Write-up';
         } else {
@@ -178,7 +179,7 @@ async function generateWriteup() {
 }
 
 function copyWriteup() {
-    const text = document.getElementById('writeup-text')?.textContent;
+    const text = document.getElementById('writeup-text')?.dataset.raw || document.getElementById('writeup-text')?.textContent;
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
         const btn = document.getElementById('copy-writeup-btn');

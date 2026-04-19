@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html as html_mod
+import re
 from typing import Any
 
 from agents.common.categories import CATEGORY_ICONS
@@ -11,6 +12,22 @@ from agents.common.templates import get_nav_html
 
 def _esc(text: str) -> str:
     return html_mod.escape(str(text)) if text else ""
+
+
+def _md_to_html(text: str) -> str:
+    """Minimal markdown to HTML: bold, italic, headers, line breaks."""
+    text = html_mod.escape(text)
+    # Headers: ### Header → <h3>
+    text = re.sub(r"^### (.+)$", r"<h3>\1</h3>", text, flags=re.MULTILINE)
+    text = re.sub(r"^## (.+)$", r"<h2>\1</h2>", text, flags=re.MULTILINE)
+    # Bold: **text** → <strong>
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    # Italic: *text* → <em>
+    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
+    # Line breaks
+    text = text.replace("\n\n", "</p><p>")
+    text = text.replace("\n", "<br>")
+    return f"<p>{text}</p>"
 
 
 def _extract_city(location: str) -> str:
@@ -420,5 +437,70 @@ def generate_recommendation_page(
             }}
         }});
     </script>
+</body>
+</html>"""
+
+
+def render_writeup_page(title: str, writeup_text: str) -> str:
+    """Render the AI-generated narrative write-up as a clean page."""
+    nav = get_nav_html("")
+    content = _md_to_html(writeup_text)
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{_esc(title)} - Libertas</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=9">
+    <style>
+        .writeup-hero {{
+            background: #1a1a2e;
+            color: white;
+            padding: 48px 40px;
+            text-align: center;
+        }}
+        .writeup-hero h1 {{
+            font-size: 2rem;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }}
+        .writeup-hero p {{ color: #aaa; margin-top: 8px; }}
+        .writeup-content {{
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            font-size: 1.05rem;
+            color: #333;
+            line-height: 1.8;
+        }}
+        .writeup-content h2 {{
+            color: #667eea;
+            font-size: 1.3rem;
+            margin-top: 32px;
+            margin-bottom: 8px;
+        }}
+        .writeup-content h3 {{
+            color: #555;
+            font-size: 1.1rem;
+            margin-top: 24px;
+            margin-bottom: 6px;
+        }}
+        .writeup-content strong {{ color: #222; }}
+        .writeup-content p {{ margin-bottom: 12px; }}
+    </style>
+</head>
+<body>
+    {nav}
+    <div class="writeup-hero">
+        <h1>{_esc(title)}</h1>
+        <p><i class="fas fa-pen-fancy"></i> AI-generated recommendation</p>
+    </div>
+    <div class="writeup-content">
+        {content}
+    </div>
+    <script src="/static/js/main.js?v=6"></script>
 </body>
 </html>"""

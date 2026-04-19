@@ -699,6 +699,11 @@ function copyRecommendationLink() {
     _ensurePublicThenCopy(() => window.location.origin + '/r/' + recLink);
 }
 
+function copyWriteupLink() {
+    const recLink = currentShareLink.replace('.html', '');
+    _ensurePublicThenCopy(() => window.location.origin + '/w/' + recLink);
+}
+
 async function generateShareWriteup() {
     const btn = event.target.closest('button');
     btn.disabled = true;
@@ -711,7 +716,9 @@ async function generateShareWriteup() {
         });
         const data = await res.json();
         if (data.success && data.writeup) {
-            document.getElementById('share-writeup-text').textContent = data.writeup;
+            const el = document.getElementById('share-writeup-text');
+            el.innerHTML = mdToHtml(data.writeup);
+            el.dataset.raw = data.writeup;
             document.getElementById('share-writeup-result').style.display = 'block';
         } else {
             LibertasModal.alert(data.error || 'Failed to generate write-up');
@@ -724,7 +731,7 @@ async function generateShareWriteup() {
 }
 
 function copyShareWriteup() {
-    const text = document.getElementById('share-writeup-text')?.textContent;
+    const text = document.getElementById('share-writeup-text')?.dataset.raw || document.getElementById('share-writeup-text')?.textContent;
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
         closeShareModal();

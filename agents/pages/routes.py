@@ -192,3 +192,43 @@ def recommendation_view(rec_name: str):
         trip.get("title", "Recommendations"), itinerary_data, trip_link=link
     )
     return _html(html)
+
+
+@pages_bp.get("/w/<path:rec_name>.html")
+@pages_bp.get("/w/<path:rec_name>")
+def writeup_view(rec_name: str):
+    """Public write-up view — AI-generated narrative recommendation."""
+    link = rec_name
+    if not link.endswith(".html"):
+        link = link + ".html"
+
+    owner_id = db.get_trip_owner(link)
+    if owner_id is None:
+        return "Not found", 404
+
+    trip = db.get_trip_by_link(owner_id, link)
+    if not trip or not trip.get("is_public"):
+        return "Not found", 404
+
+    itinerary_data = trip.get("itinerary_data") or {}
+    if isinstance(itinerary_data, str):
+        import json
+
+        itinerary_data = json.loads(itinerary_data)
+
+    # Check for cached write-up first
+    writeup_text = itinerary_data.get("writeup", "")
+
+    if not writeup_text:
+        # Generate on the fly
+        try:
+            from agents.trips.writeup import generate_writeup
+
+            writeup_text = generate_writeup(trip.get("title", "Recommendations"), itinerary_data)
+        except Exception:
+            writeup_text = "Write-up generation failed. Please try again."
+
+    from agents.pages.recommendation_view import render_writeup_page
+
+    html = render_writeup_page(trip.get("title", "Recommendations"), writeup_text)
+    return _html(html)
