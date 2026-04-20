@@ -77,9 +77,14 @@ def generate_writeup(
     # Build data string for the writer
     data_text = f"Trip: {title}\n\nPlaces:\n{items_text}\n{tips_text}"
 
+    # Pull user rules to reinforce at the end of the prompt (recency bias)
+    rules_reminder = ""
+    if style_profile and style_profile.get("rules"):
+        rules_reminder = f"\n\nREMINDER — follow these rules strictly:\n{style_profile['rules']}"
+
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
     return writer.generate(
-        data=data_text,
+        data=data_text + rules_reminder,
         context=_TRAVEL_INSTRUCTIONS,
         style_profile=style_profile,
         style_template="nyt_36_hours",
