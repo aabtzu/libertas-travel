@@ -183,6 +183,51 @@ def admin_retry_geocoding():
     return json_ok(result)
 
 
+@admin_bp.post("/api/admin/add-trip")
+def admin_add_trip():
+    """Create or update a trip for any user. Protected by SECRET_KEY.
+
+    Body JSON: {"username": "...", "title": "...", "link": "...", "itinerary_data": {...}, "trip_type": "...", "is_public": true}
+    """
+    import os
+
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "")
+    title = data.get("title", "")
+    if not title:
+        return json_err("title required")
+
+    # Find user by username
+    user = db.get_user_by_username(username) if username else None
+    user_id = user["id"] if user else db.ensure_demo_user()
+
+    link = data.get("link", "")
+    if not link:
+        import re
+
+        link = re.sub(r"[^\w\s-]", "", title).strip().replace(" ", "_").lower() + ".html"
+
+    trip_data = {
+        "title": title,
+        "link": link,
+        "trip_type": data.get("trip_type", "itinerary"),
+        "map_status": "pending",
+    }
+
+    itinerary_data = data.get("itinerary_data")
+    db.add_trip(user_id, trip_data, itinerary_data)
+
+    if data.get("is_public"):
+        db.set_trip_public(user_id, link, True)
+
+    return json_ok({"success": True, "link": link, "user_id": user_id})
+
+
 @admin_bp.post("/api/admin/add-venues")
 def admin_add_venues():
     """Bulk-add curated venues. Protected by SECRET_KEY (X-Admin-Key header).
