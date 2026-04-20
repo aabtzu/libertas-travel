@@ -442,14 +442,19 @@ def generate_trip_writeup(link: str):
     try:
         from agents.trips.writeup import generate_writeup
 
-        # Auto-personalize if user has a style profile
+        # Auto-personalize if user has a style profile + writing samples
         style_profile = None
+        writing_samples = ""
         profile = db.get_user_profile(g.user_id)
         if profile:
             style_profile = profile.get("style_profile")
+            writing_samples = profile.get("writing_samples", "")
 
         text = generate_writeup(
-            trip.get("title", "Trip"), itinerary_data, style_profile=style_profile
+            trip.get("title", "Trip"),
+            itinerary_data,
+            style_profile=style_profile,
+            writing_samples=writing_samples,
         )
         return json_ok({"success": True, "writeup": text, "personalized": bool(style_profile)})
     except Exception as e:
@@ -502,9 +507,10 @@ def extract_writing_style():
 
         profile = extract_style_profile(samples)
 
-        # Store in user profile column
+        # Store in user profile column — keep full samples for few-shot prompting
         existing_profile = db.get_user_profile(g.user_id) or {}
         existing_profile["style_profile"] = profile
+        existing_profile["writing_samples"] = samples
         existing_profile["samples_preview"] = samples[:200]
         db.set_user_profile(g.user_id, existing_profile)
 
@@ -520,6 +526,7 @@ def save_user_profile():
     """Save user profile data (style profile, preferences)."""
     data = request.get_json(silent=True) or {}
     style_profile = data.get("style_profile")
+    writing_samples = data.get("writing_samples", "")
     samples_preview = data.get("samples_preview", "")
 
     if not style_profile:
@@ -527,6 +534,8 @@ def save_user_profile():
 
     existing_profile = db.get_user_profile(g.user_id) or {}
     existing_profile["style_profile"] = style_profile
+    if writing_samples:
+        existing_profile["writing_samples"] = writing_samples
     existing_profile["samples_preview"] = samples_preview
     db.set_user_profile(g.user_id, existing_profile)
 

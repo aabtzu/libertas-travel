@@ -17,7 +17,9 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
     nav = get_nav_html("")
 
     style_profile = profile_data.get("style_profile", {})
-    samples_preview = profile_data.get("samples_preview", "")
+    samples_text = _esc(
+        profile_data.get("writing_samples", "") or profile_data.get("samples_preview", "")
+    )
 
     # Pre-fill fields
     tone = _esc(style_profile.get("tone", ""))
@@ -164,7 +166,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
             <div class="extract-section">
                 <div class="field-group">
                     <label>Writing Samples</label>
-                    <textarea id="style-samples" rows="4" placeholder="Paste emails, messages, or any writing that sounds like you...">{_esc(samples_preview)}</textarea>
+                    <textarea id="style-samples" rows="6" placeholder="Paste emails, messages, or any writing that sounds like you...">{samples_text}</textarea>
                     <div class="field-hint">The more you paste, the better the style match</div>
                 </div>
                 <button class="btn-secondary" id="extract-btn">
@@ -293,7 +295,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                 const res = await fetch('/api/user/save-profile', {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{style_profile: profile, samples_preview: samples.substring(0, 200)}}),
+                    body: JSON.stringify({{style_profile: profile, writing_samples: samples, samples_preview: samples.substring(0, 200)}}),
                 }});
                 const data = await res.json();
                 if (data.success) {{

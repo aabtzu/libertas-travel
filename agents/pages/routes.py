@@ -234,14 +234,17 @@ def writeup_view(rec_name: str):
             from agents.trips.writeup import generate_writeup
 
             style_profile = None
+            writing_samples = ""
             owner_profile = db.get_user_profile(owner_id)
             if owner_profile:
                 style_profile = owner_profile.get("style_profile")
+                writing_samples = owner_profile.get("writing_samples", "")
 
             writeup_text = generate_writeup(
                 trip.get("title", "Recommendations"),
                 itinerary_data,
                 style_profile=style_profile,
+                writing_samples=writing_samples,
             )
         except Exception:
             writeup_text = "Write-up generation failed. Please try again."
