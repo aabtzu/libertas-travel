@@ -411,6 +411,37 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
         geocoding_worker.queue_geocoding(output_file, itinerary)
         return {"success": True, "title": itinerary.title, "link": output_file}, 200
 
+    # Check for Google Maps directions URL
+    if "google.com/maps/dir/" in url or "maps.app.goo.gl" in url or "goo.gl/maps" in url:
+        from agents.create.google_maps_parser import parse_google_maps_url, stops_to_trip_items
+
+        parsed = parse_google_maps_url(url)
+        if parsed["type"] == "directions" and parsed["stops"]:
+            items = stops_to_trip_items(parsed["stops"])
+            title = parsed["title"] or "Road Trip"
+
+            # Create the trip with stops as ideas
+            import re
+
+            safe = re.sub(r"[^\w\s-]", "", title).strip().replace(" ", "_").lower()
+            link = f"{safe}.html"
+
+            itinerary_data = {"ideas": items, "days": [], "tips": []}
+            trip_data = {
+                "title": title,
+                "link": link,
+                "trip_type": "recommendation",
+                "map_status": "ready",  # Already have coordinates
+            }
+            db.add_trip(user_id, trip_data, itinerary_data)
+
+            return {
+                "success": True,
+                "title": title,
+                "link": link,
+                "stops_count": len(parsed["stops"]),
+            }, 200
+
     try:
         file_data, filename, content_type = download_from_url(url)
     except Exception as e:
