@@ -23,6 +23,11 @@ def create_app() -> Flask:
     for bp in (pages_bp, auth_bp, trips_bp, create_bp, explore_bp, admin_bp):
         app.register_blueprint(bp)
 
+    # Run DB migrations (adds new columns if missing)
+    import database as db
+
+    db.init_db()
+
     @app.before_request
     def load_user():
         from agents.common.flask_utils import load_current_user
