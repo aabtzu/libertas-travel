@@ -425,10 +425,7 @@ function createVenueCard(venue) {
         ? `<span class="venue-card-tag">${venue.cuisine_type}</span>`
         : '';
 
-    // Location string
-    const location = [venue.city, venue.state, venue.country]
-        .filter(x => x)
-        .join(', ');
+    const location = buildVenueLocation(venue);
 
     // Description (truncated to ~100 chars)
     let description = venue.description || venue.notes || '';
@@ -466,7 +463,7 @@ function createVenueCard(venue) {
                     <button class="venue-action-btn website">
                         <i class="fas fa-globe"></i> Website
                     </button>
-                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude}).replace(/'/g, "&#39;")}'>
+                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, state: venue.state, country: venue.country, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude, website: venue.website, google_maps_link: venue.google_maps_link}).replace(/'/g, "&#39;")}'>
                         <i class="fas fa-plus"></i> Trip
                     </button>
                 </div>
@@ -527,7 +524,16 @@ function updateMap(venueList) {
     // Filter venues with coordinates
     const venuesWithCoords = venueList.filter(v => v.latitude && v.longitude);
 
-    if (venuesWithCoords.length === 0) return;
+    // If no venues have coords, try to center map on the shared city
+    if (venuesWithCoords.length === 0) {
+        const cities = [...new Set(venueList.map(v => v.city).filter(c => c))];
+        if (cities.length > 0) {
+            geocodeCity(cities[0]).then(coords => {
+                if (coords && map) map.setView([coords.lat, coords.lng], 12);
+            });
+        }
+        return;
+    }
 
     // Create bounds array for fitting
     const boundsArray = [];
@@ -691,6 +697,22 @@ function openInGoogleMaps(venue) {
 }
 
 /**
+ * Geocode a city name to get coordinates for map centering.
+ */
+async function geocodeCity(city) {
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`, {
+            headers: {'User-Agent': 'Libertas-Travel/1.0'}
+        });
+        const data = await res.json();
+        if (data.length > 0) {
+            return {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
+        }
+    } catch {}
+    return null;
+}
+
+/**
  * Open venue website
  */
 function openWebsite(venue) {
@@ -724,6 +746,10 @@ function showTripPicker(trips, onSelect) {
                 <button class="trip-picker-close" aria-label="Close"><i class="fas fa-times"></i></button>
             </div>
             <div class="trip-picker-list">
+                <button class="trip-picker-item trip-picker-new" data-action="new">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>New trip</span>
+                </button>
                 ${trips.map(t => `
                     <button class="trip-picker-item" data-link="${t.link}">
                         <i class="fas fa-suitcase"></i>
@@ -735,15 +761,58 @@ function showTripPicker(trips, onSelect) {
     `;
 
     // Close on overlay click, close button, or Escape
-    overlay.addEventListener('click', (e) => {
+    overlay.addEventListener('click', async (e) => {
         if (e.target === overlay || e.target.closest('.trip-picker-close')) {
             overlay.remove();
+            return;
         }
         const item = e.target.closest('.trip-picker-item');
-        if (item) {
-            overlay.remove();
-            onSelect(item.dataset.link);
+        if (!item) return;
+
+        if (item.dataset.action === 'new') {
+            // Show inline name input
+            const newBtn = item;
+            newBtn.innerHTML = `
+                <input type="text" class="trip-picker-name-input" placeholder="Trip name..." autofocus>
+                <button class="trip-picker-create-btn"><i class="fas fa-check"></i></button>
+            `;
+            const input = newBtn.querySelector('input');
+            const createBtn = newBtn.querySelector('.trip-picker-create-btn');
+            input.focus();
+
+            const doCreate = async () => {
+                const title = input.value.trim();
+                if (!title) return;
+                try {
+                    const res = await fetch('/api/trips/create', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({title, trip_type: 'recommendation'}),
+                    });
+                    const data = await res.json();
+                    const link = data.trip?.link || data.link;
+                    if (link) {
+                        // Add to cache
+                        if (_tripsCache) _tripsCache.unshift({link, title, trip_type: 'recommendation'});
+                        overlay.remove();
+                        onSelect(link);
+                    }
+                } catch {}
+            };
+
+            createBtn.addEventListener('click', (ev) => { ev.stopPropagation(); doCreate(); });
+            input.addEventListener('keydown', (ev) => {
+                ev.stopPropagation();
+                if (ev.key === 'Enter') doCreate();
+            });
+            input.addEventListener('click', (ev) => ev.stopPropagation());
+            input.addEventListener('keyup', (ev) => ev.stopPropagation());
+            input.addEventListener('keypress', (ev) => ev.stopPropagation());
+            return;
         }
+
+        overlay.remove();
+        onSelect(item.dataset.link);
     });
     const onEsc = (e) => { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', onEsc); } };
     document.addEventListener('keydown', onEsc);
@@ -751,14 +820,94 @@ function showTripPicker(trips, onSelect) {
     document.body.appendChild(overlay);
 }
 
-async function sendToTrip(btn, tripLink, venueData) {
+/**
+ * Show an inline note input below the + Trip button before adding.
+ */
+function showAddNoteInput(btn, venueData) {
+    const actionsRow = btn.closest('.venue-card-actions');
+    if (!actionsRow || actionsRow.parentElement.querySelector('.add-note-inline')) return;
+
+    // Replace the actions row with the note input
+    actionsRow.style.display = 'none';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'add-note-inline';
+    wrapper.innerHTML = `
+        <input type="text" class="add-note-input" placeholder="Add a note (optional), Enter to save" >
+        <button class="add-note-submit" title="Add"><i class="fas fa-check"></i></button>
+        <button class="add-note-cancel" title="Cancel"><i class="fas fa-times"></i></button>
+    `;
+    actionsRow.parentElement.appendChild(wrapper);
+
+    const input = wrapper.querySelector('input');
+    const submitBtn = wrapper.querySelector('.add-note-submit');
+    const cancelBtn = wrapper.querySelector('.add-note-cancel');
+    input.focus();
+
+    const doCancel = () => {
+        wrapper.remove();
+        actionsRow.style.display = '';
+    };
+
+    const doAdd = async () => {
+        const note = input.value.trim();
+        wrapper.remove();
+        actionsRow.style.display = '';
+        await sendToTripWithNote(btn, _pinnedTrip.link, venueData, note);
+        if (typeof _pinnedItems !== 'undefined') {
+            _pinnedItems.push({
+                title: venueData.name,
+                category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
+                location: venueData.city || '',
+                notes: note || venueData.cuisine_type || '',
+            });
+            if (typeof renderTripPanel === 'function') renderTripPanel();
+        }
+    };
+
+    submitBtn.addEventListener('click', (e) => { e.stopPropagation(); doAdd(); });
+    cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); doCancel(); });
+    input.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') doAdd();
+        if (e.key === 'Escape') doCancel();
+    });
+    input.addEventListener('keyup', (e) => e.stopPropagation());
+    input.addEventListener('keypress', (e) => e.stopPropagation());
+    input.addEventListener('click', (e) => e.stopPropagation());
+}
+
+/**
+ * Build a full location string from venue data parts.
+ */
+function buildVenueLocation(venueData) {
+    return [venueData.city, venueData.state, venueData.country].filter(x => x).join(', ');
+}
+
+/**
+ * Add a venue to a trip. Single function for both with-note and without-note flows.
+ */
+async function sendToTrip(btn, tripLink, venueData, note) {
+    const location = buildVenueLocation(venueData);
+
+    // Build Google Maps link from coordinates or name
+    let mapsLink = venueData.google_maps_link || '';
+    if (!mapsLink && venueData.latitude && venueData.longitude) {
+        mapsLink = `https://www.google.com/maps/search/?api=1&query=${venueData.latitude},${venueData.longitude}`;
+    } else if (!mapsLink) {
+        const q = encodeURIComponent(`${venueData.name} ${location}`);
+        mapsLink = `https://www.google.com/maps/search/?api=1&query=${q}`;
+    }
+
     const item = {
         title: venueData.name,
         category: venueData.venue_type === 'Restaurant' || venueData.venue_type === 'Cafe' ? 'meal' : 'activity',
-        location: venueData.city || '',
+        location: location,
         latitude: venueData.latitude || null,
         longitude: venueData.longitude || null,
-        notes: venueData.cuisine_type || '',
+        notes: note || venueData.cuisine_type || '',
+        website: venueData.website || '',
+        google_maps_link: mapsLink,
     };
 
     try {
@@ -775,8 +924,27 @@ async function sendToTrip(btn, tripLink, venueData) {
     } catch { /* silently fail */ }
 }
 
+// Legacy alias
+async function sendToTripWithNote(btn, tripLink, venueData, note) {
+    return sendToTrip(btn, tripLink, venueData, note);
+}
+
 async function addToTrip(btn) {
     const venueData = JSON.parse(btn.dataset.venue);
+
+    // If a trip is pinned (from explore-trip-panel.js), add directly
+    if (typeof _pinnedTrip !== 'undefined' && _pinnedTrip) {
+        // Skip if already in this trip
+        if (typeof isAlreadyInTrip === 'function' && isAlreadyInTrip(venueData.name)) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Added';
+            btn.disabled = true;
+            btn.classList.add('added');
+            return;
+        }
+        // Show inline note input on the card
+        showAddNoteInput(btn, venueData);
+        return;
+    }
 
     if (!_tripsCache) {
         try {
@@ -790,17 +958,28 @@ async function addToTrip(btn) {
         } catch { return; }
     }
 
+    // Show picker even with 0 trips — "New trip" option is always available
     if (_tripsCache.length === 0) {
-        window.location.href = '/create.html';
+        _pendingBtn = btn;
+        showTripPicker([], async (link) => {
+            await sendToTrip(_pendingBtn, link, venueData);
+            const trip = _tripsCache?.find(t => t.link === link);
+            if (trip && typeof pinTrip === 'function') pinTrip(link, trip.title);
+        });
         return;
     }
 
     if (_tripsCache.length === 1) {
-        sendToTrip(btn, _tripsCache[0].link, venueData);
+        await sendToTrip(btn, _tripsCache[0].link, venueData);
+        // Auto-pin the single trip
+        if (typeof pinTrip === 'function') pinTrip(_tripsCache[0].link, _tripsCache[0].title);
     } else {
         _pendingBtn = btn;
-        showTripPicker(_tripsCache, (link) => {
-            sendToTrip(_pendingBtn, link, venueData);
+        showTripPicker(_tripsCache, async (link) => {
+            await sendToTrip(_pendingBtn, link, venueData);
+            // Pin the selected trip
+            const trip = _tripsCache.find(t => t.link === link);
+            if (trip && typeof pinTrip === 'function') pinTrip(link, trip.title);
         });
     }
 }

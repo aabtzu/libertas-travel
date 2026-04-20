@@ -18,6 +18,8 @@ from agents.common.templates import (
 )
 from agents.explore.templates import generate_explore_page
 from agents.itinerary.templates import generate_trips_page
+from agents.pages.profile_view import generate_profile_page
+from agents.pages.recommendation_view import generate_recommendation_page
 
 pages_bp = Blueprint("pages", __name__)
 
@@ -64,6 +66,14 @@ def register():
     if g.user_id:
         return redirect("/")
     return _html(generate_register_page())
+
+
+@pages_bp.get("/profile")
+@require_auth
+def profile():
+    profile_data = db.get_user_profile(g.user_id) or {}
+
+    return _html(generate_profile_page(profile_data))
 
 
 @pages_bp.get("/trips")
@@ -155,6 +165,96 @@ def trip_html(trip_name: str):
         map_data,
         is_owner=is_owner,
         is_authenticated=is_authenticated,
+        trip_link=link,
+    )
+    return _html(html)
+
+
+@pages_bp.get("/r/<path:rec_name>.html")
+@pages_bp.get("/r/<path:rec_name>")
+def recommendation_view(rec_name: str):
+    """Public recommendation view — no login required."""
+    link = rec_name
+    if not link.endswith(".html"):
+        link = link + ".html"
+
+    # Find the trip by link (any owner)
+    owner_id = db.get_trip_owner(link)
+    if owner_id is None:
+        return "Not found", 404
+
+    trip = db.get_trip_by_link(owner_id, link)
+    if not trip:
+        return "Not found", 404
+
+    # Must be public
+    if not trip.get("is_public"):
+        return "Not found", 404
+
+    itinerary_data = trip.get("itinerary_data") or {}
+    if isinstance(itinerary_data, str):
+        import json
+
+        itinerary_data = json.loads(itinerary_data)
+
+    html = generate_recommendation_page(
+        trip.get("title", "Recommendations"), itinerary_data, trip_link=link
+    )
+    return _html(html)
+
+
+@pages_bp.get("/w/<path:rec_name>.html")
+@pages_bp.get("/w/<path:rec_name>")
+def writeup_view(rec_name: str):
+    """Public write-up view — AI-generated narrative recommendation."""
+    link = rec_name
+    if not link.endswith(".html"):
+        link = link + ".html"
+
+    owner_id = db.get_trip_owner(link)
+    if owner_id is None:
+        return "Not found", 404
+
+    trip = db.get_trip_by_link(owner_id, link)
+    if not trip or not trip.get("is_public"):
+        return "Not found", 404
+
+    itinerary_data = trip.get("itinerary_data") or {}
+    if isinstance(itinerary_data, str):
+        import json
+
+        itinerary_data = json.loads(itinerary_data)
+
+    # Check for cached write-up first
+    writeup_text = itinerary_data.get("writeup", "")
+
+    if not writeup_text:
+        # Generate on the fly — use owner's style profile if available
+        try:
+            from agents.trips.writeup import generate_writeup
+
+            style_profile = None
+            writing_samples = ""
+            owner_profile = db.get_user_profile(owner_id)
+            if owner_profile:
+                style_profile = owner_profile.get("style_profile")
+                writing_samples = owner_profile.get("writing_samples", "")
+
+            writeup_text = generate_writeup(
+                trip.get("title", "Recommendations"),
+                itinerary_data,
+                style_profile=style_profile,
+                writing_samples=writing_samples,
+            )
+        except Exception:
+            writeup_text = "Write-up generation failed. Please try again."
+
+    from agents.pages.recommendation_view import render_writeup_page
+
+    html = render_writeup_page(
+        trip.get("title", "Recommendations"),
+        writeup_text,
+        itinerary_data=itinerary_data,
         trip_link=link,
     )
     return _html(html)

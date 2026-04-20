@@ -49,6 +49,8 @@ Handlers import from here rather than touching fiat-lux-agents directly. This me
 | `agents/create/chat_handler.py` | Create chat | AI assistant for building trips via conversation |
 | `agents/create/upload_handlers.py` | File upload parsing | Extracts itinerary data from uploaded files (PDF, Excel, Word, ICS) |
 | `agents/explore/handler.py` | Explore chat | Recommends restaurants, hotels, and attractions for a destination |
+| `agents/trips/writeup.py` | AI write-up | Generates narrative recommendation from structured trip data |
+| `agents/trips/link_resolver.py` | Link resolution | Looks up real website URLs for trip venues |
 
 ### Model selection in practice
 

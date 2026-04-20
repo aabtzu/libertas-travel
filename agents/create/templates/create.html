@@ -163,7 +163,37 @@
                             <i class="fas fa-file-upload"></i> Upload Plan
                         </button>
                     </div>
-                    <input type="file" id="plan-file-input" accept=".pdf,.txt,.png,.jpg,.jpeg,.html,.htm,.eml,.ics,.json,.xlsx,.xls,.docx" style="display: none;">
+                    <input type="file" id="plan-file-input" accept=".pdf,.txt,.png,.jpg,.jpeg,.html,.htm,.eml,.ics,.json,.xlsx,.xls,.docx,.csv" style="display: none;">
+
+                    <!-- Tips / General Notes -->
+                    <div class="tips-section">
+                        <div class="section-header">
+                            <i class="fas fa-lightbulb"></i> Tips &amp; Notes
+                        </div>
+                        <div class="tips-list" id="tips-list"></div>
+                        <div class="tips-add">
+                            <textarea id="tip-input" placeholder="Add a tip or note..." class="tip-input" rows="2"></textarea>
+                            <button id="add-tip-btn" class="btn-add-tip"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Fill links + Generate write-up -->
+                    <button class="btn-fill-links" id="fill-links-btn">
+                        <i class="fas fa-link"></i> Fill Missing Links
+                    </button>
+                    <button class="btn-writeup" id="generate-writeup-btn">
+                        <i class="fas fa-pen-fancy"></i> Generate Write-up
+                    </button>
+                    <div class="writeup-result" id="writeup-result" style="display:none">
+                        <div class="writeup-header">
+                            <span><i class="fas fa-pen-fancy"></i> Write-up</span>
+                            <div>
+                                <button class="writeup-copy" id="edit-writeup-btn" title="Edit write-up" onclick="editWriteup()"><i class="fas fa-edit"></i></button>
+                                <button class="writeup-copy" id="copy-writeup-btn" title="Copy"><i class="fas fa-copy"></i></button>
+                            </div>
+                        </div>
+                        <div class="writeup-text" id="writeup-text"></div>
+                    </div>
                 </div>
             </div>
 
@@ -259,8 +289,13 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="item-maps-link">Google Maps</label>
+                    <input type="url" id="item-maps-link" placeholder="https://maps.google.com/...">
+                </div>
+
+                <div class="form-group">
                     <label for="item-notes">Notes</label>
-                    <textarea id="item-notes" rows="2" placeholder="Additional details..."></textarea>
+                    <textarea id="item-notes" rows="4" placeholder="Additional details..."></textarea>
                 </div>
 
                 <div class="form-group form-group-checkbox">
@@ -288,10 +323,10 @@
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=46"></script>
-    <script src="/static/js/create-items.js?v=1"></script>
-    <script src="/static/js/create-upload.js?v=1"></script>
-    <script src="/static/js/create-save.js?v=1"></script>
+    <script src="/static/js/create.js?v=48"></script>
+    <script src="/static/js/create-items.js?v=3"></script>
+    <script src="/static/js/create-upload.js?v=3"></script>
+    <script src="/static/js/create-save.js?v=3"></script>
     <script src="/static/js/create-chat.js?v=1"></script>
     <script src="/static/js/create-dragdrop.js?v=1"></script>
     <script src="/static/js/create-grid.js?v=2"></script>

@@ -41,5 +41,6 @@ def generate_explore_page(google_maps_api_key: str = "") -> str:
         explore_css=get_static_css("explore.css"),
         nav_html=get_nav_html("explore"),
         explore_js=get_static_js("explore.js"),
+        explore_trip_panel_js=get_static_js("explore-trip-panel.js"),
         google_maps_api_key=google_maps_api_key,
     )

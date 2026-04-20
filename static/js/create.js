@@ -10,6 +10,7 @@ let currentTrip = {
     end_date: null,
     days: [],
     ideas: [],
+    tips: [],
     chatHistory: []
 };
 const AUTOSAVE_DELAY = 2000;
@@ -216,6 +217,17 @@ function initEventListeners() {
     // Add idea button
     document.getElementById('add-idea-btn')?.addEventListener('click', () => showAddItemModal(null));
 
+    // Tips
+    document.getElementById('add-tip-btn')?.addEventListener('click', addTip);
+    document.getElementById('tip-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTip();
+    });
+
+    // Fill links + Write-up
+    document.getElementById('fill-links-btn')?.addEventListener('click', fillMissingLinks);
+    document.getElementById('generate-writeup-btn')?.addEventListener('click', generateWriteup);
+    document.getElementById('copy-writeup-btn')?.addEventListener('click', copyWriteup);
+
     // Preview button
     document.getElementById('preview-btn')?.addEventListener('click', previewTrip);
 
@@ -376,6 +388,8 @@ async function loadTrip(link) {
                 is_draft: trip.is_draft,
                 days: itineraryData?.days || [],
                 ideas: itineraryData?.ideas || [],
+                tips: itineraryData?.tips || [],
+                writeup: itineraryData?.writeup || '',
                 chatHistory: itineraryData?.chatHistory || []
             };
 
@@ -509,6 +523,21 @@ function updateEditorUI() {
 
     renderDays();
     renderIdeas();
+    renderTips();
+
+    // Load saved write-up if it exists (stored on currentTrip by loadTrip)
+    const savedWriteup = currentTrip.writeup;
+    if (savedWriteup) {
+        const resultDiv = document.getElementById('writeup-result');
+        const textDiv = document.getElementById('writeup-text');
+        const btn = document.getElementById('generate-writeup-btn');
+        if (resultDiv && textDiv) {
+            textDiv.innerHTML = mdToHtml(savedWriteup);
+            textDiv.dataset.raw = savedWriteup;
+            resultDiv.style.display = 'block';
+            if (btn) btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Regenerate Write-up';
+        }
+    }
 }
 
 /**
@@ -640,6 +669,75 @@ function renderDayItems(items, dayIndex) {
 }
 
 /**
+ * Render tips list
+ */
+function renderTips() {
+    const container = document.getElementById('tips-list');
+    if (!container) return;
+
+    if (!currentTrip.tips || currentTrip.tips.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = currentTrip.tips.map((tip, i) => `
+        <div class="tip-item">
+            <span class="tip-text" ondblclick="editTip(${i})">${escapeHtml(tip)}</span>
+            <button class="tip-edit" onclick="editTip(${i})" title="Edit"><i class="fas fa-pen"></i></button>
+            <button class="tip-delete" onclick="deleteTip(${i})" title="Remove"><i class="fas fa-times"></i></button>
+        </div>
+    `).join('');
+}
+
+function addTip() {
+    const input = document.getElementById('tip-input');
+    const text = input.value.trim();
+    if (!text) return;
+    if (!currentTrip.tips) currentTrip.tips = [];
+    currentTrip.tips.push(text);
+    input.value = '';
+    renderTips();
+    triggerAutoSave();
+}
+
+function editTip(index) {
+    const container = document.getElementById('tips-list');
+    const items = container.querySelectorAll('.tip-item');
+    const item = items[index];
+    if (!item) return;
+
+    const currentText = currentTrip.tips[index];
+    item.innerHTML = `
+        <textarea class="tip-edit-input" rows="3">${escapeHtml(currentText)}</textarea>
+        <button class="btn-add-tip" onclick="saveTip(${index})"><i class="fas fa-check"></i></button>
+    `;
+    const input = item.querySelector('textarea');
+    input.focus();
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') renderTips();
+    });
+}
+
+function saveTip(index) {
+    const input = document.querySelector('textarea.tip-edit-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (text) {
+        currentTrip.tips[index] = text;
+    } else {
+        currentTrip.tips.splice(index, 1);
+    }
+    renderTips();
+    triggerAutoSave();
+}
+
+function deleteTip(index) {
+    currentTrip.tips.splice(index, 1);
+    renderTips();
+    triggerAutoSave();
+}
+
+/**
  * Render ideas pile
  */
 function renderIdeas() {
@@ -654,30 +752,54 @@ function renderIdeas() {
         return;
     }
 
-    container.innerHTML = currentTrip.ideas.map((item, index) => {
-        const iconClass = getItemIcon(item);
-        const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
+    // Group ideas by category
+    const groups = {};
+    currentTrip.ideas.forEach((item, index) => {
+        const cat = item.category || 'other';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push({item, index});
+    });
 
-        return `
-            <div class="item-card ${item.category || 'other'}" data-idea-index="${index}" draggable="true">
-                <div class="item-icon ${item.category || 'other'}">
-                    <i class="fas ${iconClass}"></i>
+    const categoryLabels = {
+        meal: 'Restaurants', activity: 'Activities', attraction: 'Attractions',
+        hotel: 'Hotels', flight: 'Flights', transport: 'Transport', other: 'Other'
+    };
+
+    let html = '';
+    for (const [cat, entries] of Object.entries(groups)) {
+        const label = categoryLabels[cat] || cat;
+        const icon = CATEGORY_ICONS[cat] || 'fa-map-marker-alt';
+        html += `<div class="ideas-group-header"><i class="fas ${icon}"></i> ${label} (${entries.length})</div>`;
+
+        for (const {item, index} of entries) {
+            const iconClass = getItemIcon(item);
+            const websiteStr = item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" onclick="event.stopPropagation()" title="Visit website"><i class="fas fa-external-link-alt"></i></a>` : '';
+            const mapsStr = item.google_maps_link ? `<a href="${escapeHtml(item.google_maps_link)}" target="_blank" onclick="event.stopPropagation()" title="Google Maps"><i class="fas fa-map-marker-alt"></i></a>` : '';
+
+            html += `
+                <div class="item-card ${cat}" data-idea-index="${index}" draggable="true">
+                    <div class="item-icon ${cat}">
+                        <i class="fas ${iconClass}"></i>
+                    </div>
+                    <div class="item-content">
+                        <div class="item-title">${escapeHtml(item.title)} ${websiteStr} ${mapsStr}</div>
+                        ${item.location ? `<div class="item-location"><i class="fas fa-map-pin"></i> ${escapeHtml(item.location)}</div>` : ''}
+                        ${item.notes ? `<div class="item-meta">${escapeHtml(item.notes.substring(0, 200))}</div>` : ''}
+                    </div>
+                    <div class="item-actions">
+                        <button onclick="editIdea(${index})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteIdea(${index})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="item-content">
-                    <div class="item-title">${escapeHtml(item.title)} ${websiteStr}</div>
-                    ${item.notes ? `<div class="item-meta">${escapeHtml(item.notes.substring(0, 50))}...</div>` : ''}
-                </div>
-                <div class="item-actions">
-                    <button onclick="editIdea(${index})" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="deleteIdea(${index})" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }
+    }
+
+    container.innerHTML = html;
 
     // Set up drag handlers after rendering
     setupIdeaDragHandlers();

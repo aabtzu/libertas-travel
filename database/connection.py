@@ -60,6 +60,12 @@ _DDL_PG_ALTER_TRIPS_ADD_IS_DRAFT = (
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_draft BOOLEAN DEFAULT FALSE"
 )
 
+_DDL_PG_ALTER_TRIPS_ADD_TRIP_TYPE = (
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS trip_type VARCHAR(20) DEFAULT 'itinerary'"
+)
+
+_DDL_PG_ALTER_USERS_ADD_PROFILE = "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB"
+
 _DDL_PG_CREATE_INDEX_TRIPS_USER_ID = (
     "CREATE INDEX IF NOT EXISTS idx_trips_user_id ON trips(user_id)"
 )
@@ -95,6 +101,10 @@ _DDL_SQLITE_CREATE_TRIPS = """
 
 _DDL_SQLITE_ALTER_TRIPS_ADD_IS_PUBLIC = "ALTER TABLE trips ADD COLUMN is_public INTEGER DEFAULT 0"
 _DDL_SQLITE_ALTER_TRIPS_ADD_IS_DRAFT = "ALTER TABLE trips ADD COLUMN is_draft INTEGER DEFAULT 0"
+_DDL_SQLITE_ALTER_TRIPS_ADD_TRIP_TYPE = (
+    "ALTER TABLE trips ADD COLUMN trip_type TEXT DEFAULT 'itinerary'"
+)
+_DDL_SQLITE_ALTER_USERS_ADD_PROFILE = "ALTER TABLE users ADD COLUMN profile TEXT"
 
 _DDL_SQLITE_CREATE_INDEX_TRIPS_USER_ID = (
     "CREATE INDEX IF NOT EXISTS idx_trips_user_id ON trips(user_id)"
@@ -205,6 +215,8 @@ def init_db():
             cursor.execute(_DDL_PG_CREATE_TRIPS)
             cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_IS_PUBLIC)
             cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_IS_DRAFT)
+            cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_TRIP_TYPE)
+            cursor.execute(_DDL_PG_ALTER_USERS_ADD_PROFILE)
             cursor.execute(_DDL_PG_CREATE_INDEX_TRIPS_USER_ID)
         else:
             cursor.execute(_DDL_SQLITE_CREATE_USERS)
@@ -217,6 +229,16 @@ def init_db():
 
             try:
                 cursor.execute(_DDL_SQLITE_ALTER_TRIPS_ADD_IS_DRAFT)
+            except Exception:
+                pass  # Column already exists
+
+            try:
+                cursor.execute(_DDL_SQLITE_ALTER_TRIPS_ADD_TRIP_TYPE)
+            except Exception:
+                pass  # Column already exists
+
+            try:
+                cursor.execute(_DDL_SQLITE_ALTER_USERS_ADD_PROFILE)
             except Exception:
                 pass  # Column already exists
 

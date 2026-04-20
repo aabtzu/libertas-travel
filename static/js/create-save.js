@@ -27,6 +27,7 @@ async function performAutoSave() {
                 itinerary_data: {
                     days: currentTrip.days,
                     ideas: currentTrip.ideas,
+                    tips: currentTrip.tips,
                     chatHistory: currentTrip.chatHistory
                 }
             })
@@ -136,6 +137,178 @@ function formatDate(dateStr) {
         month: 'short',
         day: 'numeric'
     });
+}
+
+// ==================== Fill Missing Links ====================
+
+async function fillMissingLinks() {
+    if (!currentTrip.link) return;
+
+    const btn = document.getElementById('fill-links-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finding links...';
+
+    try {
+        await performAutoSave();
+
+        const res = await fetch(`/api/trips/${currentTrip.link}/fill-links`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Reload trip data to get updated links
+            const tripRes = await fetch(`/api/trips/${currentTrip.link}/data`);
+            const tripData = await tripRes.json();
+            if (tripData.trip?.itinerary_data) {
+                currentTrip.ideas = tripData.trip.itinerary_data.ideas || [];
+                currentTrip.days = tripData.trip.itinerary_data.days || [];
+                renderDays();
+                renderIdeas();
+            }
+            btn.innerHTML = `<i class="fas fa-check"></i> Found ${data.websites_added} websites, ${data.maps_added} maps`;
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-link"></i> Fill Missing Links'; }, 3000);
+        } else {
+            btn.innerHTML = '<i class="fas fa-link"></i> Fill Missing Links';
+            LibertasModal.alert(data.error || 'Failed to fill links');
+        }
+    } catch (e) {
+        console.error('Fill links error:', e);
+        btn.innerHTML = '<i class="fas fa-link"></i> Fill Missing Links';
+    }
+    btn.disabled = false;
+}
+
+// ==================== Write-up ====================
+
+let _writeupAbortController = null;
+
+async function generateWriteup() {
+    if (!currentTrip.link) return;
+
+    const btn = document.getElementById('generate-writeup-btn');
+    const resultDiv = document.getElementById('writeup-result');
+    const textDiv = document.getElementById('writeup-text');
+
+    // If already generating, cancel it
+    if (_writeupAbortController) {
+        _writeupAbortController.abort();
+        _writeupAbortController = null;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
+        return;
+    }
+
+    btn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+
+    try {
+        await performAutoSave();
+
+        _writeupAbortController = new AbortController();
+        const res = await fetch(`/api/trips/${currentTrip.link}/writeup`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            signal: _writeupAbortController.signal,
+        });
+        _writeupAbortController = null;
+        const data = await res.json();
+
+        if (data.success && data.writeup) {
+            textDiv.innerHTML = mdToHtml(data.writeup);
+            textDiv.dataset.raw = data.writeup;
+            resultDiv.style.display = 'block';
+            btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Regenerate Write-up';
+            // Auto-save the write-up so /w/ link serves it without regenerating
+            saveWriteup(data.writeup);
+        } else {
+            LibertasModal.alert(data.error || 'Failed to generate write-up');
+            btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
+        }
+    } catch (e) {
+        _writeupAbortController = null;
+        if (e.name === 'AbortError') {
+            // User cancelled — already handled above
+            return;
+        }
+        console.error('Write-up error:', e);
+        btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
+    }
+}
+
+function copyWriteup() {
+    const text = document.getElementById('writeup-text')?.dataset.raw || document.getElementById('writeup-text')?.textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-writeup-btn');
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 1500);
+    });
+}
+
+// ==================== Write-up Edit & Save ====================
+
+async function saveWriteup(text) {
+    if (!currentTrip.link) return;
+    // Save write-up into itinerary_data
+    await fetch(`/api/trips/${currentTrip.link}/save`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            title: currentTrip.title,
+            itinerary_data: {
+                days: currentTrip.days,
+                ideas: currentTrip.ideas,
+                tips: currentTrip.tips,
+                chatHistory: currentTrip.chatHistory,
+                writeup: text,
+            }
+        })
+    });
+}
+
+function editWriteup() {
+    const textDiv = document.getElementById('writeup-text');
+    const raw = textDiv.dataset.raw || textDiv.textContent;
+
+    // Replace rendered HTML with editable textarea
+    const editArea = document.createElement('textarea');
+    editArea.id = 'writeup-edit-area';
+    editArea.className = 'writeup-edit-area';
+    editArea.value = raw;
+    editArea.rows = Math.max(10, raw.split('\n').length + 2);
+    textDiv.replaceWith(editArea);
+
+    // Change buttons
+    const editBtn = document.getElementById('edit-writeup-btn');
+    editBtn.innerHTML = '<i class="fas fa-save"></i>';
+    editBtn.title = 'Save edits';
+    editBtn.onclick = saveWriteupEdits;
+}
+
+async function saveWriteupEdits() {
+    const editArea = document.getElementById('writeup-edit-area');
+    if (!editArea) return;
+
+    const newText = editArea.value.trim();
+
+    // Replace textarea with rendered view
+    const textDiv = document.createElement('div');
+    textDiv.className = 'writeup-text';
+    textDiv.id = 'writeup-text';
+    textDiv.innerHTML = mdToHtml(newText);
+    textDiv.dataset.raw = newText;
+    editArea.replaceWith(textDiv);
+
+    // Restore edit button
+    const editBtn = document.getElementById('edit-writeup-btn');
+    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    editBtn.title = 'Edit write-up';
+    editBtn.onclick = editWriteup;
+
+    // Save to server
+    await saveWriteup(newText);
+    updateSaveStatus('saved');
 }
 
 // escapeHtml() and formatTime12Hour() — defined in main.js

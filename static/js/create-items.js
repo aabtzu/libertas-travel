@@ -207,6 +207,7 @@ function editItem(dayIndex, itemIndex) {
     document.getElementById('item-end-date').value = item.end_date || '';
     document.getElementById('item-location').value = item.location || '';
     document.getElementById('item-website').value = item.website || '';
+    document.getElementById('item-maps-link').value = item.google_maps_link || '';
     document.getElementById('item-notes').value = item.notes || '';
     document.getElementById('item-exclude-map').checked = item.is_home_location || false;
     document.getElementById('item-target-day').value = dayIndex;
@@ -214,7 +215,7 @@ function editItem(dayIndex, itemIndex) {
     newForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // Update item with new values
+        // Update item — preserve coordinates from original
         currentTrip.days[dayIndex].items[itemIndex] = {
             title: document.getElementById('item-title').value.trim(),
             category: document.getElementById('item-category').value,
@@ -223,8 +224,11 @@ function editItem(dayIndex, itemIndex) {
             end_date: document.getElementById('item-end-date').value || null,
             location: document.getElementById('item-location').value.trim() || null,
             website: document.getElementById('item-website').value.trim() || null,
+            google_maps_link: document.getElementById('item-maps-link').value.trim() || null,
             notes: document.getElementById('item-notes').value.trim() || null,
-            is_home_location: document.getElementById('item-exclude-map').checked
+            is_home_location: document.getElementById('item-exclude-map').checked,
+            latitude: item.latitude || null,
+            longitude: item.longitude || null,
         };
 
         hideAddItemModal();
@@ -285,6 +289,7 @@ function editIdea(ideaIndex) {
     document.getElementById('item-end-date').value = item.end_date || '';
     document.getElementById('item-location').value = item.location || '';
     document.getElementById('item-website').value = item.website || '';
+    document.getElementById('item-maps-link').value = item.google_maps_link || '';
     document.getElementById('item-notes').value = item.notes || '';
     document.getElementById('item-exclude-map').checked = item.is_home_location || false;
     document.getElementById('item-target-day').value = 'ideas';
@@ -292,7 +297,7 @@ function editIdea(ideaIndex) {
     newForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // Update idea with new values
+        // Update idea — preserve coordinates from original item
         currentTrip.ideas[ideaIndex] = {
             title: document.getElementById('item-title').value.trim(),
             category: document.getElementById('item-category').value,
@@ -301,8 +306,11 @@ function editIdea(ideaIndex) {
             end_date: document.getElementById('item-end-date').value || null,
             location: document.getElementById('item-location').value.trim() || null,
             website: document.getElementById('item-website').value.trim() || null,
+            google_maps_link: document.getElementById('item-maps-link').value.trim() || null,
             notes: document.getElementById('item-notes').value.trim() || null,
-            is_home_location: document.getElementById('item-exclude-map').checked
+            is_home_location: document.getElementById('item-exclude-map').checked,
+            latitude: item.latitude || null,
+            longitude: item.longitude || null,
         };
 
         hideAddItemModal();

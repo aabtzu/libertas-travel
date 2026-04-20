@@ -44,6 +44,10 @@ def load_venues() -> list[dict]:
             "description": v.get("description") or "",
             "notes": v.get("notes") or "",
             "source": v.get("source") or "curated",
+            "latitude": v.get("latitude"),
+            "longitude": v.get("longitude"),
+            "website": v.get("website") or "",
+            "google_maps_link": v.get("google_maps_link") or "",
         }
         for v in venues
     ]
@@ -104,12 +108,14 @@ Return venues in a JSON block with source tags:
 ```json
 {{"venues": [
     {{"name": "Roscioli", "source": "CURATED", "city": "Rome"}},
-    {{"name": "Some AI Pick", "source": "AI_PICK", "city": "Rome", "venue_type": "Restaurant", "notes": "Brief description"}}
+    {{"name": "Some AI Pick", "source": "AI_PICK", "city": "Rome", "state": "Lazio", "country": "Italy", "venue_type": "Restaurant", "notes": "Brief description", "website": "https://example.com"}}
 ]}}
 ```
 
 - Use "CURATED" for venues from the database (name must match exactly). Always include the city so the correct location is matched.
-- Use "AI_PICK" for recommendations not in the database (include city, venue_type, notes)
+- Use "AI_PICK" for recommendations not in the database. Always include: city, state/region, country, venue_type, notes.
+- For AI_PICK: include "website" with the venue's actual website URL if you know it. Do NOT make up URLs.
+- For US venues: always include state abbreviation (e.g. "NH", "CA"). This prevents geocoding to the wrong state.
 - Include collection field if relevant (e.g., "Eater 38 Rome" for web-fetched venues)
 
 ## IMPORTANT RULES
@@ -294,8 +300,10 @@ Return venues in a JSON block with source tags:
                             "source": "AI_PICK",
                             "venue_type": extra.get("venue_type", "Restaurant"),
                             "city": extra.get("city", ""),
+                            "state": extra.get("state", ""),
                             "country": extra.get("country", ""),
                             "notes": extra.get("notes", ""),
+                            "website": extra.get("website", ""),
                             "collection": web_fetch_context.get("title", "")[:50]
                             if web_fetch_context
                             else "",

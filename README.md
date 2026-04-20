@@ -12,6 +12,8 @@ Named after the Roman goddess of liberty, alongside Abeona (goddess of outward j
 - **Multiple views**: List, Grid, Calendar, and interactive Map
 - **Edit trips** inline with drag-and-drop reordering
 - **Share trips** with other users or make them public
+- **Recommend places** — build sharable recommendation collections from Explore, share as structured view or AI-generated narrative
+- **AI write-ups** — generate a readable narrative from your trip ideas, with links and maps
 - **Explore destinations** — discover restaurants, hotels, and attractions via AI chat
 - **Background geocoding** — locations geocoded asynchronously with Nominatim
 
@@ -41,7 +43,7 @@ libertas/
 ├── geocoding_worker.py       # Background geocoding service
 ├── agents/
 │   ├── auth/                 # Login, register, logout routes
-│   ├── trips/                # Trip CRUD, export, ICS, geocoding routes
+│   ├── trips/                # Trip CRUD, export, ICS, geocoding, write-up, link resolver
 │   ├── create/               # Trip creation chat, file upload routes
 │   ├── explore/              # Venue discovery routes and handler
 │   ├── pages/                # HTML page routes (home, trips, create, etc.)
@@ -76,7 +78,7 @@ libertas/
 - **Frontend**: Vanilla JavaScript, CSS3
 - **Deployment**: Render.com (gunicorn)
 
-See [`docs/fiat-lux-agents.md`](docs/fiat-lux-agents.md) for details on how the AI layer is structured.
+See [`docs/fiat-lux-agents.md`](docs/fiat-lux-agents.md) for how the AI layer is structured, and [`docs/recommendations.md`](docs/recommendations.md) for the trip recommendations and sharing system.
 
 ## Running Tests
 
