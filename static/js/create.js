@@ -389,6 +389,7 @@ async function loadTrip(link) {
                 days: itineraryData?.days || [],
                 ideas: itineraryData?.ideas || [],
                 tips: itineraryData?.tips || [],
+                writeup: itineraryData?.writeup || '',
                 chatHistory: itineraryData?.chatHistory || []
             };
 
@@ -524,8 +525,8 @@ function updateEditorUI() {
     renderIdeas();
     renderTips();
 
-    // Load saved write-up if it exists
-    const savedWriteup = itineraryData?.writeup;
+    // Load saved write-up if it exists (stored on currentTrip by loadTrip)
+    const savedWriteup = currentTrip.writeup;
     if (savedWriteup) {
         const resultDiv = document.getElementById('writeup-result');
         const textDiv = document.getElementById('writeup-text');
