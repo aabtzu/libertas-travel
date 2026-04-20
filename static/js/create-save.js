@@ -182,6 +182,8 @@ async function fillMissingLinks() {
 
 // ==================== Write-up ====================
 
+let _writeupAbortController = null;
+
 async function generateWriteup() {
     if (!currentTrip.link) return;
 
@@ -189,17 +191,27 @@ async function generateWriteup() {
     const resultDiv = document.getElementById('writeup-result');
     const textDiv = document.getElementById('writeup-text');
 
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    // If already generating, cancel it
+    if (_writeupAbortController) {
+        _writeupAbortController.abort();
+        _writeupAbortController = null;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
+        return;
+    }
+
+    btn.innerHTML = '<i class="fas fa-times"></i> Cancel';
 
     try {
-        // Save first so the server has latest data
         await performAutoSave();
 
+        _writeupAbortController = new AbortController();
         const res = await fetch(`/api/trips/${currentTrip.link}/writeup`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            signal: _writeupAbortController.signal,
         });
+        _writeupAbortController = null;
         const data = await res.json();
 
         if (data.success && data.writeup) {
@@ -212,11 +224,14 @@ async function generateWriteup() {
             btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
         }
     } catch (e) {
+        _writeupAbortController = null;
+        if (e.name === 'AbortError') {
+            // User cancelled — already handled above
+            return;
+        }
         console.error('Write-up error:', e);
-        LibertasModal.alert('Failed to generate write-up');
         btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
     }
-    btn.disabled = false;
 }
 
 function copyWriteup() {
