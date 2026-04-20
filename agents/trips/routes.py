@@ -528,6 +528,7 @@ def save_user_profile():
     style_profile = data.get("style_profile")
     writing_samples = data.get("writing_samples", "")
     samples_preview = data.get("samples_preview", "")
+    user_notes = data.get("user_notes", "")
 
     if not style_profile:
         return json_err("No profile data provided")
@@ -537,6 +538,7 @@ def save_user_profile():
     if writing_samples:
         existing_profile["writing_samples"] = writing_samples
     existing_profile["samples_preview"] = samples_preview
+    existing_profile["user_notes"] = user_notes
     db.set_user_profile(g.user_id, existing_profile)
 
     return json_ok({"success": True})

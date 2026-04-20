@@ -33,6 +33,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
         else style_profile.get("quirks", "")
     )
     rules = _esc(style_profile.get("rules", ""))
+    user_notes = _esc(profile_data.get("user_notes", ""))
     has_profile = "true" if style_profile else "false"
 
     return f"""<!DOCTYPE html>
@@ -221,7 +222,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
         <div class="profile-section">
             <h2><i class="fas fa-sticky-note"></i> Notes for AI</h2>
             <div class="field-group">
-                <textarea id="user-notes" rows="3" placeholder="Anything else the AI should know about your preferences — dietary restrictions, travel style, etc."></textarea>
+                <textarea id="user-notes" rows="3" placeholder="Anything else the AI should know about your preferences — dietary restrictions, travel style, etc.">{user_notes}</textarea>
                 <div class="field-hint">Free-form notes injected into write-up and recommendation context</div>
             </div>
         </div>
@@ -295,7 +296,12 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                 const res = await fetch('/api/user/save-profile', {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{style_profile: profile, writing_samples: samples, samples_preview: samples.substring(0, 200)}}),
+                    body: JSON.stringify({{
+                        style_profile: profile,
+                        writing_samples: samples,
+                        samples_preview: samples.substring(0, 200),
+                        user_notes: document.getElementById('user-notes').value.trim(),
+                    }}),
                 }});
                 const data = await res.json();
                 if (data.success) {{
