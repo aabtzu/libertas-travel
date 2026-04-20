@@ -89,7 +89,9 @@ def generate_writeup(
         style_profile=style_profile,
         style_template="nyt_36_hours",
         instructions="Include the recommender's personal notes — those are the good stuff.",
-        writing_samples=writing_samples,
+        # Don't pass writing samples — they can conflict with rules
+        # (e.g. casual emails naturally have wrap-up phrases the rules prohibit).
+        # The style profile + rules are more controllable.
     )
 
 
