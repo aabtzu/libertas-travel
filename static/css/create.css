@@ -1010,6 +1010,19 @@
     overflow-y: auto;
 }
 
+.writeup-edit-area {
+    width: 100%;
+    padding: 14px;
+    font-size: 0.9rem;
+    color: #333;
+    line-height: 1.7;
+    font-family: inherit;
+    border: 1px solid #667eea;
+    border-radius: 0 0 8px 8px;
+    outline: none;
+    resize: vertical;
+}
+
 .btn-add-idea {
     width: 100%;
     padding: 10px;

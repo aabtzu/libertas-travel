@@ -523,6 +523,20 @@ function updateEditorUI() {
     renderDays();
     renderIdeas();
     renderTips();
+
+    // Load saved write-up if it exists
+    const savedWriteup = itineraryData?.writeup;
+    if (savedWriteup) {
+        const resultDiv = document.getElementById('writeup-result');
+        const textDiv = document.getElementById('writeup-text');
+        const btn = document.getElementById('generate-writeup-btn');
+        if (resultDiv && textDiv) {
+            textDiv.innerHTML = mdToHtml(savedWriteup);
+            textDiv.dataset.raw = savedWriteup;
+            resultDiv.style.display = 'block';
+            if (btn) btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Regenerate Write-up';
+        }
+    }
 }
 
 /**

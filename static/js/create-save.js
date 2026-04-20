@@ -219,6 +219,8 @@ async function generateWriteup() {
             textDiv.dataset.raw = data.writeup;
             resultDiv.style.display = 'block';
             btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Regenerate Write-up';
+            // Auto-save the write-up so /w/ link serves it without regenerating
+            saveWriteup(data.writeup);
         } else {
             LibertasModal.alert(data.error || 'Failed to generate write-up');
             btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
@@ -242,6 +244,71 @@ function copyWriteup() {
         btn.innerHTML = '<i class="fas fa-check"></i>';
         setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 1500);
     });
+}
+
+// ==================== Write-up Edit & Save ====================
+
+async function saveWriteup(text) {
+    if (!currentTrip.link) return;
+    // Save write-up into itinerary_data
+    await fetch(`/api/trips/${currentTrip.link}/save`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            title: currentTrip.title,
+            itinerary_data: {
+                days: currentTrip.days,
+                ideas: currentTrip.ideas,
+                tips: currentTrip.tips,
+                chatHistory: currentTrip.chatHistory,
+                writeup: text,
+            }
+        })
+    });
+}
+
+function editWriteup() {
+    const textDiv = document.getElementById('writeup-text');
+    const raw = textDiv.dataset.raw || textDiv.textContent;
+
+    // Replace rendered HTML with editable textarea
+    const editArea = document.createElement('textarea');
+    editArea.id = 'writeup-edit-area';
+    editArea.className = 'writeup-edit-area';
+    editArea.value = raw;
+    editArea.rows = Math.max(10, raw.split('\n').length + 2);
+    textDiv.replaceWith(editArea);
+
+    // Change buttons
+    const editBtn = document.getElementById('edit-writeup-btn');
+    editBtn.innerHTML = '<i class="fas fa-save"></i>';
+    editBtn.title = 'Save edits';
+    editBtn.onclick = saveWriteupEdits;
+}
+
+async function saveWriteupEdits() {
+    const editArea = document.getElementById('writeup-edit-area');
+    if (!editArea) return;
+
+    const newText = editArea.value.trim();
+
+    // Replace textarea with rendered view
+    const textDiv = document.createElement('div');
+    textDiv.className = 'writeup-text';
+    textDiv.id = 'writeup-text';
+    textDiv.innerHTML = mdToHtml(newText);
+    textDiv.dataset.raw = newText;
+    editArea.replaceWith(textDiv);
+
+    // Restore edit button
+    const editBtn = document.getElementById('edit-writeup-btn');
+    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    editBtn.title = 'Edit write-up';
+    editBtn.onclick = editWriteup;
+
+    // Save to server
+    await saveWriteup(newText);
+    updateSaveStatus('saved');
 }
 
 // escapeHtml() and formatTime12Hour() — defined in main.js
