@@ -47,6 +47,29 @@ function switchTripsView(view) {
     });
     document.getElementById(`${view}-view`).classList.add('active');
 
+    // The archived section sits outside the view tabs but should follow the
+    // active view's layout. Flip its inner container between .trips-grid
+    // (card layout) and .trips-list (horizontal-row layout) so archived
+    // trips render the same way as active trips.
+    const archivedInner = document.querySelector('#archived-section > .trips-grid, #archived-section > .trips-list');
+    if (archivedInner) {
+        archivedInner.classList.remove('trips-grid', 'trips-list');
+        archivedInner.classList.add(view === 'list' ? 'trips-list' : 'trips-grid');
+    }
+    // In map view the archived section is irrelevant — the map already
+    // shows all markers including archived ones (per design).
+    const archivedSection = document.getElementById('archived-section');
+    const archivedToggle = document.getElementById('show-archived-btn');
+    if (archivedSection && archivedToggle) {
+        if (view === 'map') {
+            archivedSection.style.display = 'none';
+            archivedToggle.style.display = 'none';
+        } else {
+            archivedSection.style.display = '';
+            archivedToggle.style.display = '';
+        }
+    }
+
     // Initialize specific views if needed
     if (view === 'list') {
         initListView();
