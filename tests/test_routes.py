@@ -30,13 +30,17 @@ class TestTripsListRoute:
 
 class TestTripCRUD:
     def test_create_trip(self, client):
+        import database as db
+
         resp = client.post(
             "/api/trips/create",
             json={"title": "Test Trip", "days": 3},
         )
         assert resp.status_code == 200
         data = resp.get_json()
-        assert data.get("trip", {}).get("link") or data.get("link")
+        link = data.get("trip", {}).get("link") or data.get("link")
+        assert link
+        db.delete_trip(1, link)
 
     def test_create_trip_missing_title(self, client):
         resp = client.post("/api/trips/create", json={"days": 3})
@@ -73,32 +77,47 @@ class TestAddIdeaToTrip:
         return data.get("trip", {}).get("link") or data.get("link", "")
 
     def test_add_idea_success(self, client):
+        import database as db
+
         link = self._create_trip(client)
-        resp = client.post(
-            f"/api/trips/{link}/items",
-            json={
-                "item": {
-                    "title": "Cafe La Trova",
-                    "category": "meal",
-                    "location": "Miami, FL",
-                }
-            },
-        )
-        assert resp.status_code == 200
-        assert resp.get_json().get("success") is True
+        try:
+            resp = client.post(
+                f"/api/trips/{link}/items",
+                json={
+                    "item": {
+                        "title": "Cafe La Trova",
+                        "category": "meal",
+                        "location": "Miami, FL",
+                    }
+                },
+            )
+            assert resp.status_code == 200
+            assert resp.get_json().get("success") is True
+        finally:
+            db.delete_trip(1, link)
 
     def test_add_idea_no_item(self, client):
+        import database as db
+
         link = self._create_trip(client)
-        resp = client.post(f"/api/trips/{link}/items", json={})
-        assert resp.status_code == 400
+        try:
+            resp = client.post(f"/api/trips/{link}/items", json={})
+            assert resp.status_code == 400
+        finally:
+            db.delete_trip(1, link)
 
     def test_add_idea_no_title(self, client):
+        import database as db
+
         link = self._create_trip(client)
-        resp = client.post(
-            f"/api/trips/{link}/items",
-            json={"item": {"category": "meal"}},
-        )
-        assert resp.status_code == 400
+        try:
+            resp = client.post(
+                f"/api/trips/{link}/items",
+                json={"item": {"category": "meal"}},
+            )
+            assert resp.status_code == 400
+        finally:
+            db.delete_trip(1, link)
 
 
 # ---------------------------------------------------------------------------

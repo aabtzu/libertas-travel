@@ -14,10 +14,15 @@ def app():
     """Create a Flask app configured for testing (AUTH_DISABLED, SQLite)."""
     os.environ["AUTH_DISABLED"] = "true"
     os.environ["SECRET_KEY"] = "test-secret"
-
-    from app import create_app
+    # Routes that render trips construct an LLM client (ItineraryWebView →
+    # ItinerarySummarizer). Unit tests must not require a live key — set a
+    # dummy if one is missing or empty. CI does the same; see 2eb312a.
+    # (setdefault won't help: the parent shell may export an empty string.)
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        os.environ["ANTHROPIC_API_KEY"] = "test-dummy-key"
 
     import database as db
+    from app import create_app
 
     db.init_db()
 

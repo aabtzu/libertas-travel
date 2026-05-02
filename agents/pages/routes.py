@@ -150,6 +150,15 @@ def trip_html(trip_name: str):
     if not itinerary_data:
         return "Trip has no itinerary data", 404
 
+    # Recommendation trips (ideas-only, no days) render via the recommendation view.
+    # The day-by-day view can't show them and its map-status polling would infinite-loop.
+    if trip.get("trip_type") == "recommendation":
+        return _html(
+            generate_recommendation_page(
+                trip.get("title", "Recommendations"), itinerary_data, trip_link=link
+            )
+        )
+
     from agents.itinerary.web_view import ItineraryWebView
     from geocoding_worker import _convert_itinerary_data_to_worker_format, deserialize_itinerary
 
@@ -246,8 +255,12 @@ def writeup_view(rec_name: str):
                 style_profile=style_profile,
                 writing_samples=writing_samples,
             )
-        except Exception:
-            writeup_text = "Write-up generation failed. Please try again."
+        except Exception as e:
+            # Log the actual cause — silently swallowing made debugging painful
+            import traceback
+
+            traceback.print_exc()
+            writeup_text = f"Write-up generation failed: {e}"
 
     from agents.pages.recommendation_view import render_writeup_page
 
