@@ -78,6 +78,10 @@ function initListView() {
         const clone = card.cloneNode(true);
         container.appendChild(clone);
     });
+
+    // cloneNode copies the DOM but NOT event listeners. Action handlers
+    // are wired via document-level event delegation in upload.js, so clones
+    // pick them up automatically.
 }
 
 /**

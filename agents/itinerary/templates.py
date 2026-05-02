@@ -532,11 +532,13 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         </div>
 """
 
-    # Render archived section only if any archived trips exist
-    archived_section = ""
-    if archived_cards_list:
-        archived_section = f"""
-        <div class="archived-trips-section" id="archived-section" hidden>
+    # Always render the archived section + toggle, even when empty. JS needs
+    # somewhere to move cards into when the user clicks archive on a trip,
+    # and the toggle button needs to be present so it can show after the
+    # first archive happens. Both stay hidden until there's archived content.
+    archived_section_hidden_attr = "" if archived_cards_list else "hidden"
+    archived_section = f"""
+        <div class="archived-trips-section" id="archived-section" {archived_section_hidden_attr}>
             <div class="trips-header-row">
                 <h2><i class="fas fa-box-archive"></i> Archived Trips</h2>
             </div>
@@ -546,14 +548,15 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         </div>
 """
 
-    archived_toggle = ""
-    if archived_cards_list:
-        archived_toggle = (
-            '<button id="show-archived-btn" class="archived-toggle-btn" '
-            'onclick="toggleArchivedSection()">'
-            f'<i class="fas fa-box-archive"></i> Show archived ({len(archived_cards_list)})'
-            "</button>"
-        )
+    archived_toggle_hidden_attr = "" if archived_cards_list else 'hidden=""'
+    archived_count = len(archived_cards_list)
+    archived_toggle = (
+        f'<button id="show-archived-btn" class="archived-toggle-btn" '
+        f'onclick="toggleArchivedSection()" {archived_toggle_hidden_attr}>'
+        f'<i class="fas fa-box-archive"></i> '
+        f'<span class="archived-toggle-label">Show archived ({archived_count})</span>'
+        "</button>"
+    )
 
     template = get_template("trips.html")
     return template.format(

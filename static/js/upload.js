@@ -262,41 +262,47 @@ function promptForTripName(suggestedName, link) {
 }
 
 /**
- * Initialize trip card actions (edit, delete, copy)
+ * Initialize trip card actions (edit, delete, copy).
+ *
+ * Uses document-level event delegation so cards added later (e.g. clones in
+ * list view) get the same behavior without re-binding. Each handler stops
+ * propagation so the click doesn't navigate the parent <a> wrapper.
  */
 function initTripActions() {
-    // Edit buttons
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    document.addEventListener('click', (e) => {
+        // Edit
+        const editBtn = e.target.closest('.edit-btn');
+        if (editBtn) {
             e.preventDefault();
             e.stopPropagation();
-            editTrip(btn);
-        });
-    });
+            editTrip(editBtn);
+            return;
+        }
 
-    // Delete buttons
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        // Delete
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
             e.preventDefault();
             e.stopPropagation();
-            const link = btn.dataset.link;
-            const wrapper = btn.closest('.trip-card-wrapper');
+            const link = deleteBtn.dataset.link;
+            const wrapper = deleteBtn.closest('.trip-card-wrapper');
             const title = wrapper.querySelector('.trip-card-title')?.textContent || 'this trip';
-
-            LibertasModal.confirm(`Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`, { danger: true }).then(function(confirmed) {
+            LibertasModal.confirm(
+                `Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`,
+                { danger: true }
+            ).then(function(confirmed) {
                 if (confirmed) deleteTrip(link, wrapper);
             });
-        });
-    });
+            return;
+        }
 
-    // Copy buttons
-    document.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        // Copy
+        const copyBtn = e.target.closest('.copy-btn');
+        if (copyBtn) {
             e.preventDefault();
             e.stopPropagation();
-            const link = btn.dataset.link;
-            copyTrip(link);
-        });
+            copyTrip(copyBtn.dataset.link);
+        }
     });
 }
 
@@ -804,6 +810,27 @@ function toggleArchived(btn) {
                 activeGrid.appendChild(wrapper);
             }
 
+            // Update the "Show archived (N)" toggle button — show it once
+            // there's at least one archived trip, hide when count drops to 0.
+            const toggleBtn = document.getElementById('show-archived-btn');
+            const archivedCount = archivedGrid ? archivedGrid.querySelectorAll('.trip-card-wrapper').length : 0;
+            if (toggleBtn) {
+                if (archivedCount > 0) {
+                    toggleBtn.removeAttribute('hidden');
+                } else {
+                    toggleBtn.setAttribute('hidden', '');
+                    // Section also hides when nothing's archived
+                    if (archivedSection) archivedSection.setAttribute('hidden', '');
+                }
+                const label = toggleBtn.querySelector('.archived-toggle-label');
+                if (label) {
+                    const isExpanded = archivedSection && !archivedSection.hasAttribute('hidden');
+                    label.textContent = isExpanded
+                        ? 'Hide archived'
+                        : `Show archived (${archivedCount})`;
+                }
+            }
+
             showStatus('success', data.message);
         } else {
             showStatus('error', data.error || 'Failed to update archive state');
@@ -820,50 +847,49 @@ function toggleArchivedSection() {
     const btn = document.getElementById('show-archived-btn');
     if (!section || !btn) return;
 
+    const label = btn.querySelector('.archived-toggle-label');
     const isHidden = section.hasAttribute('hidden');
     if (isHidden) {
         section.removeAttribute('hidden');
-        btn.innerHTML = '<i class="fas fa-box-archive"></i> Hide archived';
+        if (label) label.textContent = 'Hide archived';
     } else {
         section.setAttribute('hidden', '');
-        // Restore count in label
         const count = section.querySelectorAll('.trip-card-wrapper').length;
-        btn.innerHTML = `<i class="fas fa-box-archive"></i> Show archived (${count})`;
+        if (label) label.textContent = `Show archived (${count})`;
     }
 }
 window.toggleArchivedSection = toggleArchivedSection;
 
 /**
- * Initialize share and public toggle actions
+ * Initialize share, public-toggle, and archive-toggle actions.
+ *
+ * Document-level delegation — works for cards rendered server-side AND for
+ * clones that the list view inserts later.
  */
 function initShareActions() {
-    // Share buttons
-    document.querySelectorAll('.share-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    document.addEventListener('click', (e) => {
+        const shareBtn = e.target.closest('.share-btn');
+        if (shareBtn) {
             e.preventDefault();
             e.stopPropagation();
-            const link = btn.dataset.link;
-            const title = btn.dataset.title;
-            openShareModal(link, title);
-        });
-    });
+            openShareModal(shareBtn.dataset.link, shareBtn.dataset.title);
+            return;
+        }
 
-    // Public toggle buttons
-    document.querySelectorAll('.public-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        const publicBtn = e.target.closest('.public-btn');
+        if (publicBtn) {
             e.preventDefault();
             e.stopPropagation();
-            togglePublic(btn);
-        });
-    });
+            togglePublic(publicBtn);
+            return;
+        }
 
-    // Archive toggle buttons
-    document.querySelectorAll('.archive-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        const archiveBtn = e.target.closest('.archive-btn');
+        if (archiveBtn) {
             e.preventDefault();
             e.stopPropagation();
-            toggleArchived(btn);
-        });
+            toggleArchived(archiveBtn);
+        }
     });
 
     // Close modal when clicking outside

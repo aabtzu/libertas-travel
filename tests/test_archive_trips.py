@@ -146,7 +146,10 @@ class TestTripsPageArchivedSection:
             db.delete_trip(1, active_link)
             db.delete_trip(1, archived_link)
 
-    def test_no_archived_section_when_nothing_archived(self, client):
+    def test_archived_section_always_rendered(self, client):
+        """The archived section + toggle are always rendered so JS has a
+        target when the user archives their first trip. Visibility (the
+        `hidden` attribute) is managed client-side based on count."""
         import database as db
 
         link = "archive_none_test.html"
@@ -154,7 +157,7 @@ class TestTripsPageArchivedSection:
         try:
             resp = client.get("/trips.html")
             body = resp.get_data(as_text=True)
-            assert 'id="archived-section"' not in body
-            assert "show-archived-btn" not in body
+            assert 'id="archived-section"' in body
+            assert 'id="show-archived-btn"' in body
         finally:
             db.delete_trip(1, link)
