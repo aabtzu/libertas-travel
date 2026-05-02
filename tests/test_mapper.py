@@ -250,10 +250,19 @@ class TestBuildFlightQueries:
         ItineraryMapper._iata_cache.clear()
 
     def test_iata_location_field_used_first(self):
-        ItineraryMapper._iata_cache["CDG"] = "Charles de Gaulle Airport, Paris, France"
+        # Stub the IATA resolver instead of poking _iata_cache directly — the
+        # cache key includes context (f"{iata}|{context}"), so seeding by
+        # bare code misses and the real resolver hits Claude (and 401s in CI).
+        from unittest.mock import patch
+
         mapper = ItineraryMapper()
         item = _make_item("UA 100 JFK → CDG", "CDG", category="flight")
-        queries = mapper._build_flight_queries(item, "CDG", "France")
+        with patch.object(
+            mapper,
+            "_resolve_iata_code",
+            return_value="Charles de Gaulle Airport, Paris, France",
+        ):
+            queries = mapper._build_flight_queries(item, "CDG", "France")
         assert any("Charles de Gaulle" in q for q in queries)
 
     def test_skip_word_iata_falls_through_to_city_queries(self):
