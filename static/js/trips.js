@@ -109,8 +109,11 @@ function initMapView() {
 async function loadTripMarkers() {
     if (!tripsMap) return;
 
-    // Get trip data from cards
-    const cards = document.querySelectorAll('#trips-container .trip-card-wrapper');
+    // Get trip data from cards — include archived trips on the map
+    // (per design: archive ≠ private; archived trips remain visible on the map view)
+    const cards = document.querySelectorAll(
+        '#trips-container .trip-card-wrapper, #archived-section .trip-card-wrapper'
+    );
     const trips = [];
 
     cards.forEach(card => {

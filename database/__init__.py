@@ -33,6 +33,7 @@ from database.trips import (  # noqa: F401
     get_trip_by_link,
     get_trip_owner,
     get_user_trips,
+    set_trip_archived,
     update_trip,
     update_trip_map_status,
 )

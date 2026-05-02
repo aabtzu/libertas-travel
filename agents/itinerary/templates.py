@@ -320,6 +320,7 @@ def generate_trip_card(
     index: int = 0,
     is_public: bool = False,
     is_draft: bool = False,
+    is_archived: bool = False,
     itinerary_data: str | dict | None = None,
     trip_type: str = "itinerary",
 ) -> str:
@@ -345,6 +346,16 @@ def generate_trip_card(
     )
     draft_class = " is-draft" if is_draft else ""
     card_link = f"/create.html?edit={link}" if is_draft else link
+
+    # Archive settings — archived trips are hidden from main grid by default
+    archived_badge = (
+        '<span class="archived-badge"><i class="fas fa-box-archive"></i> Archived</span>'
+        if is_archived
+        else ""
+    )
+    archived_class = " is-archived" if is_archived else ""
+    archived_btn_class = "active" if is_archived else ""
+    archived_title = "Unarchive trip" if is_archived else "Archive trip"
 
     # Generate category stats (icons with counts)
     category_counts = extract_category_counts(itinerary_data)
@@ -373,6 +384,11 @@ def generate_trip_card(
         draft_badge=draft_badge,
         draft_class=draft_class,
         is_draft="true" if is_draft else "false",
+        archived_badge=archived_badge,
+        archived_class=archived_class,
+        archived_btn_class=archived_btn_class,
+        archived_title=archived_title,
+        is_archived="true" if is_archived else "false",
         trip_type=trip_type,
         map_location=map_location,
     )
@@ -423,17 +439,21 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
     if public_trips is None:
         public_trips = []
 
-    trip_cards_list = []
+    active_cards_list = []
+    archived_cards_list = []
     for i, trip in enumerate(trips):
         try:
             # Ensure all required fields have defaults
             is_public = trip.get("is_public", False)
             is_draft = trip.get("is_draft", False)
+            is_archived = trip.get("is_archived", False)
             # Handle SQLite integer (1/0) vs PostgreSQL boolean
             if isinstance(is_public, int):
                 is_public = bool(is_public)
             if isinstance(is_draft, int):
                 is_draft = bool(is_draft)
+            if isinstance(is_archived, int):
+                is_archived = bool(is_archived)
 
             # Get date display - always format from start_date for consistency
             itinerary_data = trip.get("itinerary_data") or {}
@@ -455,14 +475,19 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
                 index=i,
                 is_public=is_public,
                 is_draft=is_draft,
+                is_archived=is_archived,
                 itinerary_data=trip.get("itinerary_data"),
                 trip_type=trip.get("trip_type", "itinerary"),
             )
-            trip_cards_list.append(card)
+            if is_archived:
+                archived_cards_list.append(card)
+            else:
+                active_cards_list.append(card)
         except Exception as e:
             print(f"Warning: Could not generate card for trip {trip}: {e}")
             continue
-    trip_cards = "\n".join(trip_cards_list)
+    trip_cards = "\n".join(active_cards_list)
+    archived_cards = "\n".join(archived_cards_list)
 
     # Generate public trips section if there are any
     public_trips_section = ""
@@ -507,9 +532,34 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         </div>
 """
 
+    # Render archived section only if any archived trips exist
+    archived_section = ""
+    if archived_cards_list:
+        archived_section = f"""
+        <div class="archived-trips-section" id="archived-section" hidden>
+            <div class="trips-header-row">
+                <h2><i class="fas fa-box-archive"></i> Archived Trips</h2>
+            </div>
+            <div class="trips-grid">
+{archived_cards}
+            </div>
+        </div>
+"""
+
+    archived_toggle = ""
+    if archived_cards_list:
+        archived_toggle = (
+            '<button id="show-archived-btn" class="archived-toggle-btn" '
+            'onclick="toggleArchivedSection()">'
+            f'<i class="fas fa-box-archive"></i> Show archived ({len(archived_cards_list)})'
+            "</button>"
+        )
+
     template = get_template("trips.html")
     return template.format(
         nav_html=get_nav_html("trips"),
         trip_cards=trip_cards,
         public_trips_section=public_trips_section,
+        archived_section=archived_section,
+        archived_toggle=archived_toggle,
     )

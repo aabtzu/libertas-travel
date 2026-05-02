@@ -10,11 +10,11 @@ from database.connection import USE_POSTGRES, get_db
 # --- SQL constants ---
 
 _SQL_PG_GET_USER_TRIPS = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data, trip_type
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data, trip_type, is_archived
     FROM trips WHERE user_id = %s ORDER BY created_at DESC
 """
 _SQL_SQLITE_GET_USER_TRIPS = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data, trip_type
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data, trip_type, is_archived
     FROM trips WHERE user_id = ? ORDER BY created_at DESC
 """
 
@@ -38,11 +38,11 @@ _SQL_SQLITE_ADD_TRIP = """
 """
 
 _SQL_PG_GET_TRIP_BY_LINK = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type, is_public
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type, is_public, is_archived
     FROM trips WHERE user_id = %s AND link = %s
 """
 _SQL_SQLITE_GET_TRIP_BY_LINK = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type, is_public
+    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type, is_public, is_archived
     FROM trips WHERE user_id = ? AND link = ?
 """
 
@@ -68,6 +68,15 @@ _SQL_SQLITE_DELETE_TRIP = "DELETE FROM trips WHERE user_id = ? AND link = ?"
 _SQL_PG_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = %s"
 _SQL_SQLITE_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = ?"
 
+_SQL_PG_SET_TRIP_ARCHIVED = """
+    UPDATE trips SET is_archived = %s
+    WHERE user_id = %s AND link = %s
+"""
+_SQL_SQLITE_SET_TRIP_ARCHIVED = """
+    UPDATE trips SET is_archived = ?
+    WHERE user_id = ? AND link = ?
+"""
+
 
 def get_user_trips(user_id: int) -> list[dict[str, Any]]:
     """Get all trips for a user."""
@@ -89,6 +98,7 @@ def get_user_trips(user_id: int) -> list[dict[str, Any]]:
                 "is_draft",
                 "itinerary_data",
                 "trip_type",
+                "is_archived",
             ]
             return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
         else:
@@ -168,6 +178,7 @@ def get_trip_by_link(user_id: int, link: str) -> dict[str, Any] | None:
                     "is_draft",
                     "trip_type",
                     "is_public",
+                    "is_archived",
                 ]
                 trip = dict(zip(columns, row, strict=False))
                 if trip["itinerary_data"]:
@@ -285,3 +296,15 @@ def get_trip_owner(link: str) -> int | None:
             cursor.execute(_SQL_SQLITE_GET_TRIP_OWNER, (link,))
         row = cursor.fetchone()
         return row[0] if row else None
+
+
+def set_trip_archived(user_id: int, link: str, is_archived: bool) -> bool:
+    """Set a trip's archived flag. Archive is independent of is_public —
+    an archived trip can still be public/recommendable."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_SET_TRIP_ARCHIVED, (is_archived, user_id, link))
+        else:
+            cursor.execute(_SQL_SQLITE_SET_TRIP_ARCHIVED, (is_archived, user_id, link))
+        return cursor.rowcount > 0

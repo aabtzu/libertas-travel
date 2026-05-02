@@ -801,6 +801,53 @@
     font-size: 0.6rem;
 }
 
+/* Archived badge — solid muted color, no gradient */
+.archived-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #757575;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 4;
+}
+.archived-badge i { font-size: 0.7rem; color: white; }
+
+/* Archive button active state mirrors public-btn active */
+.trip-action-btn.archive-btn.active {
+    background: #757575;
+    color: white;
+}
+.trip-action-btn.archive-btn.active:hover { background: #616161; }
+
+/* Archived cards rendered in their own section have a slightly muted look */
+.archived-trips-section .trip-card-wrapper { opacity: 0.85; }
+.archived-trips-section .trip-card-wrapper:hover { opacity: 1; }
+
+/* "Show archived" toggle button — solid color, matches design system */
+.archived-toggle-btn {
+    margin: 16px 0 8px;
+    padding: 8px 16px;
+    background: white;
+    color: #667eea;
+    border: 1px solid #667eea;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.archived-toggle-btn:hover {
+    background: #667eea;
+    color: white;
+}
+
 /* ==================== Share Modal ==================== */
 .modal {
     display: none;

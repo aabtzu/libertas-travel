@@ -415,6 +415,33 @@ def toggle_public():
         return json_err(str(e))
 
 
+@trips_bp.post("/api/toggle-archived")
+@require_auth
+def toggle_archived():
+    """Archive or un-archive a trip. Independent of is_public."""
+    data = request.get_json(silent=True) or {}
+    link = data.get("link", "").strip()
+    is_archived = data.get("isArchived", False)
+
+    if not link:
+        return json_err("No trip link provided")
+
+    try:
+        updated = db.set_trip_archived(g.user_id, link, is_archived)
+        if updated:
+            return json_ok(
+                {
+                    "success": True,
+                    "message": f"Trip {'archived' if is_archived else 'unarchived'}",
+                    "isArchived": is_archived,
+                }
+            )
+        return json_err("Trip not found")
+    except Exception as e:
+        traceback.print_exc()
+        return json_err(str(e))
+
+
 @trips_bp.post("/api/users")
 @require_auth
 def get_users():

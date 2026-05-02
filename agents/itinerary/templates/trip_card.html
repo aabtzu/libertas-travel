@@ -1,5 +1,5 @@
-            <div class="trip-card-wrapper{draft_class}" data-link="{link}" data-is-draft="{is_draft}" data-trip-type="{trip_type}" data-map-location="{map_location}">
-                {public_badge}{draft_badge}
+            <div class="trip-card-wrapper{draft_class}{archived_class}" data-link="{link}" data-is-draft="{is_draft}" data-is-archived="{is_archived}" data-trip-type="{trip_type}" data-map-location="{map_location}">
+                {public_badge}{draft_badge}{archived_badge}
                 <a href="{card_link}" class="trip-card">
                     <div class="trip-card-image" style="background: {color};">
                         <i class="fas fa-{icon}"></i>
@@ -24,6 +24,9 @@
                     </button>
                     <button class="trip-action-btn public-btn {public_class}" title="{public_title}" data-link="{link}" data-public="{is_public}">
                         <i class="fas fa-{public_icon}"></i>
+                    </button>
+                    <button class="trip-action-btn archive-btn {archived_btn_class}" title="{archived_title}" data-link="{link}" data-archived="{is_archived}">
+                        <i class="fas fa-box-archive"></i>
                     </button>
                     <button class="trip-action-btn edit-btn" title="Edit trip" data-link="{link}" data-title="{title}" data-dates="{dates}" data-days="{days}" data-locations="{locations}" data-activities="{activities}">
                         <i class="fas fa-edit"></i>

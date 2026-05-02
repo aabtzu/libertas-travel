@@ -759,6 +759,81 @@ function togglePublic(btn) {
 }
 
 /**
+ * Toggle archived state of a trip. Mirrors togglePublic — they're independent flags.
+ */
+function toggleArchived(btn) {
+    const link = btn.dataset.link;
+    const isCurrentlyArchived = btn.dataset.archived === 'true';
+    const newArchivedState = !isCurrentlyArchived;
+
+    fetch('/api/toggle-archived', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: link, isArchived: newArchivedState })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Move the card between active and archived sections without a full reload —
+            // a reload would lose the user's "Show archived" state and is jarring on long lists.
+            const wrapper = btn.closest('.trip-card-wrapper');
+            wrapper.dataset.isArchived = newArchivedState ? 'true' : 'false';
+            wrapper.classList.toggle('is-archived', newArchivedState);
+            btn.dataset.archived = newArchivedState ? 'true' : 'false';
+            btn.classList.toggle('active', newArchivedState);
+            btn.title = newArchivedState ? 'Unarchive trip' : 'Archive trip';
+
+            // Add/remove badge
+            let badge = wrapper.querySelector('.archived-badge');
+            if (newArchivedState && !badge) {
+                badge = document.createElement('span');
+                badge.className = 'archived-badge';
+                badge.innerHTML = '<i class="fas fa-box-archive"></i> Archived';
+                wrapper.insertBefore(badge, wrapper.firstChild);
+            } else if (!newArchivedState && badge) {
+                badge.remove();
+            }
+
+            // Move the card to the right grid
+            const archivedSection = document.getElementById('archived-section');
+            const archivedGrid = archivedSection?.querySelector('.trips-grid');
+            const activeGrid = document.getElementById('trips-container');
+            if (newArchivedState && archivedGrid) {
+                archivedGrid.appendChild(wrapper);
+            } else if (!newArchivedState && activeGrid) {
+                activeGrid.appendChild(wrapper);
+            }
+
+            showStatus('success', data.message);
+        } else {
+            showStatus('error', data.error || 'Failed to update archive state');
+        }
+    })
+    .catch(() => showStatus('error', 'Failed to update archive state'));
+}
+
+/**
+ * Toggle visibility of the archived trips section.
+ */
+function toggleArchivedSection() {
+    const section = document.getElementById('archived-section');
+    const btn = document.getElementById('show-archived-btn');
+    if (!section || !btn) return;
+
+    const isHidden = section.hasAttribute('hidden');
+    if (isHidden) {
+        section.removeAttribute('hidden');
+        btn.innerHTML = '<i class="fas fa-box-archive"></i> Hide archived';
+    } else {
+        section.setAttribute('hidden', '');
+        // Restore count in label
+        const count = section.querySelectorAll('.trip-card-wrapper').length;
+        btn.innerHTML = `<i class="fas fa-box-archive"></i> Show archived (${count})`;
+    }
+}
+window.toggleArchivedSection = toggleArchivedSection;
+
+/**
  * Initialize share and public toggle actions
  */
 function initShareActions() {
@@ -779,6 +854,15 @@ function initShareActions() {
             e.preventDefault();
             e.stopPropagation();
             togglePublic(btn);
+        });
+    });
+
+    // Archive toggle buttons
+    document.querySelectorAll('.archive-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleArchived(btn);
         });
     });
 
