@@ -18,9 +18,7 @@ def _add_trip(link: str, title: str = "Archive Test Trip", **extra) -> None:
         "days": [
             {
                 "day": 1,
-                "items": [
-                    {"title": "Arrive", "category": "transport", "location": "Boston, MA"}
-                ],
+                "items": [{"title": "Arrive", "category": "transport", "location": "Boston, MA"}],
             }
         ],
         "tips": [],
@@ -70,9 +68,7 @@ class TestToggleArchivedEndpoint:
         link = "archive_api_test.html"
         _add_trip(link)
         try:
-            resp = client.post(
-                "/api/toggle-archived", json={"link": link, "isArchived": True}
-            )
+            resp = client.post("/api/toggle-archived", json={"link": link, "isArchived": True})
             assert resp.status_code == 200
             data = resp.get_json()
             assert data["success"] is True
