@@ -7,11 +7,11 @@ on the trips page, but remain visible on the map view.
 
 from __future__ import annotations
 
-import database as db
-
 
 def _add_trip(link: str, title: str = "Archive Test Trip", **extra) -> None:
     """Helper: insert a minimal trip owned by user 1."""
+    import database as db
+
     trip_data = {"title": title, "link": link, **extra}
     itinerary_data = {
         "ideas": [],
@@ -33,6 +33,8 @@ def _add_trip(link: str, title: str = "Archive Test Trip", **extra) -> None:
 
 class TestSetTripArchived:
     def test_default_is_unarchived(self, client):
+        import database as db
+
         link = "archive_default_test.html"
         _add_trip(link)
         try:
@@ -42,6 +44,8 @@ class TestSetTripArchived:
             db.delete_trip(1, link)
 
     def test_archive_then_unarchive_roundtrip(self, client):
+        import database as db
+
         link = "archive_roundtrip_test.html"
         _add_trip(link)
         try:
@@ -54,6 +58,8 @@ class TestSetTripArchived:
             db.delete_trip(1, link)
 
     def test_archive_unknown_trip_returns_false(self, client):
+        import database as db
+
         # No row matches → 0 rows updated → False (route uses this to 404)
         assert db.set_trip_archived(1, "does_not_exist.html", True) is False
 
@@ -65,6 +71,8 @@ class TestSetTripArchived:
 
 class TestToggleArchivedEndpoint:
     def test_toggle_archived_success(self, client):
+        import database as db
+
         link = "archive_api_test.html"
         _add_trip(link)
         try:
@@ -102,6 +110,8 @@ class TestToggleArchivedEndpoint:
 
 class TestTripsPageArchivedSection:
     def test_active_and_archived_trips_render_in_separate_sections(self, client):
+        import database as db
+
         active_link = "archive_active_render.html"
         archived_link = "archive_archived_render.html"
         _add_trip(active_link, title="Active Render Test")
@@ -137,6 +147,8 @@ class TestTripsPageArchivedSection:
             db.delete_trip(1, archived_link)
 
     def test_no_archived_section_when_nothing_archived(self, client):
+        import database as db
+
         link = "archive_none_test.html"
         _add_trip(link)
         try:
