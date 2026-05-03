@@ -151,6 +151,10 @@ class TestAdminAuth:
         )
         assert resp.status_code == 401
 
+    def test_delete_user_no_key_returns_401(self, client):
+        resp = client.post("/api/admin/delete-user", json={"username": "x"})
+        assert resp.status_code == 401
+
 
 # ---------------------------------------------------------------------------
 # Admin endpoints — with valid key
@@ -226,6 +230,66 @@ class TestAdminEndpoints:
         data = resp.get_json()
         assert data["skipped"] == 1
         assert data["added"] == 0
+
+    def test_delete_user_missing_username(self, client):
+        resp = client.post(
+            "/api/admin/delete-user",
+            headers=self.HEADERS,
+            json={},
+        )
+        assert resp.status_code in (200, 400)
+        assert resp.get_json().get("success") is not True
+
+    def test_delete_user_unknown_returns_404(self, client):
+        resp = client.post(
+            "/api/admin/delete-user",
+            headers=self.HEADERS,
+            json={"username": "definitely_not_a_real_user_12345"},
+        )
+        assert resp.status_code == 404
+
+    def test_delete_user_refuses_demo_user(self, client):
+        resp = client.post(
+            "/api/admin/delete-user",
+            headers=self.HEADERS,
+            json={"username": "demo"},
+        )
+        assert resp.status_code == 400
+        body = resp.get_json()
+        assert body.get("success") is not True
+
+    def test_delete_user_round_trip(self, client):
+        """Create a throw-away user, delete it via the admin endpoint,
+        verify it's gone. Also confirms FK CASCADE wipes the user's trips."""
+        import database as db
+
+        username = "deleteme_round_trip"
+        # Clean up first in case a prior failed run left it behind
+        db.delete_user_by_username(username)
+
+        user_id = db.create_user(username, f"{username}@test.local", "pw1234")
+        assert user_id is not None
+
+        # Create a trip owned by this user — must vanish on cascade delete
+        link = "delete_round_trip_test.html"
+        db.add_trip(user_id, {"title": "Doomed Trip", "link": link}, {"days": [], "ideas": []})
+        assert db.get_trip_by_link(user_id, link) is not None
+
+        try:
+            resp = client.post(
+                "/api/admin/delete-user",
+                headers=self.HEADERS,
+                json={"username": username},
+            )
+            assert resp.status_code == 200
+            assert resp.get_json()["success"] is True
+
+            # User and their trip should both be gone
+            assert db.get_user_by_username(username) is None
+            assert db.get_trip_by_link(user_id, link) is None
+        finally:
+            # Defensive: in case the test failed mid-way
+            db.delete_user_by_username(username)
 
 
 # ---------------------------------------------------------------------------

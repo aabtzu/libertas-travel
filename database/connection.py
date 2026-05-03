@@ -195,6 +195,11 @@ def get_connection():
         db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "libertas.db")
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
+        # SQLite ships with foreign keys disabled by default. Enabling them
+        # so ON DELETE CASCADE works consistently with Postgres in prod —
+        # otherwise deleting a user leaves orphaned trip rows behind in
+        # local dev only, masking real cascade bugs.
+        conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
 

@@ -41,6 +41,7 @@ from database.trips import (  # noqa: F401
 from database.users import (  # noqa: F401
     authenticate_user,
     create_user,
+    delete_user_by_username,
     email_exists,
     ensure_demo_user,
     get_all_users,
