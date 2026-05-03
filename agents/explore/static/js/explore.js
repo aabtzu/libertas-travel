@@ -100,7 +100,23 @@ const VENUE_ICONS = {
 };
 
 // Initialize on page load
+// First-time hint above the chat. Shown once per browser, then hidden
+// forever (libertas_seen_explore_intro in localStorage).
+function maybeShowExploreIntro() {
+    const intro = document.getElementById('explore-intro');
+    if (!intro) return;
+    let seen = false;
+    try { seen = localStorage.getItem('libertas_seen_explore_intro') === '1'; } catch (e) {}
+    if (seen) return;
+    intro.removeAttribute('hidden');
+    document.getElementById('explore-intro-close')?.addEventListener('click', () => {
+        intro.setAttribute('hidden', '');
+        try { localStorage.setItem('libertas_seen_explore_intro', '1'); } catch (e) {}
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+    maybeShowExploreIntro();
     await loadVenues();
     initChat();
     initMap();

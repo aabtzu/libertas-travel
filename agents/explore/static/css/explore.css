@@ -290,3 +290,32 @@
     border-radius: 12px;
 }
 
+/* First-time hint above the chat. Dismissible, shown once per browser. */
+.explore-intro {
+    position: relative;
+    margin: 10px 14px 0;
+    padding: 10px 36px 10px 14px;
+    background: #f0f1ff;
+    border: 1px solid #c7c9f7;
+    border-left: 4px solid #667eea;
+    border-radius: 8px;
+    color: #1a1a2e;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+.explore-intro i.intro-icon {
+    color: #f0c674;
+    margin-right: 6px;
+}
+.explore-intro-close {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #888a96;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.explore-intro-close:hover { color: #1a1a2e; }
