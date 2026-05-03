@@ -281,6 +281,53 @@ function createTripMarker(trip, coords) {
 // Make switchTripsView globally available
 window.switchTripsView = switchTripsView;
 
+/**
+ * Fetch LLM-picked card icons in the background and swap them into the DOM.
+ *
+ * The page renders instantly with keyword-based icons (the synchronous
+ * server-side default); these get replaced as Haiku responds. After the
+ * first call per trip the icon is cached in itinerary_data, so subsequent
+ * page loads return instantly with no LLM call.
+ */
+async function loadCardIcons() {
+    const wrappers = document.querySelectorAll('.trip-card-wrapper[data-link]');
+    // Dedupe by link — list view clones cards from cards view, so we'd
+    // otherwise call the endpoint twice for the same trip.
+    const linksSeen = new Set();
+    const tasks = [];
+    wrappers.forEach(w => {
+        const link = w.dataset.link;
+        if (!link || linksSeen.has(link)) return;
+        linksSeen.add(link);
+        tasks.push(fetchAndApply(link));
+    });
+    await Promise.all(tasks);
+}
+
+async function fetchAndApply(link) {
+    try {
+        const r = await fetch(`/api/trips/${encodeURIComponent(link)}/card-icon`);
+        if (!r.ok) return;
+        const data = await r.json();
+        // json_ok() doesn't wrap with {success:true}; the response is the
+        // raw payload. Bail only if there's no icon field.
+        if (!data || !data.icon) return;
+        // Apply to ALL wrappers with this link (cards view + list view clones)
+        document.querySelectorAll(`.trip-card-wrapper[data-link="${CSS.escape(link)}"] .trip-card-image i`).forEach(iconEl => {
+            // Remove existing fa-* class
+            [...iconEl.classList].forEach(c => {
+                if (c.startsWith('fa-') && c !== 'fas' && c !== 'far' && c !== 'fab') {
+                    iconEl.classList.remove(c);
+                }
+            });
+            iconEl.classList.add('fa-' + data.icon);
+        });
+    } catch (e) {
+        // Network error — keep the keyword-based icon
+        console.log('Card icon fetch failed for', link, e);
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Check for URL hash to switch views
@@ -288,4 +335,5 @@ document.addEventListener('DOMContentLoaded', function() {
     if (hash && ['cards', 'list', 'map'].includes(hash)) {
         switchTripsView(hash);
     }
+    loadCardIcons();
 });

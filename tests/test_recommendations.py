@@ -114,17 +114,17 @@ class TestRecommendationRoutes:
             "/api/trips/clone-ideas",
             json={"source_link": "ghost.html", "target_link": "ghost2.html"},
         )
-        assert resp.status_code in (200, 400)
+        assert resp.status_code in (200, 400, 404)
         data = resp.get_json()
         assert data.get("success") is not True
 
     def test_writeup_nonexistent_trip(self, client):
         resp = client.post("/api/trips/ghost.html/writeup")
-        assert resp.status_code in (200, 400)
+        assert resp.status_code in (200, 400, 404)
 
     def test_fill_links_nonexistent_trip(self, client):
         resp = client.post("/api/trips/ghost.html/fill-links")
-        assert resp.status_code in (200, 400)
+        assert resp.status_code in (200, 400, 404)
 
     def test_trips_list_includes_trip_type(self, client):
         import database as db

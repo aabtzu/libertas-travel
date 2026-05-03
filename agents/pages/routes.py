@@ -127,16 +127,8 @@ def trip_html(trip_name: str):
 
     if not trip:
         owner_id = db.get_trip_owner(link)
-        if owner_id:
-            with db.get_db() as conn:
-                cursor = conn.cursor()
-                if db.USE_POSTGRES:
-                    cursor.execute("SELECT is_public FROM trips WHERE link = %s", (link,))
-                else:
-                    cursor.execute("SELECT is_public FROM trips WHERE link = ?", (link,))
-                row = cursor.fetchone()
-                if row and row[0]:
-                    trip = db.get_trip_by_link(owner_id, link)
+        if owner_id and db.is_trip_public(link):
+            trip = db.get_trip_by_link(owner_id, link)
 
     if not trip:
         return "Trip not found", 404
@@ -168,6 +160,9 @@ def trip_html(trip_name: str):
 
     itinerary = deserialize_itinerary(worker_format)
     map_data = itinerary_data.get("map_data")
+    # Use the per-trip icon picked by the LLM (cached on the trips page);
+    # fall back to "plane" if it hasn't been computed yet.
+    card_icon = itinerary_data.get("card_icon") or "plane"
     web_view = ItineraryWebView()
     html = web_view.render_html(
         itinerary,
@@ -175,6 +170,7 @@ def trip_html(trip_name: str):
         is_owner=is_owner,
         is_authenticated=is_authenticated,
         trip_link=link,
+        card_icon=card_icon,
     )
     return _html(html)
 

@@ -23,6 +23,7 @@ from database.sharing import (  # noqa: F401
     copy_trip_by_link,
     copy_trip_to_user,
     get_public_trips,
+    is_trip_public,
     set_trip_public,
     share_trip_with_all,
 )

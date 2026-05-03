@@ -113,19 +113,6 @@ TRIP_COLORS = [
     "#26a69a",
 ]
 
-# Icons for different regions
-REGION_ICONS = {
-    "india": "om",
-    "rajasthan": "gopuram",
-    "alaska": "mountain",
-    "asia": "torii-gate",
-    "europe": "landmark",
-    "africa": "globe-africa",
-    "americas": "globe-americas",
-    "oceania": "umbrella-beach",
-    "default": "plane",
-}
-
 
 def get_destination_image(title: str):
     """Get a destination-specific image URL based on trip title."""
@@ -136,46 +123,23 @@ def get_destination_image(title: str):
     return None
 
 
-def get_region_icon(title: str) -> str:
-    """Get an appropriate icon based on trip title/region."""
-    title_lower = title.lower()
-    if any(
-        x in title_lower for x in ["india", "delhi", "agra", "jaipur", "jaisalmer", "rajasthan"]
-    ):
-        return "om"
-    elif "alaska" in title_lower:
-        return "mountain"
-    elif any(
-        x in title_lower
-        for x in ["asia", "vietnam", "cambodia", "thailand", "japan", "china", "singapore"]
-    ):
-        return "torii-gate"
-    elif any(
-        x in title_lower for x in ["europe", "france", "italy", "spain", "germany", "uk", "rome"]
-    ):
-        return "landmark"
-    elif any(x in title_lower for x in ["africa", "safari", "kenya", "tanzania"]):
-        return "globe-africa"
-    elif any(x in title_lower for x in ["beach", "island", "hawaii", "caribbean"]):
-        return "umbrella-beach"
-    return "plane"
+def get_region_icon(itinerary_data: str | dict | None = None) -> str:
+    """Return the trip's card icon.
 
-
-def get_region_name(title: str) -> str:
-    """Extract region name from trip title."""
-    title_lower = title.lower()
-    if any(x in title_lower for x in ["rajasthan", "jaipur", "jaisalmer"]):
-        return "Rajasthan"
-    elif any(x in title_lower for x in ["india", "delhi", "agra"]):
-        return "India"
-    elif "alaska" in title_lower:
-        return "Alaska"
-    elif "vietnam" in title_lower or "cambodia" in title_lower:
-        return "Southeast Asia"
-    elif any(x in title_lower for x in ["europe", "rome", "italy"]):
-        return "Europe"
-    # Default: use first part of title
-    return title.split()[0] if title else "Trip"
+    The real picker is the LLM in `agents.itinerary.icon_picker`, whose
+    result lives in `itinerary_data["card_icon"]` (populated lazily by
+    /api/trips/<link>/card-icon and persisted there). This function just
+    reads that cached value, falling back to "plane" so the server-side
+    initial render isn't blank while the LLM call is in flight.
+    """
+    if not itinerary_data:
+        return "plane"
+    if isinstance(itinerary_data, str):
+        try:
+            itinerary_data = json.loads(itinerary_data)
+        except (json.JSONDecodeError, ValueError):
+            return "plane"
+    return itinerary_data.get("card_icon") or "plane"
 
 
 def extract_category_counts(itinerary_data: str | dict | None) -> dict:
@@ -327,8 +291,7 @@ def generate_trip_card(
     """Generate HTML for a single trip card."""
     # Use accent colors for trip card backgrounds
     color = TRIP_COLORS[index % len(TRIP_COLORS)]
-    icon = get_region_icon(title)
-    region = get_region_name(title)
+    icon = get_region_icon(itinerary_data)
 
     # Public visibility settings
     public_badge = (
@@ -369,7 +332,6 @@ def generate_trip_card(
         card_link=card_link,
         color=color,
         icon=icon,
-        region=region,
         title=title,
         dates=dates,
         days=days,
@@ -407,8 +369,7 @@ def generate_public_trip_card(
 ) -> str:
     """Generate HTML for a public trip card (from another user)."""
     color = TRIP_COLORS[index % len(TRIP_COLORS)]
-    icon = get_region_icon(title)
-    region = get_region_name(title)
+    icon = get_region_icon(itinerary_data)
 
     # Generate category stats (icons with counts)
     category_counts = extract_category_counts(itinerary_data)
@@ -418,7 +379,6 @@ def generate_public_trip_card(
         link=link,
         color=color,
         icon=icon,
-        region=region,
         title=title,
         dates=dates,
         days=days,
@@ -532,30 +492,13 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         </div>
 """
 
-    # Always render the archived section + toggle, even when empty. JS needs
-    # somewhere to move cards into when the user clicks archive on a trip,
-    # and the toggle button needs to be present so it can show after the
-    # first archive happens. Both stay hidden until there's archived content.
-    archived_section_hidden_attr = "" if archived_cards_list else "hidden"
-    archived_section = f"""
-        <div class="archived-trips-section" id="archived-section" {archived_section_hidden_attr}>
-            <div class="trips-header-row">
-                <h2><i class="fas fa-box-archive"></i> Archived Trips</h2>
-            </div>
-            <div class="trips-grid">
-{archived_cards}
-            </div>
-        </div>
-"""
-
-    archived_toggle_hidden_attr = "" if archived_cards_list else 'hidden=""'
-    archived_count = len(archived_cards_list)
-    archived_toggle = (
-        f'<button id="show-archived-btn" class="archived-toggle-btn" '
-        f'onclick="toggleArchivedSection()" {archived_toggle_hidden_attr}>'
-        f'<i class="fas fa-box-archive"></i> '
-        f'<span class="archived-toggle-label">Show archived ({archived_count})</span>'
-        "</button>"
+    # Archived section + toggle are always rendered (starts collapsed). JS
+    # flips visibility based on count and on the user clicking the toggle.
+    # Markup lives in templates/archived_{section,toggle}.html.
+    archived_section = get_template("archived_section.html").format(archived_cards=archived_cards)
+    archived_toggle = get_template("archived_toggle.html").format(
+        hidden_attr="" if archived_cards_list else 'hidden=""',
+        count=len(archived_cards_list),
     )
 
     template = get_template("trips.html")

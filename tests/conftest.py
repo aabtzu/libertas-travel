@@ -23,6 +23,8 @@ _TEST_TRIP_TITLES = (
     "Active Render Test",
     "Archived Render Test",
     "Archive Test Trip",
+    "Cached Test",
+    "Compute Test",
 )
 
 

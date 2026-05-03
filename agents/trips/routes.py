@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import traceback
@@ -151,36 +150,17 @@ def publish_trip(link: str):
 @require_auth
 def clone_ideas():
     """Copy all ideas from a public source trip into a target trip."""
+    from agents.trips.handler import clone_ideas_between_trips
+
     data = request.get_json(silent=True) or {}
-    source_link = data.get("source_link", "").strip()
-    target_link = data.get("target_link", "").strip()
-
-    if not source_link or not target_link:
-        return json_err("source_link and target_link required")
-
-    # Get source trip (must be public)
-    owner_id = db.get_trip_owner(source_link)
-    if not owner_id:
-        return json_err("Source trip not found")
-    source = db.get_trip_by_link(owner_id, source_link)
-    if not source or not source.get("is_public"):
-        return json_err("Source trip not found")
-
-    source_data = source.get("itinerary_data") or {}
-    if isinstance(source_data, str):
-        source_data = json.loads(source_data)
-    source_ideas = source_data.get("ideas", [])
-
-    if not source_ideas:
-        return json_err("No ideas to clone")
-
-    # Add each idea to the target trip
-    added = 0
-    for idea in source_ideas:
-        db.add_item_to_trip(g.user_id, target_link, idea)
-        added += 1
-
-    return json_ok({"success": True, "added": added})
+    result, status = clone_ideas_between_trips(
+        g.user_id,
+        data.get("source_link", "").strip(),
+        data.get("target_link", "").strip(),
+    )
+    if status == 200:
+        return json_ok({"success": True, **result})
+    return json_err(result.get("error", "Unknown error"), status=status)
 
 
 @trips_bp.post("/api/trips/<link>/items")
@@ -307,53 +287,18 @@ def update_trip():
 @trips_bp.post("/api/retry-geocoding")
 @require_auth
 def retry_geocoding():
+    """Recompute the map for a trip — used by the "Regen Map" button."""
+    from agents.trips.handler import regenerate_trip_map
+
     data = request.get_json(silent=True) or {}
     link = data.get("link", "").strip()
     if not link:
         return json_err("No trip link provided")
 
-    trip = db.get_trip_by_link(g.user_id, link)
-    if not trip:
-        return json_err("Trip not found")
-
-    itinerary_data = trip.get("itinerary_data")
-    if not itinerary_data:
-        return json_err("No itinerary data available for this trip")
-
-    if isinstance(itinerary_data, str):
-        try:
-            itinerary_data = json.loads(itinerary_data)
-        except (json.JSONDecodeError, ValueError):
-            return json_err("Invalid itinerary data format")
-
-    if "map_data" in itinerary_data:
-        del itinerary_data["map_data"]
-        db.update_trip_itinerary_data(g.user_id, link, itinerary_data)
-
-    from agents.create.handler import _convert_to_itinerary
-    from agents.itinerary.mapper import ItineraryMapper
-
-    itinerary = _convert_to_itinerary(
-        {"itinerary_data": itinerary_data, "title": trip.get("title", "Trip")}
-    )
-    if not itinerary:
-        return json_err("Could not parse itinerary data")
-
-    db.update_trip_map_status(g.user_id, link, "processing", None)
-    try:
-        mapper = ItineraryMapper()
-        map_data = mapper.create_map_data(itinerary)
-        itinerary_data["map_data"] = map_data
-        db.update_trip_itinerary_data(g.user_id, link, itinerary_data)
-        db.update_trip_map_status(g.user_id, link, "ready", None)
-        markers_count = len(map_data.get("markers", []))
-        return json_ok(
-            {"success": True, "message": f"Map regenerated with {markers_count} locations."}
-        )
-    except Exception as e:
-        traceback.print_exc()
-        db.update_trip_map_status(g.user_id, link, "error", str(e))
-        return json_err(f"Geocoding failed: {str(e)}")
+    result, status = regenerate_trip_map(g.user_id, link)
+    if status == 200:
+        return json_ok({"success": True, **result})
+    return json_err(result.get("error", "Unknown error"), status=status)
 
 
 @trips_bp.post("/api/share-trip")
@@ -415,6 +360,18 @@ def toggle_public():
         return json_err(str(e))
 
 
+@trips_bp.get("/api/trips/<path:link>/card-icon")
+@require_auth
+def card_icon(link: str):
+    """Return the trip's card icon (LLM-picked, cached in itinerary_data)."""
+    from agents.trips.handler import get_card_icon
+
+    result, status = get_card_icon(g.user_id, link)
+    if status == 200:
+        return json_ok(result)
+    return json_err(result.get("error", "Unknown error"), status=status)
+
+
 @trips_bp.post("/api/toggle-archived")
 @require_auth
 def toggle_archived():
@@ -458,58 +415,24 @@ def get_users():
 @require_auth
 def generate_trip_writeup(link: str):
     """Generate an AI narrative write-up from trip ideas and tips."""
-    trip = db.get_trip_by_link(g.user_id, link)
-    if not trip:
-        return json_err("Trip not found")
+    from agents.trips.handler import generate_writeup_for_trip
 
-    itinerary_data = trip.get("itinerary_data") or {}
-    if isinstance(itinerary_data, str):
-        itinerary_data = json.loads(itinerary_data)
-
-    try:
-        from agents.trips.writeup import generate_writeup
-
-        # Auto-personalize if user has a style profile + writing samples
-        style_profile = None
-        writing_samples = ""
-        profile = db.get_user_profile(g.user_id)
-        if profile:
-            style_profile = profile.get("style_profile")
-            writing_samples = profile.get("writing_samples", "")
-
-        text = generate_writeup(
-            trip.get("title", "Trip"),
-            itinerary_data,
-            style_profile=style_profile,
-            writing_samples=writing_samples,
-        )
-        return json_ok({"success": True, "writeup": text, "personalized": bool(style_profile)})
-    except Exception as e:
-        traceback.print_exc()
-        return json_err(f"Write-up generation failed: {e}")
+    result, status = generate_writeup_for_trip(g.user_id, link)
+    if status == 200:
+        return json_ok({"success": True, **result})
+    return json_err(result.get("error", "Unknown error"), status=status)
 
 
 @trips_bp.post("/api/trips/<link>/fill-links")
 @require_auth
 def fill_trip_links(link: str):
     """Use LLM to find and fill missing website/maps links for trip items."""
-    trip = db.get_trip_by_link(g.user_id, link)
-    if not trip:
-        return json_err("Trip not found")
+    from agents.trips.handler import fill_links_for_trip
 
-    itinerary_data = trip.get("itinerary_data") or {}
-    if isinstance(itinerary_data, str):
-        itinerary_data = json.loads(itinerary_data)
-
-    try:
-        from agents.trips.link_resolver import fill_missing_links
-
-        result = fill_missing_links(itinerary_data)
-        db.update_trip_itinerary_data(g.user_id, link, itinerary_data)
+    result, status = fill_links_for_trip(g.user_id, link)
+    if status == 200:
         return json_ok({"success": True, **result})
-    except Exception as e:
-        traceback.print_exc()
-        return json_err(f"Link resolution failed: {e}")
+    return json_err(result.get("error", "Unknown error"), status=status)
 
 
 @trips_bp.get("/api/user/profile")
@@ -524,27 +447,13 @@ def get_user_profile_api():
 @require_auth
 def extract_writing_style():
     """Extract writing style from user-provided samples and store it."""
+    from agents.trips.handler import extract_user_writing_style
+
     data = request.get_json(silent=True) or {}
-    samples = data.get("samples", "").strip()
-    if not samples or len(samples) < 50:
-        return json_err("Provide at least a few sentences of writing samples")
-
-    try:
-        from agents.trips.writeup import extract_style_profile
-
-        profile = extract_style_profile(samples)
-
-        # Store in user profile column — keep full samples for few-shot prompting
-        existing_profile = db.get_user_profile(g.user_id) or {}
-        existing_profile["style_profile"] = profile
-        existing_profile["writing_samples"] = samples
-        existing_profile["samples_preview"] = samples[:200]
-        db.set_user_profile(g.user_id, existing_profile)
-
-        return json_ok({"success": True, "profile": profile})
-    except Exception as e:
-        traceback.print_exc()
-        return json_err(f"Style extraction failed: {e}")
+    result, status = extract_user_writing_style(g.user_id, data.get("samples", "").strip())
+    if status == 200:
+        return json_ok({"success": True, **result})
+    return json_err(result.get("error", "Unknown error"), status=status)
 
 
 @trips_bp.post("/api/user/save-profile")
