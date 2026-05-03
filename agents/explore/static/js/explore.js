@@ -463,8 +463,8 @@ function createVenueCard(venue) {
                     <button class="venue-action-btn website">
                         <i class="fas fa-globe"></i> Website
                     </button>
-                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, state: venue.state, country: venue.country, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude, website: venue.website, google_maps_link: venue.google_maps_link}).replace(/'/g, "&#39;")}'>
-                        <i class="fas fa-plus"></i> Trip
+                    <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, state: venue.state, country: venue.country, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude, website: venue.website, google_maps_link: venue.google_maps_link}).replace(/'/g, "&#39;")}' title="Add this venue to one of your trips">
+                        <i class="fas fa-plus"></i> Add to trip
                     </button>
                 </div>
             </div>

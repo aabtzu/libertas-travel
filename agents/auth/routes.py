@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from flask import Blueprint, request, session
 
 import auth
@@ -48,6 +50,11 @@ def register():
 
     success, error = auth.register_user(username, email, password)
     if success:
+        # Greppable line in Render logs so the owner can monitor signups
+        # via `render logs | grep '\[SIGNUP\]'`. Email/IP intentionally
+        # omitted from logs — keep PII out of the log stream.
+        ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        print(f"[SIGNUP] {username} @ {ts}", flush=True)
         return json_ok({"success": True})
     return json_err(error)
 

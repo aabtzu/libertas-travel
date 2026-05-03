@@ -63,7 +63,7 @@ FOOTER_HTML = """
             <a href="https://github.com/aabtzu/libertas-travel" target="_blank" rel="noopener">
                 <i class="fab fa-github"></i> GitHub
             </a>
-            <a href="mailto:aabtzu@gmail.com?subject=Libertas%20feedback">
+            <a href="#" onclick="showFeedbackPopup('Libertas feedback'); return false;">
                 <i class="fas fa-envelope"></i> Send feedback
             </a>
         </div>

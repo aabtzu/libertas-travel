@@ -74,6 +74,14 @@
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.form-hint {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+    color: #666;
+}
+.form-hint a { color: #667eea; }
+.form-hint a:hover { text-decoration: underline; }
+
 .login-btn {
     background: #667eea;
     color: white;

@@ -18,8 +18,17 @@ OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.pare
 _SQL_COUNT_USERS = "SELECT COUNT(*) FROM users"
 _SQL_COUNT_TRIPS = "SELECT COUNT(*) FROM trips"
 _SQL_LIST_RECENT_TRIPS = (
-    "SELECT id, user_id, title, link FROM trips ORDER BY created_at DESC LIMIT 10"
+    "SELECT id, user_id, title, link, created_at FROM trips ORDER BY created_at DESC LIMIT 10"
 )
+_SQL_LIST_RECENT_USERS = (
+    "SELECT id, username, email, created_at FROM users ORDER BY created_at DESC LIMIT 10"
+)
+
+
+def _last_24h_clause() -> str:
+    """SQL fragment for "rows created in the last 24 hours". Differs
+    between Postgres and SQLite — keep both variants centralized here."""
+    return "NOW() - INTERVAL '24 hours'" if db.USE_POSTGRES else "datetime('now', '-1 day')"
 
 
 @admin_bp.get("/api/debug")
@@ -75,9 +84,35 @@ def debug():
             debug_info["users_count"] = cursor.fetchone()[0]
             cursor.execute(_SQL_COUNT_TRIPS)
             debug_info["trips_count"] = cursor.fetchone()[0]
+
+            # Usage in the last 24h — quick health check
+            cursor.execute(f"SELECT COUNT(*) FROM users WHERE created_at > {_last_24h_clause()}")
+            debug_info["new_users_24h"] = cursor.fetchone()[0]
+            cursor.execute(f"SELECT COUNT(*) FROM trips WHERE created_at > {_last_24h_clause()}")
+            debug_info["new_trips_24h"] = cursor.fetchone()[0]
+
+            # Recent trips (with timestamps now)
             cursor.execute(_SQL_LIST_RECENT_TRIPS)
             debug_info["trips"] = [
-                {"id": row[0], "user_id": row[1], "title": row[2], "link": row[3]}
+                {
+                    "id": row[0],
+                    "user_id": row[1],
+                    "title": row[2],
+                    "link": row[3],
+                    "created_at": str(row[4]),
+                }
+                for row in cursor.fetchall()
+            ]
+
+            # Recent signups — most useful for monitoring a launch
+            cursor.execute(_SQL_LIST_RECENT_USERS)
+            debug_info["recent_users"] = [
+                {
+                    "id": row[0],
+                    "username": row[1],
+                    "email": row[2],
+                    "created_at": str(row[3]),
+                }
                 for row in cursor.fetchall()
             ]
     except Exception as e:
@@ -98,7 +133,7 @@ def debug():
                 debug_info["reimport_result"] = "CSV not found"
 
         if request.args.get("geocode_missing"):
-            from geocode_venues import geocode_address
+            from scripts.geocode_venues import geocode_address
 
             venues = load_venues()
             missing = [v for v in venues if not v.get("latitude") or not v.get("longitude")]

@@ -547,3 +547,170 @@ body {
     background: #667eea;
     color: white;
 }
+
+/* ==================== Generic fast tooltip ==================== */
+/* Native title="" tooltips have a ~1s delay. This shows the same text
+   as a small dark bubble below any element with a `data-tip` attribute
+   or a `.has-tip` class plus `title=""`, with no delay. Faster than the
+   browser default and consistent with our trip-card action buttons. */
+[data-tip],
+.btn[title]:not([data-tip]),
+.has-tip[title] {
+    position: relative;
+}
+[data-tip]::after,
+.btn[title]:not([data-tip])::after,
+.has-tip[title]::after {
+    content: attr(title);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a2e;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease 0.2s;
+    z-index: 100;
+}
+[data-tip]:hover::after,
+.btn[title]:not([data-tip]):hover::after,
+.has-tip[title]:hover::after {
+    opacity: 1;
+}
+/* For tooltips on data-tip, pull the value from data-tip instead of title */
+[data-tip]::after { content: attr(data-tip); }
+
+/* Post-Explore banner: shown on /create.html after auto-adding a venue
+   from the Explore → New Trip flow. Solid color, no gradient. */
+.post-explore-banner {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1500;
+    background: #1a1a2e;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    max-width: 560px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 1;
+    transition: opacity 0.6s ease;
+}
+.post-explore-banner i { color: #43a047; margin-right: 6px; }
+.post-explore-banner strong { color: #f0c674; }
+.post-explore-banner .post-explore-back {
+    display: inline-block;
+    margin-left: 10px;
+    color: #cfd2dc;
+    text-decoration: underline;
+}
+.post-explore-banner .post-explore-back:hover { color: #fff; }
+.post-explore-banner.fading { opacity: 0; }
+
+/* Feedback popup — used by the footer "Send feedback" link and the
+   register-page "Email Amit" link. Self-contained: shows the email,
+   offers a Copy button, and links to Gmail/Outlook web + mailto. */
+.feedback-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 16px;
+}
+.feedback-popup {
+    background: white;
+    color: #1a1a2e;
+    padding: 28px 24px 24px;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+}
+.feedback-popup h3 {
+    margin: 0 0 14px;
+    font-size: 1.2rem;
+}
+.feedback-popup-body { margin: 0 0 8px; color: #555; }
+.feedback-popup-email {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f5f4ff;
+    border: 1px solid #e0dfff;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 14px;
+}
+.feedback-popup-email code {
+    flex: 1;
+    font-size: 0.95rem;
+    background: transparent;
+    color: #1a1a2e;
+    word-break: break-all;
+}
+.feedback-popup-copy {
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+.feedback-popup-copy:hover { background: #5a6fd6; }
+.feedback-popup-hint { margin: 0 0 8px; color: #666; font-size: 0.85rem; }
+.feedback-popup-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.feedback-popup-btn {
+    flex: 1 1 auto;
+    background: white;
+    color: #667eea;
+    border: 1px solid #667eea;
+    border-radius: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+    text-align: center;
+    font-size: 0.85rem;
+    min-width: 110px;
+}
+.feedback-popup-btn:hover {
+    background: #667eea;
+    color: white;
+}
+.feedback-popup-btn-secondary {
+    color: #666;
+    border-color: #ccc;
+}
+.feedback-popup-btn-secondary:hover {
+    background: #444;
+    color: white;
+    border-color: #444;
+}
+.feedback-popup-close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+.feedback-popup-close:hover { color: #1a1a2e; }

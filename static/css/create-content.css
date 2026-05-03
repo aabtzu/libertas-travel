@@ -363,3 +363,46 @@
     animation: spin 1s linear infinite;
 }
 
+
+/* Explainer above the AI helper buttons (Fill Links / Generate Write-up).
+   Dismissible — once the user knows what they do, the X hides it for good
+   (libertas_hide_tools_hint in localStorage). */
+.trip-tools-hint {
+    position: relative;
+    margin: 18px 0 12px;
+    padding: 14px 36px 12px 16px;
+    background: #f0f1ff;
+    border: 1px solid #c7c9f7;
+    border-left: 4px solid #667eea;
+    border-radius: 8px;
+    color: #1a1a2e;
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+.trip-tools-hint-title {
+    margin: 0 0 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #1a1a2e;
+}
+.trip-tools-hint-title i { color: #667eea; margin-right: 6px; }
+.trip-tools-hint-list {
+    margin: 0;
+    padding-left: 20px;
+}
+.trip-tools-hint-list li { margin-bottom: 4px; }
+.trip-tools-hint-list li:last-child { margin-bottom: 0; }
+.trip-tools-hint-list strong { color: #4a5fd6; }
+.trip-tools-hint-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #888a96;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+.trip-tools-hint-close:hover { color: #1a1a2e; }

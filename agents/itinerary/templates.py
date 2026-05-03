@@ -299,7 +299,9 @@ def generate_trip_card(
     )
     public_class = "active" if is_public else ""
     public_icon = "globe" if is_public else "lock"
-    public_title = "Make private" if is_public else "Make public"
+    public_title = (
+        "Public link — click to make private" if is_public else "Private — click to share via link"
+    )
 
     # Draft settings - drafts link to create/edit page
     draft_badge = (

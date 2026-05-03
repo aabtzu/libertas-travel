@@ -7,11 +7,11 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=11">
+    <link rel="stylesheet" href="/static/css/main.css?v=14">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=1">
     <link rel="stylesheet" href="/static/css/categories.css">
     <link rel="stylesheet" href="/static/css/create.css?v=21">
-    <link rel="stylesheet" href="/static/css/create-content.css?v=1">
+    <link rel="stylesheet" href="/static/css/create-content.css?v=3">
     <link rel="stylesheet" href="/static/css/create-chat.css?v=1">
     <link rel="stylesheet" href="/static/css/create-views.css?v=1">
 </head>
@@ -22,7 +22,7 @@
     <div class="modal-overlay hidden" id="create-dialog">
         <div class="modal-content">
             <h2><i class="fas fa-plane-departure"></i> Create New Trip</h2>
-            <p class="modal-subtitle">Let's plan your adventure!</p>
+            <p class="modal-subtitle">Just a name to start — you can fill in dates and details later.</p>
 
             <form id="create-trip-form">
                 <div class="form-group">
@@ -31,7 +31,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Dates <span class="optional">(optional - add later)</span></label>
+                    <label>Dates <span class="optional">(optional — skip if you don't know yet)</span></label>
                     <div class="date-inputs">
                         <div class="date-input-group">
                             <label for="start-date">Start</label>
@@ -51,7 +51,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <a href="/trips.html" class="btn btn-secondary">Cancel</a>
+                    <a href="#" class="btn btn-secondary" id="create-cancel">Cancel</a>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Create Trip
                     </button>
@@ -80,8 +80,8 @@
                 <button class="btn btn-secondary" id="preview-btn">
                     <i class="fas fa-eye"></i> Preview
                 </button>
-                <button class="btn btn-primary" id="publish-btn">
-                    <i class="fas fa-paper-plane"></i> Publish
+                <button class="btn btn-primary" id="publish-btn" title="Save this trip and add it to My Trips">
+                    <i class="fas fa-paper-plane"></i> Save Trip
                 </button>
             </div>
         </div>
@@ -182,12 +182,41 @@
                     </div>
 
                     <!-- Fill links + Generate write-up -->
-                    <button class="btn-fill-links" id="fill-links-btn">
+                    <div class="trip-tools-hint" id="trip-tools-hint">
+                        <button class="trip-tools-hint-close" id="trip-tools-hint-close" aria-label="Hide this hint" title="Hide — won't show again">&times;</button>
+                        <p class="trip-tools-hint-title"><i class="fas fa-magic"></i> Two AI helpers</p>
+                        <ul class="trip-tools-hint-list">
+                            <li><strong>Fill Missing Links</strong> — finds website + Google Maps URLs for items that don't have them yet.</li>
+                            <li><strong>Generate Write-up</strong> — produces a readable narrative of the trip you can share or paste into an email.</li>
+                        </ul>
+                    </div>
+                    <button class="btn-fill-links" id="fill-links-btn"
+                            title="Use AI to find website + Google Maps URLs for items that are missing them">
                         <i class="fas fa-link"></i> Fill Missing Links
                     </button>
-                    <button class="btn-writeup" id="generate-writeup-btn">
+                    <button class="btn-writeup" id="generate-writeup-btn"
+                            title="Generate an AI-written narrative summary of your trip with links and a map">
                         <i class="fas fa-pen-fancy"></i> Generate Write-up
                     </button>
+                    <script>
+                        // Persistently hide the AI-helpers hint once the user
+                        // has dismissed it. localStorage so the preference
+                        // survives page reloads + new tabs.
+                        (function () {{
+                            var hint = document.getElementById('trip-tools-hint');
+                            var btn = document.getElementById('trip-tools-hint-close');
+                            if (!hint || !btn) return;
+                            try {{
+                                if (localStorage.getItem('libertas_hide_tools_hint') === '1') {{
+                                    hint.style.display = 'none';
+                                }}
+                            }} catch (e) {{ /* private mode etc. */ }}
+                            btn.addEventListener('click', function () {{
+                                hint.style.display = 'none';
+                                try {{ localStorage.setItem('libertas_hide_tools_hint', '1'); }} catch (e) {{}}
+                            }});
+                        }})();
+                    </script>
                     <div class="writeup-result" id="writeup-result" style="display:none">
                         <div class="writeup-header">
                             <span><i class="fas fa-pen-fancy"></i> Write-up</span>
@@ -225,7 +254,7 @@
                         <textarea
                             id="chat-input"
                             class="chat-input"
-                            placeholder="Ask about places, activities..."
+                            placeholder="Try: 'Plan 5 days in Tokyo'"
                             rows="1"
                         ></textarea>
                         <button id="chat-send-btn" class="chat-send-btn">
@@ -320,18 +349,18 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/static/js/main.js?v=5"></script>
+    <script src="/static/js/main.js?v=7"></script>
     <script src="/static/js/calendar.js?v=2"></script>
     <script>
         // Trip link from URL - check for both 'link' and 'edit' parameters
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=50"></script>
+    <script src="/static/js/create.js?v=55"></script>
     <script src="/static/js/create-render.js?v=2"></script>
     <script src="/static/js/create-items.js?v=3"></script>
     <script src="/static/js/create-upload.js?v=3"></script>
-    <script src="/static/js/create-save.js?v=3"></script>
+    <script src="/static/js/create-save.js?v=4"></script>
     <script src="/static/js/create-chat.js?v=1"></script>
     <script src="/static/js/create-dragdrop.js?v=1"></script>
     <script src="/static/js/create-grid.js?v=2"></script>

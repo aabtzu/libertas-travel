@@ -89,8 +89,8 @@ async function publishTrip() {
 
     const isRepublish = !currentTrip.is_draft;
     const confirmMsg = isRepublish
-        ? 'Republish this trip? This will regenerate the trip page with your latest changes.'
-        : 'Publish this trip? It will be visible in your trips list.';
+        ? 'Update the trip page with your latest changes?'
+        : 'Save this trip? It will be added to your My Trips list.';
 
     const confirmed = await LibertasModal.confirm(confirmMsg);
     if (!confirmed) return;
@@ -107,7 +107,7 @@ async function publishTrip() {
         const data = await response.json();
 
         if (data.success) {
-            const successMsg = isRepublish ? 'Trip republished successfully!' : 'Trip published successfully!';
+            const successMsg = isRepublish ? 'Trip updated!' : 'Trip saved! It\'s in your My Trips list now.';
             await LibertasModal.alert(successMsg);
             if (isRepublish) {
                 // For republish, open the trip view to see changes
