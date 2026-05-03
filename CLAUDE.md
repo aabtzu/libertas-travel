@@ -40,7 +40,7 @@
 - `app.py` — Flask factory, registers all blueprints, handles `before_request`
 - Blueprint routes are thin wrappers; business logic lives in `agents/*/handler.py`
 - Sessions: Flask signed cookie (`session["user_id"]`), requires `SECRET_KEY` env var
-- Start locally: `AUTH_DISABLED=true SECRET_KEY=dev python3 app.py` or `./dev.sh start`
+- Start locally: `source ~/.profile && ./dev.sh start` (the `source` step is required so `ANTHROPIC_API_KEY` and other secrets are inherited; `.profile` is where they live, and the Bash sandbox does not auto-load it)
 - Production: gunicorn via `render.yaml`
 
 ## LLM / Agent Design

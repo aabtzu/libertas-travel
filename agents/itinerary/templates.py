@@ -517,7 +517,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         "undated": "No date set",
     }
     section_html_parts = []
-    for key in ("upcoming", "past", "undated"):
+    for key in ("upcoming", "undated", "past"):
         cards = bucketed_cards[key]
         if not cards:
             continue
