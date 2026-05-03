@@ -154,8 +154,11 @@ def trip_html(trip_name: str):
             )
         )
 
+    from agents.itinerary.geocoding_worker import (
+        _convert_itinerary_data_to_worker_format,
+        deserialize_itinerary,
+    )
     from agents.itinerary.web_view import ItineraryWebView
-    from geocoding_worker import _convert_itinerary_data_to_worker_format, deserialize_itinerary
 
     worker_format = _convert_itinerary_data_to_worker_format(itinerary_data, trip.get("title"))
     if not worker_format:

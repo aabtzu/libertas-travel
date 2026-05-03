@@ -47,7 +47,7 @@ def _extract_home_location_flags(itinerary_data: dict[str, Any]) -> dict[str, bo
 
 def _trigger_map_regen(user_id: int, link: str, itinerary_data: dict[str, Any]) -> None:
     """Clear cached map data and queue background geocoding."""
-    import geocoding_worker
+    from agents.itinerary import geocoding_worker
 
     db.update_trip_map_status(user_id, link, "processing", None)
     itinerary = _convert_to_itinerary(

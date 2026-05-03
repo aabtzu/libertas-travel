@@ -198,8 +198,8 @@ def upload_file_handler(
     import tempfile
     import time
 
-    import geocoding_worker
     from agents.create.itinerary_utils import _convert_to_itinerary
+    from agents.itinerary import geocoding_worker
     from agents.itinerary.parser import ItineraryParser
     from agents.itinerary.web_view import ItineraryWebView
 
@@ -342,7 +342,7 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
     import tempfile
     from datetime import time as dt_time
 
-    import geocoding_worker
+    from agents.itinerary import geocoding_worker
     from agents.itinerary.models import Itinerary, ItineraryItem, Location
     from agents.itinerary.parser import ItineraryParser
     from agents.itinerary.web_view import ItineraryWebView

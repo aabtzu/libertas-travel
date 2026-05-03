@@ -27,7 +27,7 @@ SOFT_LIMIT = 500
 
 # Source roots we care about. Anything outside these is skipped.
 INCLUDE_DIRS = ("agents", "database", "static", "scripts", "tests")
-INCLUDE_ROOT_FILES = ("app.py", "auth.py", "geocoding_worker.py")
+INCLUDE_ROOT_FILES = ("app.py",)
 INCLUDE_EXTS = {".py", ".js", ".css", ".html"}
 
 # Path components that mark a vendored / generated tree we should ignore.
