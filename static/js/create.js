@@ -108,6 +108,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * Format a Date as YYYY-MM-DD without UTC rollover.
+ * Mirrors `_ymd` in create-render.js — both files use date math.
+ */
+function _formatYmd(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
  * Initialize mobile chat sidebar toggle
  */
 function initMobileChatSidebar() {
@@ -189,25 +200,69 @@ function initEventListeners() {
         triggerAutoSave();
     });
 
-    // Editor date changes
-    document.getElementById('editor-start-date')?.addEventListener('change', (e) => {
-        currentTrip.start_date = e.target.value || null;
-        const endDateInput = document.getElementById('editor-end-date');
-        if (e.target.value) {
-            // Set end date minimum to start date
-            endDateInput.min = e.target.value;
-            // If end date is empty or before start date, default to start date
-            if (!endDateInput.value || endDateInput.value < e.target.value) {
-                endDateInput.value = e.target.value;
-                currentTrip.end_date = e.target.value;
-            }
+    // Editor date changes — picking a date should never silently shrink
+    // the trip. If days already exist, shift the other end so the duration
+    // is preserved; if shortening would drop items, updateDays() asks first
+    // and parks them in the Ideas Pile.
+    document.getElementById('editor-start-date')?.addEventListener('change', async (e) => {
+        const newStart = e.target.value || null;
+        const endInput = document.getElementById('editor-end-date');
+        const oldStart = currentTrip.start_date;
+        const oldEnd = currentTrip.end_date;
+        const dayCount = currentTrip.days?.length || 0;
+        const previousStart = oldStart;
+        const previousEnd = oldEnd;
+
+        if (!newStart) {
+            currentTrip.start_date = null;
+            triggerAutoSave();
+            return;
         }
-        updateDays();
+
+        endInput.min = newStart;
+
+        if (oldStart && oldEnd) {
+            // Both dates already set — shift end by the same delta as start
+            const delta = Math.round(
+                (new Date(newStart + 'T12:00:00') - new Date(oldStart + 'T12:00:00')) / 86400000
+            );
+            const newEndD = new Date(oldEnd + 'T12:00:00');
+            newEndD.setDate(newEndD.getDate() + delta);
+            currentTrip.end_date = _formatYmd(newEndD);
+        } else if (dayCount > 1) {
+            // No dates yet but days exist — anchor end at start + (N-1)
+            const newEndD = new Date(newStart + 'T12:00:00');
+            newEndD.setDate(newEndD.getDate() + dayCount - 1);
+            currentTrip.end_date = _formatYmd(newEndD);
+        } else if (!endInput.value || endInput.value < newStart) {
+            // No days, no end yet — fall back to single-day default
+            currentTrip.end_date = newStart;
+        }
+
+        currentTrip.start_date = newStart;
+        endInput.value = currentTrip.end_date || '';
+
+        const ok = await updateDays();
+        if (ok === false) {
+            // User cancelled the shrink — revert
+            currentTrip.start_date = previousStart;
+            currentTrip.end_date = previousEnd;
+            e.target.value = previousStart || '';
+            endInput.value = previousEnd || '';
+            return;
+        }
         triggerAutoSave();
     });
-    document.getElementById('editor-end-date')?.addEventListener('change', (e) => {
-        currentTrip.end_date = e.target.value || null;
-        updateDays();
+    document.getElementById('editor-end-date')?.addEventListener('change', async (e) => {
+        const newEnd = e.target.value || null;
+        const previousEnd = currentTrip.end_date;
+        currentTrip.end_date = newEnd;
+        const ok = await updateDays();
+        if (ok === false) {
+            currentTrip.end_date = previousEnd;
+            e.target.value = previousEnd || '';
+            return;
+        }
         triggerAutoSave();
     });
 
