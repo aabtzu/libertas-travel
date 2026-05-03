@@ -90,8 +90,14 @@ Every shared lookup table, config object, or utility must be defined **once** an
 - Whenever new tests are written, add a comment to issue #15 (test suite tracking) — even if the issue is closed
 
 ## Naming
-- Always write out "fiat-lux-agents" in full — in code, comments, docs, issues, and PR descriptions
+- Always write out "fiat-lux-agents" in full, in code, comments, docs, issues, and PR descriptions
 - Never abbreviate it (e.g. "fla") in any written artifact
+
+## Writing Style
+- **No em dashes (—) anywhere.** Not in code, not in comments, not in docstrings, not in commit messages, not in PR descriptions, not in user-facing copy on the site, and not in chat replies to the user. Use a hyphen (-), a comma, a colon, parentheses, or split into two sentences.
+- This rule exists because em dashes are the strongest "AI wrote this" tell. The codebase is meant to read as human-authored.
+- En dashes (–) for numeric ranges are fine; em dashes (—) are not.
+- The hyphen-minus character (-) is the only dash to use in prose.
 
 ## Code Style
 - Python style is enforced by **ruff** — run `ruff check .` and `ruff format .` before committing
