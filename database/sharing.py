@@ -69,6 +69,9 @@ _SQL_SQLITE_COUNT_TRIPS_BY_USER_AND_LINK = (
     "SELECT COUNT(*) FROM trips WHERE user_id = ? AND link = ?"
 )
 
+_SQL_PG_IS_TRIP_PUBLIC = "SELECT is_public FROM trips WHERE link = %s"
+_SQL_SQLITE_IS_TRIP_PUBLIC = "SELECT is_public FROM trips WHERE link = ?"
+
 
 def copy_trip_to_user(source_user_id: int, link: str, target_user_id: int) -> int | None:
     """Copy a trip from one user to another. Returns new trip ID or None if failed."""
@@ -98,6 +101,18 @@ def share_trip_with_all(source_user_id: int, link: str) -> int:
             if copy_trip_to_user(source_user_id, link, user["id"]):
                 shared_count += 1
     return shared_count
+
+
+def is_trip_public(link: str) -> bool:
+    """True if the trip with this link is marked public (any owner)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_IS_TRIP_PUBLIC, (link,))
+        else:
+            cursor.execute(_SQL_SQLITE_IS_TRIP_PUBLIC, (link,))
+        row = cursor.fetchone()
+        return bool(row and row[0])
 
 
 def set_trip_public(user_id: int, link: str, is_public: bool) -> bool:

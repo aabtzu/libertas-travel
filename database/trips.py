@@ -9,14 +9,49 @@ from database.connection import USE_POSTGRES, get_db
 
 # --- SQL constants ---
 
-_SQL_PG_GET_USER_TRIPS = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data, trip_type
-    FROM trips WHERE user_id = %s ORDER BY created_at DESC
-"""
-_SQL_SQLITE_GET_USER_TRIPS = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, is_public, is_draft, itinerary_data, trip_type
-    FROM trips WHERE user_id = ? ORDER BY created_at DESC
-"""
+# Column lists are referenced both inside SELECT statements AND in the Python
+# zip() that converts row tuples to dicts. Defining them once here is the
+# only way to keep the two from drifting silently when a column is added.
+_USER_TRIPS_COLUMNS = [
+    "id",
+    "title",
+    "link",
+    "dates",
+    "days",
+    "locations",
+    "activities",
+    "map_status",
+    "map_error",
+    "is_public",
+    "is_draft",
+    "itinerary_data",
+    "trip_type",
+    "is_archived",
+]
+_TRIP_BY_LINK_COLUMNS = [
+    "id",
+    "title",
+    "link",
+    "dates",
+    "days",
+    "locations",
+    "activities",
+    "map_status",
+    "map_error",
+    "itinerary_data",
+    "is_draft",
+    "trip_type",
+    "is_public",
+    "is_archived",
+]
+
+_SQL_PG_GET_USER_TRIPS = (
+    f"SELECT {', '.join(_USER_TRIPS_COLUMNS)} "
+    f"FROM trips WHERE user_id = %s ORDER BY created_at DESC"
+)
+_SQL_SQLITE_GET_USER_TRIPS = (
+    f"SELECT {', '.join(_USER_TRIPS_COLUMNS)} FROM trips WHERE user_id = ? ORDER BY created_at DESC"
+)
 
 _SQL_PG_ADD_TRIP = """
     INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, trip_type)
@@ -37,14 +72,12 @@ _SQL_SQLITE_ADD_TRIP = """
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
-_SQL_PG_GET_TRIP_BY_LINK = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type, is_public
-    FROM trips WHERE user_id = %s AND link = %s
-"""
-_SQL_SQLITE_GET_TRIP_BY_LINK = """
-    SELECT id, title, link, dates, days, locations, activities, map_status, map_error, itinerary_data, is_draft, trip_type, is_public
-    FROM trips WHERE user_id = ? AND link = ?
-"""
+_SQL_PG_GET_TRIP_BY_LINK = (
+    f"SELECT {', '.join(_TRIP_BY_LINK_COLUMNS)} FROM trips WHERE user_id = %s AND link = %s"
+)
+_SQL_SQLITE_GET_TRIP_BY_LINK = (
+    f"SELECT {', '.join(_TRIP_BY_LINK_COLUMNS)} FROM trips WHERE user_id = ? AND link = ?"
+)
 
 _SQL_PG_UPDATE_MAP_STATUS = """
     UPDATE trips SET map_status = %s, map_error = %s
@@ -68,6 +101,15 @@ _SQL_SQLITE_DELETE_TRIP = "DELETE FROM trips WHERE user_id = ? AND link = ?"
 _SQL_PG_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = %s"
 _SQL_SQLITE_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = ?"
 
+_SQL_PG_SET_TRIP_ARCHIVED = """
+    UPDATE trips SET is_archived = %s
+    WHERE user_id = %s AND link = %s
+"""
+_SQL_SQLITE_SET_TRIP_ARCHIVED = """
+    UPDATE trips SET is_archived = ?
+    WHERE user_id = ? AND link = ?
+"""
+
 
 def get_user_trips(user_id: int) -> list[dict[str, Any]]:
     """Get all trips for a user."""
@@ -75,22 +117,7 @@ def get_user_trips(user_id: int) -> list[dict[str, Any]]:
         cursor = conn.cursor()
         if USE_POSTGRES:
             cursor.execute(_SQL_PG_GET_USER_TRIPS, (user_id,))
-            columns = [
-                "id",
-                "title",
-                "link",
-                "dates",
-                "days",
-                "locations",
-                "activities",
-                "map_status",
-                "map_error",
-                "is_public",
-                "is_draft",
-                "itinerary_data",
-                "trip_type",
-            ]
-            return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
+            return [dict(zip(_USER_TRIPS_COLUMNS, row, strict=False)) for row in cursor.fetchall()]
         else:
             cursor.execute(_SQL_SQLITE_GET_USER_TRIPS, (user_id,))
             return [dict(row) for row in cursor.fetchall()]
@@ -154,22 +181,7 @@ def get_trip_by_link(user_id: int, link: str) -> dict[str, Any] | None:
             cursor.execute(_SQL_PG_GET_TRIP_BY_LINK, (user_id, link))
             row = cursor.fetchone()
             if row:
-                columns = [
-                    "id",
-                    "title",
-                    "link",
-                    "dates",
-                    "days",
-                    "locations",
-                    "activities",
-                    "map_status",
-                    "map_error",
-                    "itinerary_data",
-                    "is_draft",
-                    "trip_type",
-                    "is_public",
-                ]
-                trip = dict(zip(columns, row, strict=False))
+                trip = dict(zip(_TRIP_BY_LINK_COLUMNS, row, strict=False))
                 if trip["itinerary_data"]:
                     # Already parsed by psycopg2 for JSONB
                     trip["start_date"] = trip["itinerary_data"].get("start_date")
@@ -285,3 +297,15 @@ def get_trip_owner(link: str) -> int | None:
             cursor.execute(_SQL_SQLITE_GET_TRIP_OWNER, (link,))
         row = cursor.fetchone()
         return row[0] if row else None
+
+
+def set_trip_archived(user_id: int, link: str, is_archived: bool) -> bool:
+    """Set a trip's archived flag. Archive is independent of is_public —
+    an archived trip can still be public/recommendable."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_SET_TRIP_ARCHIVED, (is_archived, user_id, link))
+        else:
+            cursor.execute(_SQL_SQLITE_SET_TRIP_ARCHIVED, (is_archived, user_id, link))
+        return cursor.rowcount > 0

@@ -9,6 +9,42 @@ def pytest_configure(config):
     )
 
 
+# Titles that test code creates via /api/trips/create or db.add_trip. If a test
+# crashes before its try/finally cleanup runs, rows can pile up in libertas.db.
+# Sweep them at session end as a safety net so the trips page stays clean.
+_TEST_TRIP_TITLES = (
+    "Type Test",
+    "Links Test",
+    "Test Trip",
+    "Idea Test Trip",
+    "Delete Me",
+    "Day View Test",
+    "Rec Route Test",
+    "Active Render Test",
+    "Archived Render Test",
+    "Archive Test Trip",
+    "Cached Test",
+    "Compute Test",
+)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_test_trips_at_session_end():
+    """Sweep stray test trips after the session — defense against test crashes."""
+    yield
+    try:
+        from database.connection import USE_POSTGRES, get_db
+
+        placeholders = ",".join("%s" if USE_POSTGRES else "?" for _ in _TEST_TRIP_TITLES)
+        sql = f"DELETE FROM trips WHERE title IN ({placeholders})"
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute(sql, _TEST_TRIP_TITLES)
+    except Exception as e:
+        # Never break the test session over cleanup
+        print(f"[conftest] Test-trip cleanup failed: {e}")
+
+
 @pytest.fixture
 def app():
     """Create a Flask app configured for testing (AUTH_DISABLED, SQLite)."""

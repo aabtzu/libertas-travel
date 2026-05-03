@@ -262,41 +262,47 @@ function promptForTripName(suggestedName, link) {
 }
 
 /**
- * Initialize trip card actions (edit, delete, copy)
+ * Initialize trip card actions (edit, delete, copy).
+ *
+ * Uses document-level event delegation so cards added later (e.g. clones in
+ * list view) get the same behavior without re-binding. Each handler stops
+ * propagation so the click doesn't navigate the parent <a> wrapper.
  */
 function initTripActions() {
-    // Edit buttons
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    document.addEventListener('click', (e) => {
+        // Edit
+        const editBtn = e.target.closest('.edit-btn');
+        if (editBtn) {
             e.preventDefault();
             e.stopPropagation();
-            editTrip(btn);
-        });
-    });
+            editTrip(editBtn);
+            return;
+        }
 
-    // Delete buttons
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        // Delete
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
             e.preventDefault();
             e.stopPropagation();
-            const link = btn.dataset.link;
-            const wrapper = btn.closest('.trip-card-wrapper');
+            const link = deleteBtn.dataset.link;
+            const wrapper = deleteBtn.closest('.trip-card-wrapper');
             const title = wrapper.querySelector('.trip-card-title')?.textContent || 'this trip';
-
-            LibertasModal.confirm(`Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`, { danger: true }).then(function(confirmed) {
+            LibertasModal.confirm(
+                `Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`,
+                { danger: true }
+            ).then(function(confirmed) {
                 if (confirmed) deleteTrip(link, wrapper);
             });
-        });
-    });
+            return;
+        }
 
-    // Copy buttons
-    document.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        // Copy
+        const copyBtn = e.target.closest('.copy-btn');
+        if (copyBtn) {
             e.preventDefault();
             e.stopPropagation();
-            const link = btn.dataset.link;
-            copyTrip(link);
-        });
+            copyTrip(copyBtn.dataset.link);
+        }
     });
 }
 
@@ -307,118 +313,6 @@ function editTrip(btn) {
     const link = btn.dataset.link;
     // Navigate to the full editor
     window.location.href = `/create.html?edit=${link}`;
-}
-
-/**
- * Quick edit trip metadata (title, dates, etc.)
- */
-function quickEditTrip(btn) {
-    const link = btn.dataset.link;
-    const title = btn.dataset.title;
-    const dates = btn.dataset.dates;
-    const days = btn.dataset.days;
-    const locations = btn.dataset.locations;
-    const activities = btn.dataset.activities;
-
-    // Create edit modal
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.innerHTML = `
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <i class="fas fa-edit" style="color: #f39c12; font-size: 1.5rem;"></i>
-                <h3>Edit Trip</h3>
-            </div>
-            <div class="modal-body">
-                <div class="edit-form">
-                    <div class="form-group">
-                        <label for="edit-title">Trip Name</label>
-                        <input type="text" class="modal-input" id="edit-title" value="${title}">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-dates">Dates</label>
-                        <input type="text" class="modal-input" id="edit-dates" value="${dates}">
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="edit-days">Days</label>
-                            <input type="number" class="modal-input" id="edit-days" value="${days}" min="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-locations">Locations</label>
-                            <input type="number" class="modal-input" id="edit-locations" value="${locations}" min="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="edit-activities">Activities</label>
-                            <input type="number" class="modal-input" id="edit-activities" value="${activities}" min="1">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn modal-btn-secondary" id="edit-cancel">Cancel</button>
-                <button class="modal-btn modal-btn-primary" id="edit-save">Save Changes</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
-    // Focus title input
-    const titleInput = document.getElementById('edit-title');
-    titleInput.focus();
-    titleInput.select();
-
-    // Handle save
-    const saveChanges = () => {
-        const newData = {
-            link: link,
-            title: document.getElementById('edit-title').value.trim(),
-            dates: document.getElementById('edit-dates').value.trim(),
-            days: parseInt(document.getElementById('edit-days').value) || 1,
-            locations: parseInt(document.getElementById('edit-locations').value) || 1,
-            activities: parseInt(document.getElementById('edit-activities').value) || 1
-        };
-
-        overlay.remove();
-
-        fetch('/api/update-trip', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showStatus('success', 'Trip updated successfully');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showStatus('error', data.error || 'Failed to update trip');
-            }
-        })
-        .catch(() => {
-            showStatus('error', 'Failed to update trip');
-        });
-    };
-
-    // Handle cancel
-    const cancelEdit = () => {
-        overlay.remove();
-    };
-
-    document.getElementById('edit-save').addEventListener('click', saveChanges);
-    document.getElementById('edit-cancel').addEventListener('click', cancelEdit);
-
-    // Handle Enter key in inputs
-    overlay.querySelectorAll('input').forEach(input => {
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') saveChanges();
-        });
-    });
-
-    // Handle Escape key
-    overlay.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') cancelEdit();
-    });
 }
 
 /**
@@ -759,27 +653,40 @@ function togglePublic(btn) {
 }
 
 /**
- * Initialize share and public toggle actions
+ * Toggle archived state of a trip. Mirrors togglePublic — they're independent flags.
+ */
+// toggleArchived() and toggleArchivedSection() — defined in static/js/archive.js
+
+/**
+ * Initialize share, public-toggle, and archive-toggle actions.
+ *
+ * Document-level delegation — works for cards rendered server-side AND for
+ * clones that the list view inserts later.
  */
 function initShareActions() {
-    // Share buttons
-    document.querySelectorAll('.share-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    document.addEventListener('click', (e) => {
+        const shareBtn = e.target.closest('.share-btn');
+        if (shareBtn) {
             e.preventDefault();
             e.stopPropagation();
-            const link = btn.dataset.link;
-            const title = btn.dataset.title;
-            openShareModal(link, title);
-        });
-    });
+            openShareModal(shareBtn.dataset.link, shareBtn.dataset.title);
+            return;
+        }
 
-    // Public toggle buttons
-    document.querySelectorAll('.public-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        const publicBtn = e.target.closest('.public-btn');
+        if (publicBtn) {
             e.preventDefault();
             e.stopPropagation();
-            togglePublic(btn);
-        });
+            togglePublic(publicBtn);
+            return;
+        }
+
+        const archiveBtn = e.target.closest('.archive-btn');
+        if (archiveBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleArchived(archiveBtn);
+        }
     });
 
     // Close modal when clicking outside

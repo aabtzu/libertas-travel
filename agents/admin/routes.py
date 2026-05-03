@@ -15,6 +15,12 @@ admin_bp = Blueprint("admin", __name__)
 
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.parent / "output"))
 
+_SQL_COUNT_USERS = "SELECT COUNT(*) FROM users"
+_SQL_COUNT_TRIPS = "SELECT COUNT(*) FROM trips"
+_SQL_LIST_RECENT_TRIPS = (
+    "SELECT id, user_id, title, link FROM trips ORDER BY created_at DESC LIMIT 10"
+)
+
 
 @admin_bp.get("/api/debug")
 def debug():
@@ -57,13 +63,11 @@ def debug():
     try:
         with db.get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM users")
+            cursor.execute(_SQL_COUNT_USERS)
             debug_info["users_count"] = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM trips")
+            cursor.execute(_SQL_COUNT_TRIPS)
             debug_info["trips_count"] = cursor.fetchone()[0]
-            cursor.execute(
-                "SELECT id, user_id, title, link FROM trips ORDER BY created_at DESC LIMIT 10"
-            )
+            cursor.execute(_SQL_LIST_RECENT_TRIPS)
             debug_info["trips"] = [
                 {"id": row[0], "user_id": row[1], "title": row[2], "link": row[3]}
                 for row in cursor.fetchall()

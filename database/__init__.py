@@ -23,6 +23,7 @@ from database.sharing import (  # noqa: F401
     copy_trip_by_link,
     copy_trip_to_user,
     get_public_trips,
+    is_trip_public,
     set_trip_public,
     share_trip_with_all,
 )
@@ -33,6 +34,7 @@ from database.trips import (  # noqa: F401
     get_trip_by_link,
     get_trip_owner,
     get_user_trips,
+    set_trip_archived,
     update_trip,
     update_trip_map_status,
 )

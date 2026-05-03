@@ -113,19 +113,6 @@ TRIP_COLORS = [
     "#26a69a",
 ]
 
-# Icons for different regions
-REGION_ICONS = {
-    "india": "om",
-    "rajasthan": "gopuram",
-    "alaska": "mountain",
-    "asia": "torii-gate",
-    "europe": "landmark",
-    "africa": "globe-africa",
-    "americas": "globe-americas",
-    "oceania": "umbrella-beach",
-    "default": "plane",
-}
-
 
 def get_destination_image(title: str):
     """Get a destination-specific image URL based on trip title."""
@@ -136,46 +123,23 @@ def get_destination_image(title: str):
     return None
 
 
-def get_region_icon(title: str) -> str:
-    """Get an appropriate icon based on trip title/region."""
-    title_lower = title.lower()
-    if any(
-        x in title_lower for x in ["india", "delhi", "agra", "jaipur", "jaisalmer", "rajasthan"]
-    ):
-        return "om"
-    elif "alaska" in title_lower:
-        return "mountain"
-    elif any(
-        x in title_lower
-        for x in ["asia", "vietnam", "cambodia", "thailand", "japan", "china", "singapore"]
-    ):
-        return "torii-gate"
-    elif any(
-        x in title_lower for x in ["europe", "france", "italy", "spain", "germany", "uk", "rome"]
-    ):
-        return "landmark"
-    elif any(x in title_lower for x in ["africa", "safari", "kenya", "tanzania"]):
-        return "globe-africa"
-    elif any(x in title_lower for x in ["beach", "island", "hawaii", "caribbean"]):
-        return "umbrella-beach"
-    return "plane"
+def get_region_icon(itinerary_data: str | dict | None = None) -> str:
+    """Return the trip's card icon.
 
-
-def get_region_name(title: str) -> str:
-    """Extract region name from trip title."""
-    title_lower = title.lower()
-    if any(x in title_lower for x in ["rajasthan", "jaipur", "jaisalmer"]):
-        return "Rajasthan"
-    elif any(x in title_lower for x in ["india", "delhi", "agra"]):
-        return "India"
-    elif "alaska" in title_lower:
-        return "Alaska"
-    elif "vietnam" in title_lower or "cambodia" in title_lower:
-        return "Southeast Asia"
-    elif any(x in title_lower for x in ["europe", "rome", "italy"]):
-        return "Europe"
-    # Default: use first part of title
-    return title.split()[0] if title else "Trip"
+    The real picker is the LLM in `agents.itinerary.icon_picker`, whose
+    result lives in `itinerary_data["card_icon"]` (populated lazily by
+    /api/trips/<link>/card-icon and persisted there). This function just
+    reads that cached value, falling back to "plane" so the server-side
+    initial render isn't blank while the LLM call is in flight.
+    """
+    if not itinerary_data:
+        return "plane"
+    if isinstance(itinerary_data, str):
+        try:
+            itinerary_data = json.loads(itinerary_data)
+        except (json.JSONDecodeError, ValueError):
+            return "plane"
+    return itinerary_data.get("card_icon") or "plane"
 
 
 def extract_category_counts(itinerary_data: str | dict | None) -> dict:
@@ -320,14 +284,14 @@ def generate_trip_card(
     index: int = 0,
     is_public: bool = False,
     is_draft: bool = False,
+    is_archived: bool = False,
     itinerary_data: str | dict | None = None,
     trip_type: str = "itinerary",
 ) -> str:
     """Generate HTML for a single trip card."""
     # Use accent colors for trip card backgrounds
     color = TRIP_COLORS[index % len(TRIP_COLORS)]
-    icon = get_region_icon(title)
-    region = get_region_name(title)
+    icon = get_region_icon(itinerary_data)
 
     # Public visibility settings
     public_badge = (
@@ -346,6 +310,16 @@ def generate_trip_card(
     draft_class = " is-draft" if is_draft else ""
     card_link = f"/create.html?edit={link}" if is_draft else link
 
+    # Archive settings — archived trips are hidden from main grid by default
+    archived_badge = (
+        '<span class="archived-badge"><i class="fas fa-box-archive"></i> Archived</span>'
+        if is_archived
+        else ""
+    )
+    archived_class = " is-archived" if is_archived else ""
+    archived_btn_class = "active" if is_archived else ""
+    archived_title = "Unarchive trip" if is_archived else "Archive trip"
+
     # Generate category stats (icons with counts)
     category_counts = extract_category_counts(itinerary_data)
     category_stats = generate_category_stats_html(category_counts, locations, activities)
@@ -358,7 +332,6 @@ def generate_trip_card(
         card_link=card_link,
         color=color,
         icon=icon,
-        region=region,
         title=title,
         dates=dates,
         days=days,
@@ -373,6 +346,11 @@ def generate_trip_card(
         draft_badge=draft_badge,
         draft_class=draft_class,
         is_draft="true" if is_draft else "false",
+        archived_badge=archived_badge,
+        archived_class=archived_class,
+        archived_btn_class=archived_btn_class,
+        archived_title=archived_title,
+        is_archived="true" if is_archived else "false",
         trip_type=trip_type,
         map_location=map_location,
     )
@@ -391,8 +369,7 @@ def generate_public_trip_card(
 ) -> str:
     """Generate HTML for a public trip card (from another user)."""
     color = TRIP_COLORS[index % len(TRIP_COLORS)]
-    icon = get_region_icon(title)
-    region = get_region_name(title)
+    icon = get_region_icon(itinerary_data)
 
     # Generate category stats (icons with counts)
     category_counts = extract_category_counts(itinerary_data)
@@ -402,7 +379,6 @@ def generate_public_trip_card(
         link=link,
         color=color,
         icon=icon,
-        region=region,
         title=title,
         dates=dates,
         days=days,
@@ -423,17 +399,21 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
     if public_trips is None:
         public_trips = []
 
-    trip_cards_list = []
+    active_cards_list = []
+    archived_cards_list = []
     for i, trip in enumerate(trips):
         try:
             # Ensure all required fields have defaults
             is_public = trip.get("is_public", False)
             is_draft = trip.get("is_draft", False)
+            is_archived = trip.get("is_archived", False)
             # Handle SQLite integer (1/0) vs PostgreSQL boolean
             if isinstance(is_public, int):
                 is_public = bool(is_public)
             if isinstance(is_draft, int):
                 is_draft = bool(is_draft)
+            if isinstance(is_archived, int):
+                is_archived = bool(is_archived)
 
             # Get date display - always format from start_date for consistency
             itinerary_data = trip.get("itinerary_data") or {}
@@ -455,14 +435,19 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
                 index=i,
                 is_public=is_public,
                 is_draft=is_draft,
+                is_archived=is_archived,
                 itinerary_data=trip.get("itinerary_data"),
                 trip_type=trip.get("trip_type", "itinerary"),
             )
-            trip_cards_list.append(card)
+            if is_archived:
+                archived_cards_list.append(card)
+            else:
+                active_cards_list.append(card)
         except Exception as e:
             print(f"Warning: Could not generate card for trip {trip}: {e}")
             continue
-    trip_cards = "\n".join(trip_cards_list)
+    trip_cards = "\n".join(active_cards_list)
+    archived_cards = "\n".join(archived_cards_list)
 
     # Generate public trips section if there are any
     public_trips_section = ""
@@ -507,9 +492,20 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         </div>
 """
 
+    # Archived section + toggle are always rendered (starts collapsed). JS
+    # flips visibility based on count and on the user clicking the toggle.
+    # Markup lives in templates/archived_{section,toggle}.html.
+    archived_section = get_template("archived_section.html").format(archived_cards=archived_cards)
+    archived_toggle = get_template("archived_toggle.html").format(
+        hidden_attr="" if archived_cards_list else 'hidden=""',
+        count=len(archived_cards_list),
+    )
+
     template = get_template("trips.html")
     return template.format(
         nav_html=get_nav_html("trips"),
         trip_cards=trip_cards,
         public_trips_section=public_trips_section,
+        archived_section=archived_section,
+        archived_toggle=archived_toggle,
     )

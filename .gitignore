@@ -31,3 +31,9 @@ data/
 .env
 .env.*
 database.sqlite
+
+# Local Claude Code state (per-clone settings, locks)
+.claude/
+
+# pytest scratch directory
+test-results/

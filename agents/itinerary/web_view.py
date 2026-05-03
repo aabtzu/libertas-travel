@@ -64,6 +64,7 @@ class ItineraryWebView:
         is_owner: bool = False,
         is_authenticated: bool = False,
         trip_link: str = "",
+        card_icon: str = "plane",
     ) -> str:
         """Render trip HTML without writing to file.
 
@@ -106,6 +107,7 @@ class ItineraryWebView:
         return get_template("trip.html").format(
             nav_html=get_nav_html("trips"),
             title=html_module.escape(itinerary.title),
+            trip_icon=html_module.escape(card_icon or "plane"),
             meta_info=html_module.escape(meta_info),
             summary_html=summary_html,
             column_html=column_html,
