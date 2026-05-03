@@ -182,9 +182,7 @@ def regen_all_stuck_trips() -> dict:
             map_data = itinerary_data.get("map_data")
             status = trip.get("map_status")
             # Stuck = ready but no markers (or no map_data at all)
-            is_stuck = status == "ready" and (
-                not map_data or not map_data.get("markers")
-            )
+            is_stuck = status == "ready" and (not map_data or not map_data.get("markers"))
             if not is_stuck:
                 continue
 
