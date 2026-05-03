@@ -62,6 +62,15 @@ def app():
 
     db.init_db()
 
+    # AUTH_DISABLED defaults g.user_id to 1 in agents/common/flask_utils.py.
+    # Tests POST trips/items as that user — the FK on trips.user_id needs
+    # the row to exist. SQLite previously let it slide silently; with
+    # PRAGMA foreign_keys=ON we now need to ensure user 1 exists. The
+    # first INSERT into the users table on CI gets id=1 because it's a
+    # fresh DB; locally libertas.db usually already has a user 1.
+    if not db.get_user_by_id(1):
+        db.create_user("test_owner", "test_owner@test.local", "test-password-12345")
+
     flask_app = create_app()
     flask_app.config["TESTING"] = True
     yield flask_app
