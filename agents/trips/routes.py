@@ -10,9 +10,9 @@ from pathlib import Path
 from flask import Blueprint, g, request
 
 import database as db
-import geocoding_worker
 from agents.common.flask_utils import json_err, json_ok, require_auth
 from agents.create import handler as create_handler
+from agents.itinerary import geocoding_worker
 from agents.trips.ics import generate_ics
 
 trips_bp = Blueprint("trips", __name__)

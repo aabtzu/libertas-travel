@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from flask import Blueprint, request, session
 
-import auth
+from agents.auth import credentials as auth
 from agents.common.flask_utils import json_err, json_ok
 
 auth_bp = Blueprint("auth", __name__)
