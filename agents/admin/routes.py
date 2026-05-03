@@ -326,6 +326,39 @@ def admin_add_venues():
     return json_ok({"success": True, "added": added, "skipped": skipped})
 
 
+@admin_bp.post("/api/admin/delete-trip")
+def admin_delete_trip():
+    """Delete a single trip by username + link. Useful when a trip needs
+    to come out of the public list (or out entirely) and the owner can't
+    log in to do it themselves — common for the `demo` user.
+
+    Protected by SECRET_KEY (X-Admin-Key header).
+
+    Body JSON: {"username": "<owner>", "link": "<trip-link.html>"}
+    """
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    link = data.get("link", "").strip()
+    if not username or not link:
+        return json_err("Both 'username' and 'link' are required")
+
+    user = db.get_user_by_username(username)
+    if not user:
+        return json_err(f"No user named '{username}' found", status=404)
+
+    deleted = db.delete_trip(user["id"], link)
+    if not deleted:
+        return json_err(f"No trip with link '{link}' found for user '{username}'", status=404)
+
+    print(f"[ADMIN] Deleted trip '{link}' from user '{username}'", flush=True)
+    return json_ok({"success": True, "username": username, "link": link})
+
+
 @admin_bp.post("/api/admin/delete-user")
 def admin_delete_user():
     """Delete a user (and their trips, via FK CASCADE) by username. Useful
