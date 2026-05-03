@@ -230,6 +230,26 @@ def admin_retry_geocoding():
     return json_ok(result)
 
 
+@admin_bp.post("/api/admin/regen-stuck-trips")
+def admin_regen_stuck_trips():
+    """Find and re-geocode every trip in the stuck state (map_status='ready'
+    but no map_data). One-shot bulk fix — same self-healing the trip page
+    does on view, but applied to the whole table at once.
+
+    Protected by SECRET_KEY (X-Admin-Key header). Returns the list of
+    links that were re-queued plus the count.
+    """
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    from agents.admin.handler import regen_all_stuck_trips
+
+    result = regen_all_stuck_trips()
+    return json_ok(result)
+
+
 @admin_bp.post("/api/admin/add-trip")
 def admin_add_trip():
     """Create or update a trip for any user. Protected by SECRET_KEY.

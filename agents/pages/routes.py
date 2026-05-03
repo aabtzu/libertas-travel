@@ -17,6 +17,7 @@ from agents.common.templates import (
     get_nav_html,
 )
 from agents.explore.templates import generate_explore_page
+from agents.itinerary import geocoding_worker
 from agents.itinerary.templates import generate_trips_page
 from agents.pages.profile_view import generate_profile_page
 from agents.pages.recommendation_view import generate_recommendation_page
@@ -166,6 +167,22 @@ def trip_html(trip_name: str):
 
     itinerary = deserialize_itinerary(worker_format)
     map_data = itinerary_data.get("map_data")
+
+    # Self-heal stuck trips: if status was advanced to "ready" but map_data
+    # is missing, the trip is in the bad state that previously caused the
+    # client-side reload loop. Reset to "pending" and queue a regen so the
+    # background worker computes map_data; the page renders with the
+    # spinner and JS polling drives a single reload when it flips to
+    # ready. No manual /api/admin/retry-geocoding needed.
+    if not map_data and trip.get("map_status") == "ready":
+        # Use the trip owner's user_id, not the visitor's — the visitor
+        # may be anonymous viewing a public trip.
+        owner = trip_owner_id or db.get_trip_owner(link)
+        if owner:
+            db.update_trip_map_status(owner, link, "pending", None)
+            geocoding_worker.queue_geocoding(link, itinerary)
+            print(f"[SELF-HEAL] Queued regen for stuck trip {link!r}", flush=True)
+
     # Use the per-trip icon picked by the LLM (cached on the trips page);
     # fall back to "plane" if it hasn't been computed yet.
     card_icon = itinerary_data.get("card_icon") or "plane"
