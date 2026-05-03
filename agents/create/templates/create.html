@@ -7,9 +7,13 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=9">
+    <link rel="stylesheet" href="/static/css/main.css?v=10">
+    <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=1">
     <link rel="stylesheet" href="/static/css/categories.css">
-    <link rel="stylesheet" href="/static/css/create.css?v=20">
+    <link rel="stylesheet" href="/static/css/create.css?v=21">
+    <link rel="stylesheet" href="/static/css/create-content.css?v=1">
+    <link rel="stylesheet" href="/static/css/create-chat.css?v=1">
+    <link rel="stylesheet" href="/static/css/create-views.css?v=1">
 </head>
 <body>
     {nav_html}
@@ -323,7 +327,8 @@
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=48"></script>
+    <script src="/static/js/create.js?v=49"></script>
+    <script src="/static/js/create-render.js?v=1"></script>
     <script src="/static/js/create-items.js?v=3"></script>
     <script src="/static/js/create-upload.js?v=3"></script>
     <script src="/static/js/create-save.js?v=3"></script>

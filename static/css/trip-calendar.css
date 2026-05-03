@@ -1,0 +1,415 @@
+/* Trip Detail — Calendar view (split from trip.css) */
+
+/* ==================== Calendar View ==================== */
+.calendar-container {
+    padding: 20px 40px;
+    background: #f5f5f5;
+    overflow-y: auto;
+}
+
+.calendar-view {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    justify-content: center;
+}
+
+.calendar-month {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+    min-width: 500px;
+    flex: 1;
+    max-width: 900px;
+}
+
+.calendar-month-title {
+    text-align: center;
+    color: #667eea;
+    font-size: 1.2rem;
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #667eea;
+}
+
+.calendar-grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 5px;
+}
+
+.calendar-day-name {
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #666;
+    padding: 8px 0;
+    text-transform: uppercase;
+}
+
+.calendar-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-day {
+    min-height: 80px;
+    padding: 4px;
+    background: #fafafa;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.calendar-day.other-month {
+    background: #f0f0f0;
+    opacity: 0.5;
+}
+
+.calendar-day.trip-day {
+    background: #e8f4fd;
+    border: 1px solid #b3d9f7;
+}
+
+.calendar-day.trip-start {
+    background: #667eea;
+    color: white;
+}
+
+.calendar-day.trip-start .calendar-day-number {
+    color: white;
+    font-weight: 700;
+}
+
+.calendar-day.trip-end {
+    background: #f5576c;
+    color: white;
+}
+
+.calendar-day.trip-end .calendar-day-number {
+    color: white;
+    font-weight: 700;
+}
+
+.calendar-day-number {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.calendar-day-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.calendar-item {
+    font-size: 0.65rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: white;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.calendar-item.flight {
+    background: #1565c0;
+}
+
+.calendar-item.transport {
+    background: #e65100;
+}
+
+.calendar-item.hotel,
+.calendar-item.lodging {
+    background: #7b1fa2;
+}
+
+.calendar-item.activity,
+.calendar-item.attraction {
+    background: #2e7d32;
+}
+
+.calendar-item.meal {
+    background: #c2185b;
+}
+
+.calendar-item.other {
+    background: #616161;
+}
+
+.calendar-item-more {
+    font-size: 0.6rem;
+    color: #667eea;
+    font-weight: 500;
+    padding: 2px 4px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s;
+}
+
+.calendar-item-more:hover {
+    background: rgba(102, 126, 234, 0.15);
+}
+
+/* Calendar popup overlay */
+.calendar-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+/* Calendar item popup */
+.calendar-item-popup {
+    position: absolute;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    z-index: 1001;
+    min-width: 250px;
+    max-width: 350px;
+}
+
+.popup-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.popup-close:hover {
+    color: #333;
+}
+
+.popup-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.popup-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.popup-icon.flight { background: #1565c0; }
+.popup-icon.transport { background: #e65100; }
+.popup-icon.hotel, .popup-icon.lodging { background: #7b1fa2; }
+.popup-icon.activity, .popup-icon.attraction { background: #2e7d32; }
+.popup-icon.meal { background: #c2185b; }
+.popup-icon.other { background: #616161; }
+
+.popup-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #333;
+}
+
+.popup-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.popup-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.popup-detail i {
+    width: 16px;
+    text-align: center;
+    color: #999;
+}
+
+/* More items popup */
+.calendar-more-popup {
+    max-width: 320px;
+}
+
+.more-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.more-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.more-item-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+}
+
+.more-item-icon.flight { background: #1565c0; }
+.more-item-icon.transport { background: #e65100; }
+.more-item-icon.hotel, .more-item-icon.lodging { background: #7b1fa2; }
+.more-item-icon.activity, .more-item-icon.attraction { background: #2e7d32; }
+.more-item-icon.meal { background: #c2185b; }
+.more-item-icon.other { background: #616161; }
+
+.more-item-icon i {
+    font-size: 12px;
+}
+
+.more-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.more-item-title {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.more-item-detail {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 2px;
+}
+
+/* Empty calendar state */
+.calendar-empty {
+    text-align: center;
+    padding: 60px 40px;
+}
+
+.calendar-empty i {
+    font-size: 4rem;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
+.calendar-empty h3 {
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.calendar-empty p {
+    color: #999;
+}
+
+/* Shared Item Detail Popup - works with item-detail.js */
+.item-detail-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.item-detail-popup {
+    position: absolute;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    z-index: 1001;
+    min-width: 280px;
+    max-width: 400px;
+}
+
+.item-detail-popup .popup-detail a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.item-detail-popup .popup-detail a:hover {
+    text-decoration: underline;
+}
+
+.item-detail-popup .popup-notes {
+    align-items: flex-start;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+}
+
+.item-detail-popup .popup-notes span {
+    line-height: 1.4;
+}
+
+/* Column item, night-stay, and activity clickable styles */
+.column-item,
+.night-stay[data-title],
+.activity[data-title] {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.column-item:hover,
+.night-stay[data-title]:hover,
+.activity[data-title]:hover {
+    background: rgba(102, 126, 234, 0.08);
+}
+
+/* More items link indicator */
+.more-item-link {
+    color: #667eea;
+    font-size: 0.75rem;
+    margin-top: 2px;
+}
+
+.more-item:hover {
+    background: rgba(102, 126, 234, 0.08);
+    border-radius: 6px;
+}
+

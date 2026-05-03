@@ -1,0 +1,652 @@
+/* Create Trip Page — Grid / Column / Calendar views (split from create.css) */
+
+/* ==================== Grid View ==================== */
+.grid-container {
+    display: block;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.grid-empty {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #888;
+    text-align: center;
+}
+
+.day-grid-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    border: 1px solid #e8e8e8;
+}
+
+.day-grid-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.grid-card-header {
+    background: #667eea;
+    color: white;
+    padding: 16px 20px;
+}
+
+.grid-day-number {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+    margin-bottom: 4px;
+}
+
+.grid-day-date {
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.grid-day-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
+.grid-card-body {
+    padding: 16px 20px;
+    min-height: 100px;
+}
+
+.grid-item-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+    color: #444;
+}
+
+.grid-item-preview:last-child {
+    border-bottom: none;
+}
+
+.grid-item-preview i {
+    color: #667eea;
+    width: 16px;
+    text-align: center;
+}
+
+.grid-item-preview span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.grid-item-more {
+    font-size: 0.8rem;
+    color: #888;
+    padding-top: 8px;
+}
+
+.grid-no-items {
+    color: #aaa;
+    font-style: italic;
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.grid-card-footer {
+    padding: 12px 20px;
+    background: #f8f9fa;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px solid #eee;
+}
+
+.grid-category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.grid-category-badge.meal {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.grid-category-badge.hotel {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.grid-category-badge.activity {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.grid-category-badge.attraction {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+.grid-category-badge.transport {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.grid-category-badge.other {
+    background: #eceff1;
+    color: #546e7a;
+}
+
+.grid-empty-badge {
+    color: #bbb;
+    font-size: 0.8rem;
+}
+
+/* ==================== Column Table View (Grid Tab) ==================== */
+.column-table-wrapper {
+    width: 100%;
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    overflow-x: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background: white;
+}
+
+.column-table {
+    width: 100%;
+    min-width: 800px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    table-layout: fixed;
+}
+
+.column-table th:nth-child(1) { width: 12%; }  /* Day */
+.column-table th:nth-child(2) { width: 22%; }  /* Travel */
+.column-table th:nth-child(3) { width: 22%; }  /* Activity */
+.column-table th:nth-child(4) { width: 22%; }  /* Night Stay */
+.column-table th:nth-child(5) { width: 22%; }  /* Notes */
+
+.column-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.column-table th {
+    background: #667eea;
+    color: white;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #5a6fd6;
+}
+
+.column-table th:first-child {
+    border-radius: 8px 0 0 0;
+}
+
+.column-table th:last-child {
+    border-radius: 0 8px 0 0;
+}
+
+.column-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+}
+
+.column-table tr:hover td {
+    background: #f8f9ff;
+}
+
+/* Column Item Styles */
+.column-item {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border-left: 3px solid #ddd;
+    background: #f8f9fa;
+}
+
+.column-item:last-child {
+    margin-bottom: 0;
+}
+
+.column-item.flight {
+    background: #e3f2fd;
+    border-left-color: #1565c0;
+}
+
+.column-item.transport {
+    background: #fff3e0;
+    border-left-color: #e65100;
+}
+
+.column-item.hotel,
+.column-item.lodging {
+    background: #f3e5f5;
+    border-left-color: #7b1fa2;
+}
+
+.column-item.activity,
+.column-item.attraction {
+    background: #e8f5e9;
+    border-left-color: #2e7d32;
+}
+
+.column-item.meal {
+    background: #fce4ec;
+    border-left-color: #c2185b;
+}
+
+.column-item.other {
+    background: #eceff1;
+    border-left-color: #607d8b;
+}
+
+.column-item-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.column-item-icon {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.column-item.flight .column-item-icon { color: #1565c0; }
+.column-item.transport .column-item-icon { color: #e65100; }
+.column-item.hotel .column-item-icon,
+.column-item.lodging .column-item-icon { color: #7b1fa2; }
+.column-item.activity .column-item-icon,
+.column-item.attraction .column-item-icon { color: #2e7d32; }
+.column-item.meal .column-item-icon { color: #c2185b; }
+.column-item.other .column-item-icon { color: #607d8b; }
+
+.column-item-time {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.column-item-location {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.column-item-notes {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.night-stay {
+    padding: 8px 12px;
+    background: #f3e5f5;
+    border-radius: 6px;
+    border-left: 3px solid #7b1fa2;
+}
+
+.night-stay.carried {
+    opacity: 0.6;
+    font-style: italic;
+}
+
+.night-stay i {
+    margin-right: 6px;
+    color: #7b1fa2;
+}
+
+.column-empty {
+    color: #bbb;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+/* Website link styles */
+.item-title a,
+.suggestion-item-title a {
+    color: #667eea;
+    margin-left: 6px;
+    font-size: 0.85em;
+    text-decoration: none;
+}
+
+.item-title a:hover,
+.suggestion-item-title a:hover {
+    color: #764ba2;
+}
+
+.suggestion-website-link {
+    color: #667eea;
+    margin-left: 6px;
+}
+
+.suggestion-website-link:hover {
+    color: #764ba2;
+}
+
+/* Drag-drop file upload styles */
+.create-container.file-drag-over {
+    position: relative;
+}
+
+.create-container.file-drag-over::after {
+    content: 'Drop file to upload';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(102, 126, 234, 0.9);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* ==================== Calendar View ==================== */
+.calendar-container {
+    padding: 20px;
+    background: #f5f5f5;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.calendar-view {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    justify-content: center;
+}
+
+.calendar-month {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+    min-width: 500px;
+    flex: 1;
+    max-width: 900px;
+}
+
+.calendar-month-title {
+    text-align: center;
+    color: #667eea;
+    font-size: 1.2rem;
+    margin: 0 0 15px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #667eea;
+}
+
+.calendar-grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 5px;
+}
+
+.calendar-day-name {
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #666;
+    padding: 8px 0;
+    text-transform: uppercase;
+}
+
+.calendar-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-day {
+    min-height: 80px;
+    padding: 4px;
+    background: #fafafa;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.calendar-day.other-month {
+    background: #f0f0f0;
+    opacity: 0.5;
+}
+
+.calendar-day.trip-day {
+    background: #e8f4fd;
+    border: 1px solid #b3d9f7;
+}
+
+.calendar-day.trip-start {
+    background: #667eea;
+    color: white;
+}
+
+.calendar-day.trip-start .calendar-day-number {
+    color: white;
+    font-weight: 700;
+}
+
+.calendar-day.trip-end {
+    background: #f5576c;
+    color: white;
+}
+
+.calendar-day.trip-end .calendar-day-number {
+    color: white;
+    font-weight: 700;
+}
+
+.calendar-day-number {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.calendar-day-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.calendar-item {
+    font-size: 0.65rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: white;
+    min-width: 0;
+    max-width: 100%;
+    cursor: pointer;
+}
+
+.calendar-item:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.calendar-item.flight { background: #1565c0; }
+.calendar-item.transport { background: #e65100; }
+.calendar-item.train { background: #00796b; }
+.calendar-item.bus { background: #5d4037; }
+.calendar-item.hotel,
+.calendar-item.lodging { background: #7b1fa2; }
+.calendar-item.activity,
+.calendar-item.attraction { background: #2e7d32; }
+.calendar-item.meal { background: #c2185b; }
+.calendar-item.other { background: #616161; }
+
+.calendar-item-more {
+    font-size: 0.6rem;
+    color: #667eea;
+    font-weight: 500;
+    padding: 2px 4px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s;
+}
+
+.calendar-item-more:hover {
+    background: rgba(102, 126, 234, 0.15);
+}
+
+/* Empty calendar state */
+.calendar-empty {
+    text-align: center;
+    padding: 60px 40px;
+}
+
+.calendar-empty i {
+    font-size: 4rem;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
+.calendar-empty h3 {
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.calendar-empty p {
+    color: #999;
+}
+
+/* Item Detail Popup - shared styles */
+.item-detail-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.item-detail-popup {
+    position: absolute;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    z-index: 1001;
+    min-width: 280px;
+    max-width: 400px;
+}
+
+.calendar-more-popup {
+    max-width: 320px;
+}
+
+.more-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.more-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    border-radius: 6px;
+    background: #f5f5f5;
+    cursor: pointer;
+}
+
+.more-item:hover {
+    background: #e8e8e8;
+}
+
+.more-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.more-item-header i {
+    color: #667eea;
+}
+
+.more-item-title {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.more-item-detail {
+    font-size: 0.75rem;
+    color: #666;
+    margin-left: 24px;
+}
+
+/* Calendar responsive styles */
+@media (max-width: 768px) {
+    .calendar-container {
+        padding: 12px;
+    }
+
+    .calendar-month {
+        min-width: 100%;
+        padding: 12px;
+    }
+
+    .calendar-day {
+        min-height: 60px;
+    }
+
+    .calendar-item {
+        font-size: 0.6rem;
+        padding: 1px 3px;
+    }
+}

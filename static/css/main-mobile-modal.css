@@ -1,0 +1,400 @@
+/* Libertas — Mobile components, breakpoint media queries, badges, app modal (split from main.css) */
+
+/* ==================== Mobile Landscape Mode ==================== */
+/* Compact headers when phone is rotated to landscape */
+@media (max-height: 500px) and (orientation: landscape) {
+    .libertas-nav {
+        height: 44px;
+        padding: 0 12px;
+    }
+
+    .libertas-nav .brand-icon {
+        font-size: 1.1rem;
+    }
+
+    .libertas-nav .brand-name {
+        font-size: 1.1rem;
+    }
+
+    .libertas-nav .brand-tagline {
+        display: none;
+    }
+
+    .nav-hamburger {
+        font-size: 1.1rem;
+    }
+
+    /* Trip page headers */
+    .trip-header {
+        padding: 8px 12px;
+    }
+
+    .trip-header h1 {
+        font-size: 1.1rem;
+    }
+
+    .trip-header .trip-dates {
+        font-size: 0.8rem;
+    }
+
+    /* Summary/content area */
+    #summary-tab {
+        padding: 6px 4px;
+    }
+
+    .summary-container {
+        padding: 8px;
+        border-radius: 4px;
+    }
+
+    /* Day cards */
+    .day-card {
+        padding: 6px 8px;
+        margin: 6px 0;
+    }
+
+    .day-card h3 {
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+    }
+
+    .activity {
+        padding: 3px 0;
+    }
+
+    .activity-category {
+        width: 24px;
+        height: 24px;
+        font-size: 0.75rem;
+        margin-right: 6px;
+    }
+
+    .activity-time {
+        font-size: 0.7rem;
+        min-width: 110px;
+        margin-right: 8px;
+    }
+
+    .activity-title {
+        font-size: 0.85rem;
+    }
+
+    .activity-location {
+        font-size: 0.7rem;
+    }
+
+    /* Tabs */
+    .tabs {
+        gap: 2px;
+        padding: 0 8px;
+    }
+
+    .tab {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+}
+
+/* ==================== Shared Mobile Components ==================== */
+/* These reusable classes work across all pages */
+
+/* Mobile Floating Action Button */
+.mobile-fab {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    border: none;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    z-index: 999;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mobile-fab:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+}
+
+.mobile-fab:active {
+    transform: scale(0.95);
+}
+
+.mobile-fab.hidden {
+    display: none !important;
+}
+
+/* Mobile Slide-in Sidebar */
+.mobile-sidebar {
+    transition: transform 0.3s ease;
+}
+
+.mobile-sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.mobile-sidebar-overlay.visible {
+    display: block;
+}
+
+/* Close button for mobile sidebars */
+.mobile-close-btn {
+    display: none;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.mobile-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ==================== Mobile Breakpoint Styles ==================== */
+@media (max-width: 768px) {
+    /* Show mobile FAB */
+    .mobile-fab {
+        display: flex;
+    }
+
+    /* Show close buttons */
+    .mobile-close-btn {
+        display: flex;
+    }
+
+    /* Generic mobile sidebar behavior - slides in from right */
+    .mobile-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: auto !important;
+        width: 100% !important;
+        max-width: 380px !important;
+        z-index: 1001 !important;
+        transform: translateX(100%);
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .mobile-sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Prevent body scroll when sidebar open */
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+    /* Full-width containers on mobile */
+    .mobile-full-width {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    /* Stack flex containers vertically */
+    .mobile-stack {
+        flex-direction: column !important;
+    }
+
+    /* Hide on mobile */
+    .mobile-hidden {
+        display: none !important;
+    }
+
+    /* Show only on mobile */
+    .desktop-only {
+        display: none !important;
+    }
+}
+
+/* Show only on desktop */
+@media (min-width: 769px) {
+    .mobile-only {
+        display: none !important;
+    }
+}
+
+/* ==================== Source/Confidence Badges ==================== */
+/* Used on Explore venue cards and Create suggestion cards */
+
+.source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.source-badge.curated {
+    background: #4CAF50;
+    color: white;
+}
+
+.source-badge.curated::before {
+    content: "\f091";  /* trophy icon */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.6rem;
+}
+
+.source-badge.ai-pick {
+    background: #FF9800;
+    color: white;
+}
+
+.source-badge.ai-pick::before {
+    content: "\f544";  /* robot icon */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.6rem;
+}
+
+/* Collection/origin tag */
+.collection-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    background: rgba(0, 0, 0, 0.1);
+    color: #666;
+    margin-left: 4px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Badge container for inline display */
+.source-badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+/* ==================== App Modal (replaces browser confirm/alert) ==================== */
+.app-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: modal-fade-in 0.15s ease;
+}
+
+@keyframes modal-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.app-modal {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    max-width: 420px;
+    width: 100%;
+    padding: 28px 28px 20px;
+    font-family: inherit;
+    animation: modal-slide-in 0.15s ease;
+}
+
+@keyframes modal-slide-in {
+    from { transform: translateY(-12px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}
+
+.app-modal-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0 0 10px;
+    line-height: 1.4;
+}
+
+.app-modal-message {
+    font-size: 0.92rem;
+    color: #555;
+    margin: 0 0 22px;
+    line-height: 1.6;
+}
+
+.app-modal-message strong {
+    color: #1a1a2e;
+}
+
+.app-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.app-modal-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+
+.app-modal-btn-cancel {
+    background: #f0f0f5;
+    color: #444;
+}
+
+.app-modal-btn-cancel:hover {
+    background: #e2e2ea;
+}
+
+.app-modal-btn-confirm {
+    background: #667eea;
+    color: #fff;
+}
+
+.app-modal-btn-confirm:hover {
+    background: #5a6fd6;
+}
+
+.app-modal-btn-confirm.danger {
+    background: #ef4444;
+}
+
+.app-modal-btn-confirm.danger:hover {
+    background: #dc2626;
+}
