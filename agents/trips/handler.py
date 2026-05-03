@@ -91,7 +91,10 @@ def generate_writeup_for_trip(user_id: int, link: str) -> tuple[dict, int]:
 
 
 def fill_links_for_trip(user_id: int, link: str) -> tuple[dict, int]:
-    """Use LLM to find website/maps URLs for items missing them."""
+    """Fill in missing locations / website URLs / Google Maps URLs across
+    every item in a trip. Trip title is passed for LLM context so
+    ambiguous item names ("Marienplatz", "Hofbräuhaus") resolve to the
+    right city instead of the geocoder's silent guess."""
     trip, itinerary_data = _load_trip_with_itinerary(user_id, link)
     if not trip:
         return {"error": "Trip not found"}, 404
@@ -99,7 +102,7 @@ def fill_links_for_trip(user_id: int, link: str) -> tuple[dict, int]:
     from agents.trips.link_resolver import fill_missing_links
 
     try:
-        result = fill_missing_links(itinerary_data)
+        result = fill_missing_links(itinerary_data, trip_title=trip.get("title", ""))
         db.update_trip_itinerary_data(user_id, link, itinerary_data)
     except Exception as e:
         return {"error": f"Link resolution failed: {e}"}, 500
