@@ -172,8 +172,40 @@ async function sendToTrip(btn, tripLink, venueData, note) {
             btn.innerHTML = '<i class="fas fa-check"></i> Added';
             btn.disabled = true;
             btn.classList.add('added');
+            // Surface a "View trip" link so users discover where the venue went.
+            // Without this, adds feel like a black hole on first use.
+            const tripTitle = (_tripsCache || []).find(t => t.link === tripLink)?.title || 'trip';
+            showAddedToast(venueData.name, tripTitle, tripLink);
         }
     } catch { /* silently fail */ }
+}
+
+function showAddedToast(venueName, tripTitle, tripLink) {
+    let toast = document.getElementById('explore-added-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'explore-added-toast';
+        toast.style.cssText = (
+            'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+            'background:#1a1a2e;color:#fff;padding:12px 18px;border-radius:10px;' +
+            'box-shadow:0 4px 20px rgba(0,0,0,0.25);z-index:9999;font-size:0.95rem;' +
+            'display:flex;align-items:center;gap:14px;max-width:90vw;'
+        );
+        document.body.appendChild(toast);
+    }
+    const safeVenue = (venueName || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    const safeTitle = (tripTitle || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    toast.innerHTML = (
+        `<span><i class="fas fa-check-circle" style="color:#7ed957;margin-right:6px;"></i>` +
+        `Added <strong>${safeVenue}</strong> to ${safeTitle}</span>` +
+        `<a href="/${encodeURIComponent(tripLink)}" style="color:#a8b4ff;text-decoration:underline;font-weight:600;">View trip</a>`
+    );
+    toast.style.opacity = '1';
+    clearTimeout(showAddedToast._t);
+    showAddedToast._t = setTimeout(() => {
+        toast.style.transition = 'opacity 0.4s';
+        toast.style.opacity = '0';
+    }, 5000);
 }
 
 // Legacy alias

@@ -95,7 +95,7 @@ function initListView() {
             '<div class="no-trips">' +
             '<i class="fas fa-suitcase"></i>' +
             '<h3>No trips yet</h3>' +
-            '<p>Create one from scratch, or drop a confirmation PDF into the import area above.</p>' +
+            '<p>Three ways to start: drop a confirmation PDF, paste a Google Maps directions link, or chat your way through a new trip from scratch.</p>' +
             '<a href="/create.html" class="cta-button cta-button-primary">' +
             '<i class="fas fa-plus"></i> Create your first trip</a>' +
             '</div>'
