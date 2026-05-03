@@ -8,10 +8,3 @@
 # Generated 2026-05-03 by scripts/check_file_size.py.
 
 [files]
-"static/css/create.css" = 2301
-"static/css/trips.css" = 1331
-"agents/explore/static/js/explore.js" = 997
-"agents/explore/static/css/explore.css" = 992
-"static/css/trip.css" = 932
-"static/css/main.css" = 881
-"static/js/create.js" = 859

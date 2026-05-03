@@ -1,0 +1,564 @@
+/* Create Trip Page — Chat sidebar, drag-drop, mobile tray, responsive (split from create.css) */
+
+/* ==================== Chat Sidebar ==================== */
+.editor-sidebar {
+    width: 380px;
+    background: white;
+    border-left: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 20px;
+    background: #1a1a2e;
+    color: white;
+}
+
+.sidebar-header h3 {
+    margin: 0 0 4px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidebar-header p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #a0a0a0;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.chat-message {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.chat-message.user {
+    flex-direction: row-reverse;
+}
+
+.chat-message .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.chat-message.assistant .avatar {
+    background: #667eea;
+    color: white;
+}
+
+.chat-message.user .avatar {
+    background: #f5f5f5;
+    color: #666;
+}
+
+.chat-message .bubble {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.chat-message.assistant .bubble {
+    background: #f5f5f5;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-message.user .bubble {
+    background: #667eea;
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+/* Suggested items in chat */
+.suggestion-item {
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+}
+
+.suggestion-item-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.suggestion-item-header .source-badges {
+    margin-bottom: 2px;
+}
+
+.suggestion-item-title {
+    font-weight: 500;
+    color: #333;
+}
+
+.suggestion-links {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.suggestion-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: #666;
+    text-decoration: none;
+    padding: 4px 8px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.suggestion-link:hover {
+    background: #e8e8e8;
+    color: #333;
+}
+
+.suggestion-link i {
+    font-size: 0.75rem;
+}
+
+.suggestion-item-notes {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.btn-add-to-ideas,
+.btn-add-to-itinerary {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add-to-ideas:hover,
+.btn-add-to-itinerary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.btn-add-to-ideas.added,
+.btn-add-to-itinerary.added {
+    background: #27ae60;
+    cursor: default;
+}
+
+.btn-add-to-ideas:disabled,
+.btn-add-to-itinerary:disabled {
+    opacity: 0.7;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Suggestion buttons container */
+.suggestion-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* Day picker popup */
+.day-picker-popup {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.day-picker-header {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+}
+
+.day-picker-list {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.day-picker-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: white;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+}
+
+.day-picker-option:hover {
+    background: rgba(102, 126, 234, 0.08);
+}
+
+.day-picker-option strong {
+    color: #333;
+}
+
+.day-picker-option span {
+    color: #888;
+    font-size: 0.8rem;
+}
+
+/* Typing indicator */
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: #999;
+    border-radius: 50%;
+    animation: typing 1.4s infinite both;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-4px); }
+}
+
+/* Chat input */
+.chat-input-container {
+    padding: 12px 16px;
+    border-top: 1px solid #eee;
+}
+
+.quick-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.suggestion-chip {
+    padding: 6px 12px;
+    background: #f5f5f5;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: #666;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.suggestion-chip:hover {
+    background: #eee;
+    color: #333;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 24px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: none;
+    max-height: 120px;
+    min-height: 44px;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.chat-send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.chat-send-btn:hover {
+    transform: scale(1.05);
+}
+
+.chat-send-btn.cancel-mode {
+    background: #e53935;
+}
+
+.chat-send-btn.cancel-mode:hover {
+    background: #e53935;
+}
+
+/* ==================== Chat Continue Indicator ==================== */
+.chat-continue-indicator {
+    text-align: center;
+    padding: 12px 16px;
+    margin: 16px 0;
+    background: #f0f4ff;
+    border-radius: 8px;
+    color: #667eea;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.chat-continue-indicator i {
+    font-size: 1rem;
+}
+
+/* ==================== Drag and Drop ==================== */
+/* Drag handle is on the icon, not the whole card */
+.item-card[draggable="true"] .item-icon {
+    cursor: grab;
+}
+
+.item-card[draggable="true"] .item-icon:active {
+    cursor: grabbing;
+}
+
+.item-card.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+}
+
+.day-items.drag-over,
+#ideas-list.drag-over {
+    background: rgba(102, 126, 234, 0.1);
+    border: 2px dashed #667eea;
+    border-radius: 8px;
+    min-height: 60px;
+}
+
+.day-items.drag-over .day-items-empty,
+#ideas-list.drag-over .ideas-empty {
+    background: transparent;
+    border: none;
+}
+
+/* ==================== Mobile Chat Tray ==================== */
+
+/* Close button in sidebar header - hidden on desktop */
+.sidebar-close-btn {
+    display: none;
+}
+
+/* Floating action button - visible on mobile only */
+.mobile-chat-fab {
+    display: none;
+    position: fixed;
+    inset: auto 20px 20px auto;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    border: none;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    z-index: 99999;
+    transform: none;
+}
+
+/* Overlay - hidden on desktop */
+.sidebar-overlay {
+    display: none;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 900px) {
+    /* Prevent horizontal scroll on mobile */
+    html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+
+    /* Hide sidebar by default on mobile */
+    .editor-sidebar {
+        position: fixed;
+        right: -100%;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 400px;
+        z-index: 1001;
+        transition: right 0.3s ease;
+        box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Show sidebar when open */
+    .editor-sidebar.open {
+        right: 0;
+    }
+
+    /* Show close button on mobile */
+    .sidebar-close-btn {
+        display: flex;
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        transition: background 0.2s;
+    }
+
+    .sidebar-close-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Show floating chat button on mobile */
+    .mobile-chat-fab {
+        display: flex !important;
+    }
+
+    .mobile-chat-fab:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+    }
+
+    .mobile-chat-fab:active {
+        transform: scale(0.95);
+    }
+
+    /* Hide FAB when sidebar is open */
+    .mobile-chat-fab.hidden {
+        display: none !important;
+    }
+
+    /* Overlay when sidebar is open */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.visible {
+        display: block;
+        opacity: 1;
+    }
+
+    .header-dates {
+        display: none;
+    }
+
+    /* Make header more compact on mobile */
+    .editor-header {
+        padding: 12px 16px;
+    }
+
+    .header-title input {
+        font-size: 1.1rem;
+    }
+
+    /* Adjust main content to full width */
+    .editor-main {
+        width: 100%;
+    }
+
+    /* Make column table scroll horizontally within container */
+    .grid-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .column-table {
+        min-width: 600px; /* Reduced from 800px */
+    }
+}
+
+/* Small mobile screens */
+@media (max-width: 480px) {
+    .editor-sidebar {
+        max-width: 100%;
+    }
+
+    .mobile-chat-fab {
+        bottom: 16px;
+        right: 16px;
+        width: 56px;
+        height: 56px;
+        font-size: 1.3rem;
+    }
+
+    .quick-suggestions {
+        flex-wrap: wrap;
+    }
+
+    .suggestion-chip {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+}
+

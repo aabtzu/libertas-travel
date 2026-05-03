@@ -1,0 +1,117 @@
+/* Explore Page — Responsive, venue type colors, map legend (split from explore.css) */
+
+/* ==================== Responsive ==================== */
+@media (max-width: 1024px) {
+    .explore-sidebar {
+        width: 320px;
+        min-width: 320px;
+    }
+}
+
+@media (max-width: 768px) {
+    .explore-container {
+        flex-direction: column;
+        height: calc(100vh - 60px);
+    }
+
+    /* Hide sidebar on mobile - shown via FAB */
+    .explore-sidebar {
+        display: flex;
+        flex-direction: column;
+        border-left: none;
+        background: white;
+    }
+
+    /* Main content takes full height */
+    .explore-main {
+        flex: 1;
+        height: 100%;
+    }
+
+    .explore-map-container {
+        height: 40%;
+        min-height: 200px;
+    }
+
+    .explore-results {
+        padding: 16px;
+    }
+
+    .venue-cards {
+        grid-template-columns: 1fr;
+    }
+
+    /* Sidebar header needs relative positioning for close button */
+    .sidebar-header {
+        position: relative;
+        padding-right: 50px;
+    }
+
+    /* Hide suggestions on mobile to make room for text input */
+    .quick-suggestions {
+        display: none;
+    }
+}
+
+/* ==================== Venue Type Colors ==================== */
+.venue-card-image.restaurant { background: #e53935; }
+.venue-card-image.bar { background: #9c27b0; }
+.venue-card-image.cafe { background: #8d6e63; }
+.venue-card-image.hotel { background: #1976d2; }
+.venue-card-image.museum { background: #00897b; }
+.venue-card-image.hiking { background: #43a047; }
+.venue-card-image.shop { background: #fb8c00; }
+.venue-card-image.church { background: #5e35b1; }
+.venue-card-image.activity { background: #26a69a; }
+.venue-card-image.attraction { background: #ef5350; }
+
+/* ==================== Map Legend ==================== */
+.map-legend {
+    background: white;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    max-width: 320px;
+}
+
+.map-legend-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.map-legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.map-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #555;
+}
+
+.map-legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.map-legend-dot.restaurant { background: #ff6b6b; }
+.map-legend-dot.bar { background: #9c27b0; }
+.map-legend-dot.cafe { background: #8d6e63; }
+.map-legend-dot.hotel { background: #1976d2; }
+.map-legend-dot.museum { background: #00897b; }
+.map-legend-dot.hiking { background: #43a047; }
+.map-legend-dot.shop { background: #fb8c00; }
+.map-legend-dot.church { background: #5e35b1; }
+.map-legend-dot.activity { background: #26a69a; }
+.map-legend-dot.attraction { background: #ef5350; }
+.map-legend-dot.other { background: #667eea; }
