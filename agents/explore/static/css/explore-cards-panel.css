@@ -585,3 +585,18 @@
     to { transform: rotate(360deg); }
 }
 
+
+/* Note inside the trip-picker explaining where venues go.
+   Solid neutral block (no gradient) so it doesn't compete with the picker. */
+.trip-picker-note {
+    margin: 0 16px 12px;
+    padding: 10px 12px;
+    background: #f5f4ff;
+    color: #444;
+    border-left: 3px solid #667eea;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+.trip-picker-note i { color: #667eea; margin-right: 6px; }
+.trip-picker-note strong { color: #1a1a2e; }

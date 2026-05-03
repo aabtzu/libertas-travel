@@ -337,6 +337,36 @@ async function fetchAndApply(link) {
 }
 
 // Initialize on page load
+/**
+ * First-time intro card on /trips. Shown once per browser, then hidden
+ * forever (libertas_seen_trips_intro in localStorage). Skipped entirely
+ * for users who already have at least one trip — they don't need it.
+ */
+function maybeShowTripsIntro() {
+    const intro = document.getElementById('trips-intro');
+    if (!intro) return;
+    let seen = false;
+    try {
+        seen = localStorage.getItem('libertas_seen_trips_intro') === '1';
+    } catch (e) { /* private mode etc. */ }
+    if (seen) return;
+
+    // Skip if the user already has trips — they don't need a tutorial
+    const hasTrips = document.querySelectorAll('#trips-container .trip-card-wrapper').length > 0;
+    if (hasTrips) {
+        try { localStorage.setItem('libertas_seen_trips_intro', '1'); } catch (e) {}
+        return;
+    }
+
+    intro.removeAttribute('hidden');
+    const dismiss = () => {
+        intro.setAttribute('hidden', '');
+        try { localStorage.setItem('libertas_seen_trips_intro', '1'); } catch (e) {}
+    };
+    document.getElementById('trips-intro-close')?.addEventListener('click', dismiss);
+    document.getElementById('trips-intro-got-it')?.addEventListener('click', dismiss);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check for URL hash to switch views
     const hash = window.location.hash.slice(1);
@@ -344,4 +374,5 @@ document.addEventListener('DOMContentLoaded', function() {
         switchTripsView(hash);
     }
     loadCardIcons();
+    maybeShowTripsIntro();
 });

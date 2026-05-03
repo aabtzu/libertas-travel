@@ -7,10 +7,10 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=11">
+    <link rel="stylesheet" href="/static/css/main.css?v=14">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=1">
     <link rel="stylesheet" href="/static/css/categories.css">
-    <link rel="stylesheet" href="/static/css/trips.css?v=11">
+    <link rel="stylesheet" href="/static/css/trips.css?v=12">
     <link rel="stylesheet" href="/static/css/trips-actions.css?v=1">
     <link rel="stylesheet" href="/static/css/trips-share-map.css?v=1">
 </head>
@@ -27,6 +27,20 @@
                 <i class="fas fa-plus"></i> New Trip
             </a>
         </div>
+    </div>
+
+    <!-- First-time intro card. Shown once per browser, hidden on dismiss
+         or after the user adds their first trip. -->
+    <div class="trips-intro" id="trips-intro" hidden>
+        <button class="trips-intro-close" id="trips-intro-close" aria-label="Dismiss">&times;</button>
+        <h3><i class="fas fa-hand-sparkles"></i> Welcome to Libertas</h3>
+        <p>Your trips live here. Three quick ways to get started:</p>
+        <ul>
+            <li><strong>Drop a PDF or .ics</strong> into the import box below — confirmations from airlines and hotels work.</li>
+            <li><strong>Paste a Google Maps directions link</strong> to import a route with stops.</li>
+            <li><strong>Create from scratch</strong> with the AI co-planner.</li>
+        </ul>
+        <button class="trips-intro-got-it" id="trips-intro-got-it">Got it</button>
     </div>
 
     <div class="trips-container">
@@ -136,9 +150,9 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/static/js/main.js?v=5"></script>
+    <script src="/static/js/main.js?v=7"></script>
     <script src="/static/js/archive.js?v=1"></script>
-    <script src="/static/js/upload.js?v=8"></script>
-    <script src="/static/js/trips.js?v=7"></script>
+    <script src="/static/js/upload.js?v=9"></script>
+    <script src="/static/js/trips.js?v=8"></script>
 </body>
 </html>

@@ -625,3 +625,96 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('Libertas loaded');
 });
+
+/**
+ * Feedback / invite-request popup. Replaces the mailto: link in the footer
+ * (and similar) — most users don't have a mail client configured, so a
+ * mailto link silently fails. This pops a small modal with:
+ *   - The email shown visibly so anyone can copy it manually
+ *   - A one-click Copy button (uses navigator.clipboard with fallback)
+ *   - Quick-open links for Gmail and Outlook web compose
+ *   - A mailto: link for users with a default mail app
+ */
+window.showFeedbackPopup = function (subject) {
+    const email = 'aabtzu@gmail.com';
+    const subj = subject || 'Libertas feedback';
+    const subjEnc = encodeURIComponent(subj);
+
+    // Build modal
+    const overlay = document.createElement('div');
+    overlay.className = 'feedback-popup-overlay';
+    overlay.innerHTML = `
+        <div class="feedback-popup">
+            <button class="feedback-popup-close" aria-label="Close">&times;</button>
+            <h3>Send feedback</h3>
+            <p class="feedback-popup-body">Reach Amit at:</p>
+            <div class="feedback-popup-email">
+                <code>${email}</code>
+                <button class="feedback-popup-copy" type="button">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+            <p class="feedback-popup-hint">Or open compose in:</p>
+            <div class="feedback-popup-links">
+                <a class="feedback-popup-btn"
+                   href="https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${subjEnc}"
+                   target="_blank" rel="noopener">
+                   <i class="fab fa-google"></i> Gmail
+                </a>
+                <a class="feedback-popup-btn"
+                   href="https://outlook.live.com/mail/0/deeplink/compose?to=${email}&subject=${subjEnc}"
+                   target="_blank" rel="noopener">
+                   <i class="fas fa-envelope"></i> Outlook
+                </a>
+                <a class="feedback-popup-btn feedback-popup-btn-secondary"
+                   href="mailto:${email}?subject=${subjEnc}">
+                   <i class="fas fa-paper-plane"></i> Default mail app
+                </a>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Wire close handlers
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.closest('.feedback-popup-close')) {
+            close();
+        }
+    });
+    const onEsc = (e) => {
+        if (e.key === 'Escape') {
+            close();
+            document.removeEventListener('keydown', onEsc);
+        }
+    };
+    document.addEventListener('keydown', onEsc);
+
+    // Wire copy button
+    const copyBtn = overlay.querySelector('.feedback-popup-copy');
+    copyBtn.addEventListener('click', async () => {
+        let copied = false;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(email);
+                copied = true;
+            }
+        } catch { /* fall through */ }
+        if (!copied) {
+            // Fallback: select an off-screen textarea
+            const ta = document.createElement('textarea');
+            ta.value = email;
+            ta.style.cssText = 'position:fixed;opacity:0;';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); copied = true; } catch {}
+            document.body.removeChild(ta);
+        }
+        if (copied) {
+            copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            setTimeout(() => {
+                copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            }, 1800);
+        }
+    });
+};

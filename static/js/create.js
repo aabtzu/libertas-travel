@@ -108,6 +108,98 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * If the user got here from Explore's "Add to trip → New trip" flow, the
+ * venue they wanted to add is stashed in sessionStorage. Attach it to the
+ * freshly-created trip and reload the editor so the user sees it in the
+ * ideas list. A small banner offers a one-click way back to Explore.
+ */
+async function _maybeAttachPendingVenue(tripLink) {
+    let stash;
+    try {
+        const raw = sessionStorage.getItem('libertas_pending_venue');
+        if (!raw) return;
+        sessionStorage.removeItem('libertas_pending_venue');
+        stash = JSON.parse(raw);
+    } catch {
+        return;
+    }
+    if (!stash || !stash.venue || !tripLink) return;
+
+    const venue = stash.venue;
+    const location = [venue.city, venue.state, venue.country].filter(Boolean).join(', ');
+    let mapsLink = venue.google_maps_link || '';
+    if (!mapsLink && venue.latitude && venue.longitude) {
+        mapsLink = `https://www.google.com/maps/search/?api=1&query=${venue.latitude},${venue.longitude}`;
+    } else if (!mapsLink) {
+        const q = encodeURIComponent(`${venue.name} ${location}`);
+        mapsLink = `https://www.google.com/maps/search/?api=1&query=${q}`;
+    }
+    const item = {
+        title: venue.name,
+        category: venue.venue_type === 'Restaurant' || venue.venue_type === 'Cafe' ? 'meal' : 'activity',
+        location,
+        latitude: venue.latitude || null,
+        longitude: venue.longitude || null,
+        notes: venue.cuisine_type || '',
+        website: venue.website || '',
+        google_maps_link: mapsLink,
+    };
+
+    let added = false;
+    try {
+        const res = await fetch(`/api/trips/${encodeURIComponent(tripLink)}/items`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({item}),
+        });
+        added = res.ok;
+    } catch { /* swallow */ }
+
+    if (!added) return;
+
+    // Refresh the editor view so the venue shows up in the ideas list right
+    // away. Push the item into local state and re-render — avoids a full
+    // page reload that would lose the URL.
+    if (typeof currentTrip !== 'undefined' && currentTrip) {
+        currentTrip.ideas = currentTrip.ideas || [];
+        currentTrip.ideas.push(item);
+        if (typeof renderIdeas === 'function') renderIdeas();
+    }
+
+    _showPostExploreBanner(venue.name, stash.return_to);
+}
+
+/**
+ * Banner shown after a venue is auto-attached to a freshly-created trip
+ * via the Explore → New Trip flow. Lets the user jump back to Explore
+ * with one click instead of guessing the URL.
+ */
+function _showPostExploreBanner(venueName, returnTo) {
+    if (document.getElementById('post-explore-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'post-explore-banner';
+    banner.className = 'post-explore-banner';
+    const safeName = (venueName || 'venue').replace(/</g, '&lt;');
+    const back = (returnTo && typeof returnTo === 'string') ? returnTo : '/explore.html';
+    banner.innerHTML = (
+        '<i class="fas fa-check-circle"></i> ' +
+        `<strong>${safeName}</strong> is in your <strong>Ideas Pile</strong> below. ` +
+        `<a href="${back}" class="post-explore-back">← Back to Explore for more</a>`
+    );
+    document.body.appendChild(banner);
+    // Click anywhere on the banner (except the back link) to dismiss
+    banner.addEventListener('click', (e) => {
+        if (e.target.closest('.post-explore-back')) return;
+        banner.remove();
+    });
+    // Auto-dismiss after 8s — long enough to read, short enough to not nag
+    setTimeout(() => {
+        if (banner.parentNode) banner.classList.add('fading');
+    }, 8000);
+    setTimeout(() => banner.remove(), 9000);
+}
+
+/**
  * Format a Date as YYYY-MM-DD without UTC rollover.
  * Mirrors `_ymd` in create-render.js — both files use date math.
  */
@@ -171,6 +263,17 @@ function initEventListeners() {
     const createForm = document.getElementById('create-trip-form');
     if (createForm) {
         createForm.addEventListener('submit', handleCreateTrip);
+    }
+
+    // Cancel button — also clears any stashed Explore venue so it doesn't
+    // attach to a different trip the user creates later.
+    const cancelBtn = document.getElementById('create-cancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            try { sessionStorage.removeItem('libertas_pending_venue'); } catch (e2) {}
+            window.location.href = '/trips.html';
+        });
     }
 
     // Date field interactions (clear num_days when dates are set)
@@ -394,6 +497,11 @@ async function handleCreateTrip(e) {
             updateEditorUI();
             hideCreateDialog();
             showWelcomeMessage();
+
+            // If the user came from Explore via "Add to trip → New trip",
+            // attach the stashed venue and bounce them back to where they
+            // were exploring. Saves the user from re-finding the venue.
+            await _maybeAttachPendingVenue(currentTrip.link);
         } else {
             LibertasModal.alert(data.error || 'Failed to create trip');
         }
@@ -451,15 +559,18 @@ async function loadTrip(link) {
             updateEditorUI();
             hideCreateDialog();
 
-            // Change publish button text for already-published trips
+            // Button label depends on draft status. New trips are drafts;
+            // saving promotes them to the My Trips list. Existing trips
+            // already live in the list, so the button just regenerates the
+            // viewable HTML with the latest edits.
             const publishBtn = document.getElementById('publish-btn');
             if (publishBtn) {
                 if (!trip.is_draft) {
-                    publishBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Republish';
-                    publishBtn.title = 'Regenerate trip HTML with latest changes';
+                    publishBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Save Changes';
+                    publishBtn.title = 'Update the trip page with your latest edits';
                 } else {
-                    publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Publish';
-                    publishBtn.title = '';
+                    publishBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Save Trip';
+                    publishBtn.title = 'Save this trip and add it to My Trips';
                 }
             }
 

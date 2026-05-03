@@ -14,6 +14,10 @@ function showTripPicker(trips, onSelect) {
                 <h3>Add to trip</h3>
                 <button class="trip-picker-close" aria-label="Close"><i class="fas fa-times"></i></button>
             </div>
+            <p class="trip-picker-note">
+                <i class="fas fa-lightbulb"></i>
+                Picks land in your trip's <strong>Ideas Pile</strong> — sort them onto specific days later in the editor.
+            </p>
             <div class="trip-picker-list">
                 <button class="trip-picker-item trip-picker-new" data-action="new">
                     <i class="fas fa-plus-circle"></i>
@@ -39,44 +43,23 @@ function showTripPicker(trips, onSelect) {
         if (!item) return;
 
         if (item.dataset.action === 'new') {
-            // Show inline name input
-            const newBtn = item;
-            newBtn.innerHTML = `
-                <input type="text" class="trip-picker-name-input" placeholder="Trip name..." autofocus>
-                <button class="trip-picker-create-btn"><i class="fas fa-check"></i></button>
-            `;
-            const input = newBtn.querySelector('input');
-            const createBtn = newBtn.querySelector('.trip-picker-create-btn');
-            input.focus();
-
-            const doCreate = async () => {
-                const title = input.value.trim();
-                if (!title) return;
-                try {
-                    const res = await fetch('/api/trips/create', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({title, trip_type: 'recommendation'}),
-                    });
-                    const data = await res.json();
-                    const link = data.trip?.link || data.link;
-                    if (link) {
-                        // Add to cache
-                        if (_tripsCache) _tripsCache.unshift({link, title, trip_type: 'recommendation'});
-                        overlay.remove();
-                        onSelect(link);
-                    }
-                } catch {}
-            };
-
-            createBtn.addEventListener('click', (ev) => { ev.stopPropagation(); doCreate(); });
-            input.addEventListener('keydown', (ev) => {
-                ev.stopPropagation();
-                if (ev.key === 'Enter') doCreate();
-            });
-            input.addEventListener('click', (ev) => ev.stopPropagation());
-            input.addEventListener('keyup', (ev) => ev.stopPropagation());
-            input.addEventListener('keypress', (ev) => ev.stopPropagation());
+            // Send the user to the full Create Trip dialog (one source of
+            // truth for new-trip creation — name, dates, OR num_days).
+            // Stash the venue + the explore page URL so /create.html can
+            // add the venue once the trip exists and offer a way back.
+            try {
+                if (typeof _pendingVenue !== 'undefined' && _pendingVenue) {
+                    sessionStorage.setItem(
+                        'libertas_pending_venue',
+                        JSON.stringify({
+                            venue: _pendingVenue,
+                            return_to: window.location.pathname + window.location.search,
+                        })
+                    );
+                }
+            } catch { /* sessionStorage may be disabled */ }
+            overlay.remove();
+            window.location.href = '/create.html';
             return;
         }
 
@@ -198,8 +181,13 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
     return sendToTrip(btn, tripLink, venueData, note);
 }
 
+// Holds the venue currently being added — accessed by the trip-picker's
+// "New trip" handler to stash for /create.html before redirecting.
+var _pendingVenue = null;  // eslint-disable-line no-unused-vars
+
 async function addToTrip(btn) {
     const venueData = JSON.parse(btn.dataset.venue);
+    _pendingVenue = venueData;
 
     // If a trip is pinned (from explore-trip-panel.js), add directly
     if (typeof _pinnedTrip !== 'undefined' && _pinnedTrip) {

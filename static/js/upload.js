@@ -188,7 +188,9 @@ function handleUrlImport(url) {
  * Prompt user for trip name after import using a custom modal
  */
 function promptForTripName(suggestedName, link) {
-    // Create modal overlay
+    // Build modal via DOM (not innerHTML) so an attacker-controlled
+    // suggestedName from a parsed file can't break out of the value="..."
+    // attribute and inject markup.
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
@@ -199,7 +201,7 @@ function promptForTripName(suggestedName, link) {
             </div>
             <div class="modal-body">
                 <p>Suggested name based on destination:</p>
-                <input type="text" class="modal-input" id="trip-name-input" value="${suggestedName}">
+                <input type="text" class="modal-input" id="trip-name-input">
             </div>
             <div class="modal-footer">
                 <button class="modal-btn modal-btn-secondary" id="modal-cancel">Use Suggested</button>
@@ -209,8 +211,9 @@ function promptForTripName(suggestedName, link) {
     `;
     document.body.appendChild(overlay);
 
-    // Focus input and select all text
+    // Set the input value via DOM property — safe regardless of contents
     const input = document.getElementById('trip-name-input');
+    input.value = suggestedName || '';
     input.focus();
     input.select();
 
@@ -436,17 +439,31 @@ function openShareModal(link, title) {
 
     modal.classList.add('show');
 
-    // Load users
+    // Load users — build via DOM (no innerHTML interpolation) so a
+    // username with quotes / `<script>` can't break out and inject code.
     fetch('/api/users', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
+            userList.innerHTML = '';
             if (data.success && data.users.length > 0) {
-                userList.innerHTML = data.users.map(user => `
-                    <div class="user-item" onclick="shareWithUser(${user.id}, '${user.username}')">
-                        <i class="fas fa-user"></i>
-                        <span class="username">${user.username}</span>
-                    </div>
-                `).join('');
+                data.users.forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'user-item';
+                    item.dataset.userId = user.id;
+                    item.dataset.username = user.username;
+                    item.addEventListener('click', () => {
+                        shareWithUser(user.id, user.username);
+                    });
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-user';
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'username';
+                    nameSpan.textContent = user.username;  // safe
+                    item.appendChild(icon);
+                    item.appendChild(document.createTextNode(' '));
+                    item.appendChild(nameSpan);
+                    userList.appendChild(item);
+                });
             } else {
                 userList.innerHTML = '<div class="loading">No other users available</div>';
             }
@@ -573,7 +590,7 @@ function _ensurePublicThenCopy(buildUrl) {
                 if (publicBtn) {
                     publicBtn.dataset.public = 'true';
                     publicBtn.classList.add('active');
-                    publicBtn.title = 'Make private';
+                    publicBtn.title = 'Public link — click to make private';
                     publicBtn.innerHTML = '<i class="fas fa-globe"></i>';
                 }
                 doCopy();
@@ -626,7 +643,9 @@ function togglePublic(btn) {
             // Update button state
             btn.dataset.public = newPublicState ? 'true' : 'false';
             btn.classList.toggle('active', newPublicState);
-            btn.title = newPublicState ? 'Make private' : 'Make public';
+            btn.title = newPublicState
+                ? 'Public link — click to make private'
+                : 'Private — click to share via link';
             btn.innerHTML = newPublicState ? '<i class="fas fa-globe"></i>' : '<i class="fas fa-lock"></i>';
 
             // Update public badge (positioned at top-left of wrapper)

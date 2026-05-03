@@ -55,7 +55,10 @@ def explore():
 @pages_bp.get("/login")
 @pages_bp.get("/login.html")
 def login():
-    if g.user_id:
+    # In dev (AUTH_DISABLED=true) every request gets a fake user_id, which
+    # would otherwise redirect away from the auth pages and make them
+    # unreachable for previewing.
+    if g.user_id and not g.auth_disabled:
         return redirect("/")
     return _html(generate_login_page())
 
@@ -63,7 +66,7 @@ def login():
 @pages_bp.get("/register")
 @pages_bp.get("/register.html")
 def register():
-    if g.user_id:
+    if g.user_id and not g.auth_disabled:
         return redirect("/")
     return _html(generate_register_page())
 

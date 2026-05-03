@@ -6,7 +6,7 @@
     <title>Register - Libertas</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=11">
+    <link rel="stylesheet" href="/static/css/main.css?v=14">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=1">
     <link rel="stylesheet" href="/static/css/login.css">
 </head>
@@ -52,7 +52,8 @@
 
                 <div class="form-group">
                     <label for="invite-code">Invite Code</label>
-                    <input type="password" id="invite-code" name="invite-code" autocomplete="off" placeholder="Required to create an account">
+                    <input type="password" id="invite-code" name="invite-code" autocomplete="off" placeholder="From your invite email">
+                    <p class="form-hint">Don't have a code? <a href="#" onclick="showFeedbackPopup('Libertas invite request'); return false;">Request one</a>.</p>
                 </div>
 
                 <button type="submit" class="login-btn">
@@ -66,6 +67,7 @@
         </div>
     </div>
 
+    <script src="/static/js/main.js?v=7"></script>
     <script src="/static/js/register.js"></script>
 </body>
 </html>
