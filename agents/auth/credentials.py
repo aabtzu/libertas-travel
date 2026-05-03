@@ -38,17 +38,3 @@ def register_user(username: str, email: str, password: str) -> tuple[bool, str |
 def is_auth_enabled() -> bool:
     """Return True if authentication is active (AUTH_DISABLED env var not set)."""
     return os.environ.get("AUTH_DISABLED", "").lower() != "true"
-
-
-def ensure_default_user() -> None:
-    """Create a default admin user if none exists (initial setup helper)."""
-    default_username = os.environ.get("AUTH_USERNAME", "admin")
-    default_password = os.environ.get("AUTH_PASSWORD", "libertas")
-    default_email = os.environ.get("AUTH_EMAIL", "admin@example.com")
-
-    if not db.username_exists(default_username):
-        user_id = db.create_user(default_username, default_email, default_password)
-        if user_id:
-            print(f"[AUTH] Created default user: {default_username}")
-        else:
-            print("[AUTH] Failed to create default user")
