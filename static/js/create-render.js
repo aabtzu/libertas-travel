@@ -28,29 +28,69 @@ function initializeDays() {
 }
 
 /**
- * Update days when dates change
+ * Format a Date as YYYY-MM-DD without UTC rollover.
  */
-function updateDays() {
-    if (currentTrip.start_date && currentTrip.end_date) {
-        // Preserve existing items
-        const existingItems = {};
-        currentTrip.days.forEach(day => {
-            if (day.date) {
-                existingItems[day.date] = day.items;
-            }
-        });
+function _ymd(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
 
-        initializeDays();
+/**
+ * Resize the days array to match start/end dates.
+ *
+ * Returns true if applied, false if the user cancelled a destructive shrink.
+ *
+ * - Map items from old days to new days **by index, not by date** — this
+ *   preserves item ↔ day-number across date shifts (the previous date-key
+ *   match silently lost everything when start_date jumped to a new range).
+ * - If shrinking, dropped days' items move to the Ideas Pile so they're
+ *   recoverable — and we confirm first if any items would be moved.
+ */
+async function updateDays() {
+    if (!currentTrip.start_date || !currentTrip.end_date) return true;
 
-        // Restore items
-        currentTrip.days.forEach(day => {
-            if (existingItems[day.date]) {
-                day.items = existingItems[day.date];
-            }
-        });
+    const start = new Date(currentTrip.start_date + 'T12:00:00');
+    const end = new Date(currentTrip.end_date + 'T12:00:00');
+    if (isNaN(start) || isNaN(end) || end < start) return true;
 
-        renderDays();
+    const newCount = Math.round((end - start) / 86400000) + 1;
+    const oldDays = currentTrip.days || [];
+    const oldCount = oldDays.length;
+
+    // Confirm destructive shrink (only if dropped days have items)
+    if (newCount < oldCount) {
+        const droppedItems = oldDays
+            .slice(newCount)
+            .flatMap(d => d.items || []);
+        if (droppedItems.length > 0) {
+            const ok = await LibertasModal.confirm(
+                `This change will remove ${oldCount - newCount} day${oldCount - newCount === 1 ? '' : 's'} from your trip. ` +
+                `${droppedItems.length} item${droppedItems.length === 1 ? '' : 's'} will be moved to the Ideas Pile so you don't lose ${droppedItems.length === 1 ? 'it' : 'them'}.\n\nContinue?`,
+                { danger: true }
+            );
+            if (!ok) return false;
+            currentTrip.ideas = (currentTrip.ideas || []).concat(droppedItems);
+        }
     }
+
+    // Rebuild days by index — items move with their day_number, not their date
+    const newDays = [];
+    for (let i = 0; i < newCount; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        newDays.push({
+            day_number: i + 1,
+            date: _ymd(d),
+            items: oldDays[i]?.items || [],
+        });
+    }
+    currentTrip.days = newDays;
+
+    renderDays();
+    renderIdeas();
+    return true;
 }
 
 /**
