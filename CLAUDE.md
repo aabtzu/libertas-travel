@@ -118,3 +118,6 @@ Every shared lookup table, config object, or utility must be defined **once** an
 - If a file exceeds 500 lines, split it by responsibility before adding more code
 - Python: split by domain (e.g. `trips.py`, `users.py`); JS: split by feature area (e.g. `create-chat.js`, `create-map.js`)
 - Prefer many small focused files over one large file
+- **Enforced by CI**: `scripts/check_file_size.py` runs on every push (see `.github/workflows/test.yml`). New files over 800 lines fail the build.
+- Files already over the limit are listed in `.file_size_baseline.toml` with their current line count. Those files can shrink but **cannot grow** — CI fails if they do. The goal is to trim each one over time and delete its baseline entry.
+- To run locally: `.venv/bin/python3 scripts/check_file_size.py`

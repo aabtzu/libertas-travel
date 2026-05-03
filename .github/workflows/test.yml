@@ -25,6 +25,9 @@ jobs:
           ruff check .
           ruff format --check .
 
+      - name: File size check (CLAUDE.md target 500, hard 800)
+        run: python scripts/check_file_size.py
+
       - name: Run unit tests
         env:
           ANTHROPIC_API_KEY: ci-placeholder
