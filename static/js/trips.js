@@ -87,7 +87,10 @@ function initListView() {
 
     if (!container || !cardsContainer) return;
 
-    // Clone the card wrappers and add to list container
+    // Clone whole sections (Upcoming / Past / No date) so list view keeps the
+    // same grouping as the grid view. Inside each cloned section, swap the
+    // inner .trips-grid for .trips-list so the cards render as horizontal rows.
+    const sections = cardsContainer.querySelectorAll('.trips-section');
     const cards = cardsContainer.querySelectorAll('.trip-card-wrapper');
 
     if (cards.length === 0) {
@@ -103,12 +106,21 @@ function initListView() {
         return;
     }
 
-    // Clear and repopulate with cloned cards
     container.innerHTML = '';
-    cards.forEach(card => {
-        const clone = card.cloneNode(true);
-        container.appendChild(clone);
-    });
+    if (sections.length > 0) {
+        sections.forEach(section => {
+            const clone = section.cloneNode(true);
+            clone.querySelectorAll('.trips-grid').forEach(inner => {
+                inner.classList.remove('trips-grid');
+                inner.classList.add('trips-list');
+            });
+            container.appendChild(clone);
+        });
+    } else {
+        // Fallback: no section wrappers (shouldn't happen post-bucketing,
+        // but keeps the view robust if templates regress).
+        cards.forEach(card => container.appendChild(card.cloneNode(true)));
+    }
 
     // cloneNode copies the DOM but NOT event listeners. Action handlers
     // are wired via document-level event delegation in upload.js, so clones

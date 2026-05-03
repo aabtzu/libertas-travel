@@ -26,8 +26,8 @@ def _sort_trips_for_display(trips: list) -> list:
     """Sort trips for the My Trips page so the soonest upcoming trip is
     at the top.
 
-    Order: future trips (ascending by start_date — soonest first), then
-    past trips (descending — most recent past first), then trips with
+    Order: future trips (ascending by start_date, soonest first), then
+    past trips (descending, most recent past first), then trips with
     no date (in DB order, which is reverse-chronological by created_at).
     """
     today = datetime.now().date().isoformat()  # YYYY-MM-DD lexically comparable
@@ -41,10 +41,10 @@ def _sort_trips_for_display(trips: list) -> list:
                 itinerary_data = {}
         start = get_trip_start_date(itinerary_data) or trip.get("start_date") or ""
         if not start:
-            return (2, "")  # no-date bucket — last
+            return (2, "")  # no-date bucket, last
         if start >= today:
-            return (0, start)  # future bucket — ascending (soonest first)
-        # Past bucket — second, but we want most-recent past first.
+            return (0, start)  # future bucket, ascending (soonest first)
+        # Past bucket, second, but we want most-recent past first.
         # Negating a YYYY-MM-DD string isn't possible, so invert via tuple
         # of negated year/month/day.
         try:
@@ -54,6 +54,24 @@ def _sort_trips_for_display(trips: list) -> list:
             return (2, "")
 
     return sorted(trips, key=sort_key)
+
+
+def _bucket_trip_by_date(trip: dict, today_iso: str) -> str:
+    """Return 'upcoming', 'past', or 'undated' for a trip based on its start date.
+
+    A trip is 'upcoming' if start_date is today or later, 'past' if before
+    today, and 'undated' if no usable start_date is present.
+    """
+    itinerary_data = trip.get("itinerary_data") or {}
+    if isinstance(itinerary_data, str):
+        try:
+            itinerary_data = json.loads(itinerary_data)
+        except (json.JSONDecodeError, ValueError):
+            itinerary_data = {}
+    start = get_trip_start_date(itinerary_data) or trip.get("start_date") or ""
+    if not start:
+        return "undated"
+    return "upcoming" if start >= today_iso else "past"
 
 
 def get_trip_start_date(itinerary_data: dict) -> str | None:
@@ -441,7 +459,10 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
     # is what users actually think about.
     trips = _sort_trips_for_display(trips)
 
-    active_cards_list = []
+    today_iso = datetime.now().date().isoformat()
+    # Active trips split into upcoming / past / undated sections so the
+    # /trips page reads as a calendar at a glance instead of one long list.
+    bucketed_cards: dict[str, list[str]] = {"upcoming": [], "past": [], "undated": []}
     archived_cards_list = []
     for i, trip in enumerate(trips):
         try:
@@ -484,12 +505,34 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
             if is_archived:
                 archived_cards_list.append(card)
             else:
-                active_cards_list.append(card)
+                bucket = _bucket_trip_by_date(trip, today_iso)
+                bucketed_cards[bucket].append(card)
         except Exception as e:
             print(f"Warning: Could not generate card for trip {trip}: {e}")
             continue
-    if active_cards_list:
-        trip_cards = "\n".join(active_cards_list)
+
+    section_titles = {
+        "upcoming": "Upcoming",
+        "past": "Past",
+        "undated": "No date set",
+    }
+    section_html_parts = []
+    for key in ("upcoming", "past", "undated"):
+        cards = bucketed_cards[key]
+        if not cards:
+            continue
+        section_html_parts.append(
+            f'<section class="trips-section" data-section="{key}">'
+            f'<h3 class="trips-section-title">{section_titles[key]} '
+            f'<span class="trips-section-count">{len(cards)}</span></h3>'
+            f'<div class="trips-grid trips-section-grid">'
+            f"{chr(10).join(cards)}"
+            f"</div>"
+            f"</section>"
+        )
+
+    if section_html_parts:
+        trip_cards = "\n".join(section_html_parts)
     else:
         # Empty-state CTA, friendlier than a blank grid for first-time users
         trip_cards = (

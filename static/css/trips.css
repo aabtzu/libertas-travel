@@ -152,6 +152,41 @@
     gap: 24px;
 }
 
+/* Trips bucketed into Upcoming / Past / No date sections so the page
+   reads as a calendar at a glance. */
+.trips-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+.trips-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #555;
+    margin: 0 0 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.trips-section-count {
+    background: #e9ecf7;
+    color: #4a5fd6;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.trips-section[data-section="past"] .trips-section-title {
+    color: #888;
+}
+.trips-section[data-section="past"] .trip-card {
+    opacity: 0.85;
+}
+
 /* ==================== List View ==================== */
 .trips-list {
     display: flex;
