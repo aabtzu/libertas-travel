@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
-"""Geocode venues missing lat/lng coordinates using OpenStreetMap Nominatim (free)."""
+"""Geocode venues missing lat/lng coordinates using OpenStreetMap Nominatim (free).
+
+Importable: `geocode_address()` is a pure stdlib helper used by the admin
+route at `agents/admin/routes.py`. Runnable: `python3 scripts/geocode_venues.py`
+walks the venue table and fills in missing lat/lng.
+"""
 
 import json
+import os
 import ssl
+import sys
 import time
 import urllib.parse
 import urllib.request
+
+# Add project root to sys.path so `import database` works when this script
+# is run directly (e.g. `python3 scripts/geocode_venues.py`).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 
 def geocode_address(name: str, city: str, country: str) -> tuple:

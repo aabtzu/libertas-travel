@@ -4,16 +4,16 @@
 import os
 import sys
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the project root (parent of scripts/) to sys.path so `from database`
+# resolves when this file is run directly.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _REPO_ROOT)
 
-from database import get_venue_count, import_venues_from_csv
+from database import get_venue_count, import_venues_from_csv  # noqa: E402
 
 
 def main():
-    # Get path to seed data
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(script_dir, "data", "venues_seed.csv")
+    csv_path = os.path.join(_REPO_ROOT, "data", "venues_seed.csv")
 
     if not os.path.exists(csv_path):
         print(f"Error: Seed data not found at {csv_path}")

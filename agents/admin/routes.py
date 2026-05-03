@@ -133,7 +133,7 @@ def debug():
                 debug_info["reimport_result"] = "CSV not found"
 
         if request.args.get("geocode_missing"):
-            from geocode_venues import geocode_address
+            from scripts.geocode_venues import geocode_address
 
             venues = load_venues()
             missing = [v for v in venues if not v.get("latitude") or not v.get("longitude")]
