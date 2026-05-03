@@ -2,8 +2,6 @@
 
 A modern travel itinerary web application for planning, organizing, and visualizing your trips.
 
-Named after the Roman goddess of liberty, alongside Abeona (goddess of outward journeys) and Adeona (goddess of safe returns), Libertas helps you travel freely.
-
 ## Features
 
 - **Import trips** from PDF, Excel, Google Drive, TripIt, or any web page
