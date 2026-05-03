@@ -6,7 +6,7 @@
     <title>Libertas - Travel Freely</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=10">
+    <link rel="stylesheet" href="/static/css/main.css?v=11">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=1">
     <link rel="stylesheet" href="/static/css/home.css">
 </head>
@@ -18,7 +18,11 @@
             <i class="fas fa-feather-alt brand-icon"></i>
             <h1>LIBERTAS</h1>
             <p class="tagline">Travel Freely</p>
-            <p class="subtitle">An agentic travel companion inspired by the Roman gods</p>
+            <p class="subtitle">Stop juggling confirmation emails and spreadsheets — plan, organize, and share your trips in one place.</p>
+            <div class="home-hero-cta">
+                <a href="/register" class="cta-button cta-button-primary"><i class="fas fa-user-plus"></i> Sign up</a>
+                <a href="/how-it-works" class="cta-button cta-button-secondary"><i class="fas fa-circle-info"></i> How it works</a>
+            </div>
         </div>
     </div>
 
@@ -35,7 +39,7 @@
                 </div>
                 <div class="home-card-content">
                     <h3>My Trips</h3>
-                    <p>View and manage your travel itineraries. Import trips from PDFs and spreadsheets, see interactive maps, and get organized summaries.</p>
+                    <p>Your itineraries with maps, day-by-day summaries, and shareable links.</p>
                 </div>
             </a>
 
@@ -45,7 +49,7 @@
                 </div>
                 <div class="home-card-content">
                     <h3>Explore</h3>
-                    <p>Discover destinations, find inspiration, and explore curated travel recommendations powered by AI.</p>
+                    <p>Find restaurants, hotels, and activities along your route via chat.</p>
                 </div>
             </a>
 
@@ -55,7 +59,7 @@
                 </div>
                 <div class="home-card-content">
                     <h3>Create Trip</h3>
-                    <p>Build a new itinerary from scratch with AI assistance. Just tell us where you want to go and we'll help plan the details.</p>
+                    <p>Build a new itinerary from scratch with an AI co-planner.</p>
                 </div>
             </a>
 
@@ -65,7 +69,7 @@
                 </div>
                 <div class="home-card-content">
                     <h3>About</h3>
-                    <p>Learn about Libertas and the Roman deities of travel — Abeona, Adeona, and Libertas — who inspire this project.</p>
+                    <p>The Roman deities of travel — Abeona, Adeona, and Libertas — inspire the project.</p>
                 </div>
             </a>
         </div>
@@ -114,14 +118,14 @@
                         <p>Describe your trip in natural language and let AI build your itinerary</p>
                     </div>
                     <div class="preview-card">
-                        <i class="fas fa-envelope"></i>
-                        <span>Forward from Email</span>
-                        <p>Forward confirmation emails and trips are created automatically</p>
-                    </div>
-                    <div class="preview-card">
                         <i class="fas fa-file-upload"></i>
                         <span>Upload Documents</span>
-                        <p>Import PDFs or spreadsheets from travel agents or your own plans</p>
+                        <p>Import PDFs, spreadsheets, or .ics files from travel agents</p>
+                    </div>
+                    <div class="preview-card">
+                        <i class="fas fa-link"></i>
+                        <span>Paste a URL</span>
+                        <p>Drop a Google Maps directions link and we'll build the route</p>
                     </div>
                     <div class="preview-card">
                         <i class="fas fa-compass"></i>
@@ -146,6 +150,8 @@
         </blockquote>
         <cite>— Marcus Terentius Varro</cite>
     </div>
+
+    {footer_html}
 
     <script src="/static/js/main.js?v=5"></script>
 </body>

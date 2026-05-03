@@ -446,7 +446,19 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
         except Exception as e:
             print(f"Warning: Could not generate card for trip {trip}: {e}")
             continue
-    trip_cards = "\n".join(active_cards_list)
+    if active_cards_list:
+        trip_cards = "\n".join(active_cards_list)
+    else:
+        # Empty-state CTA — friendlier than a blank grid for first-time users
+        trip_cards = (
+            '<div class="no-trips">'
+            '<i class="fas fa-suitcase"></i>'
+            "<h3>No trips yet</h3>"
+            "<p>Create one from scratch, or drop a confirmation PDF into the import area above.</p>"
+            '<a href="/create.html" class="cta-button cta-button-primary">'
+            '<i class="fas fa-plus"></i> Create your first trip</a>'
+            "</div>"
+        )
     archived_cards = "\n".join(archived_cards_list)
 
     # Generate public trips section if there are any

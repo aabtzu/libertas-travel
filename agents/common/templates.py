@@ -44,6 +44,34 @@ def get_nav_html(active_page: str = "") -> str:
     )
 
 
+def get_footer_html() -> str:
+    """Footer used on public marketing pages (home / about / how-it-works).
+    Trip + create + explore views skip it — they have their own chrome."""
+    return FOOTER_HTML
+
+
+FOOTER_HTML = """
+<footer class="libertas-footer">
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <i class="fas fa-feather-alt"></i> LIBERTAS
+            <span class="footer-tagline">Travel freely.</span>
+        </div>
+        <div class="footer-links">
+            <a href="/about.html">About</a>
+            <a href="/how-it-works">How it works</a>
+            <a href="https://github.com/aabtzu/libertas-travel" target="_blank" rel="noopener">
+                <i class="fab fa-github"></i> GitHub
+            </a>
+            <a href="mailto:aabtzu@gmail.com?subject=Libertas%20feedback">
+                <i class="fas fa-envelope"></i> Send feedback
+            </a>
+        </div>
+    </div>
+</footer>
+"""
+
+
 NAV_HTML = """
 <nav class="libertas-nav">
     <a href="/" class="brand">
@@ -81,19 +109,28 @@ function logout() {{
 def generate_how_it_works_page() -> str:
     """Generate the How It Works page HTML."""
     template = get_template("how-it-works.html")
-    return template.format(nav_html=get_nav_html("how-it-works"))
+    return template.format(
+        nav_html=get_nav_html("how-it-works"),
+        footer_html=get_footer_html(),
+    )
 
 
 def generate_about_page() -> str:
     """Generate the About page HTML."""
     template = get_template("about.html")
-    return template.format(nav_html=get_nav_html("about"))
+    return template.format(
+        nav_html=get_nav_html("about"),
+        footer_html=get_footer_html(),
+    )
 
 
 def generate_home_page() -> str:
     """Generate the Home page HTML."""
     template = get_template("home.html")
-    return template.format(nav_html=get_nav_html("home"))
+    return template.format(
+        nav_html=get_nav_html("home"),
+        footer_html=get_footer_html(),
+    )
 
 
 def generate_login_page() -> str:
