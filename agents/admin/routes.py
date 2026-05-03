@@ -306,6 +306,40 @@ def admin_add_venues():
     return json_ok({"success": True, "added": added, "skipped": skipped})
 
 
+@admin_bp.post("/api/admin/delete-user")
+def admin_delete_user():
+    """Delete a user (and their trips, via FK CASCADE) by username. Useful
+    for cleaning up test/abandoned accounts pre-launch.
+
+    Protected by SECRET_KEY (X-Admin-Key header).
+    Refuses to delete the demo system user — that account owns the
+    demo trips that every new visitor sees.
+
+    Body JSON: {"username": "<name>"}
+    """
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    if not username:
+        return json_err("No username provided")
+
+    # Hardcoded refuse-list. The demo user is owned by the system; deleting
+    # it would orphan the curated demo trips on every fresh visit.
+    if username in {"demo", "system"}:
+        return json_err(f"Refusing to delete protected user '{username}'", status=400)
+
+    deleted = db.delete_user_by_username(username)
+    if not deleted:
+        return json_err(f"No user named '{username}' found", status=404)
+
+    print(f"[ADMIN] Deleted user '{username}' (and their trips via CASCADE)", flush=True)
+    return json_ok({"success": True, "username": username})
+
+
 @admin_bp.post("/api/regenerate-all-trips")
 @require_auth
 def regenerate_all_trips():

@@ -33,6 +33,9 @@ _SQL_SQLITE_EMAIL_EXISTS = "SELECT 1 FROM users WHERE email = ?"
 
 _SQL_GET_ALL_USERS = "SELECT id, username FROM users ORDER BY username"
 
+_SQL_PG_DELETE_USER = "DELETE FROM users WHERE username = %s"
+_SQL_SQLITE_DELETE_USER = "DELETE FROM users WHERE username = ?"
+
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
@@ -199,3 +202,19 @@ def get_all_users() -> list[dict[str, Any]]:
             return [{"id": row[0], "username": row[1]} for row in cursor.fetchall()]
         else:
             return [dict(row) for row in cursor.fetchall()]
+
+
+def delete_user_by_username(username: str) -> bool:
+    """Delete a user (and their trips, via ON DELETE CASCADE on the trips
+    FK). Returns True if a row was deleted, False if no such user.
+
+    Used by the admin endpoint to clean up test accounts pre-launch.
+    Permanent — there is no undo. Don't use this on the demo system user.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_DELETE_USER, (username,))
+        else:
+            cursor.execute(_SQL_SQLITE_DELETE_USER, (username,))
+        return cursor.rowcount > 0
