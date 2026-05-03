@@ -1,4 +1,4 @@
-/* Create Trip Page — Ideas pile, tips, write-up, upload indicator (split from create.css) */
+/* Create Trip Page, Ideas pile, tips, write-up, upload indicator (split from create.css) */
 
 /* ==================== Ideas Pile ==================== */
 .ideas-pile {
@@ -365,7 +365,7 @@
 
 
 /* Explainer above the AI helper buttons (Fill Links / Generate Write-up).
-   Dismissible — once the user knows what they do, the X hides it for good
+   Dismissible, once the user knows what they do, the X hides it for good
    (libertas_hide_tools_hint in localStorage). */
 .trip-tools-hint {
     position: relative;

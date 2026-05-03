@@ -1,6 +1,6 @@
 """Parse Google Maps URLs to extract stops, coordinates, and route data.
 
-Standalone module — no Flask dependencies. Used by Create page and Explore.
+Standalone module, no Flask dependencies. Used by Create page and Explore.
 
 Supported URL formats:
 - https://maps.app.goo.gl/... (short links, resolved via redirect)
@@ -130,7 +130,7 @@ def _extract_coordinates_from_data(url: str) -> list[dict]:
     """
     coords = []
 
-    # Pattern: !1d<lng>!2d<lat> — this is the actual coordinate encoding
+    # Pattern: !1d<lng>!2d<lat>, this is the actual coordinate encoding
     pairs = re.findall(r"!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)", url)
     for lng_str, lat_str in pairs:
         lat = float(lat_str)

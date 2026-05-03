@@ -337,7 +337,7 @@ class ItineraryWebView:
     def _get_category_icon(self, category: str) -> str:
         """Get Font Awesome icon class for a category.
 
-        Uses the canonical mapping from agents.common.categories — do not
+        Uses the canonical mapping from agents.common.categories, do not
         add a local copy here.
         """
         return CATEGORY_ICONS.get(category.lower(), "fa-calendar-day")

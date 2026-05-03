@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json  # noqa: F401 — used by sub-modules via wildcard-style re-import
+import json  # noqa: F401, used by sub-modules via wildcard-style re-import
 import os
 import sqlite3
 from contextlib import contextmanager
-from typing import Any  # noqa: F401 — re-exported for sub-modules
+from typing import Any  # noqa: F401, re-exported for sub-modules
 
-import bcrypt  # noqa: F401 — re-exported for users.py
+import bcrypt  # noqa: F401, re-exported for users.py
 
 try:
     import psycopg2
@@ -196,7 +196,7 @@ def get_connection():
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         # SQLite ships with foreign keys disabled by default. Enabling them
-        # so ON DELETE CASCADE works consistently with Postgres in prod —
+        # so ON DELETE CASCADE works consistently with Postgres in prod
         # otherwise deleting a user leaves orphaned trip rows behind in
         # local dev only, masking real cascade bugs.
         conn.execute("PRAGMA foreign_keys = ON")

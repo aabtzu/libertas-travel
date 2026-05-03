@@ -1,4 +1,4 @@
-/* My Trips Page — upload area, URL import, modals, edit form, action buttons (split from trips.css) */
+/* My Trips Page, upload area, URL import, modals, edit form, action buttons (split from trips.css) */
 
 /* ==================== Upload Area ==================== */
 .upload-section {
@@ -406,7 +406,7 @@
     font-size: 0.6rem;
 }
 
-/* Draft badge — positioned absolutely so it doesn't push the card layout
+/* Draft badge, positioned absolutely so it doesn't push the card layout
    (especially in list view, where the wrapper is a flex container and a
    static span would steal a column). */
 .draft-badge {
@@ -432,7 +432,7 @@
     z-index: 5;
 }
 
-/* Archived badge — solid muted color, no gradient */
+/* Archived badge, solid muted color, no gradient */
 .archived-badge {
     position: absolute;
     top: 10px;
@@ -451,7 +451,7 @@
 
 /* In list view the wrapper is a flex row that includes the action buttons,
    so right:10px lands the badge way past the card. Anchor it to the card
-   image (left edge) instead — same column the public/draft badges use. */
+   image (left edge) instead, same column the public/draft badges use. */
 .trips-list .archived-badge {
     top: 8px;
     right: auto;
@@ -472,7 +472,7 @@
 .archived-trips-section .trip-card-wrapper { opacity: 0.85; }
 .archived-trips-section .trip-card-wrapper:hover { opacity: 1; }
 
-/* "Show archived" toggle button — solid color, matches design system */
+/* "Show archived" toggle button, solid color, matches design system */
 .archived-toggle-btn {
     margin: 16px 0 8px;
     padding: 8px 16px;

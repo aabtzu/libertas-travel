@@ -1,4 +1,4 @@
-"""Tests for itinerary parser — unit tests run without API, integration tests need ANTHROPIC_API_KEY."""
+"""Tests for itinerary parser, unit tests run without API, integration tests need ANTHROPIC_API_KEY."""
 
 import json
 import os
@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agents.itinerary.parser import ItineraryParser, fix_json_string
 
 # ---------------------------------------------------------------------------
-# Unit tests — no API calls
+# Unit tests, no API calls
 # ---------------------------------------------------------------------------
 
 
@@ -118,7 +118,7 @@ class TestBuildItinerary:
 
 
 # ---------------------------------------------------------------------------
-# Integration tests — require live API
+# Integration tests, require live API
 # ---------------------------------------------------------------------------
 
 

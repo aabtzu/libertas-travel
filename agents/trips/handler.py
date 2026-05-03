@@ -1,6 +1,6 @@
-"""Trip-level handlers — business logic that route handlers should not own.
+"""Trip-level handlers, business logic that route handlers should not own.
 
-Per CLAUDE.md: "Keep LLM calls out of route handlers — they belong in agent
+Per CLAUDE.md: "Keep LLM calls out of route handlers, they belong in agent
 handlers." Routes call into this module; this module owns DB orchestration,
 caching policy, and LLM invocation.
 """
@@ -16,7 +16,7 @@ import database as db
 def get_card_icon(user_id: int, link: str) -> tuple[dict, int]:
     """Return the cached trip-card icon, computing + persisting on first call.
 
-    Returns (response_body, status_code) — same shape every other handler
+    Returns (response_body, status_code), same shape every other handler
     in this codebase uses.
     """
     trip = db.get_trip_by_link(user_id, link)
@@ -32,7 +32,7 @@ def get_card_icon(user_id: int, link: str) -> tuple[dict, int]:
 
     icon = itinerary_data.get("card_icon")
     if not icon:
-        # Lazy import — keeps the route file decoupled from the LLM
+        # Lazy import, keeps the route file decoupled from the LLM
         # picker so importing routes doesn't pull the LLM client.
         from agents.itinerary.icon_picker import pick_card_icon
 
@@ -41,7 +41,7 @@ def get_card_icon(user_id: int, link: str) -> tuple[dict, int]:
         try:
             db.update_trip_itinerary_data(user_id, link, itinerary_data)
         except Exception as e:
-            # Persistence failure is non-fatal — recompute next call.
+            # Persistence failure is non-fatal, recompute next call.
             print(f"[card-icon] failed to persist for {link}: {e}")
 
     return {"icon": icon}, 200
@@ -141,7 +141,7 @@ def clone_ideas_between_trips(user_id: int, source_link: str, target_link: str) 
 
 
 def regenerate_trip_map(user_id: int, link: str) -> tuple[dict, int]:
-    """Recompute the map for a trip — used by the "Regen Map" button."""
+    """Recompute the map for a trip, used by the "Regen Map" button."""
     trip, itinerary_data = _load_trip_with_itinerary(user_id, link)
     if not trip:
         return {"error": "Trip not found"}, 404
@@ -153,7 +153,7 @@ def regenerate_trip_map(user_id: int, link: str) -> tuple[dict, int]:
         del itinerary_data["map_data"]
         db.update_trip_itinerary_data(user_id, link, itinerary_data)
 
-    # Lazy imports — geocoding pulls heavy deps, only loaded when needed
+    # Lazy imports, geocoding pulls heavy deps, only loaded when needed
     from agents.create.handler import _convert_to_itinerary
     from agents.itinerary.mapper import ItineraryMapper
 

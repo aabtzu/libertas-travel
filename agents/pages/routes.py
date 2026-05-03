@@ -112,7 +112,7 @@ def trip_html(trip_name: str):
     if link.startswith("trip/"):
         link = link[5:]
 
-    # Reserved page names — let 404 fall through; they have dedicated routes above
+    # Reserved page names, let 404 fall through; they have dedicated routes above
     reserved = {"index", "about", "how-it-works", "trips", "login", "register", "create", "explore"}
     if link in reserved:
         return "Not found", 404
@@ -137,7 +137,7 @@ def trip_html(trip_name: str):
     if not trip:
         return "Trip not found", 404
 
-    # Determine viewer context — used by web_view to render the right header buttons
+    # Determine viewer context, used by web_view to render the right header buttons
     is_authenticated = user_id is not None
     trip_owner_id = owner_id or db.get_trip_owner(link)
     is_owner = is_authenticated and (user_id == trip_owner_id)
@@ -175,7 +175,7 @@ def trip_html(trip_name: str):
     # spinner and JS polling drives a single reload when it flips to
     # ready. No manual /api/admin/retry-geocoding needed.
     if not map_data and trip.get("map_status") == "ready":
-        # Use the trip owner's user_id, not the visitor's — the visitor
+        # Use the trip owner's user_id, not the visitor's, the visitor
         # may be anonymous viewing a public trip.
         owner = trip_owner_id or db.get_trip_owner(link)
         if owner:
@@ -201,7 +201,7 @@ def trip_html(trip_name: str):
 @pages_bp.get("/r/<path:rec_name>.html")
 @pages_bp.get("/r/<path:rec_name>")
 def recommendation_view(rec_name: str):
-    """Public recommendation view — no login required."""
+    """Public recommendation view, no login required."""
     link = rec_name
     if not link.endswith(".html"):
         link = link + ".html"
@@ -234,7 +234,7 @@ def recommendation_view(rec_name: str):
 @pages_bp.get("/w/<path:rec_name>.html")
 @pages_bp.get("/w/<path:rec_name>")
 def writeup_view(rec_name: str):
-    """Public write-up view — AI-generated narrative recommendation."""
+    """Public write-up view, AI-generated narrative recommendation."""
     link = rec_name
     if not link.endswith(".html"):
         link = link + ".html"
@@ -257,7 +257,7 @@ def writeup_view(rec_name: str):
     writeup_text = itinerary_data.get("writeup", "")
 
     if not writeup_text:
-        # Generate on the fly — use owner's style profile if available
+        # Generate on the fly, use owner's style profile if available
         try:
             from agents.trips.writeup import generate_writeup
 
@@ -275,7 +275,7 @@ def writeup_view(rec_name: str):
                 writing_samples=writing_samples,
             )
         except Exception as e:
-            # Log the actual cause — silently swallowing made debugging painful
+            # Log the actual cause, silently swallowing made debugging painful
             import traceback
 
             traceback.print_exc()

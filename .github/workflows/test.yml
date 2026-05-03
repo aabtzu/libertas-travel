@@ -28,6 +28,9 @@ jobs:
       - name: File size check (CLAUDE.md target 500, hard 800)
         run: python scripts/check_file_size.py
 
+      - name: No em dashes (CLAUDE.md Writing Style)
+        run: python scripts/check_no_em_dashes.py
+
       - name: Run unit tests
         env:
           ANTHROPIC_API_KEY: ci-placeholder

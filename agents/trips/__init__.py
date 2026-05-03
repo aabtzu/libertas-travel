@@ -1,1 +1,1 @@
-"""Trips agent — trip management routes and ICS export."""
+"""Trips agent, trip management routes and ICS export."""

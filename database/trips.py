@@ -300,7 +300,7 @@ def get_trip_owner(link: str) -> int | None:
 
 
 def set_trip_archived(user_id: int, link: str, is_archived: bool) -> bool:
-    """Set a trip's archived flag. Archive is independent of is_public —
+    """Set a trip's archived flag. Archive is independent of is_public
     an archived trip can still be public/recommendable."""
     with get_db() as conn:
         cursor = conn.cursor()

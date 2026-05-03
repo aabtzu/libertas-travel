@@ -7,7 +7,7 @@ Behavior:
     tests/, root *.py) and counts lines per .py / .js / .css / .html file.
   • A file is treated as a violation if it exceeds 800 lines.
   • Files listed in ``.file_size_baseline.toml`` are grandfathered IN at
-    their listed ceiling — they can keep their current size but can't grow.
+    their listed ceiling, they can keep their current size but can't grow.
     Goal: shrink each one over time and delete its baseline entry.
   • Files between 501 and 800 lines print a warning (non-fatal).
   • Exit 0 = clean. Exit 1 = at least one hard violation or a baseline
@@ -95,10 +95,10 @@ def main() -> int:
                 grew.append((rel, count, ceiling))
             elif count <= HARD_LIMIT:
                 # File is in baseline but has been shrunk under the hard
-                # limit — nudge the contributor to delete the entry.
+                # limit, nudge the contributor to delete the entry.
                 print(
                     f"  💡  {rel}: {count} lines (baseline allows {ceiling}). "
-                    "Now under the hard limit — remove from .file_size_baseline.toml."
+                    "Now under the hard limit, remove from .file_size_baseline.toml."
                 )
             continue
 

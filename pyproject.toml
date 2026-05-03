@@ -40,7 +40,7 @@ select = [
     "UP",  # pyupgrade (modernize syntax for Python 3.11+)
 ]
 ignore = [
-    "E501",  # line too long — formatter handles this, not linter
+    "E501",  # line too long, formatter handles this, not linter
 ]
 
 [tool.ruff.lint.isort]

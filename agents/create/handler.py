@@ -1,12 +1,12 @@
 """Core trip CRUD handlers for the Create agent.
 
 Upload, chat, and parsing helpers have been extracted to sub-modules:
-  - chat_handler.py    — LLM chat for venue recommendations
-  - upload_handlers.py — file upload and URL import pipelines
-  - file_parsers.py    — ICS, JSON, Excel, Word parsing
-  - flight_utils.py    — airline/airport lookups, Google Flights URL parsing
-  - itinerary_utils.py — Itinerary <-> DB data conversion, slugify, format_dates
-  - web_utils.py       — HTML extraction, URL download, Google Drive conversion
+  - chat_handler.py   , LLM chat for venue recommendations
+  - upload_handlers.py, file upload and URL import pipelines
+  - file_parsers.py   , ICS, JSON, Excel, Word parsing
+  - flight_utils.py   , airline/airport lookups, Google Flights URL parsing
+  - itinerary_utils.py, Itinerary <-> DB data conversion, slugify, format_dates
+  - web_utils.py      , HTML extraction, URL download, Google Drive conversion
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from typing import Any
 
 import database as db
 
-# Re-export public API consumed by routes — keeps route imports unchanged
+# Re-export public API consumed by routes, keeps route imports unchanged
 from agents.create.chat_handler import create_chat_handler  # noqa: F401
 from agents.create.itinerary_utils import _convert_to_itinerary
 from agents.create.upload_handlers import (  # noqa: F401

@@ -211,7 +211,7 @@ function promptForTripName(suggestedName, link) {
     `;
     document.body.appendChild(overlay);
 
-    // Set the input value via DOM property — safe regardless of contents
+    // Set the input value via DOM property, safe regardless of contents
     const input = document.getElementById('trip-name-input');
     input.value = suggestedName || '';
     input.focus();
@@ -439,7 +439,7 @@ function openShareModal(link, title) {
 
     modal.classList.add('show');
 
-    // Load users — build via DOM (no innerHTML interpolation) so a
+    // Load users, build via DOM (no innerHTML interpolation) so a
     // username with quotes / `<script>` can't break out and inject code.
     fetch('/api/users', { method: 'POST' })
         .then(response => response.json())
@@ -590,7 +590,7 @@ function _ensurePublicThenCopy(buildUrl) {
                 if (publicBtn) {
                     publicBtn.dataset.public = 'true';
                     publicBtn.classList.add('active');
-                    publicBtn.title = 'Public link — click to make private';
+                    publicBtn.title = 'Public link, click to make private';
                     publicBtn.innerHTML = '<i class="fas fa-globe"></i>';
                 }
                 doCopy();
@@ -616,7 +616,7 @@ function copyWriteupLink() {
     _ensurePublicThenCopy(() => window.location.origin + '/w/' + recLink);
 }
 
-// Legacy — used by explore panel
+// Legacy, used by explore panel
 function copyPublicLink() {
     copyRecommendationLink();
 }
@@ -644,8 +644,8 @@ function togglePublic(btn) {
             btn.dataset.public = newPublicState ? 'true' : 'false';
             btn.classList.toggle('active', newPublicState);
             btn.title = newPublicState
-                ? 'Public link — click to make private'
-                : 'Private — click to share via link';
+                ? 'Public link, click to make private'
+                : 'Private, click to share via link';
             btn.innerHTML = newPublicState ? '<i class="fas fa-globe"></i>' : '<i class="fas fa-lock"></i>';
 
             // Update public badge (positioned at top-left of wrapper)
@@ -672,14 +672,14 @@ function togglePublic(btn) {
 }
 
 /**
- * Toggle archived state of a trip. Mirrors togglePublic — they're independent flags.
+ * Toggle archived state of a trip. Mirrors togglePublic, they're independent flags.
  */
-// toggleArchived() and toggleArchivedSection() — defined in static/js/archive.js
+// toggleArchived() and toggleArchivedSection(), defined in static/js/archive.js
 
 /**
  * Initialize share, public-toggle, and archive-toggle actions.
  *
- * Document-level delegation — works for cards rendered server-side AND for
+ * Document-level delegation, works for cards rendered server-side AND for
  * clones that the list view inserts later.
  */
 function initShareActions() {

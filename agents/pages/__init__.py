@@ -1,1 +1,1 @@
-"""Pages agent — HTML page routes."""
+"""Pages agent, HTML page routes."""

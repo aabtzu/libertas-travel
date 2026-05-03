@@ -1,4 +1,4 @@
-"""Tests for create/handler.py pure helper functions — no API calls needed."""
+"""Tests for create/handler.py pure helper functions, no API calls needed."""
 
 import os
 import sys

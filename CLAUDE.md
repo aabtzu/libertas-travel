@@ -98,6 +98,7 @@ Every shared lookup table, config object, or utility must be defined **once** an
 - This rule exists because em dashes are the strongest "AI wrote this" tell. The codebase is meant to read as human-authored.
 - En dashes (–) for numeric ranges are fine; em dashes (—) are not.
 - The hyphen-minus character (-) is the only dash to use in prose.
+- **Enforced by CI**: `scripts/check_no_em_dashes.py` runs on every push (see `.github/workflows/test.yml`). Any em dash outside the allowlist (the rule docs themselves and a couple of regex char classes that match user-typed dashes) fails the build. To run locally: `.venv/bin/python3 scripts/check_no_em_dashes.py`
 
 ## Code Style
 - Python style is enforced by **ruff** — run `ruff check .` and `ruff format .` before committing

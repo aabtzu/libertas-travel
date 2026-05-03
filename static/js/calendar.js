@@ -6,7 +6,7 @@
 const CalendarView = (function() {
     'use strict';
 
-    // escapeHtml(), formatTime12Hour(), CATEGORY_ICONS — defined in main.js
+    // escapeHtml(), formatTime12Hour(), CATEGORY_ICONS, defined in main.js
 
     /**
      * Get category icon class

@@ -13,7 +13,7 @@ Libertas uses two things from fiat-lux-agents directly:
 | `LLMBase` | `agents/common/llm.py` | Base class for direct Claude API calls across all features |
 | `SummaryBot` | `agents/common/llm.py` | Natural language Q&A over a dataset description |
 
-Everything else in fiat-lux-agents (FilterBot, ChatBot, ExplorerBlueprint, etc.) is available but not currently wired in — easy additions for future features.
+Everything else in fiat-lux-agents (FilterBot, ChatBot, ExplorerBlueprint, etc.) is available but not currently wired in, easy additions for future features.
 
 ---
 
@@ -40,7 +40,7 @@ Handlers import from here rather than touching fiat-lux-agents directly. This me
 
 ## Where LLMBase Is Used
 
-`LLMBase.call_api(system_prompt, messages)` is the core method — it handles the Anthropic API call, retries, and returns the response text.
+`LLMBase.call_api(system_prompt, messages)` is the core method, it handles the Anthropic API call, retries, and returns the response text.
 
 | File | Feature | What it does |
 |---|---|---|
@@ -55,13 +55,13 @@ Handlers import from here rather than touching fiat-lux-agents directly. This me
 ### Model selection in practice
 
 - **Sonnet** (`SONNET`) is used everywhere quality matters: parsing uploaded documents, the create chat loop, explore recommendations
-- **Haiku** (`HAIKU`) is available in `llm.py` for speed/cost tasks — currently used as an override in specific classification steps
+- **Haiku** (`HAIKU`) is available in `llm.py` for speed/cost tasks, currently used as an override in specific classification steps
 
 ---
 
 ## When to use fiat-lux-agents vs. direct API calls
 
-Not every LLM call in Libertas needs to go through fiat-lux-agents. A simple sidebar chat or one-off classification is fine as a direct `anthropic.messages.create()` call — adding fla indirection would just obscure what the code is doing.
+Not every LLM call in Libertas needs to go through fiat-lux-agents. A simple sidebar chat or one-off classification is fine as a direct `anthropic.messages.create()` call, adding fla indirection would just obscure what the code is doing.
 
 **Use fiat-lux-agents (via `agents/common/llm.py`) when:**
 - The feature involves a **tool use loop** (create chat, itinerary parsing with tool calls)
@@ -69,7 +69,7 @@ Not every LLM call in Libertas needs to go through fiat-lux-agents. A simple sid
 - An **existing bot fits** (`SummaryBot`, `FilterBot`, `ExplorerBlueprint`)
 
 **Go direct when:**
-- Single-turn Q&A with data as context — e.g. a sidebar that just answers questions about a DataFrame
+- Single-turn Q&A with data as context, e.g. a sidebar that just answers questions about a DataFrame
 - App-specific one-off feature that won't be reused elsewhere
 
 See the [fiat-lux-agents README](https://github.com/aabtzu/fiat-lux-agents#when-to-use-fiat-lux-agents) for the full decision guide.
@@ -92,14 +92,14 @@ See the [fiat-lux-agents README](https://github.com/aabtzu/fiat-lux-agents#when-
        ...
    ```
 
-3. Keep system prompts as module-level constants (same reason as SQL constants — readable and maintainable):
+3. Keep system prompts as module-level constants (same reason as SQL constants, readable and maintainable):
    ```python
    _SYSTEM_PROMPT = """
    You are a travel assistant. Given a destination, suggest...
    """
    ```
 
-4. Never call `anthropic.Anthropic()` directly — always go through `LLMBase`.
+4. Never call `anthropic.Anthropic()` directly, always go through `LLMBase`.
 
 ---
 

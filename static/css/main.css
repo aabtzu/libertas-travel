@@ -615,7 +615,7 @@ body {
 .post-explore-banner .post-explore-back:hover { color: #fff; }
 .post-explore-banner.fading { opacity: 0; }
 
-/* Feedback popup — used by the footer "Send feedback" link and the
+/* Feedback popup, used by the footer "Send feedback" link and the
    register-page "Email Amit" link. Self-contained: shows the email,
    offers a Copy button, and links to Gmail/Outlook web + mailto. */
 .feedback-popup-overlay {

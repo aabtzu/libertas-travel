@@ -1,5 +1,5 @@
 /**
- * Trip archive controls — toggle archive state on a trip card and
+ * Trip archive controls, toggle archive state on a trip card and
  * show/hide the archived-trips section.
  *
  * The archive button click is wired up by initShareActions in upload.js
@@ -20,7 +20,7 @@ function toggleArchived(btn) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Move the card between active and archived sections without a full reload —
+            // Move the card between active and archived sections without a full reload
             // a reload would lose the user's "Show archived" state and is jarring on long lists.
             const wrapper = btn.closest('.trip-card-wrapper');
             wrapper.dataset.isArchived = newArchivedState ? 'true' : 'false';
@@ -42,7 +42,7 @@ function toggleArchived(btn) {
 
             // Move the card to the right grid. The archived section's inner
             // container alternates between .trips-grid (cards view) and
-            // .trips-list (list view) — match either.
+            // .trips-list (list view), match either.
             const archivedSection = document.getElementById('archived-section');
             const archivedGrid = archivedSection?.querySelector(
                 '.trips-grid, .trips-list'
@@ -54,7 +54,7 @@ function toggleArchived(btn) {
                 activeGrid.appendChild(wrapper);
             }
 
-            // Update the "Show archived (N)" toggle button — show it once
+            // Update the "Show archived (N)" toggle button, show it once
             // there's at least one archived trip, hide when count drops to 0.
             const toggleBtn = document.getElementById('show-archived-btn');
             const archivedCount = archivedGrid ? archivedGrid.querySelectorAll('.trip-card-wrapper').length : 0;

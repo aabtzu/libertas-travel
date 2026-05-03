@@ -1,4 +1,4 @@
-"""Integration tests — require live Anthropic API and/or network access.
+"""Integration tests, require live Anthropic API and/or network access.
 
 These tests exercise the full pipeline end-to-end using fixture files in
 tests/fixtures/. Run with:
@@ -19,7 +19,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 # ---------------------------------------------------------------------------
-# Itinerary parsing — upload_plan_handler
+# Itinerary parsing, upload_plan_handler
 # ---------------------------------------------------------------------------
 
 
@@ -111,7 +111,7 @@ def test_parse_flight_text_fixture():
 
 
 # ---------------------------------------------------------------------------
-# Geocoding with region hint — ItineraryMapper
+# Geocoding with region hint, ItineraryMapper
 # ---------------------------------------------------------------------------
 
 
@@ -180,7 +180,7 @@ def test_region_hint_extracted_for_paris_itinerary():
 
 
 # ---------------------------------------------------------------------------
-# Explore chat — venue recommendations
+# Explore chat, venue recommendations
 # ---------------------------------------------------------------------------
 
 
@@ -213,7 +213,7 @@ def test_explore_chat_handles_followup():
         {"role": "user", "content": "Recommend a restaurant in Tokyo"},
         {
             "role": "assistant",
-            "content": "I recommend Sukiyabashi Jiro in Ginza, Tokyo — one of the world's most renowned sushi restaurants with three Michelin stars.",
+            "content": "I recommend Sukiyabashi Jiro in Ginza, Tokyo, one of the world's most renowned sushi restaurants with three Michelin stars.",
         },
     ]
 

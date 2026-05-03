@@ -84,7 +84,7 @@ class TestMdToHtml:
 
     def test_combined(self):
         result = _md_to_html(
-            "## Jackson\n\n**White Mountain Cider** — great [dinner](https://example.com)"
+            "## Jackson\n\n**White Mountain Cider**, great [dinner](https://example.com)"
         )
         assert "<h2>Jackson</h2>" in result
         assert "<strong>White Mountain Cider</strong>" in result
@@ -141,7 +141,7 @@ class TestRecommendationRoutes:
                 db.delete_trip(1, link)
 
     def test_recommendation_trip_html_uses_recommendation_view(self, client):
-        """Recommendation trips must not hit the day-by-day view — its map-status
+        """Recommendation trips must not hit the day-by-day view, its map-status
         polling triggers an infinite reload when no map_data is stored.
         Regression for the Google Maps URL import bug."""
         import database as db
@@ -220,7 +220,7 @@ class TestIdeasWithLinks:
 #
 # Regression guard: a recommendation trip (ideas-only, no days) used to be
 # served by the day-by-day map view, which set mapData.pending=True while
-# the DB had map_status="ready" — that combo made trip.js infinite-reload.
+# the DB had map_status="ready", that combo made trip.js infinite-reload.
 # trip_html() now branches on trip_type and serves the recommendation view.
 # ---------------------------------------------------------------------------
 
@@ -260,7 +260,7 @@ class TestRecommendationTripRoute:
                 "expected recommendation view markup"
             )
             # The day-by-day view's map-polling JS (trip.js) and mapData var
-            # are what cause the infinite reload — must not be present here.
+            # are what cause the infinite reload, must not be present here.
             assert "trip.js" not in body
             assert "var mapData" not in body
         finally:

@@ -33,7 +33,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
                     console.log('Password credential storage skipped:', credErr);
                 }
             }
-            // Redirect to the original page or home — but only if the
+            // Redirect to the original page or home, but only if the
             // redirect param is a same-origin path. An attacker linking to
             // /login?redirect=https://evil.com would otherwise send the
             // user offsite right after they entered their password.

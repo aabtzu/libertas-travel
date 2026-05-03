@@ -90,7 +90,7 @@ def get_trip_start_date(itinerary_data: dict) -> str | None:
     return None
 
 
-# CATEGORY_ICONS imported from agents.common.categories — do not redefine here
+# CATEGORY_ICONS imported from agents.common.categories, do not redefine here
 
 # Path to itinerary-specific static files and templates
 STATIC_DIR = Path(__file__).parent / "static"
@@ -319,7 +319,7 @@ def _extract_map_location(itinerary_data) -> str:
     if not locations:
         return ""
 
-    # Prefer locations with commas (more specific — "Jackson, NH" > "Jackson")
+    # Prefer locations with commas (more specific, "Jackson, NH" > "Jackson")
     with_context = [loc for loc in locations if "," in loc]
     if with_context:
         return with_context[0]
@@ -352,7 +352,7 @@ def generate_trip_card(
     public_class = "active" if is_public else ""
     public_icon = "globe" if is_public else "lock"
     public_title = (
-        "Public link — click to make private" if is_public else "Private — click to share via link"
+        "Public link, click to make private" if is_public else "Private, click to share via link"
     )
 
     # Draft settings - drafts link to create/edit page
@@ -364,7 +364,7 @@ def generate_trip_card(
     draft_class = " is-draft" if is_draft else ""
     card_link = f"/create.html?edit={link}" if is_draft else link
 
-    # Archive settings — archived trips are hidden from main grid by default
+    # Archive settings, archived trips are hidden from main grid by default
     archived_badge = (
         '<span class="archived-badge"><i class="fas fa-box-archive"></i> Archived</span>'
         if is_archived

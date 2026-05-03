@@ -1,4 +1,4 @@
-"""Tests for ItinerarySummarizer — unit tests run without API."""
+"""Tests for ItinerarySummarizer, unit tests run without API."""
 
 import os
 import sys
@@ -44,7 +44,7 @@ def _make_item(
 
 
 # ---------------------------------------------------------------------------
-# Unit tests — no API calls
+# Unit tests, no API calls
 # ---------------------------------------------------------------------------
 
 
@@ -104,7 +104,7 @@ class TestQuickSummary:
 
 
 # ---------------------------------------------------------------------------
-# Integration tests — require live API
+# Integration tests, require live API
 # ---------------------------------------------------------------------------
 
 

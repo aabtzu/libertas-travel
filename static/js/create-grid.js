@@ -113,10 +113,10 @@ function renderGrid() {
             const isLastDay = (day.day_number === lastDayNum);
             let withinStay = false;
             if (lastNightStay.end_date && day.date) {
-                // Has explicit checkout — carry while before that date
+                // Has explicit checkout, carry while before that date
                 withinStay = day.date < lastNightStay.end_date;
             } else {
-                // No end_date — carry until the next day that has its own lodging
+                // No end_date, carry until the next day that has its own lodging
                 const nextLodgingDay = currentTrip.days
                     .find(d => d.day_number > day.day_number && lodgingDayNums.has(d.day_number));
                 withinStay = !nextLodgingDay || day.day_number < nextLodgingDay.day_number;
@@ -125,7 +125,7 @@ function renderGrid() {
                 currentNightStay = lastNightStay.title || lastNightStay.location || null;
                 isCarried = true;
             } else {
-                lastNightStay = null;  // stop carrying — checkout reached or next lodging found
+                lastNightStay = null;  // stop carrying, checkout reached or next lodging found
             }
         }
 

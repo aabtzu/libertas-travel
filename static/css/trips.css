@@ -1,4 +1,4 @@
-/* My Trips Page — base layout, view toggle, grid + list views (split from trips.css) */
+/* My Trips Page, base layout, view toggle, grid + list views (split from trips.css) */
 
 /* Libertas - My Trips Page Styles */
 
@@ -285,7 +285,7 @@
     position: relative;
 }
 
-/* Fast custom tooltip — shows the title attribute as a small bubble below the
+/* Fast custom tooltip, shows the title attribute as a small bubble below the
    button on hover. Native title= still works as a fallback for assistive tech.
    Solid color, no gradient (per design system). */
 .trip-action-btn[title]::after {

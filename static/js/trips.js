@@ -56,7 +56,7 @@ function switchTripsView(view) {
         archivedInner.classList.remove('trips-grid', 'trips-list');
         archivedInner.classList.add(view === 'list' ? 'trips-list' : 'trips-grid');
     }
-    // In map view the archived section is irrelevant — the map already
+    // In map view the archived section is irrelevant, the map already
     // shows all markers including archived ones (per design).
     const archivedSection = document.getElementById('archived-section');
     const archivedToggle = document.getElementById('show-archived-btn');
@@ -156,7 +156,7 @@ function initMapView() {
 async function loadTripMarkers() {
     if (!tripsMap) return;
 
-    // Get trip data from cards — include archived trips on the map
+    // Get trip data from cards, include archived trips on the map
     // (per design: archive ≠ private; archived trips remain visible on the map view)
     const cards = document.querySelectorAll(
         '#trips-container .trip-card-wrapper, #archived-section .trip-card-wrapper'
@@ -296,7 +296,7 @@ function createTripMarker(trip, coords) {
     return marker;
 }
 
-// escapeHtml() — defined in main.js
+// escapeHtml(), defined in main.js
 
 // Make switchTripsView globally available
 window.switchTripsView = switchTripsView;
@@ -311,7 +311,7 @@ window.switchTripsView = switchTripsView;
  */
 async function loadCardIcons() {
     const wrappers = document.querySelectorAll('.trip-card-wrapper[data-link]');
-    // Dedupe by link — list view clones cards from cards view, so we'd
+    // Dedupe by link, list view clones cards from cards view, so we'd
     // otherwise call the endpoint twice for the same trip.
     const linksSeen = new Set();
     const tasks = [];
@@ -343,7 +343,7 @@ async function fetchAndApply(link) {
             iconEl.classList.add('fa-' + data.icon);
         });
     } catch (e) {
-        // Network error — keep the keyword-based icon
+        // Network error, keep the keyword-based icon
         console.log('Card icon fetch failed for', link, e);
     }
 }
@@ -352,7 +352,7 @@ async function fetchAndApply(link) {
 /**
  * First-time intro card on /trips. Shown once per browser, then hidden
  * forever (libertas_seen_trips_intro in localStorage). Skipped entirely
- * for users who already have at least one trip — they don't need it.
+ * for users who already have at least one trip, they don't need it.
  */
 function maybeShowTripsIntro() {
     const intro = document.getElementById('trips-intro');
@@ -363,7 +363,7 @@ function maybeShowTripsIntro() {
     } catch (e) { /* private mode etc. */ }
     if (seen) return;
 
-    // Skip if the user already has trips — they don't need a tutorial
+    // Skip if the user already has trips, they don't need a tutorial
     const hasTrips = document.querySelectorAll('#trips-container .trip-card-wrapper').length > 0;
     if (hasTrips) {
         try { localStorage.setItem('libertas_seen_trips_intro', '1'); } catch (e) {}

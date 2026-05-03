@@ -1,4 +1,4 @@
-"""Unit tests for the database package — all run against a fresh SQLite DB, no live APIs."""
+"""Unit tests for the database package, all run against a fresh SQLite DB, no live APIs."""
 
 from __future__ import annotations
 
@@ -569,7 +569,7 @@ class TestAddVenue:
     def test_missing_name_fails(self):
         from database.venues import add_venue
 
-        # name is NOT NULL — should raise and return None
+        # name is NOT NULL, should raise and return None
         result = add_venue({"city": "Paris"})
         assert result is None
 

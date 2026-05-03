@@ -10,7 +10,7 @@ from pathlib import Path
 _DATA_DIR = Path(__file__).parent.parent.parent / "data"
 _AIRLINE_CODES_CSV = _DATA_DIR / "airline_codes.csv"
 
-# Cached lookup tables — loaded on first use
+# Cached lookup tables, loaded on first use
 _airline_names: dict[str, str] | None = None  # IATA code -> display name
 _airline_url_names: dict[str, str] | None = None  # IATA code -> URL-encoded name for flightera
 _airports_db: dict | None = None  # airportsdata IATA lookup
@@ -55,7 +55,7 @@ def _get_airport_city(iata_code: str) -> str:
     airport = _airports_db.get(iata_code.upper())
     if airport and airport.get("city"):
         return airport["city"].replace(" ", "+")
-    return iata_code  # Fall back to raw code — flightera may still resolve it
+    return iata_code  # Fall back to raw code, flightera may still resolve it
 
 
 def lookup_flight_times(airline_code: str, flight_num: str, origin: str, dest: str) -> dict | None:

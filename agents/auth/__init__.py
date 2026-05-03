@@ -1,1 +1,1 @@
-"""Auth agent — login, register, logout routes."""
+"""Auth agent, login, register, logout routes."""

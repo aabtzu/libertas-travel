@@ -9,7 +9,7 @@ services:
         value: "3.11"
       - key: OUTPUT_DIR
         value: /var/data/output
-      # SECRET_KEY is required for Flask signed sessions — set this in the Render dashboard
+      # SECRET_KEY is required for Flask signed sessions, set this in the Render dashboard
       # (not here, to avoid committing secrets). Generate with: openssl rand -hex 32
       # ANTHROPIC_API_KEY must also be set in the Render dashboard for AI features.
     disk:

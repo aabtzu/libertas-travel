@@ -1,4 +1,4 @@
-"""Unit tests for ItineraryMapper — caching logic and is_home_location exclusion.
+"""Unit tests for ItineraryMapper, caching logic and is_home_location exclusion.
 
 All tests are pure unit tests: no live API calls, no network, no DB.
 LLM calls are patched out wherever mapper methods would invoke them.
@@ -176,7 +176,7 @@ class TestHomeLocationExclusion:
     def _make_mapper_with_mocked_geocode(self):
         """Return a mapper that skips real geocoding and LLM calls."""
         mapper = ItineraryMapper()
-        # Prevent network calls — geocode_locations is a no-op
+        # Prevent network calls, geocode_locations is a no-op
         mapper.geocode_locations = lambda itin: itin
         # Prevent LLM call for region hint
         mapper._get_region_hint = lambda itin: "France"
@@ -241,7 +241,7 @@ class TestHomeLocationExclusion:
 
 
 # ---------------------------------------------------------------------------
-# _build_flight_queries (no LLM — uses cached IATA or loc_name directly)
+# _build_flight_queries (no LLM, uses cached IATA or loc_name directly)
 # ---------------------------------------------------------------------------
 
 
@@ -250,7 +250,7 @@ class TestBuildFlightQueries:
         ItineraryMapper._iata_cache.clear()
 
     def test_iata_location_field_used_first(self):
-        # Stub the IATA resolver instead of poking _iata_cache directly — the
+        # Stub the IATA resolver instead of poking _iata_cache directly, the
         # cache key includes context (f"{iata}|{context}"), so seeding by
         # bare code misses and the real resolver hits Claude (and 401s in CI).
         from unittest.mock import patch

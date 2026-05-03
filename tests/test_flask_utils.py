@@ -1,4 +1,4 @@
-"""Unit tests for agents/common/flask_utils.py — auth middleware and response helpers."""
+"""Unit tests for agents/common/flask_utils.py, auth middleware and response helpers."""
 
 from __future__ import annotations
 

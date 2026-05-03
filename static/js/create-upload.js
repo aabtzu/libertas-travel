@@ -1,6 +1,6 @@
 /**
  * Upload and file import handlers for the trip editor.
- * Extracted from create.js — depends on globals: currentTrip, renderDays, triggerAutoSave, etc.
+ * Extracted from create.js, depends on globals: currentTrip, renderDays, triggerAutoSave, etc.
  */
 
 function setupFileDragDrop() {

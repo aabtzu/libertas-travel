@@ -1,4 +1,4 @@
-"""Database package — re-exports all public functions for backward-compatible imports.
+"""Database package, re-exports all public functions for backward-compatible imports.
 
 All callers use `import database as db` or `from database import X`, so this
 __init__.py must expose the full public API that database.py previously provided.

@@ -1,6 +1,6 @@
 /**
  * Item CRUD operations for the trip editor.
- * Extracted from create.js — depends on globals: currentTrip, renderDays, renderIdeas, triggerAutoSave, etc.
+ * Extracted from create.js, depends on globals: currentTrip, renderDays, renderIdeas, triggerAutoSave, etc.
  */
 
 function showDayPickerDialog(item, triggerButton) {
@@ -215,7 +215,7 @@ function editItem(dayIndex, itemIndex) {
     newForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // Update item — preserve coordinates from original
+        // Update item, preserve coordinates from original
         currentTrip.days[dayIndex].items[itemIndex] = {
             title: document.getElementById('item-title').value.trim(),
             category: document.getElementById('item-category').value,
@@ -297,7 +297,7 @@ function editIdea(ideaIndex) {
     newForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // Update idea — preserve coordinates from original item
+        // Update idea, preserve coordinates from original item
         currentTrip.ideas[ideaIndex] = {
             title: document.getElementById('item-title').value.trim(),
             category: document.getElementById('item-category').value,

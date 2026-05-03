@@ -595,7 +595,7 @@ def _parse_suggested_items(
                 website = plain_match.group(1)
                 description = re.sub(plain_url, "", description).strip()
 
-        description = description.rstrip(" .-–—")
+        description = description.rstrip(" .-–")
 
         category = "activity"
         combined_lower = (name + " " + description).lower()

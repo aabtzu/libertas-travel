@@ -2,7 +2,7 @@
 
 /**
  * Shared category→icon and category→color maps.
- * Single source of truth — used by create.js, create-grid.js, create-map.js,
+ * Single source of truth, used by create.js, create-grid.js, create-map.js,
  * trip.js, item-detail.js, and calendar.js. Change here; nowhere else.
  */
 const CATEGORY_ICONS = {
@@ -34,7 +34,7 @@ const CATEGORY_COLORS = {
 };
 
 /**
- * Shared file upload validation — single source of truth for allowed types.
+ * Shared file upload validation, single source of truth for allowed types.
  * Used by both the trips page upload widget (upload.js) and the create page (create.js).
  */
 const LibertasUpload = {
@@ -356,7 +356,7 @@ function initMobileNav() {
 }
 
 /**
- * Custom modal dialogs — replaces browser confirm() and alert() so popups
+ * Custom modal dialogs, replaces browser confirm() and alert() so popups
  * inherit the app's font and style instead of looking like system dialogs.
  *
  * Usage:
@@ -471,7 +471,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 /**
- * Shared utility functions — single source of truth.
+ * Shared utility functions, single source of truth.
  * Used by create.js, trip.js, trips.js, calendar.js, item-detail.js, etc.
  * Do NOT redefine these in other files.
  */
@@ -628,7 +628,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /**
  * Feedback / invite-request popup. Replaces the mailto: link in the footer
- * (and similar) — most users don't have a mail client configured, so a
+ * (and similar), most users don't have a mail client configured, so a
  * mailto link silently fails. This pops a small modal with:
  *   - The email shown visibly so anyone can copy it manually
  *   - A one-click Copy button (uses navigator.clipboard with fallback)

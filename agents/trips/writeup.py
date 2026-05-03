@@ -16,7 +16,7 @@ from agents.common.llm import SONNET
 _TRAVEL_INSTRUCTIONS = """Write a recommendation for the places provided.
 Group by area/city. Do NOT use a day-by-day format unless dates are present.
 Include website links as markdown: [venue name](url).
-Skip Google search fallback links — only include real URLs.
+Skip Google search fallback links, only include real URLs.
 Write in markdown."""
 
 
@@ -31,7 +31,7 @@ def _build_items_text(all_items: list[dict]) -> str:
         maps_link = item.get("google_maps_link", "")
         line = f"- {item.get('title', 'Untitled')} ({cat})"
         if loc:
-            line += f" — {loc}"
+            line += f", {loc}"
         if website and "google.com/search" not in website:
             line += f"\n  Website: {website}"
         if maps_link:
@@ -80,7 +80,7 @@ def generate_writeup(
     # Pull user rules to reinforce at the end of the prompt (recency bias)
     rules_reminder = ""
     if style_profile and style_profile.get("rules"):
-        rules_reminder = f"\n\nREMINDER — follow these rules strictly:\n{style_profile['rules']}"
+        rules_reminder = f"\n\nREMINDER, follow these rules strictly:\n{style_profile['rules']}"
 
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
     return writer.generate(
@@ -88,8 +88,8 @@ def generate_writeup(
         context=_TRAVEL_INSTRUCTIONS,
         style_profile=style_profile,
         style_template="nyt_36_hours",
-        instructions="Include the recommender's personal notes — those are the good stuff.",
-        # Don't pass writing samples — they can conflict with rules
+        instructions="Include the recommender's personal notes, those are the good stuff.",
+        # Don't pass writing samples, they can conflict with rules
         # (e.g. casual emails naturally have wrap-up phrases the rules prohibit).
         # The style profile + rules are more controllable.
     )

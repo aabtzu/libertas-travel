@@ -38,7 +38,7 @@ def _parse_json_with_recovery(text: str) -> list[dict]:
             raise  # nothing recoverable
         recovered = text[: last_brace + 1] + "\n]"
         result = json.loads(recovered)  # raises if still invalid
-        print(f"[UPLOAD] Recovered truncated JSON — kept {len(result)} items")
+        print(f"[UPLOAD] Recovered truncated JSON, kept {len(result)} items")
         return result
 
 
@@ -52,7 +52,7 @@ def upload_plan_handler(user_id: int, filename: str, file_data: bytes, ext: str)
     if "error" in extracted:
         return {"error": extracted["error"]}, 400
 
-    # ICS/JSON fast path — items already parsed, skip LLM
+    # ICS/JSON fast path, items already parsed, skip LLM
     if "items" in extracted:
         return {"success": True, "items": extracted["items"], "filename": filename}, 200
 
@@ -286,7 +286,7 @@ def upload_file_handler(
                         }, 400
                 itinerary = parser.parse_text(text, source_url=filename)
             elif "image_data" in extracted:
-                # Scanned PDF or image — write to tmp for parse_file
+                # Scanned PDF or image, write to tmp for parse_file
                 with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
                     tmp.write(file_data)
                     tmp_path = tmp.name
