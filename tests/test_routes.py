@@ -155,6 +155,10 @@ class TestAdminAuth:
         resp = client.post("/api/admin/delete-user", json={"username": "x"})
         assert resp.status_code == 401
 
+    def test_delete_trip_no_key_returns_401(self, client):
+        resp = client.post("/api/admin/delete-trip", json={"username": "x", "link": "y.html"})
+        assert resp.status_code == 401
+
 
 # ---------------------------------------------------------------------------
 # Admin endpoints — with valid key
@@ -257,6 +261,55 @@ class TestAdminEndpoints:
         assert resp.status_code == 400
         body = resp.get_json()
         assert body.get("success") is not True
+
+    def test_delete_trip_round_trip(self, client):
+        """Create a user + trip, delete via the admin endpoint, verify gone."""
+        import database as db
+
+        username = "trip_owner_for_delete"
+        link = "doomed_trip_for_admin_delete.html"
+        db.delete_user_by_username(username)  # cleanup any prior run
+
+        user_id = db.create_user(username, f"{username}@test.local", "pw1234")
+        assert user_id is not None
+        db.add_trip(user_id, {"title": "Doomed", "link": link}, {"days": [], "ideas": []})
+        assert db.get_trip_by_link(user_id, link) is not None
+
+        try:
+            resp = client.post(
+                "/api/admin/delete-trip",
+                headers=self.HEADERS,
+                json={"username": username, "link": link},
+            )
+            assert resp.status_code == 200
+            assert resp.get_json()["success"] is True
+            assert db.get_trip_by_link(user_id, link) is None
+
+            # Re-deleting same trip yields 404
+            resp = client.post(
+                "/api/admin/delete-trip",
+                headers=self.HEADERS,
+                json={"username": username, "link": link},
+            )
+            assert resp.status_code == 404
+        finally:
+            db.delete_user_by_username(username)
+
+    def test_delete_trip_unknown_user(self, client):
+        resp = client.post(
+            "/api/admin/delete-trip",
+            headers=self.HEADERS,
+            json={"username": "no_such_user_xyz", "link": "anything.html"},
+        )
+        assert resp.status_code == 404
+
+    def test_delete_trip_missing_fields(self, client):
+        resp = client.post(
+            "/api/admin/delete-trip",
+            headers=self.HEADERS,
+            json={"username": "x"},  # no link
+        )
+        assert resp.get_json().get("success") is not True
 
     def test_delete_user_round_trip(self, client):
         """Create a throw-away user, delete it via the admin endpoint,
