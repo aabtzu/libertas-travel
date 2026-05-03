@@ -437,13 +437,41 @@ var mapPolling = (function() {
                     if (mapBadge) mapBadge.innerHTML = '';
                     if (pollInterval) clearInterval(pollInterval);
                     // Reload if we were waiting, OR if the page was rendered without map data
-                    // (mapData.pending=true means the DB had no map_data when page was served)
+                    // (mapData.pending=true means the DB had no map_data when page was served).
+                    // Guard against infinite reload: if status=ready but map_data is still
+                    // missing after a reload, the trip is in a stuck state ("ready" written
+                    // without map_data ever being computed). Show an error instead of looping.
                     var needsReload = wasNotReady || (mapData && mapData.pending);
                     if (needsReload) {
-                        window.location.reload();
-                    } else if (mapLoading) {
-                        // Status is ready and page already has map data — just hide spinner
-                        mapLoading.classList.add('hidden');
+                        var reloadFlag = 'libertas_reload_' + tripLink;
+                        if (sessionStorage.getItem(reloadFlag) === '1') {
+                            // We already reloaded once and the page came back still pending —
+                            // server's map_data is stuck. Stop the loop and show an error.
+                            sessionStorage.removeItem(reloadFlag);
+                            if (mapLoading) {
+                                mapLoading.innerHTML =
+                                    '<div class="map-status-error"><i class="fas fa-exclamation-triangle"></i></div>' +
+                                    '<div class="map-loading-text map-status-error">Map data is stuck</div>' +
+                                    '<div class="map-loading-subtext">' +
+                                    'The trip is marked ready but has no map data. ' +
+                                    'Use the "Regen Map" button in the header, or contact support.' +
+                                    '</div>';
+                            }
+                            if (mapBadge) {
+                                mapBadge.innerHTML =
+                                    '<i class="fas fa-exclamation-circle" style="color:#e74c3c;margin-left:5px;"></i>';
+                            }
+                        } else {
+                            sessionStorage.setItem(reloadFlag, '1');
+                            window.location.reload();
+                        }
+                    } else {
+                        // Successful reload — clear the guard so future visits start fresh
+                        sessionStorage.removeItem('libertas_reload_' + tripLink);
+                        if (mapLoading) {
+                            // Status is ready and page already has map data — just hide spinner
+                            mapLoading.classList.add('hidden');
+                        }
                     }
                 } else if (data.map_status === 'error') {
                     if (mapLoading) {

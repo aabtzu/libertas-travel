@@ -162,6 +162,44 @@ def admin_retry_geocoding(link: str) -> dict:
         return {"success": False, "error": str(e)}
 
 
+def regen_all_stuck_trips() -> dict:
+    """Find and re-geocode every trip stuck with map_status='ready' but
+    no map_data. One-shot bulk fix invoked by /api/admin/regen-stuck-trips.
+
+    Returns: {"success": True, "regenerated": N, "links": [...], "errors": [...]}
+    """
+    regenerated: list[str] = []
+    errors: list[dict] = []
+
+    for user in db.get_all_users():
+        for trip in db.get_user_trips(user["id"]):
+            itinerary_data = trip.get("itinerary_data") or {}
+            if isinstance(itinerary_data, str):
+                try:
+                    itinerary_data = json.loads(itinerary_data)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+            map_data = itinerary_data.get("map_data")
+            status = trip.get("map_status")
+            # Stuck = ready but no markers (or no map_data at all)
+            is_stuck = status == "ready" and (not map_data or not map_data.get("markers"))
+            if not is_stuck:
+                continue
+
+            result = admin_retry_geocoding(trip["link"])
+            if result.get("success"):
+                regenerated.append(trip["link"])
+            else:
+                errors.append({"link": trip["link"], "error": result.get("error")})
+
+    return {
+        "success": True,
+        "regenerated": len(regenerated),
+        "links": regenerated,
+        "errors": errors,
+    }
+
+
 def seed_demo_trips(force: bool = False) -> dict:
     """Create (or re-seed) the demo trips owned by the system demo user.
 
