@@ -68,9 +68,7 @@ A few I'd particularly welcome help on:
 - **Onboarding flow** — first-time users still see a bit much at once.
   Suggestions / mockups welcome.
 
-## Code of conduct
-
-Be kind. Assume good faith. If something I do bothers you, tell me.
+## Be Nice
 
 ## License
 
