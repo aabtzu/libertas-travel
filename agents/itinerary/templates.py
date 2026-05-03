@@ -22,6 +22,40 @@ def format_trip_date(date_str: str | None) -> str:
         return "Date unknown"
 
 
+def _sort_trips_for_display(trips: list) -> list:
+    """Sort trips for the My Trips page so the soonest upcoming trip is
+    at the top.
+
+    Order: future trips (ascending by start_date — soonest first), then
+    past trips (descending — most recent past first), then trips with
+    no date (in DB order, which is reverse-chronological by created_at).
+    """
+    today = datetime.now().date().isoformat()  # YYYY-MM-DD lexically comparable
+
+    def sort_key(trip):
+        itinerary_data = trip.get("itinerary_data") or {}
+        if isinstance(itinerary_data, str):
+            try:
+                itinerary_data = json.loads(itinerary_data)
+            except (json.JSONDecodeError, ValueError):
+                itinerary_data = {}
+        start = get_trip_start_date(itinerary_data) or trip.get("start_date") or ""
+        if not start:
+            return (2, "")  # no-date bucket — last
+        if start >= today:
+            return (0, start)  # future bucket — ascending (soonest first)
+        # Past bucket — second, but we want most-recent past first.
+        # Negating a YYYY-MM-DD string isn't possible, so invert via tuple
+        # of negated year/month/day.
+        try:
+            y, m, d = start.split("-")
+            return (1, (-int(y), -int(m), -int(d)))
+        except (ValueError, AttributeError):
+            return (2, "")
+
+    return sorted(trips, key=sort_key)
+
+
 def get_trip_start_date(itinerary_data: dict) -> str | None:
     """Extract start date from itinerary_data, checking multiple locations."""
     if not itinerary_data:
@@ -400,6 +434,12 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
     """
     if public_trips is None:
         public_trips = []
+
+    # Sort trips so the soonest upcoming is at the top, past trips group at
+    # the bottom (most-recent past first), no-date trips at the very end.
+    # The DB sort by created_at made the order feel random; trip start_date
+    # is what users actually think about.
+    trips = _sort_trips_for_display(trips)
 
     active_cards_list = []
     archived_cards_list = []
