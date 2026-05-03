@@ -91,7 +91,15 @@ function initListView() {
     const cards = cardsContainer.querySelectorAll('.trip-card-wrapper');
 
     if (cards.length === 0) {
-        container.innerHTML = '<div class="no-trips"><i class="fas fa-suitcase"></i><h3>No trips yet</h3><p>Create your first trip to get started!</p></div>';
+        container.innerHTML = (
+            '<div class="no-trips">' +
+            '<i class="fas fa-suitcase"></i>' +
+            '<h3>No trips yet</h3>' +
+            '<p>Create one from scratch, or drop a confirmation PDF into the import area above.</p>' +
+            '<a href="/create.html" class="cta-button cta-button-primary">' +
+            '<i class="fas fa-plus"></i> Create your first trip</a>' +
+            '</div>'
+        );
         return;
     }
 

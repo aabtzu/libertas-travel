@@ -24,6 +24,14 @@ _SQL_LIST_RECENT_TRIPS = (
 
 @admin_bp.get("/api/debug")
 def debug():
+    """Internal diagnostics. Protected by SECRET_KEY (X-Admin-Key header)
+    so the endpoint can't be scraped by random visitors — it lists trip
+    titles, user counts, file system state, and env-var presence."""
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
     from agents.explore.handler import load_venues
 
     debug_info: dict = {

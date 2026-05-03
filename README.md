@@ -17,21 +17,35 @@ Named after the Roman goddess of liberty, alongside Abeona (goddess of outward j
 - **Explore destinations** — discover restaurants, hotels, and attractions via AI chat
 - **Background geocoding** — locations geocoded asynchronously with Nominatim
 
+## Live demo
+
+Try it: [https://libertas-travel.onrender.com](https://libertas-travel.onrender.com)
+
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Set up a virtualenv (one-time)
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
 # Set required environment variables
 export ANTHROPIC_API_KEY=your_api_key
-export SECRET_KEY=your_secret_key
+export SECRET_KEY=any-string-for-session-signing
 
-# Start the server (dev mode — auth disabled)
+# Start the dev server (auth disabled, port 8080)
 ./dev.sh start
 ```
 
-Then open http://localhost:5555 in your browser.
+Then open [http://localhost:8080](http://localhost:8080).
+
+To stop or run in background:
+
+```bash
+./dev.sh stop      # kill any server on the port
+./dev.sh bg        # start in background, logs at /tmp/libertas.log
+./dev.sh test      # run the test suite
+```
 
 ## Project Structure
 
