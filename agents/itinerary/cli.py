@@ -43,7 +43,7 @@ Examples:
     parser.add_argument(
         "--summary",
         action="store_true",
-        help="Generate an AI-powered detailed summary",
+        help="Generate a detailed LLM-written summary",
     )
 
     parser.add_argument(

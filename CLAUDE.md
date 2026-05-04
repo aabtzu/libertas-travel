@@ -100,6 +100,15 @@ Every shared lookup table, config object, or utility must be defined **once** an
 - The hyphen-minus character (-) is the only dash to use in prose.
 - **Enforced by CI**: `scripts/check_no_em_dashes.py` runs on every push (see `.github/workflows/test.yml`). Any em dash outside the allowlist (the rule docs themselves and a couple of regex char classes that match user-typed dashes) fails the build. To run locally: `.venv/bin/python3 scripts/check_no_em_dashes.py`
 
+## UX Copy Style (user-facing strings)
+- **Concrete verbs only.** Describe what the feature *does*, not how it feels. "Search restaurants by city" beats "Discover amazing places."
+- **No marketing puffery.** Banned phrases (CI-enforced): "AI-powered", "AI-driven", "agentic", "intelligent agents", "seamlessly", "effortlessly", "effortless", "discover amazing", "curated thousands", "powerful tools", "your journey", "unlock", "elevate your", "transform your", "we've got you covered", "natural language" (when used as a feature name).
+- **No three-step marketing strips.** "Start Your Trip / Discover & Refine / View & Share" is the AI-blog template. Use a single sentence or a real walkthrough with screenshots.
+- **One sentence per idea.** If a copy block runs to three sentences explaining the same feature, cut two of them.
+- **No "AI" as a brand layer.** Mention the LLM only when it's load-bearing for the user's mental model (e.g. "Chat to adjust" implies it; "AI-powered chat assistant" doesn't add anything).
+- **Don't praise the product.** "Libertas is a trip planner" beats "Libertas is your AI travel companion."
+- **Enforced by CI**: `scripts/check_marketing_copy.py` flags banned phrases. Allowlist via the script's ALLOWLIST_FILES. To run locally: `.venv/bin/python3 scripts/check_marketing_copy.py`
+
 ## Code Style
 - Python style is enforced by **ruff** — run `ruff check .` and `ruff format .` before committing
 - CI will fail if ruff violations exist (both lint and format checks run in GitHub Actions)
