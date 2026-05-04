@@ -1,4 +1,4 @@
-/* Create Trip — Day rendering, item rendering, tips, ideas, day add/delete (split from create.js) */
+/* Create Trip, Day rendering, item rendering, tips, ideas, day add/delete (split from create.js) */
 
 function initializeDays() {
     if (!currentTrip.start_date || !currentTrip.end_date) return;
@@ -42,11 +42,11 @@ function _ymd(date) {
  *
  * Returns true if applied, false if the user cancelled a destructive shrink.
  *
- * - Map items from old days to new days **by index, not by date** — this
+ * - Map items from old days to new days **by index, not by date**, this
  *   preserves item ↔ day-number across date shifts (the previous date-key
  *   match silently lost everything when start_date jumped to a new range).
  * - If shrinking, dropped days' items move to the Ideas Pile so they're
- *   recoverable — and we confirm first if any items would be moved.
+ *   recoverable, and we confirm first if any items would be moved.
  */
 async function updateDays() {
     if (!currentTrip.start_date || !currentTrip.end_date) return true;
@@ -75,7 +75,7 @@ async function updateDays() {
         }
     }
 
-    // Rebuild days by index — items move with their day_number, not their date
+    // Rebuild days by index, items move with their day_number, not their date
     const newDays = [];
     for (let i = 0; i < newCount; i++) {
         const d = new Date(start);

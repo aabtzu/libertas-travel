@@ -158,7 +158,7 @@ async function _maybeAttachPendingVenue(tripLink) {
     if (!added) return;
 
     // Refresh the editor view so the venue shows up in the ideas list right
-    // away. Push the item into local state and re-render — avoids a full
+    // away. Push the item into local state and re-render, avoids a full
     // page reload that would lose the URL.
     if (typeof currentTrip !== 'undefined' && currentTrip) {
         currentTrip.ideas = currentTrip.ideas || [];
@@ -192,7 +192,7 @@ function _showPostExploreBanner(venueName, returnTo) {
         if (e.target.closest('.post-explore-back')) return;
         banner.remove();
     });
-    // Auto-dismiss after 8s — long enough to read, short enough to not nag
+    // Auto-dismiss after 8s, long enough to read, short enough to not nag
     setTimeout(() => {
         if (banner.parentNode) banner.classList.add('fading');
     }, 8000);
@@ -201,7 +201,7 @@ function _showPostExploreBanner(venueName, returnTo) {
 
 /**
  * Format a Date as YYYY-MM-DD without UTC rollover.
- * Mirrors `_ymd` in create-render.js — both files use date math.
+ * Mirrors `_ymd` in create-render.js, both files use date math.
  */
 function _formatYmd(date) {
     const yyyy = date.getFullYear();
@@ -265,7 +265,7 @@ function initEventListeners() {
         createForm.addEventListener('submit', handleCreateTrip);
     }
 
-    // Cancel button — also clears any stashed Explore venue so it doesn't
+    // Cancel button, also clears any stashed Explore venue so it doesn't
     // attach to a different trip the user creates later.
     const cancelBtn = document.getElementById('create-cancel');
     if (cancelBtn) {
@@ -303,7 +303,7 @@ function initEventListeners() {
         triggerAutoSave();
     });
 
-    // Editor date changes — picking a date should never silently shrink
+    // Editor date changes, picking a date should never silently shrink
     // the trip. If days already exist, shift the other end so the duration
     // is preserved; if shortening would drop items, updateDays() asks first
     // and parks them in the Ideas Pile.
@@ -325,7 +325,7 @@ function initEventListeners() {
         endInput.min = newStart;
 
         if (oldStart && oldEnd) {
-            // Both dates already set — shift end by the same delta as start
+            // Both dates already set, shift end by the same delta as start
             const delta = Math.round(
                 (new Date(newStart + 'T12:00:00') - new Date(oldStart + 'T12:00:00')) / 86400000
             );
@@ -333,12 +333,12 @@ function initEventListeners() {
             newEndD.setDate(newEndD.getDate() + delta);
             currentTrip.end_date = _formatYmd(newEndD);
         } else if (dayCount > 1) {
-            // No dates yet but days exist — anchor end at start + (N-1)
+            // No dates yet but days exist, anchor end at start + (N-1)
             const newEndD = new Date(newStart + 'T12:00:00');
             newEndD.setDate(newEndD.getDate() + dayCount - 1);
             currentTrip.end_date = _formatYmd(newEndD);
         } else if (!endInput.value || endInput.value < newStart) {
-            // No days, no end yet — fall back to single-day default
+            // No days, no end yet, fall back to single-day default
             currentTrip.end_date = newStart;
         }
 
@@ -347,7 +347,7 @@ function initEventListeners() {
 
         const ok = await updateDays();
         if (ok === false) {
-            // User cancelled the shrink — revert
+            // User cancelled the shrink, revert
             currentTrip.start_date = previousStart;
             currentTrip.end_date = previousEnd;
             e.target.value = previousStart || '';

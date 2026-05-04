@@ -1,4 +1,4 @@
-/* Explore Page — Venue cards, pinned trip panel, trip picker modal, empty/loading states (split from explore.css) */
+/* Explore Page, Venue cards, pinned trip panel, trip picker modal, empty/loading states (split from explore.css) */
 
 /* Venue Cards Grid */
 .venue-cards {
@@ -379,7 +379,7 @@
     }
 }
 
-/* Inline note input — replaces action buttons when adding to trip */
+/* Inline note input, replaces action buttons when adding to trip */
 .add-note-inline {
     display: flex;
     gap: 6px;

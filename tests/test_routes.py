@@ -121,7 +121,7 @@ class TestAddIdeaToTrip:
 
 
 # ---------------------------------------------------------------------------
-# Admin endpoints — auth check
+# Admin endpoints, auth check
 # ---------------------------------------------------------------------------
 
 
@@ -161,7 +161,7 @@ class TestAdminAuth:
 
 
 # ---------------------------------------------------------------------------
-# Admin endpoints — with valid key
+# Admin endpoints, with valid key
 # ---------------------------------------------------------------------------
 
 
@@ -323,7 +323,7 @@ class TestAdminEndpoints:
         user_id = db.create_user(username, f"{username}@test.local", "pw1234")
         assert user_id is not None
 
-        # Create a trip owned by this user — must vanish on cascade delete
+        # Create a trip owned by this user, must vanish on cascade delete
         link = "delete_round_trip_test.html"
         db.add_trip(user_id, {"title": "Doomed Trip", "link": link}, {"days": [], "ideas": []})
         assert db.get_trip_by_link(user_id, link) is not None

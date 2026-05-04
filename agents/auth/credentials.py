@@ -1,4 +1,4 @@
-"""Authentication module for Libertas — credentials and user management.
+"""Authentication module for Libertas, credentials and user management.
 
 Session management is handled by Flask's signed cookie session (see app.py).
 """

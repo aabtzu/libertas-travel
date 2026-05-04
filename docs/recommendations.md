@@ -10,18 +10,18 @@ Libertas supports three ways to share travel plans and recommendations.
 | **Recommendation** | `/r/<link>` | Ideas collection grouped by city and category |
 | **Write-up** | `/w/<link>` | AI-generated narrative with links and map |
 
-All three are public pages — no account needed to view. Recipients can save recommendations to their own trips.
+All three are public pages, no account needed to view. Recipients can save recommendations to their own trips.
 
 ## Building recommendations
 
 The typical flow:
 
-1. **Explore tab** — search for restaurants, hotels, activities
-2. **Pin a trip** — click `+ Trip` on a venue card, pick or create a trip
-3. **Add notes** — optional note on each item ("best cocktails in the area")
-4. **Add tips** — general advice in the tips section ("weather can be cold in April")
-5. **Fill links** — click "Fill Missing Links" to resolve real website URLs via AI
-6. **Share** — use the share modal to copy a link or generate a write-up
+1. **Explore tab**, search for restaurants, hotels, activities
+2. **Pin a trip**, click `+ Trip` on a venue card, pick or create a trip
+3. **Add notes**, optional note on each item ("best cocktails in the area")
+4. **Add tips**, general advice in the tips section ("weather can be cold in April")
+5. **Fill links**, click "Fill Missing Links" to resolve real website URLs via AI
+6. **Share**, use the share modal to copy a link or generate a write-up
 
 ## How it works under the hood
 
@@ -44,7 +44,7 @@ Recommendations are regular trips with `trip_type = 'recommendation'`. The itine
     }
   ],
   "tips": [
-    "Weather can be cold in April — bring layers"
+    "Weather can be cold in April, bring layers"
   ],
   "days": [],
   "chatHistory": []
@@ -82,10 +82,10 @@ When adding a venue from Explore to a trip:
 
 The share modal (My Trips page) offers:
 
-- **Itinerary Link** — `/<link>.html` (day-by-day view)
-- **Recommendation Link** — `/r/<link>` (grouped ideas)
-- **Write-up Link** — `/w/<link>` (AI narrative)
-- **Generate & Copy Write-up** — generates inline, copies text
+- **Itinerary Link**, `/<link>.html` (day-by-day view)
+- **Recommendation Link**, `/r/<link>` (grouped ideas)
+- **Write-up Link**, `/w/<link>` (AI narrative)
+- **Generate & Copy Write-up**, generates inline, copies text
 
 All options make the trip public first if needed.
 

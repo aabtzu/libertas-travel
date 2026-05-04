@@ -52,7 +52,7 @@ def register():
     if success:
         # Greppable line in Render logs so the owner can monitor signups
         # via `render logs | grep '\[SIGNUP\]'`. Email/IP intentionally
-        # omitted from logs — keep PII out of the log stream.
+        # omitted from logs, keep PII out of the log stream.
         ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         print(f"[SIGNUP] {username} @ {ts}", flush=True)
         return json_ok({"success": True})

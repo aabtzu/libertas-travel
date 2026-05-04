@@ -1,1 +1,1 @@
-"""Libertas - Agentic Travel Solution."""
+"""Libertas feature blueprints (auth, create, explore, itinerary, trips, ...)."""

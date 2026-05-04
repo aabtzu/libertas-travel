@@ -1,4 +1,4 @@
-"""Regression tests for flight parsing — IATA code handling (BIH = Bishop CA, not Birmingham).
+"""Regression tests for flight parsing, IATA code handling (BIH = Bishop CA, not Birmingham).
 
 These tests call the live Anthropic API and are marked @pytest.mark.integration.
 Run with: .venv/bin/python3 -m pytest tests/test_flight_parsing.py -m integration -v
@@ -46,7 +46,7 @@ _CHAT_TOOLS = [
                                 "type": "string",
                                 "description": (
                                     "For FLIGHTS: use IATA airport code only (e.g. 'BIH', 'LAX')"
-                                    " — do NOT expand to city names"
+                                    ", do NOT expand to city names"
                                 ),
                             },
                             "notes": {"type": "string"},
@@ -82,7 +82,7 @@ Do NOT expand to city name.
 
 @pytest.mark.integration
 def test_file_upload_parsing():
-    """upload_plan_handler keeps IATA codes as-is — BIH stays 'BIH', not 'Birmingham'."""
+    """upload_plan_handler keeps IATA codes as-is, BIH stays 'BIH', not 'Birmingham'."""
     result, status = upload_plan_handler(
         user_id=1,
         filename="flight.txt",
@@ -101,7 +101,7 @@ def test_file_upload_parsing():
 
 @pytest.mark.integration
 def test_chat_tool_flow():
-    """Chat tool uses IATA destination code — BIH not Birmingham for DEN-BIH flight."""
+    """Chat tool uses IATA destination code, BIH not Birmingham for DEN-BIH flight."""
     llm = make_llm(model=SONNET, max_tokens=1000)
     response = llm.call_api(
         system_prompt=_CHAT_SYSTEM,

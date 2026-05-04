@@ -17,7 +17,7 @@ def _esc(text: str) -> str:
 def _md_to_html(text: str) -> str:
     """Minimal markdown to HTML: bold, italic, headers, links, line breaks."""
     text = html_mod.escape(text)
-    # Headers (order matters — match ### before ## before #)
+    # Headers (order matters, match ### before ## before #)
     text = re.sub(r"^### (.+)$", r"<h3>\1</h3>", text, flags=re.MULTILINE)
     text = re.sub(r"^## (.+)$", r"<h2>\1</h2>", text, flags=re.MULTILINE)
     text = re.sub(r"^# (.+)$", r"<h1>\1</h1>", text, flags=re.MULTILINE)
@@ -62,7 +62,7 @@ def generate_recommendation_page(
     title: str, itinerary_data: dict[str, Any], trip_link: str = ""
 ) -> str:
     """Build a public recommendation page from trip ideas and day items."""
-    # Collect all items — ideas pile + items from scheduled days
+    # Collect all items, ideas pile + items from scheduled days
     all_items = list(itinerary_data.get("ideas", []))
     for day in itinerary_data.get("days", []):
         for item in day.get("items", []):
@@ -70,7 +70,7 @@ def generate_recommendation_page(
 
     tips = itinerary_data.get("tips", [])
 
-    # Group by city — extract from location strings like "Venue, City, Country"
+    # Group by city, extract from location strings like "Venue, City, Country"
     location_groups: dict[str, list] = {}
     for item in all_items:
         loc_key = _extract_city(item.get("location", ""))
@@ -91,7 +91,7 @@ def generate_recommendation_page(
     # Skip these categories from grouped display (shown separately or not useful)
     skip_categories = {"flight", "transport", "home"}
 
-    # Build items HTML — group by location, then category
+    # Build items HTML, group by location, then category
     items_html = ""
     for loc_name, loc_items in location_groups.items():
         # Sub-group by category within this location
@@ -147,7 +147,7 @@ def generate_recommendation_page(
             tips_html += f"<li>{_esc(tip)}</li>"
         tips_html += "</ul></div>"
 
-    # Map data — collect items with coordinates
+    # Map data, collect items with coordinates
     markers_js = "[]"
     map_items = [i for i in all_items if i.get("latitude") and i.get("longitude")]
     if map_items:

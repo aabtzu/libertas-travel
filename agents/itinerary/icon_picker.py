@@ -3,7 +3,7 @@
 Uses Haiku (speed/cost) with a curated list of FontAwesome 6 free icons
 so the model can't hallucinate non-existent icon names.
 
-Result is cached per-trip in `itinerary_data["card_icon"]` — we only call
+Result is cached per-trip in `itinerary_data["card_icon"]`, we only call
 the LLM once per trip, ever (until the trip is renamed and the cache is
 manually invalidated). `templates.get_region_icon` reads the cached value
 for the synchronous server-side render; the trips-page JS calls
@@ -17,7 +17,7 @@ from typing import Any
 from agents.common.llm import HAIKU, make_llm
 
 # Curated FA6 free solid icons appropriate for trip card art. Keep this list
-# tight — adding rare icons increases the chance the model picks one we
+# tight, adding rare icons increases the chance the model picks one we
 # can't render. Validated against fontawesome.com/v6/search?o=r&m=free.
 ICON_OPTIONS: list[str] = [
     # transport
@@ -77,11 +77,11 @@ FALLBACK_ICON = "plane"
 
 _SYSTEM_PROMPT = f"""You pick a FontAwesome icon for a travel trip card.
 
-Choose ONE icon name from this exact list — picking outside the list is
+Choose ONE icon name from this exact list, picking outside the list is
 forbidden:
 {", ".join(ICON_OPTIONS)}
 
-Hints — use specific icons over generic ones:
+Hints, use specific icons over generic ones:
 - San Francisco / NYC -> bridge
 - Paris -> archway or tower-observation
 - Generic European city or museum-heavy trip -> landmark
@@ -101,7 +101,7 @@ explanation. Example reply: bridge"""
 
 
 def _summarize_trip(title: str, itinerary_data: dict[str, Any] | None) -> str:
-    """Build the user-message payload for the LLM — title + destinations + mix."""
+    """Build the user-message payload for the LLM, title + destinations + mix."""
     items: list[dict] = []
     if itinerary_data:
         for day in itinerary_data.get("days", []) or []:
@@ -110,7 +110,7 @@ def _summarize_trip(title: str, itinerary_data: dict[str, Any] | None) -> str:
         for item in itinerary_data.get("ideas", []) or []:
             items.append(item)
 
-    # Distinct top-level location names — keep the prompt small
+    # Distinct top-level location names, keep the prompt small
     locations: list[str] = []
     seen: set[str] = set()
     for it in items:
@@ -164,7 +164,7 @@ def pick_card_icon(title: str, itinerary_data: dict[str, Any] | None = None) -> 
         text = text.strip("'\".,!:;`")
         if text in _ICON_SET:
             return text
-        # Soft retry: model sometimes returns a phrase — pick the first valid token
+        # Soft retry: model sometimes returns a phrase, pick the first valid token
         for tok in text.replace(",", " ").split():
             tok = tok.strip("'\".,!:;`")
             if tok.startswith("fa-"):

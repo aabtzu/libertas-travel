@@ -209,7 +209,7 @@ def delete_user_by_username(username: str) -> bool:
     FK). Returns True if a row was deleted, False if no such user.
 
     Used by the admin endpoint to clean up test accounts pre-launch.
-    Permanent — there is no undo. Don't use this on the demo system user.
+    Permanent, there is no undo. Don't use this on the demo system user.
     """
     with get_db() as conn:
         cursor = conn.cursor()

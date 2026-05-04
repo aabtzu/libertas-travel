@@ -15,7 +15,7 @@ OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.pare
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "tests" / "fixtures"
 
 # Fixed link for the Paris demo trip referenced in how-it-works.html.
-# Must include .html suffix — that's how all trips are stored in the DB,
+# Must include .html suffix, that's how all trips are stored in the DB,
 # and the route strips .html from the URL then appends it for the DB lookup.
 _PARIS_DEMO_LINK = "paris_provence_adventure.html"
 

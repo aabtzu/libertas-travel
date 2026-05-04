@@ -116,7 +116,7 @@ function hideItemDetailPopup() {
     if (overlay) overlay.remove();
 }
 
-// escapeHtml() — defined in main.js
+// escapeHtml(), defined in main.js
 
 /**
  * Shorten URL for display

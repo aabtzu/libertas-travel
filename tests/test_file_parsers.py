@@ -1,4 +1,4 @@
-"""Unit tests for agents/create/file_parsers.py — _normalize_item and date handling."""
+"""Unit tests for agents/create/file_parsers.py, _normalize_item and date handling."""
 
 from __future__ import annotations
 

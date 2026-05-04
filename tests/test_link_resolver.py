@@ -1,5 +1,5 @@
 """Tests for the link/location filler that wires the 'Fill Missing Links'
-button. The LLM is stubbed — these tests cover the orchestration logic,
+button. The LLM is stubbed, these tests cover the orchestration logic,
 not the model's choices."""
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class TestFillMissingLocations:
         mk.assert_not_called()  # no items need filling -> no LLM call
 
     def test_rejects_response_without_comma(self):
-        """A 'City, Country' string should have a comma — single-word
+        """A 'City, Country' string should have a comma, single-word
         responses are rejected as low-confidence."""
         from agents.trips.link_resolver import _fill_missing_locations
 

@@ -428,7 +428,7 @@ If "{iata}" is not a valid IATA airport code, reply with just: NONE"""
     def _is_transport_outside_destination(self, item, destination: str) -> bool:
         """Check if a transport item's location is outside the destination region.
 
-        Applies to flights, trains, cars, buses, ferries — any transport mode.
+        Applies to flights, trains, cars, buses, ferries, any transport mode.
         We want to EXCLUDE origin cities, home airports, transit/connecting stops,
         and departure points that are not part of the actual trip destination.
         """
@@ -530,7 +530,7 @@ Examples where destination is "Sweden":
 - "Munich Airport" → NO (Germany, likely home/origin)
 - "London Heathrow" → NO (UK, likely a connecting transit stop)
 - "New York JFK" → NO (USA, likely home/end destination)
-- "Copenhagen" → NO (Denmark, not Sweden — even if geographically close)"""
+- "Copenhagen" → NO (Denmark, not Sweden, even if geographically close)"""
 
             answer = (
                 make_llm(model=HAIKU, max_tokens=10)

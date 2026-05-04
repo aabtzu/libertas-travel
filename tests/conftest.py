@@ -30,7 +30,7 @@ _TEST_TRIP_TITLES = (
 
 @pytest.fixture(scope="session", autouse=True)
 def _cleanup_test_trips_at_session_end():
-    """Sweep stray test trips after the session — defense against test crashes."""
+    """Sweep stray test trips after the session, defense against test crashes."""
     yield
     try:
         from database.connection import USE_POSTGRES, get_db
@@ -51,7 +51,7 @@ def app():
     os.environ["AUTH_DISABLED"] = "true"
     os.environ["SECRET_KEY"] = "test-secret"
     # Routes that render trips construct an LLM client (ItineraryWebView →
-    # ItinerarySummarizer). Unit tests must not require a live key — set a
+    # ItinerarySummarizer). Unit tests must not require a live key, set a
     # dummy if one is missing or empty. CI does the same; see 2eb312a.
     # (setdefault won't help: the parent shell may export an empty string.)
     if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -63,7 +63,7 @@ def app():
     db.init_db()
 
     # AUTH_DISABLED defaults g.user_id to 1 in agents/common/flask_utils.py.
-    # Tests POST trips/items as that user — the FK on trips.user_id needs
+    # Tests POST trips/items as that user, the FK on trips.user_id needs
     # the row to exist. SQLite previously let it slide silently; with
     # PRAGMA foreign_keys=ON we now need to ensure user 1 exists. The
     # first INSERT into the users table on CI gets id=1 because it's a

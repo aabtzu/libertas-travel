@@ -287,7 +287,7 @@ def update_trip():
 @trips_bp.post("/api/retry-geocoding")
 @require_auth
 def retry_geocoding():
-    """Recompute the map for a trip — used by the "Regen Map" button."""
+    """Recompute the map for a trip, used by the "Regen Map" button."""
     from agents.trips.handler import regenerate_trip_map
 
     data = request.get_json(silent=True) or {}

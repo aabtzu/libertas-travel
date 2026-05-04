@@ -91,7 +91,7 @@ function renderTripPanel() {
     nameEl.textContent = _pinnedTrip.title;
 
     if (_pinnedItems.length === 0) {
-        itemsEl.innerHTML = '<div class="trip-panel-empty">No items yet — add from venue cards</div>';
+        itemsEl.innerHTML = '<div class="trip-panel-empty">No items yet, add from venue cards</div>';
         return;
     }
 

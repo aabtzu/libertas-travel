@@ -1,6 +1,6 @@
 """Tests for the archive-trip feature (issue #35).
 
-Archive is a flag independent of is_public — an archived trip can still
+Archive is a flag independent of is_public, an archived trip can still
 be public/recommendable. Archived trips are hidden from the main grid
 on the trips page, but remain visible on the map view.
 """

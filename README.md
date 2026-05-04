@@ -10,10 +10,10 @@ A modern travel itinerary web application for planning, organizing, and visualiz
 - **Multiple views**: List, Grid, Calendar, and interactive Map
 - **Edit trips** inline with drag-and-drop reordering
 - **Share trips** with other users or make them public
-- **Recommend places** — build sharable recommendation collections from Explore, share as structured view or AI-generated narrative
-- **AI write-ups** — generate a readable narrative from your trip ideas, with links and maps
-- **Explore destinations** — discover restaurants, hotels, and attractions via AI chat
-- **Background geocoding** — locations geocoded asynchronously with Nominatim
+- **Recommend places**, build sharable recommendation collections from Explore, share as structured view or AI-generated narrative
+- **AI write-ups**, generate a readable narrative from your trip ideas, with links and maps
+- **Explore destinations**, discover restaurants, hotels, and attractions via AI chat
+- **Background geocoding**, locations geocoded asynchronously with Nominatim
 
 ## Live demo
 
@@ -85,7 +85,7 @@ libertas/
 
 - **Backend**: Python / Flask with blueprint-per-feature structure
 - **Database**: SQLite (dev) / PostgreSQL (production)
-- **AI**: Claude via [fiat-lux-agents](https://github.com/aabtzu/fiat-lux-agents) — `LLMBase` for direct API calls, `SummaryBot` for natural language Q&A
+- **AI**: Claude via [fiat-lux-agents](https://github.com/aabtzu/fiat-lux-agents), `LLMBase` for direct API calls, `SummaryBot` for natural language Q&A
 - **Maps**: Leaflet.js with OpenStreetMap tiles
 - **Frontend**: Vanilla JavaScript, CSS3
 - **Deployment**: Render.com (gunicorn)

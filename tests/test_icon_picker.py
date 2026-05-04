@@ -20,7 +20,7 @@ from agents.itinerary.icon_picker import (
 )
 
 # ---------------------------------------------------------------------------
-# Prompt builder — destinations + category mix extraction
+# Prompt builder, destinations + category mix extraction
 # ---------------------------------------------------------------------------
 
 
@@ -40,7 +40,7 @@ class TestSummarizeTrip:
         out = _summarize_trip("French Trip", data)
         assert "Paris" in out
         assert "Lyon" in out
-        # Deduplicated — Paris appears once
+        # Deduplicated, Paris appears once
         assert out.count("Paris") == 1
 
     def test_includes_category_histogram(self):
@@ -56,7 +56,7 @@ class TestSummarizeTrip:
 
 
 # ---------------------------------------------------------------------------
-# pick_card_icon — LLM stubbed
+# pick_card_icon, LLM stubbed
 # ---------------------------------------------------------------------------
 
 
@@ -106,7 +106,7 @@ class TestPickCardIcon:
 
 
 # ---------------------------------------------------------------------------
-# API endpoint — caches result in itinerary_data
+# API endpoint, caches result in itinerary_data
 # ---------------------------------------------------------------------------
 
 

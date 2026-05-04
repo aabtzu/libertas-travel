@@ -1,4 +1,4 @@
-/* Explore Page — Trip picker modal, send-to-trip, add-note flow (split from explore.js) */
+/* Explore Page, Trip picker modal, send-to-trip, add-note flow (split from explore.js) */
 
 function showTripPicker(trips, onSelect) {
     // Remove existing picker
@@ -16,7 +16,7 @@ function showTripPicker(trips, onSelect) {
             </div>
             <p class="trip-picker-note">
                 <i class="fas fa-lightbulb"></i>
-                Picks land in your trip's <strong>Ideas Pile</strong> — sort them onto specific days later in the editor.
+                Picks land in your trip's <strong>Ideas Pile</strong>, sort them onto specific days later in the editor.
             </p>
             <div class="trip-picker-list">
                 <button class="trip-picker-item trip-picker-new" data-action="new">
@@ -44,7 +44,7 @@ function showTripPicker(trips, onSelect) {
 
         if (item.dataset.action === 'new') {
             // Send the user to the full Create Trip dialog (one source of
-            // truth for new-trip creation — name, dates, OR num_days).
+            // truth for new-trip creation, name, dates, OR num_days).
             // Stash the venue + the explore page URL so /create.html can
             // add the venue once the trip exists and offer a way back.
             try {
@@ -213,7 +213,7 @@ async function sendToTripWithNote(btn, tripLink, venueData, note) {
     return sendToTrip(btn, tripLink, venueData, note);
 }
 
-// Holds the venue currently being added — accessed by the trip-picker's
+// Holds the venue currently being added, accessed by the trip-picker's
 // "New trip" handler to stash for /create.html before redirecting.
 var _pendingVenue = null;  // eslint-disable-line no-unused-vars
 
@@ -247,7 +247,7 @@ async function addToTrip(btn) {
         } catch { return; }
     }
 
-    // Show picker even with 0 trips — "New trip" option is always available
+    // Show picker even with 0 trips, "New trip" option is always available
     if (_tripsCache.length === 0) {
         _pendingBtn = btn;
         showTripPicker([], async (link) => {

@@ -64,7 +64,7 @@ def normalize_category(raw: str) -> str:
     """Map any raw category string to its canonical name.
 
     Already-canonical values pass through unchanged.  Unknown values fall
-    back to 'activity' (safe default — better than 'other' for most items).
+    back to 'activity' (safe default, better than 'other' for most items).
     """
     key = (raw or "").strip().lower()
     if key in CANONICAL_CATEGORIES:
@@ -73,7 +73,7 @@ def normalize_category(raw: str) -> str:
 
 
 # Categories that represent transport/travel (go in the Travel column, use arrow separator).
-# Add any new transport type here — web_view.py and other renderers import this.
+# Add any new transport type here, web_view.py and other renderers import this.
 TRAVEL_CATEGORIES: frozenset[str] = frozenset(["flight", "transport", "train", "bus"])
 
 CATEGORY_ICONS: dict[str, str] = {

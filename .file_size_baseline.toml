@@ -1,5 +1,5 @@
 # Files that are currently over the 800-line hard limit (CLAUDE.md).
-# Each entry is the file's CURRENT line count — the file can stay this
+# Each entry is the file's CURRENT line count: the file can stay this
 # size or shrink, but it cannot grow. CI fails if it does.
 #
 # Goal: trim each one over time and delete its entry. Do NOT add new

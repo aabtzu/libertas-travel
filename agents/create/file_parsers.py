@@ -10,7 +10,7 @@ from typing import Any
 
 from agents.common.categories import normalize_category
 
-# Single source of truth for supported upload extensions — used by all upload
+# Single source of truth for supported upload extensions, used by all upload
 # handlers and the frontend (via LibertasUpload in main.js, which must stay in sync).
 SUPPORTED_EXTENSIONS = [
     ".pdf",
@@ -38,11 +38,11 @@ def extract_file_content(file_data: bytes, ext: str) -> dict[str, Any]:
     """Extract content from an uploaded file for LLM processing.
 
     Returns a dict with one or more of:
-      - "text": str          — text content to pass as a message
-      - "image_data": str    — base64-encoded image (for vision models)
-      - "media_type": str    — MIME type of image_data
-      - "items": list        — pre-parsed items (ICS/JSON fast path)
-      - "error": str         — error message if extraction failed
+      - "text": str         , text content to pass as a message
+      - "image_data": str   , base64-encoded image (for vision models)
+      - "media_type": str   , MIME type of image_data
+      - "items": list       , pre-parsed items (ICS/JSON fast path)
+      - "error": str        , error message if extraction failed
     """
     ext = ext.lower().lstrip(".")
 
@@ -85,7 +85,7 @@ def extract_file_content(file_data: bytes, ext: str) -> dict[str, Any]:
         try:
             return {"text": _parse_excel_to_text(file_data, ext)}
         except ImportError:
-            return {"error": "Excel processing unavailable — install openpyxl"}
+            return {"error": "Excel processing unavailable, install openpyxl"}
         except Exception as e:
             return {"error": f"Error reading Excel file: {e}"}
 
@@ -93,7 +93,7 @@ def extract_file_content(file_data: bytes, ext: str) -> dict[str, Any]:
         try:
             return {"text": _parse_word_to_text(file_data, ext)}
         except ImportError:
-            return {"error": "Word processing unavailable — install python-docx"}
+            return {"error": "Word processing unavailable, install python-docx"}
         except Exception as e:
             return {"error": f"Error reading Word document: {e}"}
 
@@ -106,13 +106,13 @@ def extract_file_content(file_data: bytes, ext: str) -> dict[str, Any]:
             if text.strip():
                 doc.close()
                 return {"text": text}
-            # Scanned PDF — fall back to image of first page
+            # Scanned PDF, fall back to image of first page
             pix = doc[0].get_pixmap(matrix=fitz.Matrix(2, 2))
             img = base64.standard_b64encode(pix.tobytes("png")).decode("utf-8")
             doc.close()
             return {"image_data": img, "media_type": "image/png"}
         except ImportError:
-            return {"error": "PDF processing unavailable — install pymupdf"}
+            return {"error": "PDF processing unavailable, install pymupdf"}
         except Exception as e:
             return {"error": f"Error reading PDF: {e}"}
 
@@ -146,7 +146,7 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     )
 
     # Category normalization
-    # normalize_category is the single source of truth — defined in agents/common/categories.py
+    # normalize_category is the single source of truth, defined in agents/common/categories.py
     cat = item.get("category") or item.get("type") or ""
     normalized["category"] = normalize_category(cat)
 
@@ -203,7 +203,7 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     if item.get("day") or item.get("day_number"):
         normalized["day"] = item.get("day") or item.get("day_number")
 
-    # Coordinates — Google Maps exports use lat/latitude, lng/longitude/lon
+    # Coordinates, Google Maps exports use lat/latitude, lng/longitude/lon
     lat = item.get("latitude") or item.get("lat")
     lng = item.get("longitude") or item.get("lng") or item.get("lon")
 

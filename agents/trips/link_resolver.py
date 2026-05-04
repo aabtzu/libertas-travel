@@ -17,7 +17,7 @@ def fill_missing_links(itinerary_data: dict[str, Any], trip_title: str = "") -> 
     Why locations matter: with no location, the geocoder uses just the
     item title. That works for "Hohenschwangau Castle" but breaks for
     ambiguous names like "Marienplatz" (Munich, Cologne, Stuttgart, ...)
-    or "Hofbräuhaus" — the geocoder picks the wrong city silently and the
+    or "Hofbräuhaus", the geocoder picks the wrong city silently and the
     map ends up with markers in the wrong country.
 
     Returns: {"locations_added": N, "maps_added": N, "websites_added": N}.
@@ -68,7 +68,7 @@ def _fill_missing_locations(items: list[dict], trip_title: str) -> int:
                 "You assign a 'City, Country' location to travel itinerary items. "
                 "Return ONLY a JSON object mapping each item title (verbatim) to "
                 'a "City, Country" string. If you cannot determine the city with '
-                "high confidence, OMIT that item from the response — never guess. "
+                "high confidence, OMIT that item from the response, never guess. "
                 "Use the trip context to disambiguate names that exist in multiple "
                 "cities. No markdown fences, no commentary."
             ),

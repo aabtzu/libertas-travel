@@ -1,6 +1,6 @@
 /**
  * Autosave, publish, and preview for the trip editor.
- * Extracted from create.js — depends on globals: currentTrip, tripLink, etc.
+ * Extracted from create.js, depends on globals: currentTrip, tripLink, etc.
  */
 
 function triggerAutoSave() {
@@ -228,7 +228,7 @@ async function generateWriteup() {
     } catch (e) {
         _writeupAbortController = null;
         if (e.name === 'AbortError') {
-            // User cancelled — already handled above
+            // User cancelled, already handled above
             return;
         }
         console.error('Write-up error:', e);
@@ -311,6 +311,6 @@ async function saveWriteupEdits() {
     updateSaveStatus('saved');
 }
 
-// escapeHtml() and formatTime12Hour() — defined in main.js
+// escapeHtml() and formatTime12Hour(), defined in main.js
 
 

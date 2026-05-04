@@ -46,7 +46,7 @@ def get_nav_html(active_page: str = "") -> str:
 
 def get_footer_html() -> str:
     """Footer used on public marketing pages (home / about / how-it-works).
-    Trip + create + explore views skip it — they have their own chrome."""
+    Trip + create + explore views skip it, they have their own chrome."""
     return FOOTER_HTML
 
 

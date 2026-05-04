@@ -1,4 +1,4 @@
-/* Explore Page — Map markers, info window, legend, geocoding (split from explore.js) */
+/* Explore Page, Map markers, info window, legend, geocoding (split from explore.js) */
 
 const MARKER_COLORS = {
     'Restaurant': '#ff6b6b',

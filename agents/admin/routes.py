@@ -27,14 +27,14 @@ _SQL_LIST_RECENT_USERS = (
 
 def _last_24h_clause() -> str:
     """SQL fragment for "rows created in the last 24 hours". Differs
-    between Postgres and SQLite — keep both variants centralized here."""
+    between Postgres and SQLite, keep both variants centralized here."""
     return "NOW() - INTERVAL '24 hours'" if db.USE_POSTGRES else "datetime('now', '-1 day')"
 
 
 @admin_bp.get("/api/debug")
 def debug():
     """Internal diagnostics. Protected by SECRET_KEY (X-Admin-Key header)
-    so the endpoint can't be scraped by random visitors — it lists trip
+    so the endpoint can't be scraped by random visitors, it lists trip
     titles, user counts, file system state, and env-var presence."""
     secret_key = os.environ.get("SECRET_KEY", "")
     provided = request.headers.get("X-Admin-Key", "")
@@ -85,7 +85,7 @@ def debug():
             cursor.execute(_SQL_COUNT_TRIPS)
             debug_info["trips_count"] = cursor.fetchone()[0]
 
-            # Usage in the last 24h — quick health check
+            # Usage in the last 24h, quick health check
             cursor.execute(f"SELECT COUNT(*) FROM users WHERE created_at > {_last_24h_clause()}")
             debug_info["new_users_24h"] = cursor.fetchone()[0]
             cursor.execute(f"SELECT COUNT(*) FROM trips WHERE created_at > {_last_24h_clause()}")
@@ -104,7 +104,7 @@ def debug():
                 for row in cursor.fetchall()
             ]
 
-            # Recent signups — most useful for monitoring a launch
+            # Recent signups, most useful for monitoring a launch
             cursor.execute(_SQL_LIST_RECENT_USERS)
             debug_info["recent_users"] = [
                 {
@@ -233,7 +233,7 @@ def admin_retry_geocoding():
 @admin_bp.post("/api/admin/regen-stuck-trips")
 def admin_regen_stuck_trips():
     """Find and re-geocode every trip in the stuck state (map_status='ready'
-    but no map_data). One-shot bulk fix — same self-healing the trip page
+    but no map_data). One-shot bulk fix, same self-healing the trip page
     does on view, but applied to the whole table at once.
 
     Protected by SECRET_KEY (X-Admin-Key header). Returns the list of
@@ -330,7 +330,7 @@ def admin_add_venues():
 def admin_delete_trip():
     """Delete a single trip by username + link. Useful when a trip needs
     to come out of the public list (or out entirely) and the owner can't
-    log in to do it themselves — common for the `demo` user.
+    log in to do it themselves, common for the `demo` user.
 
     Protected by SECRET_KEY (X-Admin-Key header).
 
@@ -365,7 +365,7 @@ def admin_delete_user():
     for cleaning up test/abandoned accounts pre-launch.
 
     Protected by SECRET_KEY (X-Admin-Key header).
-    Refuses to delete the demo system user — that account owns the
+    Refuses to delete the demo system user, that account owns the
     demo trips that every new visitor sees.
 
     Body JSON: {"username": "<name>"}

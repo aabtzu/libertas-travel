@@ -5,11 +5,11 @@ my own trips, but I'd love feedback, bug reports, and PRs.
 
 ## Easiest ways to help
 
-- **Try it** — [libertas-travel.onrender.com](https://libertas-travel.onrender.com).
+- **Try it**, [libertas-travel.onrender.com](https://libertas-travel.onrender.com).
   Email me ([aabtzu@gmail.com](mailto:aabtzu@gmail.com)) for an invite code.
 - **File an issue** for bugs, confusing copy, or missing features:
   [github.com/aabtzu/libertas-travel/issues](https://github.com/aabtzu/libertas-travel/issues).
-- **Open a PR** — see below.
+- **Open a PR**, see below.
 
 ## Local development
 
@@ -35,13 +35,13 @@ Other commands:
 
 `AUTH_DISABLED=true` is set automatically by `dev.sh`, which auto-logs you in
 as user 1. To preview the real auth pages, hit `/login` or `/register`
-directly — they're whitelisted in dev mode.
+directly, they're whitelisted in dev mode.
 
 ## Pull request guidelines
 
 - **Read [`CLAUDE.md`](CLAUDE.md) first.** It describes the file/folder
   conventions, code-style rules (ruff), CSS color palette, SQL constants
-  pattern, file-length limits (target 500, hard 800 — enforced in CI), and
+  pattern, file-length limits (target 500, hard 800, enforced in CI), and
   more. Most "why is this organized like that?" questions are answered there.
 - **Run the checks before pushing:**
 
@@ -51,7 +51,7 @@ directly — they're whitelisted in dev mode.
   pytest tests/ -m "not integration" -q
   ```
 
-  CI runs all three — see `.github/workflows/test.yml`.
+  CI runs all three, see `.github/workflows/test.yml`.
 - **One feature/fix per PR.** Smaller is faster to review.
 - **Add a test if you can.** Patterns live in `tests/`. The test suite uses
   pytest with a Flask test client; conftest.py handles fixtures.
@@ -61,11 +61,11 @@ directly — they're whitelisted in dev mode.
 If you want a starting point, see [open issues](https://github.com/aabtzu/libertas-travel/issues).
 A few I'd particularly welcome help on:
 
-- **Mobile responsive polish** — the create-page editor and explore chat are
+- **Mobile responsive polish**, the create-page editor and explore chat are
   not great on phones.
-- **Better venue data** — `data/venues_seed.csv` is a starting set; richer
+- **Better venue data**, `data/venues_seed.csv` is a starting set; richer
   curation would meaningfully improve recommendations.
-- **Onboarding flow** — first-time users still see a bit much at once.
+- **Onboarding flow**, first-time users still see a bit much at once.
   Suggestions / mockups welcome.
 
 ## Code of conduct
@@ -74,4 +74,4 @@ Be Nice.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT, see [`LICENSE`](LICENSE).

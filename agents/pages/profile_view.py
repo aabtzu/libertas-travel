@@ -181,7 +181,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                 <div class="field-group">
                     <label>Tone</label>
                     <input type="text" id="style-tone" value="{tone}" placeholder="e.g. casual, lowercase, direct">
-                    <div class="field-hint">Overall feel — casual vs formal, warm vs matter-of-fact</div>
+                    <div class="field-hint">Overall feel, casual vs formal, warm vs matter-of-fact</div>
                 </div>
                 <div class="field-group">
                     <label>Sentence Style</label>
@@ -207,7 +207,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                 <div class="field-group">
                     <label>Rules</label>
                     <textarea id="style-rules" rows="3" placeholder="Strict rules the AI must follow, e.g.&#10;- never end with filler like 'worth it' or 'you earned it'&#10;- always include links when available">{rules}</textarea>
-                    <div class="field-hint">These are enforced strictly — use for things the AI keeps getting wrong</div>
+                    <div class="field-hint">These are enforced strictly, use for things the AI keeps getting wrong</div>
                 </div>
             </div>
 
@@ -223,7 +223,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
         <div class="profile-section">
             <h2><i class="fas fa-sticky-note"></i> Notes for AI</h2>
             <div class="field-group">
-                <textarea id="user-notes" rows="3" placeholder="Anything else the AI should know about your preferences — dietary restrictions, travel style, etc.">{user_notes}</textarea>
+                <textarea id="user-notes" rows="3" placeholder="Anything else the AI should know about your preferences, dietary restrictions, travel style, etc.">{user_notes}</textarea>
                 <div class="field-hint">Free-form notes injected into write-up and recommendation context</div>
             </div>
         </div>
@@ -237,7 +237,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
         document.getElementById('extract-btn').addEventListener('click', async () => {{
             const samples = document.getElementById('style-samples').value.trim();
             if (samples.length < 50) {{
-                document.getElementById('extract-status').textContent = 'Paste more text — at least a few sentences';
+                document.getElementById('extract-status').textContent = 'Paste more text, at least a few sentences';
                 document.getElementById('extract-status').className = 'status-msg error';
                 return;
             }}
@@ -262,7 +262,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                     document.getElementById('style-emphasis').value = p.emphasis || '';
                     document.getElementById('style-perspective').value = p.perspective || '';
                     document.getElementById('style-quirks').value = Array.isArray(p.quirks) ? p.quirks.join(', ') : (p.quirks || '');
-                    document.getElementById('extract-status').textContent = 'Style extracted — review and save below';
+                    document.getElementById('extract-status').textContent = 'Style extracted, review and save below';
                     document.getElementById('extract-status').className = 'status-msg success';
                 }} else {{
                     document.getElementById('extract-status').textContent = data.error || 'Extraction failed';
@@ -292,7 +292,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
             btn.disabled = true;
 
             try {{
-                // Save directly — the extract-style endpoint stores it,
+                // Save directly, the extract-style endpoint stores it,
                 // but we also need to save edited profiles
                 const res = await fetch('/api/user/save-profile', {{
                     method: 'POST',

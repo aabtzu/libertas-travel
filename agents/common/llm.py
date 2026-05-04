@@ -1,6 +1,6 @@
 from fiat_lux_agents import LLMBase, SummaryBot
 
-# Model constants — use these everywhere, never hardcode model strings
+# Model constants, use these everywhere, never hardcode model strings
 SONNET = "claude-sonnet-4-6"  # quality tasks: parsing, chat, reasoning
 HAIKU = "claude-haiku-4-5-20251001"  # speed/cost tasks: classification, filtering
 

@@ -64,7 +64,7 @@ function downloadExport(format) {
     }
 }
 
-// Shared helper — copy a trip to the current user's account then open editor.
+// Shared helper, copy a trip to the current user's account then open editor.
 // Used by both editTrip() (non-owner path) and copyTripToMyTrips().
 function _copyTripAndEdit(tripLink) {
     fetch('/api/copy-trip', {
@@ -414,7 +414,7 @@ function showCalendarMorePopup(element) {
     popup.style.top = top + 'px';
 }
 
-// escapeHtml() — defined in main.js
+// escapeHtml(), defined in main.js
 
 // Legacy function name for compatibility
 function hideCalendarItemPopup() {
@@ -445,7 +445,7 @@ var mapPolling = (function() {
                     if (needsReload) {
                         var reloadFlag = 'libertas_reload_' + tripLink;
                         if (sessionStorage.getItem(reloadFlag) === '1') {
-                            // We already reloaded once and the page came back still pending —
+                            // We already reloaded once and the page came back still pending
                             // server's map_data is stuck. Stop the loop and show an error.
                             sessionStorage.removeItem(reloadFlag);
                             if (mapLoading) {
@@ -466,10 +466,10 @@ var mapPolling = (function() {
                             window.location.reload();
                         }
                     } else {
-                        // Successful reload — clear the guard so future visits start fresh
+                        // Successful reload, clear the guard so future visits start fresh
                         sessionStorage.removeItem('libertas_reload_' + tripLink);
                         if (mapLoading) {
-                            // Status is ready and page already has map data — just hide spinner
+                            // Status is ready and page already has map data, just hide spinner
                             mapLoading.classList.add('hidden');
                         }
                     }
