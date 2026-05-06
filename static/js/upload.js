@@ -217,7 +217,18 @@ function promptForTripName(suggestedName, link) {
     input.focus();
     input.select();
 
-    // Handle save
+    // After import we send the user straight into the trip editor instead
+    // of reloading the trips list. Lets them see what was imported and
+    // add more items in one continuous flow (per Gene's feedback, where
+    // a stop on /trips made him think each upload was a separate trip).
+    const goToEditor = () => {
+        // Flag the next page load so the editor can show a "you just
+        // imported, here's how to add more" banner. sessionStorage clears
+        // when the tab closes so it doesn't haunt future visits.
+        try { sessionStorage.setItem('libertas_just_imported', '1'); } catch (e) {}
+        window.location.href = `/create.html?edit=${encodeURIComponent(link)}`;
+    };
+
     const saveTrip = () => {
         const newName = input.value.trim();
         overlay.remove();
@@ -229,25 +240,25 @@ function promptForTripName(suggestedName, link) {
                 body: JSON.stringify({ link: link, newTitle: newName })
             })
             .then(response => response.json())
-            .then(data => {
-                showStatus('success', `Trip saved as "${newName}"`);
-                setTimeout(() => window.location.reload(), 1500);
+            .then(() => {
+                showStatus('success', `Trip saved as "${newName}". Opening editor...`);
+                setTimeout(goToEditor, 800);
             })
             .catch(() => {
-                showStatus('success', `Trip imported as "${suggestedName}"`);
-                setTimeout(() => window.location.reload(), 1500);
+                showStatus('success', `Trip imported as "${suggestedName}". Opening editor...`);
+                setTimeout(goToEditor, 800);
             });
         } else {
-            showStatus('success', `Trip "${suggestedName}" imported successfully!`);
-            setTimeout(() => window.location.reload(), 1500);
+            showStatus('success', `Trip "${suggestedName}" imported. Opening editor...`);
+            setTimeout(goToEditor, 800);
         }
     };
 
-    // Handle cancel (use suggested name)
+    // Handle cancel (use suggested name, still go to editor)
     const useSuggested = () => {
         overlay.remove();
-        showStatus('success', `Trip "${suggestedName}" imported successfully!`);
-        setTimeout(() => window.location.reload(), 1500);
+        showStatus('success', `Trip "${suggestedName}" imported. Opening editor...`);
+        setTimeout(goToEditor, 800);
     };
 
     document.getElementById('modal-save').addEventListener('click', saveTrip);

@@ -195,7 +195,6 @@ def upload_file_handler(
     user_id: int, file_data: bytes, filename: str, output_dir: Path | None = None
 ) -> tuple[dict, int]:
     """Process an uploaded itinerary file. Returns (result, status_code)."""
-    import tempfile
     import time
 
     from agents.create.itinerary_utils import _convert_to_itinerary
@@ -286,11 +285,14 @@ def upload_file_handler(
                         }, 400
                 itinerary = parser.parse_text(text, source_url=filename)
             elif "image_data" in extracted:
-                # Scanned PDF or image, write to tmp for parse_file
-                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                    tmp.write(file_data)
-                    tmp_path = tmp.name
-                itinerary = parser.parse_file(tmp_path)
+                # Image upload (PNG / JPG / scanned PDF page). Use the parser's
+                # vision path; the previous tmp-file + parse_file flow only
+                # supported PDF and Excel and 400'd on every image upload.
+                itinerary = parser.parse_image(
+                    image_data=extracted["image_data"],
+                    media_type=extracted.get("media_type", "image/png"),
+                    source_file=filename,
+                )
             else:
                 return {"error": "Could not extract content from file"}, 400
             print(

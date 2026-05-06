@@ -54,6 +54,22 @@
     margin-bottom: 0;
 }
 
+/* Hint that imports create new trips, with a pointer to the
+   add-to-existing-trip flow. Fixes Gene's "I didn't know I could do
+   that" feedback (issue #57). */
+.upload-area .upload-existing-hint {
+    font-size: 0.78rem;
+    color: #666;
+    background: #f0f1ff;
+    border-left: 3px solid #667eea;
+    padding: 8px 12px;
+    margin-top: 14px;
+    margin-bottom: 0;
+    border-radius: 6px;
+    text-align: left;
+    line-height: 1.4;
+}
+
 .upload-btn {
     display: inline-flex;
     align-items: center;

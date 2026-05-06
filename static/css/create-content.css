@@ -406,3 +406,38 @@
     padding: 4px 8px;
 }
 .trip-tools-hint-close:hover { color: #1a1a2e; }
+
+/* Drag-drop discoverability tip, sits above Day 1 in the itinerary view.
+   Dismissible (libertas_seen_dragdrop_tip in localStorage). The
+   [hidden] override is needed because display:flex below would otherwise
+   beat the browser default [hidden] { display: none } rule. */
+.dragdrop-tip[hidden] { display: none; }
+.dragdrop-tip {
+    position: relative;
+    margin: 0 0 14px;
+    padding: 10px 36px 10px 14px;
+    background: #f0f1ff;
+    border: 1px solid #c7c9f7;
+    border-left: 4px solid #667eea;
+    border-radius: 8px;
+    color: #1a1a2e;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.dragdrop-tip i { color: #f0c674; }
+.dragdrop-tip strong { color: #4a5fd6; }
+.dragdrop-tip-close {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #888a96;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.dragdrop-tip-close:hover { color: #1a1a2e; }

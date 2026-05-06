@@ -88,6 +88,8 @@ Every shared lookup table, config object, or utility must be defined **once** an
 - Tests must be repeatable: no hardcoded local paths, no reliance on live APIs unless marked `@pytest.mark.integration`
 - If a change touches fiat-lux-agents (`~/repos/fiat-lux-agents`), also run its tests: `.venv/bin/python3 -m pytest ~/repos/fiat-lux-agents/tests/ -x -q`
 - Whenever new tests are written, add a comment to issue #15 (test suite tracking) — even if the issue is closed
+- **Preserve coverage during refactors.** When splitting a file, renaming a module, or moving logic around, every conditional branch (especially `if/elif/else` chains for file types, error paths, or feature flags) must still be exercised by a test after the refactor. If you find a branch that has no test, write one *before* you refactor — that turns the branch into a tripwire. The PNG-upload regression in commit `1ef25bb` (2517-line handler split) silently dropped the vision-API call for weeks because no test covered image uploads. Don't repeat that.
+- Refactor checklist: list the conditional branches in the old file, run `pytest -k <name>` against each, refactor, re-run. If a branch had no test, add one *first*.
 
 ## Naming
 - Always write out "fiat-lux-agents" in full, in code, comments, docs, issues, and PR descriptions

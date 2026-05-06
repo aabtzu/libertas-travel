@@ -46,7 +46,32 @@ def fix_json_string(json_str: str) -> str:
     return json_str
 
 
-EXTRACTION_PROMPT = """You are an expert at extracting structured travel itinerary data from text.
+def _build_extraction_prompt() -> str:
+    """Render the extraction prompt with today's date baked in.
+
+    The year-resolution rule MUST be re-rendered each call because
+    confirmations rarely include the year (e.g. "Wed, 20MAY"). Without
+    today's date in the prompt the LLM picks whichever year matches the
+    weekday, often 5+ years in the past. Use plain str.replace because
+    the prompt body contains JSON example braces that would trip
+    str.format.
+    """
+    today = datetime.now()
+    return (
+        _EXTRACTION_PROMPT_TEMPLATE.replace("{{CURRENT_DATE}}", today.strftime("%Y-%m-%d"))
+        .replace("{{CURRENT_YEAR}}", str(today.year))
+        .replace("{{NEXT_YEAR}}", str(today.year + 1))
+    )
+
+
+_EXTRACTION_PROMPT_TEMPLATE = """You are an expert at extracting structured travel itinerary data from text.
+
+Today's date is {{CURRENT_DATE}}.
+
+When a date in the source omits the year (very common on flight confirmations like "Wed, 20MAY"), use this rule:
+- If the month/day is still upcoming this year, use {{CURRENT_YEAR}}
+- If the month/day has already passed this year, use {{NEXT_YEAR}}
+- Never pick a year more than 1 year in the past based on weekday matching alone
 
 Analyze the following text from a travel itinerary document and extract all relevant information.
 
@@ -132,6 +157,56 @@ class ItineraryParser:
         """Parse an itinerary from raw text (e.g., from HTML page)."""
         return self._parse_with_claude(text, source_url)
 
+    def parse_image(self, image_data: str, media_type: str, source_file: str) -> Itinerary:
+        """Parse an itinerary from a base64-encoded image (PNG/JPG/etc.).
+
+        Calls Claude's vision API with the image plus the standard extraction
+        prompt. Used for screenshots and image confirmations that the
+        text-based parse_file() can't handle.
+        """
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": image_data,
+                        },
+                    },
+                    {"type": "text", "text": _build_extraction_prompt()},
+                ],
+            }
+        ]
+        response_text = self.llm.call_api(system_prompt="", messages=messages)
+        return self._parse_response_text(response_text, source_file)
+
+    def _parse_response_text(self, response_text: str, source_file: str) -> Itinerary:
+        """Shared post-processing: pull JSON out of an LLM response and build
+        an Itinerary. Factored out so parse_text and parse_image can share it.
+        """
+        if "```json" in response_text:
+            json_str = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            json_str = response_text.split("```")[1].split("```")[0].strip()
+        else:
+            json_str = response_text.strip()
+        json_str = fix_json_string(json_str)
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            lines = json_str.split("\n")
+            error_line = e.lineno - 1 if e.lineno else 0
+            start = max(0, error_line - 2)
+            end = min(len(lines), error_line + 3)
+            context = "\n".join(f"{i + 1}: {lines[i]}" for i in range(start, end))
+            raise ValueError(
+                f"Failed to parse Claude's response as JSON: {e}\nContext:\n{context}"
+            ) from e
+        return self._build_itinerary(data, source_file)
+
     def _extract_text_from_pdf(self, file_path: Path) -> str:
         """Extract text content from a PDF file."""
         text_parts = []
@@ -207,34 +282,9 @@ class ItineraryParser:
         """Use Claude to extract structured data from itinerary text."""
         response_text = self.llm.call_api(
             system_prompt="",
-            messages=[{"role": "user", "content": EXTRACTION_PROMPT + text}],
+            messages=[{"role": "user", "content": _build_extraction_prompt() + text}],
         )
-
-        # Extract JSON from response (handle markdown code blocks)
-        if "```json" in response_text:
-            json_str = response_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in response_text:
-            json_str = response_text.split("```")[1].split("```")[0].strip()
-        else:
-            json_str = response_text.strip()
-
-        # Fix common JSON issues like trailing commas
-        json_str = fix_json_string(json_str)
-
-        try:
-            data = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            # Try to show context around the error
-            lines = json_str.split("\n")
-            error_line = e.lineno - 1 if e.lineno else 0
-            start = max(0, error_line - 2)
-            end = min(len(lines), error_line + 3)
-            context = "\n".join(f"{i + 1}: {lines[i]}" for i in range(start, end))
-            raise ValueError(
-                f"Failed to parse Claude's response as JSON: {e}\nContext:\n{context}"
-            ) from e
-
-        return self._build_itinerary(data, source_file)
+        return self._parse_response_text(response_text, source_file)
 
     def _build_itinerary(self, data: dict, source_file: str) -> Itinerary:
         """Build an Itinerary object from parsed data."""

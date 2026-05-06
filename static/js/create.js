@@ -97,6 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tripLink) {
         // Load existing trip
         loadTrip(tripLink);
+        _maybeShowPostImportBanner();
+        _wireDragDropTip();
     } else {
         // Show create dialog for new trip
         showCreateDialog();
@@ -106,6 +108,60 @@ document.addEventListener('DOMContentLoaded', () => {
     initChat();
     initDragDrop();
 });
+
+/**
+ * Show the drag-drop discoverability tip above Day 1 unless the user has
+ * dismissed it before (libertas_seen_dragdrop_tip in localStorage).
+ * Persistent (no auto-dismiss) so people who scroll back later can still
+ * notice it. The X removes it and remembers.
+ */
+function _wireDragDropTip() {
+    const tip = document.getElementById('dragdrop-tip');
+    if (!tip) return;
+    let seen = false;
+    try { seen = localStorage.getItem('libertas_seen_dragdrop_tip') === '1'; } catch (e) {}
+    if (seen) return;
+    tip.removeAttribute('hidden');
+    document.getElementById('dragdrop-tip-close')?.addEventListener('click', () => {
+        // Remove instead of toggling [hidden] because .dragdrop-tip uses
+        // display:flex, which overrides the browser default [hidden]
+        // styling. tip.remove() is unambiguous.
+        tip.remove();
+        try { localStorage.setItem('libertas_seen_dragdrop_tip', '1'); } catch (e) {}
+    });
+}
+
+/**
+ * If the user just arrived here from /trips after importing a file, show a
+ * banner pointing at the Upload Plan button so they discover they can keep
+ * adding to this trip. Triggered by the libertas_just_imported flag set in
+ * upload.js. Cleared once shown so a refresh doesn't repeat it.
+ */
+function _maybeShowPostImportBanner() {
+    let flagged = false;
+    try {
+        flagged = sessionStorage.getItem('libertas_just_imported') === '1';
+        if (flagged) sessionStorage.removeItem('libertas_just_imported');
+    } catch (e) {}
+    if (!flagged) return;
+
+    if (document.getElementById('post-import-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'post-import-banner';
+    banner.className = 'post-explore-banner';  // reuse existing style
+    banner.innerHTML = (
+        '<i class="fas fa-check-circle"></i> ' +
+        'Trip imported. To add another flight or hotel, ' +
+        '<strong>drop another file anywhere on this page</strong>. ' +
+        '<span class="post-explore-back" style="cursor:pointer">Got it</span>'
+    );
+    document.body.appendChild(banner);
+    banner.addEventListener('click', () => banner.remove());
+    setTimeout(() => {
+        if (banner.parentNode) banner.classList.add('fading');
+    }, 7000);
+    setTimeout(() => banner.remove(), 8000);
+}
 
 /**
  * If the user got here from Explore's "Add to trip → New trip" flow, the
