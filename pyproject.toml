@@ -49,3 +49,10 @@ known-first-party = ["agents", "auth", "database"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+# Adds the project root to sys.path so test files can import ``agents``,
+# ``database`` etc. without each one re-doing the sys.path.insert dance.
+# Mirrors what `python -m pytest` does implicitly; this makes plain
+# `pytest tests/` (the CI form) work the same.
+pythonpath = ["."]
