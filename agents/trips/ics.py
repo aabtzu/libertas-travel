@@ -2,7 +2,40 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import os
 from datetime import datetime
+
+
+def calendar_subscribe_token(user_id: int, link: str) -> str:
+    """Build a deterministic per-(user, trip) HMAC token.
+
+    Used in subscribe URLs (``/api/trips/<link>/calendar.ics?token=...``) so
+    the user's calendar app can poll without sending a session cookie.
+    Stateless: the server validates by recomputing. SECRET_KEY must be set
+    (it always is in prod and dev), the same env var Flask uses for cookies.
+
+    Why HMAC and not a stored random token: zero DB changes, revoked
+    automatically when SECRET_KEY rotates, and matches what the rest of
+    the auth surface uses. Downside: you can't revoke just one trip's
+    subscription without rotating SECRET_KEY for everyone.
+    """
+    secret = os.environ.get("SECRET_KEY", "")
+    if not secret:
+        # Should never happen in prod; refuse rather than emit a forgeable token.
+        raise RuntimeError("SECRET_KEY not set, cannot generate subscribe token")
+    payload = f"calendar:{user_id}:{link}".encode()
+    digest = hmac.new(secret.encode(), payload, hashlib.sha256).digest()
+    # 16 bytes (32 hex chars) is plenty: 2^128 search space, and these tokens
+    # are only useful as URL params on a per-trip basis.
+    return digest.hex()[:32]
+
+
+def verify_subscribe_token(user_id: int, link: str, provided: str) -> bool:
+    """Constant-time check of a subscribe token."""
+    expected = calendar_subscribe_token(user_id, link)
+    return hmac.compare_digest(expected, provided)
 
 
 def generate_ics(export_data: dict, link: str) -> str:
