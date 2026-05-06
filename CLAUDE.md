@@ -125,6 +125,11 @@ Every shared lookup table, config object, or utility must be defined **once** an
 - Prefer reusable helpers over copy-pasted logic — if the same pattern appears twice, extract it
 - No duplicate logic across handlers — shared behavior belongs in `agents/common/`
 
+## Grep before you answer
+- **When the user asks "do we already have X?", grep the codebase first, then answer.** A 2-second `grep -rn` beats a confident wrong answer every time. The `.ics` export incident on 2026-05-05 is the cited cautionary tale: I claimed there was no export and started rebuilding it. There was already a working export shipped Dec 2025 (`agents/trips/ics.py`, route `/api/trips/<link>/calendar.ics`), and `git log --oneline | grep -i ics` would have surfaced it instantly.
+- Same rule for "is there a library that does this?" - check `requirements.txt` and search for known utilities before hand-rolling.
+- Same rule when proposing a new file or function - grep for similar names first to avoid duplication.
+
 ## SQL Style
 - SQL queries must be defined as module-level named constants, never inline inside functions
 - Name them descriptively in SCREAMING_SNAKE_CASE, e.g. `_SQL_INSERT_TRIP`, `_SQL_GET_USER_BY_ID`

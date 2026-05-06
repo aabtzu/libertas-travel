@@ -507,3 +507,26 @@
     color: white;
 }
 
+
+/* Calendar subscribe modal: list of paste-into-X instructions, one
+   app per row so the modal reads cleanly. */
+.subscribe-instructions {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.subscribe-instructions li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 8px 14px;
+    font-size: 0.88rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+.subscribe-instructions li:last-child { border-bottom: none; }
+.subscribe-instructions li strong { color: #1a1a2e; }
+.subscribe-instructions li span { color: #666; font-size: 0.82rem; text-align: right; }

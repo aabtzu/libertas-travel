@@ -627,6 +627,8 @@ function copyWriteupLink() {
     _ensurePublicThenCopy(() => window.location.origin + '/w/' + recLink);
 }
 
+// Calendar download / subscribe live in static/js/calendar-export.js.
+
 // Legacy, used by explore panel
 function copyPublicLink() {
     copyRecommendationLink();

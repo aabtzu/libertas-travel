@@ -233,121 +233,109 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _guess_event_category(title: str, notes: str) -> str:
+    """Heuristic category from title + notes. Used by both the ICS parser
+    and the JSON parser."""
+    combined = f"{title or ''} {notes or ''}".lower()
+    if any(w in combined for w in ["flight", "airline", "airport", "terminal"]):
+        return "flight"
+    if any(w in combined for w in ["train", "rail", "tgv", "ave ", "eurostar", "amtrak"]):
+        return "train"
+    if any(w in combined for w in ["bus", "coach"]):
+        return "bus"
+    if any(w in combined for w in ["car rental", "uber", "taxi", "transfer"]):
+        return "transport"
+    if any(
+        w in combined
+        for w in ["hotel", "hostel", "airbnb", "accommodation", "check-in", "check in", "stay"]
+    ):
+        return "hotel"
+    if any(
+        w in combined
+        for w in ["restaurant", "dinner", "lunch", "breakfast", "cafe", "brunch", "reservation"]
+    ):
+        return "meal"
+    if any(w in combined for w in ["museum", "tour", "visit", "cathedral", "palace", "gallery"]):
+        return "attraction"
+    return "activity"
+
+
 def _parse_ics_file(file_data: bytes) -> list[dict[str, Any]]:
     """Parse ICS calendar file to extract travel events.
 
+    Uses the icalendar library so we get correct line folding, parameter
+    parsing (TZID etc.), escape handling, and timezone-aware datetimes for
+    free. The previous hand-rolled version ignored property params and
+    folded lines with tabs, which truncated real-world calendar files.
+
     Returns list of items with title, category, date, time, location, notes.
     """
+    from datetime import date as _date
+    from datetime import datetime as _datetime
+
+    from icalendar import Calendar
+
     try:
-        content = file_data.decode("utf-8")
-    except UnicodeDecodeError:
-        content = file_data.decode("latin-1")
+        cal = Calendar.from_ical(file_data)
+    except Exception as e:
+        # Malformed input. Caller treats this as "no items found" via the
+        # empty-list contract; surface enough context so the upload handler
+        # can show something useful.
+        print(f"[ics-import] icalendar parse failed: {e}")
+        return []
 
-    items = []
-    current_event = {}
-    in_event = False
+    items: list[dict[str, Any]] = []
+    for component in cal.walk("VEVENT"):
+        title = str(component.get("SUMMARY", "")).strip()
+        if not title:
+            continue
 
-    lines = content.replace("\r\n ", "").replace("\r\n\t", "").split("\r\n")
-    if len(lines) == 1:
-        lines = content.replace("\n ", "").replace("\n\t", "").split("\n")
+        item: dict[str, Any] = {"title": title}
 
-    for line in lines:
-        line = line.strip()
-        if line == "BEGIN:VEVENT":
-            in_event = True
-            current_event = {}
-        elif line == "END:VEVENT":
-            if current_event.get("title"):
-                title = current_event.get("title", "").lower()
-                description = current_event.get("notes", "").lower()
-                combined = f"{title} {description}"
+        dtstart = component.get("DTSTART")
+        if dtstart is not None:
+            dt_value = dtstart.dt
+            if isinstance(dt_value, _datetime):
+                # Use the local wall-clock time of the event. If TZID was
+                # set, dt_value is timezone-aware and .strftime gives us
+                # the local time in that zone. If it was floating time, we
+                # also just use it as-is. Converting to UTC would shift a
+                # 4pm SFO flight to 11pm in the calendar app.
+                item["date"] = dt_value.strftime("%Y-%m-%d")
+                item["time"] = dt_value.strftime("%H:%M")
+            elif isinstance(dt_value, _date):
+                item["date"] = dt_value.strftime("%Y-%m-%d")
 
-                category = "activity"
-                if any(w in combined for w in ["flight", "airline", "airport", "terminal"]):
-                    category = "flight"
-                elif any(
-                    w in combined for w in ["train", "rail", "tgv", "ave ", "eurostar", "amtrak"]
-                ):
-                    category = "train"
-                elif any(w in combined for w in ["bus", "coach"]):
-                    category = "bus"
-                elif any(w in combined for w in ["car rental", "uber", "taxi", "transfer"]):
-                    category = "transport"
-                elif any(
-                    w in combined
-                    for w in [
-                        "hotel",
-                        "hostel",
-                        "airbnb",
-                        "accommodation",
-                        "check-in",
-                        "check in",
-                        "stay",
-                    ]
-                ):
-                    category = "hotel"
-                elif any(
-                    w in combined
-                    for w in [
-                        "restaurant",
-                        "dinner",
-                        "lunch",
-                        "breakfast",
-                        "cafe",
-                        "brunch",
-                        "reservation",
-                    ]
-                ):
-                    category = "meal"
-                elif any(
-                    w in combined
-                    for w in ["museum", "tour", "visit", "cathedral", "palace", "gallery"]
-                ):
-                    category = "attraction"
+        dtend = component.get("DTEND")
+        if dtend is not None:
+            dt_end = dtend.dt
+            if isinstance(dt_end, _datetime):
+                item["end_time"] = dt_end.strftime("%H:%M")
 
-                current_event["category"] = category
+        location = component.get("LOCATION")
+        if location:
+            item["location"] = str(location).strip()
 
-                # Use UTC time as fallback if no local time was extracted from description
-                if not current_event.get("time") and current_event.get("_utc_time"):
-                    current_event["time"] = current_event["_utc_time"]
+        description = component.get("DESCRIPTION")
+        if description:
+            desc_text = str(description).strip()
+            item["notes"] = desc_text[:500]
 
-                current_event.pop("_utc_time", None)
-                items.append(current_event)
-            in_event = False
-        elif in_event:
-            if line.startswith("SUMMARY:"):
-                current_event["title"] = line[8:].strip()
-            elif line.startswith("DTSTART"):
-                value = line.split(":", 1)[-1]
-                if "T" in value:
-                    date_part = value[:8]
-                    time_part = value[9:13] if len(value) > 12 else None
-                    try:
-                        current_event["date"] = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}"
-                        if time_part:
-                            current_event["_utc_time"] = f"{time_part[:2]}:{time_part[2:4]}"
-                    except (ValueError, IndexError):
-                        pass
-                else:
-                    try:
-                        current_event["date"] = f"{value[:4]}-{value[4:6]}-{value[6:8]}"
-                    except (ValueError, IndexError):
-                        pass
-            elif line.startswith("LOCATION:"):
-                current_event["location"] = line[9:].strip()
-            elif line.startswith("DESCRIPTION:"):
-                desc = line[12:].strip()
-                desc = desc.replace("\\n", "\n").replace("\\,", ",").replace("\\;", ";")
-                current_event["notes"] = desc[:500]
+            # TripIt and several travel-booking exporters stamp DTSTART as
+            # UTC and put the actual local departure time in the description.
+            # Override the UTC-derived time with the local one when present.
+            time_match = re.search(
+                r"(?:Departure time|Departs?):\s*(\d{1,2}):(\d{2})",
+                desc_text,
+                re.IGNORECASE,
+            )
+            if time_match:
+                hour = int(time_match.group(1))
+                minute = time_match.group(2)
+                item["time"] = f"{hour:02d}:{minute}"
 
-                # Extract local departure time from description (more accurate than UTC)
-                time_match = re.search(
-                    r"(?:Departure time|Departs?):\s*(\d{1,2}):(\d{2})", desc, re.IGNORECASE
-                )
-                if time_match:
-                    hour = int(time_match.group(1))
-                    minute = time_match.group(2)
-                    current_event["time"] = f"{hour:02d}:{minute}"
+        item["category"] = _guess_event_category(item.get("title", ""), item.get("notes", ""))
+        items.append(item)
 
     return items
 

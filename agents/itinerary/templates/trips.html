@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=1">
     <link rel="stylesheet" href="/static/css/categories.css">
     <link rel="stylesheet" href="/static/css/trips.css?v=14">
-    <link rel="stylesheet" href="/static/css/trips-actions.css?v=2">
+    <link rel="stylesheet" href="/static/css/trips-actions.css?v=3">
     <link rel="stylesheet" href="/static/css/trips-share-map.css?v=1">
 </head>
 <body>
@@ -140,6 +140,13 @@
                     <button class="share-option-btn share-link-btn" onclick="copyWriteupLink()">
                         <i class="fas fa-pen-fancy"></i> Share as written narrative
                     </button>
+                    <div class="share-divider">add to a calendar</div>
+                    <button class="share-option-btn share-link-btn" onclick="downloadTripIcs()">
+                        <i class="fas fa-calendar-plus"></i> Download .ics (Outlook, Apple, Google)
+                    </button>
+                    <button class="share-option-btn share-link-btn" onclick="subscribeTripCalendar()">
+                        <i class="fas fa-rss"></i> Subscribe (auto-updates when the trip changes)
+                    </button>
                     <div class="share-divider">or share with a user</div>
                     <button class="share-option-btn" onclick="shareWithAll()">
                         <i class="fas fa-users"></i> All Users
@@ -156,7 +163,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/static/js/main.js?v=7"></script>
     <script src="/static/js/archive.js?v=1"></script>
-    <script src="/static/js/upload.js?v=12"></script>
+    <script src="/static/js/upload.js?v=14"></script>
+    <script src="/static/js/calendar-export.js?v=3"></script>
     <script src="/static/js/trips.js?v=10"></script>
 </body>
 </html>

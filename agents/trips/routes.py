@@ -13,7 +13,7 @@ import database as db
 from agents.common.flask_utils import json_err, json_ok, require_auth
 from agents.create import handler as create_handler
 from agents.itinerary import geocoding_worker
-from agents.trips.ics import generate_ics
+from agents.trips.ics import calendar_subscribe_token, generate_ics, verify_subscribe_token
 
 trips_bp = Blueprint("trips", __name__)
 
@@ -66,9 +66,36 @@ def export_trip(link: str):
 
 
 @trips_bp.get("/api/trips/<link>/calendar.ics")
-@require_auth
 def export_ics(link: str):
-    result, status = create_handler.export_trip_handler(g.user_id, link)
+    """Serve a trip as a downloadable .ics file (no token) or as a calendar
+    subscription target (with ``?token=...``).
+
+    No ``@require_auth`` here because subscribe mode is by design unauthenticated:
+    Outlook / Apple Calendar / Google Calendar polls a fixed URL and can't
+    send our session cookie. The token replaces the cookie. For download
+    mode we still require an authenticated session.
+    """
+    from flask import Response
+
+    token = request.args.get("token", "").strip()
+    owner_id = db.get_trip_owner(link)
+    if owner_id is None:
+        return json_err("Trip not found", status=404)
+
+    # Pick auth path: token overrides session.
+    if token:
+        if not verify_subscribe_token(owner_id, link, token):
+            return json_err("Invalid token", status=403)
+        viewer_id = owner_id
+    else:
+        if not g.user_id:
+            return json_err("Authentication required", status=401)
+        # Allow viewing public trips without owning them. Matches /<trip>.html.
+        if g.user_id != owner_id and not db.is_trip_public(link):
+            return json_err("Not found", status=404)
+        viewer_id = owner_id  # always render against the owner's data
+
+    result, status = create_handler.export_trip_handler(viewer_id, link)
     if status != 200:
         return json_err(result.get("error", "Unknown error"), status=status)
 
@@ -78,13 +105,37 @@ def export_ics(link: str):
     filename = f"{safe_title}.ics"
 
     ics_content = generate_ics(export_data, link)
-    from flask import Response
-
     return Response(
         ics_content,
         mimetype="text/calendar; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@trips_bp.get("/api/trips/<link>/calendar-subscribe-url")
+@require_auth
+def calendar_subscribe_url(link: str):
+    """Return a webcal:// subscribe URL for this trip.
+
+    Owner-only: only the owner gets to hand out a subscription token
+    (for now). The URL contains a token that the unauthenticated
+    /calendar.ics endpoint validates. Calendar apps interpret webcal://
+    as "subscribe and poll for updates."
+    """
+    owner_id = db.get_trip_owner(link)
+    if owner_id is None or owner_id != g.user_id:
+        return json_err("Not found", status=404)
+
+    token = calendar_subscribe_token(g.user_id, link)
+    # webcal:// is the same as http(s):// but tells the OS to hand the URL
+    # to the default calendar app instead of opening it in a browser.
+    base = (
+        request.host_url.rstrip("/")
+        .replace("http://", "webcal://")
+        .replace("https://", "webcal://")
+    )
+    url = f"{base}/api/trips/{link}/calendar.ics?token={token}"
+    return json_ok({"url": url})
 
 
 @trips_bp.get("/api/trip/<link>/can-edit")
