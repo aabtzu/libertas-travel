@@ -29,6 +29,72 @@ def _html(content: str) -> Response:
     return Response(content, mimetype="text/html")
 
 
+# Status used for "trip exists but is no longer publicly shared." 410 Gone is
+# the right semantic: the resource was here, the owner pulled it. 404 would
+# have implied it never existed.
+_PRIVATE_TRIP_STATUS = 410
+
+
+def _trip_not_available_response(link: str, reason: str) -> Response:
+    """Render a friendly "this trip isn't available" page.
+
+    Two reasons handled:
+      - "missing": the link doesn't match any trip in the DB.
+      - "private": a trip with that link exists but isn't public, and the
+        viewer isn't logged in as the owner.
+
+    The previous behavior was a bare 404 string, which made shared links
+    look broken when in fact the owner had just toggled the trip private.
+    """
+    is_private = reason == "private"
+    title = "This trip isn't public" if is_private else "Trip not found"
+    headline = (
+        "This trip isn't shared publicly anymore."
+        if is_private
+        else "We couldn't find a trip at this link."
+    )
+    detail = (
+        "If you're the trip owner, log in and toggle the lock icon on the trip "
+        "card to share it again."
+        if is_private
+        else "The link may be mistyped, or the trip may have been deleted."
+    )
+    nav = get_nav_html(active_page="")
+    body = f"""<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><title>{title} - Libertas</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/main.css?v=14">
+<style>
+.unavailable {{ max-width: 560px; margin: 80px auto; padding: 40px 32px; background: #fff;
+  border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); text-align: center; }}
+.unavailable i {{ font-size: 3rem; color: #667eea; margin-bottom: 16px; }}
+.unavailable h1 {{ font-size: 1.4rem; color: #1a1a2e; margin: 0 0 12px; }}
+.unavailable p {{ color: #555; line-height: 1.5; margin: 0 0 14px; }}
+.unavailable .actions {{ margin-top: 24px; display: flex; gap: 12px; justify-content: center; }}
+.unavailable .btn {{ display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px;
+  background: #667eea; color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.95rem; }}
+.unavailable .btn.secondary {{ background: #f0f1ff; color: #4a5fd6; }}
+.unavailable .btn:hover {{ filter: brightness(0.95); }}
+.unavailable .link-tag {{ font-family: monospace; font-size: 0.85rem; color: #888;
+  background: #f5f5f5; padding: 4px 8px; border-radius: 4px; word-break: break-all; }}
+</style></head><body>
+{nav}
+<div class="unavailable">
+<i class="fas fa-{"lock" if is_private else "compass"}"></i>
+<h1>{headline}</h1>
+<p>{detail}</p>
+<p><span class="link-tag">{link}</span></p>
+<div class="actions">
+<a href="/" class="btn">Home</a>
+<a href="/trips.html" class="btn secondary">My trips</a>
+</div>
+</div>
+</body></html>"""
+    return Response(body, mimetype="text/html", status=_PRIVATE_TRIP_STATUS if is_private else 404)
+
+
 @pages_bp.get("/")
 @pages_bp.get("/index.html")
 def home():
@@ -135,7 +201,11 @@ def trip_html(trip_name: str):
             trip = db.get_trip_by_link(owner_id, link)
 
     if not trip:
-        return "Trip not found", 404
+        # Distinguish "trip never existed" from "trip exists but is private now"
+        # so a stale shared link gets a friendly explanation, not a hard 404.
+        existing_owner = owner_id or db.get_trip_owner(link)
+        reason = "private" if existing_owner else "missing"
+        return _trip_not_available_response(link, reason)
 
     # Determine viewer context, used by web_view to render the right header buttons
     is_authenticated = user_id is not None
@@ -209,15 +279,14 @@ def recommendation_view(rec_name: str):
     # Find the trip by link (any owner)
     owner_id = db.get_trip_owner(link)
     if owner_id is None:
-        return "Not found", 404
+        return _trip_not_available_response(link, "missing")
 
     trip = db.get_trip_by_link(owner_id, link)
     if not trip:
-        return "Not found", 404
+        return _trip_not_available_response(link, "missing")
 
-    # Must be public
     if not trip.get("is_public"):
-        return "Not found", 404
+        return _trip_not_available_response(link, "private")
 
     itinerary_data = trip.get("itinerary_data") or {}
     if isinstance(itinerary_data, str):
@@ -241,11 +310,13 @@ def writeup_view(rec_name: str):
 
     owner_id = db.get_trip_owner(link)
     if owner_id is None:
-        return "Not found", 404
+        return _trip_not_available_response(link, "missing")
 
     trip = db.get_trip_by_link(owner_id, link)
-    if not trip or not trip.get("is_public"):
-        return "Not found", 404
+    if not trip:
+        return _trip_not_available_response(link, "missing")
+    if not trip.get("is_public"):
+        return _trip_not_available_response(link, "private")
 
     itinerary_data = trip.get("itinerary_data") or {}
     if isinstance(itinerary_data, str):

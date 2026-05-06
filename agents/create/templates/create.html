@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=1">
     <link rel="stylesheet" href="/static/css/categories.css">
     <link rel="stylesheet" href="/static/css/create.css?v=21">
-    <link rel="stylesheet" href="/static/css/create-content.css?v=3">
+    <link rel="stylesheet" href="/static/css/create-content.css?v=5">
     <link rel="stylesheet" href="/static/css/create-chat.css?v=1">
     <link rel="stylesheet" href="/static/css/create-views.css?v=1">
 </head>
@@ -113,6 +113,15 @@
 
                 <!-- Itinerary Tab Content -->
                 <div class="timeline-tab-content active" id="itinerary-tab">
+                    <!-- Dismissible drag-drop discoverability tip. Hidden once
+                         the user clicks the X (libertas_seen_dragdrop_tip in
+                         localStorage). Shown above Day 1 because that is where
+                         the eye lands first after import. -->
+                    <div class="dragdrop-tip" id="dragdrop-tip" hidden>
+                        <button class="dragdrop-tip-close" id="dragdrop-tip-close" aria-label="Dismiss">&times;</button>
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Tip: drop another flight or hotel confirmation <strong>anywhere on this page</strong> to add it to this trip. Or use the <strong>Upload Plan</strong> button at the bottom.</span>
+                    </div>
                     <div class="days-container" id="days-container">
                         <!-- Days will be added here dynamically -->
                     </div>
@@ -160,10 +169,12 @@
                         </div>
                     </div>
                     <div class="ideas-actions">
-                        <button class="btn-add-idea" id="add-idea-btn">
+                        <button class="btn-add-idea" id="add-idea-btn"
+                                title="Add a single item by hand (a restaurant, hotel, activity, etc.)">
                             <i class="fas fa-plus"></i> Add Idea
                         </button>
-                        <button class="btn-upload-plan" id="upload-plan-btn">
+                        <button class="btn-upload-plan" id="upload-plan-btn"
+                                title="Upload another booking PDF, .ics, email, or itinerary text. Items get added to this trip's Ideas pile.">
                             <i class="fas fa-file-upload"></i> Upload Plan
                         </button>
                     </div>
@@ -356,7 +367,7 @@
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=55"></script>
+    <script src="/static/js/create.js?v=58"></script>
     <script src="/static/js/create-render.js?v=2"></script>
     <script src="/static/js/create-items.js?v=3"></script>
     <script src="/static/js/create-upload.js?v=3"></script>
