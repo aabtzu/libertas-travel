@@ -256,3 +256,57 @@ class TestGeneratedIcsFormat:
             "trip.html",
         )
         assert "Floating thing" not in ics
+
+    def test_red_eye_flight_arrives_next_day(self):
+        """Regression: a flight where end_time < start_time used to emit
+        DTEND on the same calendar date as DTSTART, producing DTEND <
+        DTSTART. Apple/Outlook silently drop those events. The exporter
+        now bumps end_date forward by one day in that case."""
+        ics = generate_ics(
+            self._export_payload(
+                [
+                    {
+                        "date": "2026-06-21",
+                        "items": [
+                            {
+                                "title": "DL 452 SEA -> JFK",
+                                "category": "flight",
+                                "time": "22:20",
+                                "end_time": "06:34",
+                            }
+                        ],
+                    }
+                ]
+            ),
+            "trip.html",
+        )
+        # Departure on Jun 21 22:20
+        assert "20260621T222000" in ics
+        # Arrival on Jun 22 06:34, NOT Jun 21
+        assert "20260622T063400" in ics
+
+    def test_explicit_end_date_is_honored(self):
+        """Multi-day items (hotels, car rentals) carry their own end_date.
+        The exporter should use it directly."""
+        ics = generate_ics(
+            self._export_payload(
+                [
+                    {
+                        "date": "2026-06-10",
+                        "items": [
+                            {
+                                "title": "Marriott Seattle",
+                                "category": "hotel",
+                                "time": "16:00",
+                                "end_time": "11:00",
+                                "end_date": "2026-06-15",
+                            }
+                        ],
+                    }
+                ]
+            ),
+            "trip.html",
+        )
+        # Check-in 2026-06-10 16:00, check-out 2026-06-15 11:00
+        assert "20260610T160000" in ics
+        assert "20260615T110000" in ics

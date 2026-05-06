@@ -115,9 +115,25 @@ def generate_ics(export_data: dict, link: str) -> str:
                         day_date, datetime.min.time().replace(hour=start_hm[0], minute=start_hm[1])
                     )
                     end_hm = _parse_hhmm(item_end_time) if item_end_time else None
+
+                    # End-date resolution priority:
+                    #   1. explicit item["end_date"] (hotels, car rentals)
+                    #   2. inferred next-day if end_time < start_time
+                    #      (red-eye flights, late-night dinners that go past midnight)
+                    #   3. same day as start
+                    end_date_str = item.get("end_date")
+                    end_date = day_date
+                    if end_date_str:
+                        try:
+                            end_date = _date.fromisoformat(end_date_str)
+                        except ValueError:
+                            pass
+                    elif end_hm and (end_hm[0], end_hm[1]) < (start_hm[0], start_hm[1]):
+                        end_date = day_date + timedelta(days=1)
+
                     end = (
                         datetime.combine(
-                            day_date,
+                            end_date,
                             datetime.min.time().replace(hour=end_hm[0], minute=end_hm[1]),
                         )
                         if end_hm
