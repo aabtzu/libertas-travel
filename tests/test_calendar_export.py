@@ -14,7 +14,7 @@ import os
 
 import pytest
 
-from agents.trips.ics import calendar_subscribe_token, verify_subscribe_token
+from agents.trips.ics import calendar_subscribe_token, generate_ics, verify_subscribe_token
 
 # ---------------------------------------------------------------------------
 # Token roundtrip
@@ -156,3 +156,103 @@ class TestSubscribeUrlEndpoint:
     def test_404_on_missing_trip(self, client, app):
         resp = client.get("/api/trips/nonexistent.html/calendar-subscribe-url")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Output format (library-emitted ICS)
+# ---------------------------------------------------------------------------
+
+
+class TestGeneratedIcsFormat:
+    def _export_payload(self, days: list[dict], title: str = "Test Trip") -> dict:
+        return {"title": title, "itinerary_data": {"days": days}}
+
+    def test_emits_well_formed_calendar(self):
+        ics = generate_ics(
+            self._export_payload(
+                [
+                    {
+                        "date": "2026-05-20",
+                        "items": [
+                            {
+                                "title": "Lunch",
+                                "category": "meal",
+                                "time": "12:30",
+                                "end_time": "14:00",
+                                "location": "Cafe Lou",
+                            }
+                        ],
+                    }
+                ]
+            ),
+            "test_trip.html",
+        )
+        assert ics.startswith("BEGIN:VCALENDAR")
+        assert "END:VCALENDAR" in ics
+        assert "BEGIN:VEVENT" in ics
+        # Library emits CRLF as required by RFC 5545
+        assert "\r\n" in ics
+        # SUMMARY survived
+        assert "Lunch" in ics
+        # Time was serialized
+        assert "20260520T123000" in ics
+
+    def test_escapes_commas_and_semicolons_in_summary(self):
+        """The previous hand-rolled escaper had ordering bugs around backslash
+        escaping. The library does it correctly."""
+        ics = generate_ics(
+            self._export_payload(
+                [
+                    {
+                        "date": "2026-05-20",
+                        "items": [{"title": "Paris, France; trip", "category": "activity"}],
+                    }
+                ]
+            ),
+            "trip.html",
+        )
+        # Comma must be escaped, semicolon must be escaped
+        assert "Paris\\, France\\; trip" in ics
+
+    def test_all_day_event_uses_value_date(self):
+        ics = generate_ics(
+            self._export_payload(
+                [
+                    {
+                        "date": "2026-05-20",
+                        "items": [{"title": "Day at the museum", "category": "attraction"}],
+                    }
+                ]
+            ),
+            "trip.html",
+        )
+        # All-day events serialize as VALUE=DATE
+        assert "DTSTART;VALUE=DATE:20260520" in ics
+
+    def test_long_descriptions_get_folded(self):
+        """RFC 5545 line folding: lines >75 octets must wrap. The library
+        folds correctly; the hand-rolled emitter never folded at all."""
+        long_note = "X" * 200
+        ics = generate_ics(
+            self._export_payload(
+                [
+                    {
+                        "date": "2026-05-20",
+                        "items": [
+                            {"title": "Big notes", "category": "activity", "notes": long_note}
+                        ],
+                    }
+                ]
+            ),
+            "trip.html",
+        )
+        # No single line should exceed 75 octets after folding.
+        for line in ics.split("\r\n"):
+            assert len(line.encode("utf-8")) <= 75, f"Line too long: {line!r}"
+
+    def test_skips_days_without_a_date(self):
+        ics = generate_ics(
+            self._export_payload([{"items": [{"title": "Floating thing"}]}]),
+            "trip.html",
+        )
+        assert "Floating thing" not in ics
