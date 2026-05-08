@@ -87,7 +87,16 @@ async function handleDroppedFile(file) {
         } else if (data.error) {
             addChatMessage('assistant', `Could not extract travel items from **${file.name}**:\n\n${data.error}`);
         } else {
-            addChatMessage('assistant', `No travel items found in **${file.name}**. Try uploading a booking confirmation, itinerary, or ticket.`);
+            // Empty extraction is rare now (the prompt covers articles + lists),
+            // but fall through gracefully if it happens. Tell the user what
+            // worked best historically without making them feel like the upload
+            // path is broken.
+            addChatMessage(
+                'assistant',
+                `I couldn't pull anything actionable out of **${file.name}**. ` +
+                `Try a booking confirmation, an article that names specific places, ` +
+                `or paste the trip details into chat directly.`
+            );
         }
     } catch (error) {
         console.error('Drop upload error:', error);
