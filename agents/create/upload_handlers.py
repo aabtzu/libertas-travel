@@ -99,6 +99,16 @@ IMPORTANT: For DAY-BY-DAY NARRATIVE ITINERARIES (expedition, adventure, tour iti
 - Use category "flight" for flights
 - Include the day number from "Day 1", "Day 2", etc.
 
+IMPORTANT: For ARTICLES, BLOG POSTS, GUIDES, or RECOMMENDATION LISTS (no bookings, no concrete dates):
+- This is the "ideas-pile" case. Extract every named place worth visiting as a separate item.
+- Each restaurant, hotel, neighborhood, attraction, museum, bar, viewpoint, beach, market, etc. mentioned by name becomes one item.
+- Set date, time, end_time, end_date, day to null, these will land in the user's Ideas pile to schedule later.
+- Use the right category (meal for restaurants/cafes/bars, hotel for accommodations, attraction for museums/landmarks, activity for hiking/tours, etc.).
+- Put the city or neighborhood in location.
+- Put a one-line description in notes (what makes this place worth visiting, per the article).
+- Skip generic guidance like "try the local cuisine" or "stay near the center", we want named places only.
+- An article with 10 places mentioned should return 10 items, not 0.
+
 Return your response as a JSON array of items. Example:
 ```json
 [
