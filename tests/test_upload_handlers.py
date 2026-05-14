@@ -89,6 +89,45 @@ def test_jpg_upload_also_uses_vision_parser(stub_itinerary, tmp_path, app):
         parser_cls.return_value.parse_image.assert_called_once()
 
 
+def test_upload_plan_does_not_truncate_long_text():
+    """Regression: a 16-page Peru itinerary (~40k chars) was being sliced
+    to 10k chars before going to the LLM, so the trip silently stopped
+    at day 5 or 6. Confirm the cap is generous enough that a realistic
+    long document goes through intact."""
+    from unittest.mock import MagicMock, patch
+
+    from agents.create.upload_handlers import upload_plan_handler
+
+    # Use a distinct tail marker so we can prove the LAST chunk made it
+    # through. A repeating string would falsely pass even with truncation
+    # because the tail would also appear in the head.
+    filler = "Day filler content for the middle of the itinerary. " * 800
+    long_text = filler + "UNIQUE_TAIL_MARKER_LAST_DAY_OF_TRIP"
+    fake_response = MagicMock()
+    fake_response.content = [MagicMock(text="[]")]
+
+    with (
+        patch("agents.create.upload_handlers.extract_file_content") as extract,
+        patch("agents.create.upload_handlers.make_llm") as make_llm,
+    ):
+        extract.return_value = {"text": long_text}
+        llm = make_llm.return_value
+        llm.call_api.return_value = fake_response
+
+        upload_plan_handler(user_id=1, filename="peru.pdf", file_data=b"...", ext="pdf")
+
+        # The user-message content sent to the LLM must contain the unique
+        # tail marker, not just the filler. The previous 10k-char cap dropped
+        # the marker; the new 100k-char cap keeps it.
+        call = llm.call_api.call_args
+        messages = call.kwargs["messages"]
+        sent_content = messages[0]["content"]
+        assert "UNIQUE_TAIL_MARKER_LAST_DAY_OF_TRIP" in sent_content, (
+            "Long-text upload was truncated before reaching the LLM. "
+            "The end of the document is missing."
+        )
+
+
 def test_unsupported_extension_returns_400(tmp_path, app):
     """Confirm the supported-extension gate still rejects junk."""
     result, status = upload_file_handler(

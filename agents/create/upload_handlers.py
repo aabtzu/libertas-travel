@@ -138,8 +138,10 @@ If you cannot extract any travel items, return an empty array: []
 Only return the JSON array, no other text."""
 
     try:
-        # 4096 tokens accommodates large trips (20+ items); 2048 caused truncation
-        llm = make_llm(model=SONNET, max_tokens=4096)
+        # 16k output tokens covers very long itineraries (50+ items, full
+        # day-by-day Backroads-style PDFs). Previous 4096 cap silently
+        # truncated the JSON, dropping later days.
+        llm = make_llm(model=SONNET, max_tokens=16384)
 
         if image_data:
             messages = [
@@ -162,10 +164,17 @@ Only return the JSON array, no other text."""
                 }
             ]
         else:
+            # 100k chars of input ~ 25k tokens, well under Sonnet's 200k
+            # context. Previous 10k char cap was a defensive holdover from
+            # smaller-context days and silently dropped most of a 16-page
+            # itinerary on real Backroads/G Adventures PDFs.
             messages = [
                 {
                     "role": "user",
-                    "content": f"Extract travel items from this document (filename: {filename}):\n\n{content_for_llm[:10000]}",
+                    "content": (
+                        f"Extract travel items from this document "
+                        f"(filename: {filename}):\n\n{content_for_llm[:100_000]}"
+                    ),
                 }
             ]
 
