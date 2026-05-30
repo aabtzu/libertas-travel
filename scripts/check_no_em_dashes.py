@@ -46,7 +46,7 @@ REGEX_ALLOWLIST_LINES = {
 SCAN_EXTS = {".py", ".html", ".js", ".css", ".md", ".txt", ".toml", ".yml", ".yaml"}
 
 # Top-level dirs to skip entirely.
-SKIP_DIRS = {".venv", "node_modules", ".git", "__pycache__", ".pytest_cache"}
+SKIP_DIRS = {".venv", "node_modules", ".git", "__pycache__", ".pytest_cache", "output"}
 
 
 def is_allowlisted_line(rel: str, line_no: int, line: str) -> bool:
