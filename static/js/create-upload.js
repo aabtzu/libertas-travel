@@ -167,6 +167,41 @@ function processUploadedItems(data, fileName) {
     let addedToIdeas = 0;
     let placementDetails = [];
 
+    // Before placing items, extend the trip's date range to cover any uploaded
+    // items whose dates fall outside (or when no dates exist yet). This means
+    // uploaded flights/hotels land on the right day instead of the Ideas pile.
+    const datedItems = data.items.filter(it => it.title && it.date);
+    if (datedItems.length > 0) {
+        const uploadDates = datedItems.map(it => it.date).sort();
+        const uploadMin = uploadDates[0];
+        const uploadMax = uploadDates[uploadDates.length - 1];
+
+        if (!currentTrip.start_date || !currentTrip.end_date) {
+            // Trip has no dates yet - seed from uploaded items
+            currentTrip.start_date = uploadMin;
+            currentTrip.end_date = uploadMax;
+            const startInput = document.getElementById('editor-start-date');
+            const endInput = document.getElementById('editor-end-date');
+            if (startInput) startInput.value = uploadMin;
+            if (endInput) endInput.value = uploadMax;
+            // Build days array from scratch
+            const start = new Date(uploadMin + 'T12:00:00');
+            const end = new Date(uploadMax + 'T12:00:00');
+            const MS = 86400000;
+            const count = Math.round((end - start) / MS) + 1;
+            currentTrip.days = [];
+            for (let i = 0; i < count; i++) {
+                const d = new Date(start);
+                d.setDate(d.getDate() + i);
+                currentTrip.days.push({ day_number: i + 1, date: _ymd(d), items: [] });
+            }
+        } else {
+            // Extend existing range at either end
+            if (uploadMin < currentTrip.start_date) _extendTripDatesForItem(uploadMin);
+            if (uploadMax > currentTrip.end_date) _extendTripDatesForItem(uploadMax);
+        }
+    }
+
     data.items.forEach(item => {
         if (!item.title) return;
 
@@ -180,7 +215,6 @@ function processUploadedItems(data, fileName) {
             website: item.website || null,
             notes: item.notes || null
         };
-        console.log('processUploadedItems - newItem:', newItem.title, 'end_date:', newItem.end_date);
 
         // Try to find matching day by date or day number
         let placed = false;

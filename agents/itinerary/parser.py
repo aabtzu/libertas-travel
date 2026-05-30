@@ -97,7 +97,7 @@ Return a JSON object with this exact structure:
             "confirmation_number": "if available or null",
             "notes": "any additional notes",
             "day_number": day number as integer or null,
-            "is_home_location": true if this is the traveler's home/departure city, false otherwise
+            "is_home_location": true ONLY for the very first outbound flight/leg leaving the traveler's home city - NOT for the return flight home
         }
     ]
 }
@@ -106,7 +106,7 @@ Important:
 - Extract ALL items/events from the itinerary
 - Be precise with dates and times
 - ALWAYS include the state/region/country with location names for accurate geocoding (e.g. "Homer, Alaska" not just "Homer")
-- Mark home/departure locations with is_home_location: true (these are typically the origin city at start/end of trip)
+- Set is_home_location: true ONLY for the very first departing flight/train (the one leaving the traveler's home city to start the trip). The return flight home at the end of the trip should have is_home_location: false - it is a real trip event. All destination activities, hotels, and connecting flights should have is_home_location: false.
 - For HOTELS/ACCOMMODATIONS: Extract the ACTUAL hotel name and set end_date to the checkout date if available. (e.g. "Taj Palace", "ITC Mughal", "Marriott") NOT generic descriptions like "Hotel stay in Delhi". The hotel name should go in the "title" field.
 - For FLIGHTS: start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available. Title should include flight number and route (e.g. "UA 123 SFO → JFK"). Keep IATA airport codes as-is in the title - do NOT try to expand them to city names (e.g. keep "DEN → BIH" not "Denver → Birmingham"). The location_name should be the destination airport code only (e.g. "BIH" not "Birmingham")
 - For TRAINS (AVE, TGV, Eurostar, Amtrak, subway, metro, rail, etc.): set category to "train". start_time is DEPARTURE time, end_time is ARRIVAL time. Include both if available.

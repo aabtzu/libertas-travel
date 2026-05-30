@@ -227,7 +227,7 @@ def upload_file_handler(
         return {"error": f"Unsupported file type '{suffix}'"}, 400
 
     uploads_dir = out_dir / "uploads"
-    uploads_dir.mkdir(exist_ok=True)
+    uploads_dir.mkdir(parents=True, exist_ok=True)
     try:
         (uploads_dir / filename).write_bytes(file_data)
     except Exception as e:

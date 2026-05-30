@@ -182,9 +182,59 @@ function handleDrop(e) {
         // Insert at the calculated position
         currentTrip.days[targetDayIndex].items.splice(insertAt, 0, item);
 
+        // If the item carries a date from an uploaded plan, extend the trip dates to include it
+        if (item.date && currentTrip.start_date && currentTrip.end_date) {
+            _extendTripDatesForItem(item.date);
+        }
+
         renderDays();
         renderIdeas();
         triggerAutoSave();
+    }
+}
+
+/**
+ * Extend trip start_date / end_date to include itemDate (YYYY-MM-DD).
+ * Adds empty days at the front or back without disturbing existing day items.
+ */
+function _extendTripDatesForItem(itemDate) {
+    const tripStart = new Date(currentTrip.start_date + 'T12:00:00');
+    const tripEnd = new Date(currentTrip.end_date + 'T12:00:00');
+    const d = new Date(itemDate + 'T12:00:00');
+    if (isNaN(d)) return;
+
+    const MS_PER_DAY = 86400000;
+
+    if (d < tripStart) {
+        // Prepend days to the front
+        const extraDays = Math.round((tripStart - d) / MS_PER_DAY);
+        const newDays = [];
+        for (let i = 0; i < extraDays; i++) {
+            const day = new Date(d);
+            day.setDate(day.getDate() + i);
+            newDays.push({ day_number: i + 1, date: _ymd(day), items: [] });
+        }
+        // Renumber and append existing days
+        currentTrip.days.forEach((existing, idx) => {
+            existing.day_number = extraDays + idx + 1;
+            newDays.push(existing);
+        });
+        currentTrip.days = newDays;
+        currentTrip.start_date = itemDate;
+        const startInput = document.getElementById('editor-start-date');
+        if (startInput) startInput.value = itemDate;
+    } else if (d > tripEnd) {
+        // Append days to the back
+        const extraDays = Math.round((d - tripEnd) / MS_PER_DAY);
+        const currentCount = currentTrip.days.length;
+        for (let i = 1; i <= extraDays; i++) {
+            const day = new Date(tripEnd);
+            day.setDate(day.getDate() + i);
+            currentTrip.days.push({ day_number: currentCount + i, date: _ymd(day), items: [] });
+        }
+        currentTrip.end_date = itemDate;
+        const endInput = document.getElementById('editor-end-date');
+        if (endInput) endInput.value = itemDate;
     }
 }
 
