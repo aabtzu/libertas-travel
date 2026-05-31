@@ -95,6 +95,38 @@ class TestBuildItinerary:
         assert itinerary.items[0].is_home_location is True
         assert itinerary.items[1].is_home_location is False
 
+    def test_return_flight_is_not_home_location(self):
+        """Regression: the parser prompt previously told the LLM to mark
+        'home/departure locations' as is_home_location=True, which caused
+        return flights (LIM -> JFK) to be flagged and hidden from the trip.
+        Only the first outbound leg should ever get is_home_location=True."""
+        data = {
+            "title": "Peru Trip",
+            "items": [
+                {
+                    "title": "DL 6063 JFK -> LIM",
+                    "category": "flight",
+                    "is_home_location": True,   # correct: first outbound leg
+                },
+                {
+                    "title": "DL 6252 LIM -> CUZ",
+                    "category": "flight",
+                    "is_home_location": False,
+                },
+                {
+                    "title": "DL 6066 LIM -> JFK",
+                    "category": "flight",
+                    "is_home_location": False,  # must be False: return flight
+                },
+            ],
+        }
+        itinerary = self.parser._build_itinerary(data, "delta.png")
+        flags = [item.is_home_location for item in itinerary.items]
+        assert flags == [True, False, False], (
+            "Return flight must not be marked is_home_location. "
+            f"Got: {flags}"
+        )
+
     def test_missing_fields_use_defaults(self):
         data = {"title": "Minimal Trip", "items": [{"title": "Something"}]}
         itinerary = self.parser._build_itinerary(data, "test.pdf")

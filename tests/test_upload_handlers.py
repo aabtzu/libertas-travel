@@ -128,6 +128,32 @@ def test_upload_plan_does_not_truncate_long_text():
         )
 
 
+def test_upload_creates_missing_uploads_subdir(stub_itinerary, tmp_path, app):
+    """Regression: upload_file_handler used mkdir(exist_ok=True) without
+    parents=True, so a fresh clone with no output/ dir raised FileNotFoundError
+    on the first upload. Confirm it creates output/uploads/ automatically."""
+    nested = tmp_path / "output"
+    # Deliberately do NOT pre-create nested or nested/uploads
+    with (
+        patch("agents.itinerary.parser.ItineraryParser") as parser_cls,
+        patch("agents.itinerary.web_view.ItineraryWebView") as web_view_cls,
+        patch("agents.itinerary.geocoding_worker.queue_geocoding"),
+        patch("agents.create.upload_handlers.db.add_trip", return_value=1),
+    ):
+        parser_cls.return_value.parse_image.return_value = stub_itinerary
+        web_view_cls.return_value.generate.return_value = None
+
+        result, status = upload_file_handler(
+            user_id=1,
+            file_data=_TINY_PNG_BYTES,
+            filename="receipt.png",
+            output_dir=nested,
+        )
+
+    assert status == 200, f"Expected 200 but got {status}: {result}"
+    assert (nested / "uploads").is_dir(), "uploads/ subdir was not created"
+
+
 def test_unsupported_extension_returns_400(tmp_path, app):
     """Confirm the supported-extension gate still rejects junk."""
     result, status = upload_file_handler(
