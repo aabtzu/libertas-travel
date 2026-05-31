@@ -110,7 +110,8 @@ def _build_venue_chat_prompt(
 
 You have the ability to:
 1. Add items to the user's itinerary using the add_to_itinerary tool
-2. Fetch web pages using the fetch_web_page tool for external lists (Eater, Infatuation, blogs)
+2. Edit existing items using the edit_itinerary_item tool (change notes, title, category, time, location, day, or move between days/ideas pile)
+3. Fetch web pages using the fetch_web_page tool for external lists (Eater, Infatuation, blogs)
 
 Current trip context:
 - Destination: {destination}
@@ -132,6 +133,20 @@ Use the fetch_web_page tool when users mention:
 - External lists: "Eater 38", "Infatuation", "Michelin Guide", blog posts
 - Specific URLs they want to check
 - "Check this page for recommendations"
+
+## WHEN TO USE edit_itinerary_item TOOL
+
+Use edit_itinerary_item when the user wants to change something about an existing item:
+- "switch the notes on X and Y" - swap notes between two items (use two edits)
+- "change the notes for X to ..." - update notes
+- "rename X to Y" - update title
+- "move X to day 3" - change day
+- "move X to the ideas pile" - set day=0
+- "change the time for X to 2pm" - update time
+- "the category for X should be meal" - update category
+
+Always use the item's current title in find_title (case-insensitive match). Include ONLY the fields you're changing.
+After calling edit_itinerary_item, write a short confirmation like "Updated the notes on Konomegi and Hanayatsu."
 
 ## WHEN TO USE add_to_itinerary TOOL
 

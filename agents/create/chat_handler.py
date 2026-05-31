@@ -63,6 +63,67 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
 
     tools = [
         {
+            "name": "edit_itinerary_item",
+            "description": "Edit an existing item already in the user's itinerary or ideas pile. Use this when the user wants to change the notes, title, category, time, location, or day of an existing item, or move it between days/ideas pile. Identify the item by its current title.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "edits": {
+                        "type": "array",
+                        "description": "List of edits to apply",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "find_title": {
+                                    "type": "string",
+                                    "description": "The current title of the item to find (case-insensitive match)",
+                                },
+                                "title": {
+                                    "type": "string",
+                                    "description": "New title (omit to keep existing)",
+                                },
+                                "notes": {
+                                    "type": "string",
+                                    "description": "New notes text (omit to keep existing)",
+                                },
+                                "category": {
+                                    "type": "string",
+                                    "enum": [
+                                        "flight",
+                                        "meal",
+                                        "hotel",
+                                        "activity",
+                                        "attraction",
+                                        "transport",
+                                        "other",
+                                    ],
+                                    "description": "New category (omit to keep existing)",
+                                },
+                                "time": {
+                                    "type": "string",
+                                    "description": "New time in 24-hour format like '14:30' (omit to keep existing, empty string to clear)",
+                                },
+                                "location": {
+                                    "type": "string",
+                                    "description": "New location (omit to keep existing)",
+                                },
+                                "website": {
+                                    "type": "string",
+                                    "description": "New website URL (omit to keep existing)",
+                                },
+                                "day": {
+                                    "type": "integer",
+                                    "description": "Move item to this day number. Use 0 or omit to move to ideas pile. Omit entirely to keep in current location.",
+                                },
+                            },
+                            "required": ["find_title"],
+                        },
+                    }
+                },
+                "required": ["edits"],
+            },
+        },
+        {
             "name": "add_to_itinerary",
             "description": "Add one or more items to the user's trip itinerary. Use this tool whenever the user asks to add, include, schedule, book, or plan something for their trip.",
             "input_schema": {
@@ -146,6 +207,7 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
         max_iterations = 3
         web_fetch_context = None
         add_items = []
+        edit_items = []
         response_text = ""
 
         for _iteration in range(max_iterations):
@@ -162,7 +224,15 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
                 if block.type == "text":
                     response_text = block.text
                 elif block.type == "tool_use":
-                    if block.name == "add_to_itinerary":
+                    if block.name == "edit_itinerary_item":
+                        tool_input = block.input
+                        if "edits" in tool_input:
+                            edit_items = tool_input["edits"]
+                            for edit in edit_items:
+                                print(
+                                    f"[CREATE CHAT] Tool edit_item: find_title='{edit.get('find_title')}'"
+                                )
+                    elif block.name == "add_to_itinerary":
                         tool_input = block.input
                         if "items" in tool_input:
                             add_items = tool_input["items"]
@@ -227,6 +297,7 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
             "response": display_text,
             "suggested_items": suggested_items,
             "add_items": add_items,
+            "edit_items": edit_items,
         }, 200
 
     except Exception as e:

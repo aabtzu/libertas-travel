@@ -80,6 +80,11 @@ async function handleChatMessage(message, abortController) {
         const data = await response.json();
 
         if (data.success) {
+            // Process any items to edit directly
+            if (data.edit_items && data.edit_items.length > 0) {
+                processEditItems(data.edit_items);
+            }
+
             // Process any items to add directly
             if (data.add_items && data.add_items.length > 0) {
                 processAddItems(data.add_items);
@@ -140,6 +145,92 @@ function isDuplicateItem(title) {
     return currentTrip.days.some(day =>
         (day.items || []).some(existing => (existing.title || '').toLowerCase().trim() === normalizedTitle)
     );
+}
+
+/**
+ * Process item edits from chat (from edit_items in response).
+ * Each edit has find_title plus any subset of: title, notes, category, time, location, website, day.
+ * day=0 moves item to ideas pile; day>0 moves it to that day; day absent = stay in place.
+ */
+function processEditItems(edits) {
+    if (!edits || edits.length === 0) return;
+
+    let changedCount = 0;
+
+    edits.forEach(edit => {
+        const findTitle = (edit.find_title || '').toLowerCase().trim();
+        if (!findTitle) return;
+
+        // Find the item in ideas or days
+        let foundItem = null;
+        let foundIn = null; // 'ideas' or day index (number)
+
+        const ideasMatch = currentTrip.ideas.findIndex(
+            it => (it.title || '').toLowerCase().trim() === findTitle
+        );
+        if (ideasMatch >= 0) {
+            foundItem = currentTrip.ideas[ideasMatch];
+            foundIn = 'ideas';
+        } else {
+            outer: for (let d = 0; d < currentTrip.days.length; d++) {
+                const items = currentTrip.days[d].items || [];
+                for (let i = 0; i < items.length; i++) {
+                    if ((items[i].title || '').toLowerCase().trim() === findTitle) {
+                        foundItem = items[i];
+                        foundIn = d;
+                        break outer;
+                    }
+                }
+            }
+        }
+
+        if (!foundItem) {
+            console.warn('[edit_item] Item not found:', edit.find_title);
+            return;
+        }
+
+        // Apply field updates (only keys explicitly present in the edit)
+        if ('title' in edit) foundItem.title = edit.title;
+        if ('notes' in edit) foundItem.notes = edit.notes;
+        if ('category' in edit) foundItem.category = edit.category;
+        if ('time' in edit) foundItem.time = edit.time || null;
+        if ('location' in edit) foundItem.location = edit.location;
+        if ('website' in edit) foundItem.website = edit.website;
+
+        // Handle day/location move
+        if ('day' in edit) {
+            const targetDay = edit.day; // 0 = ideas pile, 1+ = day number
+
+            // Remove from current location
+            if (foundIn === 'ideas') {
+                currentTrip.ideas = currentTrip.ideas.filter(it => it !== foundItem);
+            } else {
+                currentTrip.days[foundIn].items = currentTrip.days[foundIn].items.filter(it => it !== foundItem);
+            }
+
+            // Insert at new location
+            if (!targetDay || targetDay <= 0) {
+                currentTrip.ideas.push(foundItem);
+            } else {
+                const dayIndex = targetDay - 1;
+                while (currentTrip.days.length <= dayIndex) {
+                    const newDayNum = currentTrip.days.length + 1;
+                    currentTrip.days.push({ day_number: newDayNum, date: null, items: [] });
+                }
+                if (!currentTrip.days[dayIndex].items) currentTrip.days[dayIndex].items = [];
+                currentTrip.days[dayIndex].items.push(foundItem);
+            }
+        }
+
+        changedCount++;
+    });
+
+    if (changedCount > 0) {
+        currentTrip.days.forEach((day, index) => sortDayItemsByTime(index));
+        renderDays();
+        renderIdeas();
+        triggerAutoSave();
+    }
 }
 
 /**
