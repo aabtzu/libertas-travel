@@ -91,8 +91,16 @@ async function handleChatMessage(message, abortController) {
                 suggestedItems = suggestedItems.filter(item => !isDuplicateItem(item.title));
             }
 
+            // Fallback: if the LLM added items but sent no text, synthesize a confirmation
+            // so the user never sees an empty bubble.
+            let responseText = data.response;
+            if (!responseText && data.add_items && data.add_items.length > 0) {
+                const names = data.add_items.map(it => `**${it.title}**`).join(', ');
+                responseText = `Added ${names} to your trip.`;
+            }
+
             // Add response with suggested items (filtered)
-            addChatMessage('assistant', data.response, suggestedItems);
+            addChatMessage('assistant', responseText, suggestedItems);
         } else {
             // Show specific error message
             const errorMsg = data.error || 'Unknown error occurred';
