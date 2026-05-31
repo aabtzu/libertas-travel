@@ -121,7 +121,10 @@ function renderGrid() {
                     .find(d => d.day_number > day.day_number && lodgingDayNums.has(d.day_number));
                 withinStay = !nextLodgingDay || day.day_number < nextLodgingDay.day_number;
             }
-            if (!isLastDay && !hasFlight && withinStay) {
+            // Only stop carry on a flight day if it's also the trip's last day
+            // (departure home). Mid-trip flights should not break the lodging chain.
+            const isFlightDeparture = hasFlight && isLastDay;
+            if (!isLastDay && !isFlightDeparture && withinStay) {
                 currentNightStay = lastNightStay.title || lastNightStay.location || null;
                 isCarried = true;
             } else {

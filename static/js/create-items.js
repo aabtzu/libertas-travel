@@ -231,6 +231,13 @@ function editItem(dayIndex, itemIndex) {
             longitude: item.longitude || null,
         };
 
+        // If the item's end_date falls outside the trip, extend the trip to cover it
+        const savedEndDate = document.getElementById('item-end-date').value;
+        if (savedEndDate && currentTrip.start_date && currentTrip.end_date) {
+            if (savedEndDate > currentTrip.end_date) _extendTripDatesForItem(savedEndDate);
+            if (savedEndDate < currentTrip.start_date) _extendTripDatesForItem(savedEndDate);
+        }
+
         hideAddItemModal();
         sortDayItemsByTime(dayIndex);
         renderDays();
