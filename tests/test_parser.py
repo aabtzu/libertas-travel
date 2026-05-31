@@ -106,7 +106,7 @@ class TestBuildItinerary:
                 {
                     "title": "DL 6063 JFK -> LIM",
                     "category": "flight",
-                    "is_home_location": True,   # correct: first outbound leg
+                    "is_home_location": True,  # correct: first outbound leg
                 },
                 {
                     "title": "DL 6252 LIM -> CUZ",
@@ -123,8 +123,7 @@ class TestBuildItinerary:
         itinerary = self.parser._build_itinerary(data, "delta.png")
         flags = [item.is_home_location for item in itinerary.items]
         assert flags == [True, False, False], (
-            "Return flight must not be marked is_home_location. "
-            f"Got: {flags}"
+            f"Return flight must not be marked is_home_location. Got: {flags}"
         )
 
     def test_missing_fields_use_defaults(self):
