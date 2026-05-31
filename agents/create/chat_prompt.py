@@ -138,11 +138,12 @@ Use the fetch_web_page tool when users mention:
 ## WHEN TO USE delete_itinerary_item TOOL
 
 Use delete_itinerary_item when the user says "delete", "remove", or "get rid of" an existing item.
-- "delete the Hertz rental" - pass ["Hertz Rental Car"]
-- "remove the flight on Jun 15" - find the flight title and pass it
-- "get rid of the hotel" - pass the hotel's title
+- "delete the Hertz rental" - pass title="Hertz Rental Car"
+- "remove the flight on Jun 15" - pass the flight title and day number
+- "delete the mariners game on jun 16" - pass title="Mariners Game", day=7 (the day number for Jun 16)
+- When multiple items share the same title, ALWAYS include the day number to avoid deleting the wrong one.
 
-Always confirm with something like "Removed Hertz Rental Car from your trip."
+Always confirm with something like "Removed Mariners Game from Day 7 (Jun 16)."
 
 ## WHEN TO USE edit_itinerary_item TOOL
 

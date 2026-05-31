@@ -191,13 +191,26 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "titles": {
+                    "items": {
                         "type": "array",
-                        "description": "List of item titles to delete (case-insensitive match)",
-                        "items": {"type": "string"},
+                        "description": "List of items to delete",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string",
+                                    "description": "Title of the item to delete (case-insensitive match)",
+                                },
+                                "day": {
+                                    "type": "integer",
+                                    "description": "Day number to narrow the match when multiple items share the same title (e.g. Mariners Game on day 7 vs day 8). Omit to delete all matching items.",
+                                },
+                            },
+                            "required": ["title"],
+                        },
                     }
                 },
-                "required": ["titles"],
+                "required": ["items"],
             },
         },
         {
@@ -250,10 +263,12 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
                                 )
                     elif block.name == "delete_itinerary_item":
                         tool_input = block.input
-                        if "titles" in tool_input:
-                            delete_items = tool_input["titles"]
-                            for title in delete_items:
-                                print(f"[CREATE CHAT] Tool delete_item: title='{title}'")
+                        if "items" in tool_input:
+                            delete_items = tool_input["items"]
+                            for d in delete_items:
+                                print(
+                                    f"[CREATE CHAT] Tool delete_item: title='{d.get('title')}' day={d.get('day')}"
+                                )
                     elif block.name == "add_to_itinerary":
                         tool_input = block.input
                         if "items" in tool_input:

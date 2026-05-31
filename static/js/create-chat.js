@@ -100,6 +100,13 @@ async function handleChatMessage(message, abortController) {
             // Fallback: if the LLM added items but sent no text, synthesize a confirmation
             // so the user never sees an empty bubble.
             let responseText = data.response;
+            if (!responseText && data.delete_items && data.delete_items.length > 0) {
+                const names = data.delete_items.map(it => {
+                    const dayLabel = it.day ? ` (Day ${it.day})` : '';
+                    return `**${it.title}**${dayLabel}`;
+                });
+                responseText = `Removed ${names.join(', ')} from your trip.`;
+            }
             if (!responseText && data.add_items && data.add_items.length > 0) {
                 const descriptions = data.add_items.map(it => {
                     const dayLabel = it.day ? ` (Day ${it.day})` : '';
@@ -152,18 +159,26 @@ function isDuplicateItem(title) {
  * Process item deletes from chat (from delete_items in response).
  * titles is an array of item title strings to remove (case-insensitive).
  */
-function processDeleteItems(titles) {
-    if (!titles || titles.length === 0) return;
+function processDeleteItems(deleteRequests) {
+    if (!deleteRequests || deleteRequests.length === 0) return;
     let changed = false;
-    titles.forEach(title => {
-        const lower = (title || '').toLowerCase().trim();
+    deleteRequests.forEach(req => {
+        const lower = (req.title || '').toLowerCase().trim();
         if (!lower) return;
-        const beforeIdeas = currentTrip.ideas.length;
-        currentTrip.ideas = currentTrip.ideas.filter(
-            it => (it.title || '').toLowerCase().trim() !== lower
-        );
-        if (currentTrip.ideas.length < beforeIdeas) { changed = true; return; }
+        const targetDay = req.day || null; // optional day number to narrow match
+
+        // Check ideas pile (no day number applies here)
+        if (!targetDay) {
+            const before = currentTrip.ideas.length;
+            currentTrip.ideas = currentTrip.ideas.filter(
+                it => (it.title || '').toLowerCase().trim() !== lower
+            );
+            if (currentTrip.ideas.length < before) { changed = true; return; }
+        }
+
+        // Check days - if day number given, only remove from that day
         currentTrip.days.forEach(day => {
+            if (targetDay && day.day_number !== targetDay) return;
             const before = (day.items || []).length;
             day.items = (day.items || []).filter(
                 it => (it.title || '').toLowerCase().trim() !== lower
