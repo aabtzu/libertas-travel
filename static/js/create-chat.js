@@ -80,12 +80,13 @@ async function handleChatMessage(message, abortController) {
         const data = await response.json();
 
         if (data.success) {
-            // Process any items to edit directly
+            // Process deletes first, then edits, then adds
+            if (data.delete_items && data.delete_items.length > 0) {
+                processDeleteItems(data.delete_items);
+            }
             if (data.edit_items && data.edit_items.length > 0) {
                 processEditItems(data.edit_items);
             }
-
-            // Process any items to add directly
             if (data.add_items && data.add_items.length > 0) {
                 processAddItems(data.add_items);
             }
@@ -145,6 +146,36 @@ function isDuplicateItem(title) {
     return currentTrip.days.some(day =>
         (day.items || []).some(existing => (existing.title || '').toLowerCase().trim() === normalizedTitle)
     );
+}
+
+/**
+ * Process item deletes from chat (from delete_items in response).
+ * titles is an array of item title strings to remove (case-insensitive).
+ */
+function processDeleteItems(titles) {
+    if (!titles || titles.length === 0) return;
+    let changed = false;
+    titles.forEach(title => {
+        const lower = (title || '').toLowerCase().trim();
+        if (!lower) return;
+        const beforeIdeas = currentTrip.ideas.length;
+        currentTrip.ideas = currentTrip.ideas.filter(
+            it => (it.title || '').toLowerCase().trim() !== lower
+        );
+        if (currentTrip.ideas.length < beforeIdeas) { changed = true; return; }
+        currentTrip.days.forEach(day => {
+            const before = (day.items || []).length;
+            day.items = (day.items || []).filter(
+                it => (it.title || '').toLowerCase().trim() !== lower
+            );
+            if (day.items.length < before) changed = true;
+        });
+    });
+    if (changed) {
+        renderDays();
+        renderIdeas();
+        triggerAutoSave();
+    }
 }
 
 /**

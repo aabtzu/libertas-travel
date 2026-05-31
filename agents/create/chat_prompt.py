@@ -111,7 +111,8 @@ def _build_venue_chat_prompt(
 You have the ability to:
 1. Add items to the user's itinerary using the add_to_itinerary tool
 2. Edit existing items using the edit_itinerary_item tool (change notes, title, category, time, location, day, or move between days/ideas pile)
-3. Fetch web pages using the fetch_web_page tool for external lists (Eater, Infatuation, blogs)
+3. Delete items using the delete_itinerary_item tool
+4. Fetch web pages using the fetch_web_page tool for external lists (Eater, Infatuation, blogs)
 
 Current trip context:
 - Destination: {destination}
@@ -133,6 +134,15 @@ Use the fetch_web_page tool when users mention:
 - External lists: "Eater 38", "Infatuation", "Michelin Guide", blog posts
 - Specific URLs they want to check
 - "Check this page for recommendations"
+
+## WHEN TO USE delete_itinerary_item TOOL
+
+Use delete_itinerary_item when the user says "delete", "remove", or "get rid of" an existing item.
+- "delete the Hertz rental" - pass ["Hertz Rental Car"]
+- "remove the flight on Jun 15" - find the flight title and pass it
+- "get rid of the hotel" - pass the hotel's title
+
+Always confirm with something like "Removed Hertz Rental Car from your trip."
 
 ## WHEN TO USE edit_itinerary_item TOOL
 

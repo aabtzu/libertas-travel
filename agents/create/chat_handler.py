@@ -186,6 +186,21 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
             },
         },
         {
+            "name": "delete_itinerary_item",
+            "description": "Delete one or more items from the user's itinerary or ideas pile. Use this when the user says 'delete', 'remove', or 'get rid of' an existing item.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "titles": {
+                        "type": "array",
+                        "description": "List of item titles to delete (case-insensitive match)",
+                        "items": {"type": "string"},
+                    }
+                },
+                "required": ["titles"],
+            },
+        },
+        {
             "name": "fetch_web_page",
             "description": "Fetch a web page to extract venue recommendations. Use this when users mention external lists like Eater, Infatuation, blog posts, or provide URLs.",
             "input_schema": {
@@ -208,6 +223,7 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
         web_fetch_context = None
         add_items = []
         edit_items = []
+        delete_items = []
         response_text = ""
 
         for _iteration in range(max_iterations):
@@ -232,6 +248,12 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
                                 print(
                                     f"[CREATE CHAT] Tool edit_item: find_title='{edit.get('find_title')}'"
                                 )
+                    elif block.name == "delete_itinerary_item":
+                        tool_input = block.input
+                        if "titles" in tool_input:
+                            delete_items = tool_input["titles"]
+                            for title in delete_items:
+                                print(f"[CREATE CHAT] Tool delete_item: title='{title}'")
                     elif block.name == "add_to_itinerary":
                         tool_input = block.input
                         if "items" in tool_input:
@@ -298,6 +320,7 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
             "suggested_items": suggested_items,
             "add_items": add_items,
             "edit_items": edit_items,
+            "delete_items": delete_items,
         }, 200
 
     except Exception as e:
