@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import agents.itinerary.mapper_geocode as mapper_geocode
 from agents.itinerary.mapper import ItineraryMapper
 from agents.itinerary.models import Itinerary, ItineraryItem, Location
 
@@ -48,53 +49,43 @@ def _make_itinerary(title: str = "Paris Trip", items=None) -> Itinerary:
 class TestIataCache:
     def setup_method(self):
         # Clear the class-level cache between tests
-        ItineraryMapper._iata_cache.clear()
+        mapper_geocode._iata_cache.clear()
 
     def test_skip_words_return_empty_without_llm(self):
-        mapper = ItineraryMapper()
         for word in ["THE", "AND", "FOR", "DAY", "VIA"]:
-            result = mapper._resolve_iata_code(word)
+            result = mapper_geocode.resolve_iata_code(word)
             assert result == "", f"Expected empty for skip word {word}"
 
     def test_skip_words_cached(self):
-        mapper = ItineraryMapper()
-        mapper._resolve_iata_code("THE")
-        assert "THE" in ItineraryMapper._iata_cache
-        assert ItineraryMapper._iata_cache["THE"] == ""
+        mapper_geocode.resolve_iata_code("THE")
+        assert "THE" in mapper_geocode._iata_cache
+        assert mapper_geocode._iata_cache["THE"] == ""
 
     def test_cache_hit_skips_llm(self):
-        ItineraryMapper._iata_cache["LAX"] = "Los Angeles International Airport, Los Angeles, CA"
-        mapper = ItineraryMapper()
+        mapper_geocode._iata_cache["LAX"] = "Los Angeles International Airport, Los Angeles, CA"
         with patch("agents.common.llm.make_llm") as mock_make_llm:
-            result = mapper._resolve_iata_code("LAX")
+            result = mapper_geocode.resolve_iata_code("LAX")
             mock_make_llm.assert_not_called()
         assert "Los Angeles" in result
 
     def test_cache_key_includes_context(self):
-        mapper = ItineraryMapper()
-        ItineraryMapper._iata_cache["BIH|Flight: DEN → BIH"] = (
+        mapper_geocode._iata_cache["BIH|Flight: DEN -> BIH"] = (
             "Eastern Sierra Regional Airport, Bishop, CA"
         )
-        result = mapper._resolve_iata_code("BIH", context="Flight: DEN → BIH")
+        result = mapper_geocode.resolve_iata_code("BIH", context="Flight: DEN -> BIH")
         assert "Bishop" in result
 
     def test_llm_failure_caches_empty(self):
-        mapper = ItineraryMapper()
-        with patch(
-            "agents.itinerary.mapper.ItineraryMapper._resolve_iata_code",
-            wraps=mapper._resolve_iata_code,
-        ):
-            with patch("agents.common.llm.make_llm") as mock_make_llm:
-                mock_make_llm.return_value.call_api.side_effect = Exception("API error")
-                result = mapper._resolve_iata_code("XYZ")
+        with patch("agents.common.llm.make_llm") as mock_make_llm:
+            mock_make_llm.return_value.call_api.side_effect = Exception("API error")
+            result = mapper_geocode.resolve_iata_code("XYZ")
         assert result == ""
-        assert ItineraryMapper._iata_cache.get("XYZ") == ""
+        assert mapper_geocode._iata_cache.get("XYZ") == ""
 
     def test_none_response_caches_empty(self):
-        mapper = ItineraryMapper()
         with patch("agents.common.llm.make_llm") as mock_make_llm:
             mock_make_llm.return_value.call_api.return_value = "NONE"
-            result = mapper._resolve_iata_code("ZZZ")
+            result = mapper_geocode.resolve_iata_code("ZZZ")
         assert result == ""
 
 
@@ -108,8 +99,8 @@ class TestRegionHintCache:
         mapper = ItineraryMapper()
         itinerary = _make_itinerary("Tokyo Trip", [_make_item("Sushi dinner", "Tokyo")])
 
-        with patch.object(
-            mapper, "_extract_destination_with_llm", return_value="Japan"
+        with patch(
+            "agents.itinerary.mapper.extract_destination_with_llm", return_value="Japan"
         ) as mock_llm:
             result1 = mapper._get_region_hint(itinerary)
             result2 = mapper._get_region_hint(itinerary)
@@ -123,13 +114,13 @@ class TestRegionHintCache:
         itin1 = _make_itinerary("Tokyo Trip", [_make_item("Sushi", "Tokyo")])
         itin2 = _make_itinerary("Paris Trip", [_make_item("Croissant", "Paris")])
 
-        with patch.object(
-            mapper, "_extract_destination_with_llm", return_value="somewhere"
+        with patch(
+            "agents.itinerary.mapper.extract_destination_with_llm", return_value="somewhere"
         ) as mock_llm:
             mapper._get_region_hint(itin1)
             mapper._get_region_hint(itin2)
 
-        # Different itinerary objects → two separate LLM calls
+        # Different itinerary objects -> two separate LLM calls
         assert mock_llm.call_count == 2
 
     def test_no_title_no_items_returns_empty_without_llm(self):
@@ -137,7 +128,7 @@ class TestRegionHintCache:
         mapper = ItineraryMapper()
         itinerary = _make_itinerary("", items=[])
 
-        with patch.object(mapper, "_extract_destination_with_llm") as mock_llm:
+        with patch("agents.itinerary.mapper.extract_destination_with_llm") as mock_llm:
             result = mapper._get_region_hint(itinerary)
 
         mock_llm.assert_not_called()
@@ -147,9 +138,12 @@ class TestRegionHintCache:
         mapper = ItineraryMapper()
         itinerary = _make_itinerary("Tokyo Trip", [_make_item("Sushi", "Tokyo")])
 
-        with patch.object(mapper, "_extract_destination_with_llm", side_effect=Exception("fail")):
-            with patch.object(
-                mapper, "_get_region_hint_fallback", return_value="Japan"
+        with patch(
+            "agents.itinerary.mapper.extract_destination_with_llm",
+            side_effect=Exception("fail"),
+        ):
+            with patch(
+                "agents.itinerary.mapper.get_region_hint_fallback", return_value="Japan"
             ) as mock_fallback:
                 result = mapper._get_region_hint(itinerary)
 
@@ -160,7 +154,7 @@ class TestRegionHintCache:
         mapper = ItineraryMapper()
         itinerary = _make_itinerary("Rome Trip", [_make_item("Colosseum", "Rome")])
 
-        with patch.object(mapper, "_extract_destination_with_llm", return_value="Italy"):
+        with patch("agents.itinerary.mapper.extract_destination_with_llm", return_value="Italy"):
             mapper._get_region_hint(itinerary)
 
         assert mapper._cached_region_hint == "Italy"
@@ -247,34 +241,25 @@ class TestHomeLocationExclusion:
 
 class TestBuildFlightQueries:
     def setup_method(self):
-        ItineraryMapper._iata_cache.clear()
+        mapper_geocode._iata_cache.clear()
 
     def test_iata_location_field_used_first(self):
-        # Stub the IATA resolver instead of poking _iata_cache directly, the
-        # cache key includes context (f"{iata}|{context}"), so seeding by
-        # bare code misses and the real resolver hits Claude (and 401s in CI).
-        from unittest.mock import patch
-
-        mapper = ItineraryMapper()
-        item = _make_item("UA 100 JFK → CDG", "CDG", category="flight")
-        with patch.object(
-            mapper,
-            "_resolve_iata_code",
+        item = _make_item("UA 100 JFK -> CDG", "CDG", category="flight")
+        with patch(
+            "agents.itinerary.mapper_geocode.resolve_iata_code",
             return_value="Charles de Gaulle Airport, Paris, France",
         ):
-            queries = mapper._build_flight_queries(item, "CDG", "France")
+            queries = mapper_geocode.build_flight_queries(item, "CDG", "France")
         assert any("Charles de Gaulle" in q for q in queries)
 
     def test_skip_word_iata_falls_through_to_city_queries(self):
-        ItineraryMapper._iata_cache["THE"] = ""
-        mapper = ItineraryMapper()
+        mapper_geocode._iata_cache["THE"] = ""
         item = _make_item("Flight to THE", "THE", category="flight")
-        queries = mapper._build_flight_queries(item, "THE", "")
+        queries = mapper_geocode.build_flight_queries(item, "THE", "")
         # Should still produce city-based airport queries
         assert any("Airport" in q for q in queries)
 
     def test_non_iata_location_generates_airport_queries(self):
-        mapper = ItineraryMapper()
         item = _make_item("Flight to Vienna", "Vienna", category="flight")
-        queries = mapper._build_flight_queries(item, "Vienna", "Austria")
+        queries = mapper_geocode.build_flight_queries(item, "Vienna", "Austria")
         assert any("Vienna" in q and "Airport" in q for q in queries)
