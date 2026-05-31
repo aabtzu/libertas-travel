@@ -142,27 +142,45 @@ function renderGrid() {
         tableHtml += `<td style="font-weight:600;white-space:nowrap;">${dayLabel}</td>`;
 
         // Travel column
-        tableHtml += '<td>' + formatColumnItems(travelItems) + '</td>';
+        tableHtml += '<td>' + formatColumnItems(travelItems, false, index) + '</td>';
 
         // Activity column
-        tableHtml += '<td>' + formatColumnItems(activityItems) + '</td>';
+        tableHtml += '<td>' + formatColumnItems(activityItems, false, index) + '</td>';
 
         // Night Stay column
         if (currentNightStay) {
             const carriedClass = isCarried ? ' carried' : '';
-            tableHtml += `<td><div class="night-stay${carriedClass}"><i class="fas fa-bed"></i>${escapeHtml(currentNightStay)}</div></td>`;
+            // Find the lodging item index so clicking it opens the edit modal
+            const lodgingItemIndex = lodgingItems.length > 0
+                ? (day.items || []).indexOf(lodgingItems[lodgingItems.length - 1])
+                : -1;
+            const lodgingAttrs = lodgingItemIndex >= 0
+                ? ` data-day-index="${index}" data-item-index="${lodgingItemIndex}" style="cursor:pointer" title="Click to edit"`
+                : '';
+            tableHtml += `<td><div class="night-stay${carriedClass}"${lodgingAttrs}><i class="fas fa-bed"></i>${escapeHtml(currentNightStay)}</div></td>`;
         } else {
             tableHtml += '<td><span class="column-empty">-</span></td>';
         }
 
         // Notes column
-        tableHtml += '<td>' + formatColumnItems(notesItems, true) + '</td>';
+        tableHtml += '<td>' + formatColumnItems(notesItems, true, index) + '</td>';
 
         tableHtml += '</tr>';
     });
 
     tableHtml += '</tbody></table></div>';
     container.innerHTML = tableHtml;
+
+    // Click handler - open edit modal for any item with data-day-index / data-item-index
+    container.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-day-index][data-item-index]');
+        if (!target) return;
+        const dayIndex = parseInt(target.dataset.dayIndex);
+        const itemIndex = parseInt(target.dataset.itemIndex);
+        if (!isNaN(dayIndex) && !isNaN(itemIndex)) {
+            editItem(dayIndex, itemIndex);
+        }
+    });
 }
 
 /**
@@ -259,12 +277,17 @@ function showCalendarMorePopup(element) {
 /**
  * Format items for a column cell (shared formatting with list view)
  */
-function formatColumnItems(items, isNotes = false) {
+function formatColumnItems(items, isNotes = false, dayIndex = null) {
     if (items.length === 0) {
         return '<span class="column-empty">-</span>';
     }
 
-    return items.map(item => renderItemCard(item, { showNotes: isNotes, compact: true })).join('');
+    return items.map(item => {
+        const itemIndex = dayIndex !== null
+            ? (currentTrip.days[dayIndex].items || []).indexOf(item)
+            : null;
+        return renderItemCard(item, { showNotes: isNotes, compact: true, dayIndex, itemIndex });
+    }).join('');
 }
 
 /**
@@ -286,8 +309,11 @@ function renderItemCard(item, options = {}) {
     const locationStr = item.location || '';
 
     if (compact) {
-        // Compact mode for grid view
-        let html = `<div class="column-item ${cat}">`;
+        // Compact mode for grid view - stamp data attrs so click handler can open edit modal
+        const dataAttrs = (dayIndex !== null && itemIndex !== null && itemIndex >= 0)
+            ? ` data-day-index="${dayIndex}" data-item-index="${itemIndex}" style="cursor:pointer" title="Click to edit"`
+            : '';
+        let html = `<div class="column-item ${cat}"${dataAttrs}>`;
         html += `<div class="column-item-title"><i class="fas ${iconClass} column-item-icon"></i> ${escapeHtml(item.title)}</div>`;
         if (timeStr) {
             html += `<div class="column-item-time"><i class="fas fa-clock"></i> ${timeStr}</div>`;
