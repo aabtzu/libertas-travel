@@ -95,8 +95,12 @@ async function handleChatMessage(message, abortController) {
             // so the user never sees an empty bubble.
             let responseText = data.response;
             if (!responseText && data.add_items && data.add_items.length > 0) {
-                const names = data.add_items.map(it => `**${it.title}**`).join(', ');
-                responseText = `Added ${names} to your trip.`;
+                const descriptions = data.add_items.map(it => {
+                    const dayLabel = it.day ? ` (Day ${it.day})` : '';
+                    const timeLabel = it.time ? ` at ${it.time}` : '';
+                    return `**${it.title}**${dayLabel}${timeLabel}`;
+                });
+                responseText = `Added ${descriptions.join(', ')} to your trip.`;
             }
 
             // Add response with suggested items (filtered)
@@ -146,10 +150,16 @@ function processAddItems(items) {
 
     let addedCount = 0;
     items.forEach(item => {
-        // Check for duplicates before adding
-        if (isDuplicateItem(item.title)) {
-            addChatMessage('assistant', `**${item.title}** is already in your trip. If you want to add it again, rename or delete the existing one first.`);
-            return;
+        // Only block duplicates on the exact same day - same event on different
+        // days (e.g. Mariners Game on Jun 16, 17, 18) is intentional and fine.
+        const targetDayIndex = item.day ? item.day - 1 : -1;
+        if (targetDayIndex >= 0 && targetDayIndex < currentTrip.days.length) {
+            const dayItems = currentTrip.days[targetDayIndex].items || [];
+            const titleLower = (item.title || '').toLowerCase().trim();
+            if (dayItems.some(ex => (ex.title || '').toLowerCase().trim() === titleLower)) {
+                addChatMessage('assistant', `**${item.title}** is already on that day.`);
+                return;
+            }
         }
 
         const newItem = {
