@@ -689,7 +689,8 @@
 
 .item-meta {
     display: flex;
-    gap: 12px;
+    flex-direction: column;
+    gap: 3px;
     font-size: 0.85rem;
     color: #666;
 }
