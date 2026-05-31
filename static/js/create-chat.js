@@ -140,7 +140,7 @@ function processAddItems(items) {
     items.forEach(item => {
         // Check for duplicates before adding
         if (isDuplicateItem(item.title)) {
-            console.log('Duplicate item skipped in processAddItems:', item.title);
+            addChatMessage('assistant', `**${item.title}** is already in your trip. If you want to add it again, rename or delete the existing one first.`);
             return;
         }
 
