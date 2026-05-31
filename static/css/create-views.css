@@ -224,6 +224,8 @@
     border-radius: 6px;
     border-left: 3px solid #ddd;
     background: #f8f9fa;
+    display: flex;
+    flex-direction: column;
 }
 
 .column-item:last-child {
