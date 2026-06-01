@@ -260,6 +260,13 @@ def format_column_item(item: ItineraryItem) -> str:
             f'<div class="column-item-location"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</div>'
         )
 
+    # Display notes/description if present
+    item_notes = item.notes or item.description or ""
+    if item_notes:
+        parts.append(
+            f'<div class="column-item-notes">{html_module.escape(item_notes[:200])}</div>'
+        )
+
     parts.append("</div>")
     return "\n".join(parts)
 

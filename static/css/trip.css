@@ -276,6 +276,14 @@
     margin-top: 4px;
 }
 
+.column-item-notes {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 4px;
+    font-style: italic;
+    line-height: 1.4;
+}
+
 /* ==================== Night Stay ==================== */
 .night-stay {
     background: #f3e5f5;
