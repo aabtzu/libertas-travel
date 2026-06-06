@@ -40,6 +40,7 @@ REGEX_ALLOWLIST_LINES = {
     # path -> set of line numbers (1-indexed)
     "agents/create/chat_prompt.py": {306, 310, 314, 318},
     "static/js/create-chat.js": {395},
+    "agents/trips/writeup.py": {88},
 }
 
 # File extensions to scan. Binary / generated stuff is excluded.

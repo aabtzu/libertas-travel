@@ -263,9 +263,7 @@ def format_column_item(item: ItineraryItem) -> str:
     # Display notes/description if present
     item_notes = item.notes or item.description or ""
     if item_notes:
-        parts.append(
-            f'<div class="column-item-notes">{html_module.escape(item_notes[:200])}</div>'
-        )
+        parts.append(f'<div class="column-item-notes">{html_module.escape(item_notes[:200])}</div>')
 
     parts.append("</div>")
     return "\n".join(parts)

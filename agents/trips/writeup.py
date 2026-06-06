@@ -84,7 +84,7 @@ def _enforce_verbatim_notes(text: str, all_items: list[dict]) -> str:
 
         # Find where the description starts (after the title and any separator)
         after_title = text[end_pos:]
-        # Skip separator characters: —, -, space, newline
+        # Skip separator characters (em dash, hyphen, space, newline)
         sep_match = re.match(r"[\s\-—–]*", after_title)
         desc_start = end_pos + (sep_match.end() if sep_match else 0)
 
