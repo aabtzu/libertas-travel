@@ -8,7 +8,9 @@ from typing import Any
 
 
 def _build_venue_chat_prompt(
-    trip_context: dict[str, Any], curated_venues: list[dict] = None
+    trip_context: dict[str, Any],
+    curated_venues: list[dict] = None,
+    style_rules: str | None = None,
 ) -> str:
     """Build the system prompt for venue-focused chat."""
     destination = trip_context.get("destination", "your destination")
@@ -236,6 +238,18 @@ Good example (creates exactly one suggestion):
 
 Want me to add it to a specific day?
 """
+
+    if style_rules:
+        prompt += f"""
+
+## WRITING STYLE RULES - follow these strictly
+
+{style_rules}
+
+Additional rule that always applies:
+- If a curated venue has notes already written, prefer that wording for the description - it was written in the right style. Only supplement with extra details if the notes are very sparse.
+"""
+
     return prompt
 
 

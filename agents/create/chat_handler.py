@@ -52,7 +52,18 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
     trip_context = data.get("trip_context", {})
 
     curated_venues = _load_curated_venues()
-    system_prompt = _build_venue_chat_prompt(trip_context, curated_venues)
+
+    # Load user style rules so the chat follows the same writing style as writeups
+    style_rules = None
+    try:
+        profile = db.get_user_profile(user_id) or {}
+        style_profile = profile.get("style_profile")
+        if style_profile and style_profile.get("rules"):
+            style_rules = style_profile["rules"]
+    except Exception:
+        pass
+
+    system_prompt = _build_venue_chat_prompt(trip_context, curated_venues, style_rules=style_rules)
 
     messages = []
     for msg in history[-10:]:
