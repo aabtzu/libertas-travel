@@ -176,17 +176,20 @@ function processUploadedItems(data, fileName) {
         const uploadMin = uploadDates[0];
         const uploadMax = uploadDates[uploadDates.length - 1];
 
-        if (!currentTrip.start_date || !currentTrip.end_date) {
-            // Trip has no dates yet - seed from uploaded items
-            currentTrip.start_date = uploadMin;
-            currentTrip.end_date = uploadMax;
+        if (!currentTrip.start_date || !currentTrip.end_date || currentTrip.days.length === 0) {
+            // Trip has no dates yet, or has dates but no days built yet - seed from uploaded items.
+            // Merge with existing date range so we don't shrink a trip that already has dates.
+            const seedMin = currentTrip.start_date && currentTrip.start_date < uploadMin ? currentTrip.start_date : uploadMin;
+            const seedMax = currentTrip.end_date && currentTrip.end_date > uploadMax ? currentTrip.end_date : uploadMax;
+            currentTrip.start_date = seedMin;
+            currentTrip.end_date = seedMax;
             const startInput = document.getElementById('editor-start-date');
             const endInput = document.getElementById('editor-end-date');
-            if (startInput) startInput.value = uploadMin;
-            if (endInput) endInput.value = uploadMax;
+            if (startInput) startInput.value = seedMin;
+            if (endInput) endInput.value = seedMax;
             // Build days array from scratch
-            const start = new Date(uploadMin + 'T12:00:00');
-            const end = new Date(uploadMax + 'T12:00:00');
+            const start = new Date(seedMin + 'T12:00:00');
+            const end = new Date(seedMax + 'T12:00:00');
             const MS = 86400000;
             const count = Math.round((end - start) / MS) + 1;
             currentTrip.days = [];
