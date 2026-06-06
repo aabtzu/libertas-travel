@@ -77,21 +77,22 @@ def generate_writeup(
     # Build data string for the writer
     data_text = f"Trip: {title}\n\nPlaces:\n{items_text}\n{tips_text}"
 
-    # Pull user rules to reinforce at the end of the prompt (recency bias)
-    rules_reminder = ""
+    # Build strict instructions - rules go here, not in data, so the LLM
+    # treats them as constraints to obey rather than content to summarize.
+    instructions = (
+        "If a venue has Notes already written, use that wording as the description - "
+        "it was written in the right style. Only add extra detail if the notes are very sparse."
+    )
     if style_profile and style_profile.get("rules"):
-        rules_reminder = f"\n\nREMINDER, follow these rules strictly:\n{style_profile['rules']}"
+        instructions += f"\n\nSTRICT RULES - follow every one of these exactly:\n{style_profile['rules']}"
 
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
     return writer.generate(
-        data=data_text + rules_reminder,
+        data=data_text,
         context=_TRAVEL_INSTRUCTIONS,
         style_profile=style_profile,
         style_template="nyt_36_hours",
-        instructions="Include the recommender's personal notes, those are the good stuff.",
-        # Don't pass writing samples, they can conflict with rules
-        # (e.g. casual emails naturally have wrap-up phrases the rules prohibit).
-        # The style profile + rules are more controllable.
+        instructions=instructions,
     )
 
 
