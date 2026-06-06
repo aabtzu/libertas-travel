@@ -75,11 +75,18 @@ def _enforce_verbatim_notes(text: str, all_items: list[dict]) -> str:
         if not match:
             continue
 
+        # The bare-title alternation can match inside **title** stopping before
+        # the closing **. Skip past any trailing ** so it doesn't get swallowed
+        # into the replacement range.
+        end_pos = match.end()
+        if text[end_pos : end_pos + 2] == "**":
+            end_pos += 2
+
         # Find where the description starts (after the title and any separator)
-        after_title = text[match.end() :]
+        after_title = text[end_pos:]
         # Skip separator characters: —, -, space, newline
         sep_match = re.match(r"[\s\-—–]*", after_title)
-        desc_start = match.end() + (sep_match.end() if sep_match else 0)
+        desc_start = end_pos + (sep_match.end() if sep_match else 0)
 
         # Find where the description ends (next blank line or next venue entry)
         rest = text[desc_start:]
