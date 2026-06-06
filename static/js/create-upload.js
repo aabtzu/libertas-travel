@@ -202,6 +202,20 @@ function processUploadedItems(data, fileName) {
         }
     }
 
+    // Backfill null dates on days that were created without dates (e.g. days
+    // created from day-number-only imports before a date range was known).
+    // Without this, the date-based lookup below fails: null !== "2026-07-26".
+    if (currentTrip.start_date && currentTrip.days.length > 0) {
+        const tripStart = new Date(currentTrip.start_date + 'T12:00:00');
+        currentTrip.days.forEach((day, i) => {
+            if (!day.date) {
+                const d = new Date(tripStart);
+                d.setDate(d.getDate() + i);
+                day.date = _ymd(d);
+            }
+        });
+    }
+
     data.items.forEach(item => {
         if (!item.title) return;
 
