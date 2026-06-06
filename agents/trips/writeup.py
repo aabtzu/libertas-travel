@@ -77,22 +77,29 @@ def generate_writeup(
     # Build data string for the writer
     data_text = f"Trip: {title}\n\nPlaces:\n{items_text}\n{tips_text}"
 
-    # Build strict instructions - rules go here, not in data, so the LLM
-    # treats them as constraints to obey rather than content to summarize.
-    instructions = (
-        "If a venue has Notes already written, use that wording as the description - "
-        "it was written in the right style. Only add extra detail if the notes are very sparse."
+    # Inject rules directly into the profile's "rules" field so they land
+    # in the RULES section of the system prompt (highest priority in StyleWriterBot).
+    # The "Additional instructions" slot at the end gets overridden by style directives;
+    # the RULES section does not.
+    base_notes_rule = (
+        "If a venue has Notes already written, use that wording verbatim as the description - "
+        "do NOT paraphrase or summarize it. Only add extra detail if the notes are very sparse.\n"
+        "Do not add any evaluation, vibe summary, or closing opinion after the description "
+        "(e.g. never end with 'good vibe', 'worth it', 'you'll love it', 'easy day' etc)."
     )
-    if style_profile and style_profile.get("rules"):
-        instructions += f"\n\nSTRICT RULES - follow every one of these exactly:\n{style_profile['rules']}"
+
+    effective_profile = dict(style_profile) if style_profile else {}
+    existing_rules = effective_profile.get("rules", "")
+    effective_profile["rules"] = (
+        f"{existing_rules}\n{base_notes_rule}" if existing_rules else base_notes_rule
+    )
 
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
     return writer.generate(
         data=data_text,
         context=_TRAVEL_INSTRUCTIONS,
-        style_profile=style_profile,
-        style_template="nyt_36_hours",
-        instructions=instructions,
+        style_profile=effective_profile,
+        instructions="Include the recommender's personal notes, those are the good stuff.",
     )
 
 
