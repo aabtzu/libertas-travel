@@ -21,7 +21,12 @@ Write in markdown."""
 
 
 def _build_items_text(all_items: list[dict]) -> str:
-    """Format trip items as structured text for the LLM."""
+    """Format trip items as structured text for the LLM.
+
+    Items with notes are marked with VERBATIM_NOTES so the LLM knows to
+    copy them exactly. This is a last-resort signal; the real guarantee is
+    that we do a post-pass substitution in generate_writeup().
+    """
     lines = []
     for item in all_items:
         cat = item.get("category", "other")
@@ -37,9 +42,54 @@ def _build_items_text(all_items: list[dict]) -> str:
         if maps_link:
             line += f"\n  Map: {maps_link}"
         if notes:
-            line += f"\n  Notes: {notes}"
+            line += f"\n  VERBATIM_NOTES (copy this text exactly, word for word): {notes}"
         lines.append(line)
     return "\n".join(lines)
+
+
+def _enforce_verbatim_notes(text: str, all_items: list[dict]) -> str:
+    """Post-processing pass: find each venue title in the output and replace
+    whatever the LLM wrote as the description with the original notes.
+
+    This is the only reliable way to guarantee verbatim notes - prompting
+    alone is not sufficient when the style template actively rewrites content.
+    """
+    import re
+
+    for item in all_items:
+        notes = (item.get("notes") or "").strip()
+        title = (item.get("title") or "").strip()
+        if not notes or not title:
+            continue
+
+        # Find the venue link or heading in the output. Matches:
+        # [title](url), **title**, or bare title followed by a dash/newline.
+        title_pattern = re.compile(
+            r"(\[" + re.escape(title) + r"\]\([^)]*\)|"
+            r"\*\*" + re.escape(title) + r"\*\*|"
+            r"(?<!\w)" + re.escape(title) + r"(?!\w))",
+            re.IGNORECASE,
+        )
+
+        match = title_pattern.search(text)
+        if not match:
+            continue
+
+        # Find where the description starts (after the title and any separator)
+        after_title = text[match.end() :]
+        # Skip separator characters: —, -, space, newline
+        sep_match = re.match(r"[\s\-—–]*", after_title)
+        desc_start = match.end() + (sep_match.end() if sep_match else 0)
+
+        # Find where the description ends (next blank line or next venue entry)
+        rest = text[desc_start:]
+        end_match = re.search(r"\n\n|\n\[|\n\*\*", rest)
+        desc_end = desc_start + (end_match.start() if end_match else len(rest))
+
+        # Replace only the description portion with the original notes
+        text = text[:desc_start] + notes + text[desc_end:]
+
+    return text
 
 
 def generate_writeup(
@@ -74,33 +124,27 @@ def generate_writeup(
     if tips:
         tips_text = "\nGeneral tips:\n" + "\n".join(f"- {t}" for t in tips)
 
-    # Build data string for the writer
     data_text = f"Trip: {title}\n\nPlaces:\n{items_text}\n{tips_text}"
 
-    # Inject rules directly into the profile's "rules" field so they land
-    # in the RULES section of the system prompt (highest priority in StyleWriterBot).
-    # The "Additional instructions" slot at the end gets overridden by style directives;
-    # the RULES section does not.
-    base_notes_rule = (
-        "If a venue has Notes already written, use that wording verbatim as the description - "
-        "do NOT paraphrase or summarize it. Only add extra detail if the notes are very sparse.\n"
-        "Do not add any evaluation, vibe summary, or closing opinion after the description "
-        "(e.g. never end with 'good vibe', 'worth it', 'you'll love it', 'easy day' etc)."
-    )
-
     effective_profile = dict(style_profile) if style_profile else {}
-    existing_rules = effective_profile.get("rules", "")
+    user_rules = effective_profile.get("rules", "")
     effective_profile["rules"] = (
-        f"{existing_rules}\n{base_notes_rule}" if existing_rules else base_notes_rule
+        user_rules + "\nDo not add any vibe summary or editorial sign-off after the description."
+        if user_rules
+        else "Do not add any vibe summary or editorial sign-off after the description."
     )
 
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
-    return writer.generate(
+    output = writer.generate(
         data=data_text,
         context=_TRAVEL_INSTRUCTIONS,
         style_profile=effective_profile,
-        instructions="Include the recommender's personal notes, those are the good stuff.",
+        instructions="Use VERBATIM_NOTES text word for word. Do not paraphrase.",
     )
+
+    # Guarantee: replace LLM-generated descriptions with original notes.
+    # Prompting cannot guarantee this - post-processing can.
+    return _enforce_verbatim_notes(output, all_items)
 
 
 def extract_style_profile(writing_samples: str) -> dict:
