@@ -36,8 +36,9 @@ def itinerary_to_data(itinerary) -> dict:
     start_date = itinerary.start_date
 
     for item in itinerary.items:
-        if item.is_home_location:
-            continue
+        # is_home_location only controls map rendering (mapper.py skips geocoding
+        # for these items). The item should still appear in the itinerary editor
+        # so the user can see their departure flight, etc.
 
         item_data = {
             "title": item.title,
