@@ -56,11 +56,27 @@ def _sort_trips_for_display(trips: list) -> list:
     return sorted(trips, key=sort_key)
 
 
-def _bucket_trip_by_date(trip: dict, today_iso: str) -> str:
-    """Return 'upcoming', 'past', or 'undated' for a trip based on its start date.
+def _get_trip_end_date(itinerary_data: dict, trip: dict) -> str | None:
+    """Extract end date from itinerary_data or trip, checking multiple locations."""
+    if itinerary_data.get("end_date"):
+        return itinerary_data["end_date"]
+    if trip.get("end_date"):
+        return trip["end_date"]
+    # Fall back to last day's date
+    days = itinerary_data.get("days", [])
+    if days:
+        last_day = days[-1]
+        if isinstance(last_day, dict) and last_day.get("date"):
+            return last_day["date"]
+    return None
 
-    A trip is 'upcoming' if start_date is today or later, 'past' if before
-    today, and 'undated' if no usable start_date is present.
+
+def _bucket_trip_by_date(trip: dict, today_iso: str) -> str:
+    """Return 'current', 'upcoming', 'past', or 'undated' for a trip.
+
+    'current' means today falls within the trip's start-end range (traveling now).
+    'upcoming' means trip starts today or later.
+    'past' means trip ended before today.
     """
     itinerary_data = trip.get("itinerary_data") or {}
     if isinstance(itinerary_data, str):
@@ -71,6 +87,9 @@ def _bucket_trip_by_date(trip: dict, today_iso: str) -> str:
     start = get_trip_start_date(itinerary_data) or trip.get("start_date") or ""
     if not start:
         return "undated"
+    end = _get_trip_end_date(itinerary_data, trip) or start
+    if start <= today_iso <= end:
+        return "current"
     return "upcoming" if start >= today_iso else "past"
 
 
@@ -462,7 +481,12 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
     today_iso = datetime.now().date().isoformat()
     # Active trips split into upcoming / past / undated sections so the
     # /trips page reads as a calendar at a glance instead of one long list.
-    bucketed_cards: dict[str, list[str]] = {"upcoming": [], "past": [], "undated": []}
+    bucketed_cards: dict[str, list[str]] = {
+        "current": [],
+        "upcoming": [],
+        "past": [],
+        "undated": [],
+    }
     archived_cards_list = []
     for i, trip in enumerate(trips):
         try:
@@ -512,12 +536,13 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
             continue
 
     section_titles = {
+        "current": '<i class="fas fa-paper-plane"></i> Traveling Now',
         "upcoming": "Upcoming",
         "past": "Past",
         "undated": "No date set",
     }
     section_html_parts = []
-    for key in ("upcoming", "undated", "past"):
+    for key in ("current", "upcoming", "undated", "past"):
         cards = bucketed_cards[key]
         if not cards:
             continue

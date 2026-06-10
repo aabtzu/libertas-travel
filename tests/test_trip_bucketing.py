@@ -12,9 +12,19 @@ class TestBucketTripByDate:
         trip = {"itinerary_data": {"start_date": "2026-12-15"}}
         assert _bucket_trip_by_date(trip, TODAY) == "upcoming"
 
-    def test_today_is_upcoming(self):
+    def test_today_is_current(self):
+        # A trip that starts today (and has no end_date) is "Traveling Now"
         trip = {"itinerary_data": {"start_date": TODAY}}
-        assert _bucket_trip_by_date(trip, TODAY) == "upcoming"
+        assert _bucket_trip_by_date(trip, TODAY) == "current"
+
+    def test_trip_spanning_today_is_current(self):
+        # start before today, end after today
+        trip = {"itinerary_data": {"start_date": "2026-04-01", "end_date": "2026-06-01"}}
+        assert _bucket_trip_by_date(trip, TODAY) == "current"
+
+    def test_trip_ending_today_is_current(self):
+        trip = {"itinerary_data": {"start_date": "2026-05-01", "end_date": TODAY}}
+        assert _bucket_trip_by_date(trip, TODAY) == "current"
 
     def test_past_date_is_past(self):
         trip = {"itinerary_data": {"start_date": "2025-01-01"}}

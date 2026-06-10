@@ -186,6 +186,21 @@
 .trips-section[data-section="past"] .trip-card {
     opacity: 0.85;
 }
+.trips-section[data-section="current"] {
+    background: #f0f4ff;
+    border-radius: 12px;
+    padding: 16px 16px 8px;
+    margin-bottom: 8px;
+    border: 2px solid #667eea;
+}
+.trips-section[data-section="current"] .trips-section-title {
+    color: #667eea;
+    font-size: 1.05rem;
+}
+.trips-section[data-section="current"] .trips-section-count {
+    background: #667eea;
+    color: #fff;
+}
 
 /* ==================== List View ==================== */
 .trips-list {
