@@ -38,6 +38,35 @@ function _ymd(date) {
 }
 
 /**
+ * Fill gaps in a days array so every day number from 1 to max is present.
+ * Trips parsed from flights often have only day 1 and day 4 with nothing
+ * in between. Without this, the editor has no container for days 2 and 3.
+ */
+function _fillDayGaps(days, startDateStr) {
+    if (!days || days.length === 0) return days;
+    const maxDay = Math.max(...days.map(d => d.day_number || 0));
+    if (maxDay <= 1) return days;
+    const byNum = {};
+    days.forEach(d => { byNum[d.day_number] = d; });
+    const filled = [];
+    const startDate = startDateStr ? new Date(startDateStr + 'T12:00:00') : null;
+    for (let i = 1; i <= maxDay; i++) {
+        if (byNum[i]) {
+            filled.push(byNum[i]);
+        } else {
+            let date = null;
+            if (startDate) {
+                const d = new Date(startDate);
+                d.setDate(d.getDate() + i - 1);
+                date = _ymd(d);
+            }
+            filled.push({ day_number: i, date, items: [] });
+        }
+    }
+    return filled;
+}
+
+/**
  * Resize the days array to match start/end dates.
  *
  * Returns true if applied, false if the user cancelled a destructive shrink.

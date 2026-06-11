@@ -605,7 +605,7 @@ async function loadTrip(link) {
                 start_date: trip.start_date,
                 end_date: trip.end_date,
                 is_draft: trip.is_draft,
-                days: itineraryData?.days || [],
+                days: _fillDayGaps(itineraryData?.days || [], trip.start_date),
                 ideas: itineraryData?.ideas || [],
                 tips: itineraryData?.tips || [],
                 writeup: itineraryData?.writeup || '',
