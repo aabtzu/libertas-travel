@@ -64,14 +64,24 @@ def itinerary_to_data(itinerary) -> dict:
             ideas.append(item_data)
 
     days = []
-    for day_num in sorted(days_dict.keys()):
-        day_items = days_dict[day_num]
-        day_date = None
-        for it in day_items:
-            if it.get("date"):
-                day_date = it["date"]
-                break
-        days.append({"day_number": day_num, "date": day_date, "items": day_items})
+    if days_dict:
+        # Fill every day number from 1 to the last day that has items.
+        # Without this, gaps (e.g. days 2 and 3 when only 1 and 4 have items)
+        # are invisible in the editor and can't receive new items.
+        max_day = max(days_dict.keys())
+        from datetime import timedelta
+
+        for day_num in range(1, max_day + 1):
+            day_items = days_dict.get(day_num, [])
+            # Compute date from start_date + offset if not embedded in items
+            day_date = None
+            for it in day_items:
+                if it.get("date"):
+                    day_date = it["date"]
+                    break
+            if day_date is None and start_date:
+                day_date = (start_date + timedelta(days=day_num - 1)).isoformat()
+            days.append({"day_number": day_num, "date": day_date, "items": day_items})
 
     return {
         "title": itinerary.title,
