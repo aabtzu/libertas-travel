@@ -48,15 +48,25 @@ function _fillDayGaps(days, startDateStr) {
     if (maxDay <= 1) return days;
     const byNum = {};
     days.forEach(d => { byNum[d.day_number] = d; });
+
+    // Prefer the explicit start_date; fall back to day 1's date if present.
+    const refDateStr = startDateStr || (byNum[1] && byNum[1].date) || null;
+    const refDate = refDateStr ? new Date(refDateStr + 'T12:00:00') : null;
+
     const filled = [];
-    const startDate = startDateStr ? new Date(startDateStr + 'T12:00:00') : null;
     for (let i = 1; i <= maxDay; i++) {
         if (byNum[i]) {
+            // Backfill date on existing days that are missing it too
+            if (!byNum[i].date && refDate) {
+                const d = new Date(refDate);
+                d.setDate(d.getDate() + i - 1);
+                byNum[i] = { ...byNum[i], date: _ymd(d) };
+            }
             filled.push(byNum[i]);
         } else {
             let date = null;
-            if (startDate) {
-                const d = new Date(startDate);
+            if (refDate) {
+                const d = new Date(refDate);
                 d.setDate(d.getDate() + i - 1);
                 date = _ymd(d);
             }
