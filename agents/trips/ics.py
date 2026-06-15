@@ -12,7 +12,7 @@ import hashlib
 import hmac
 import os
 from datetime import date as _date
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from icalendar import Calendar, Event
 
@@ -83,7 +83,7 @@ def generate_ics_multi(trips: list[dict]) -> str:
     cal.add("METHOD", "PUBLISH")
     cal.add("X-WR-CALNAME", "Libertas Travel")
 
-    now_utc = datetime.utcnow()
+    now_utc = datetime.now(timezone.utc)
 
     for trip in trips:
         link = trip.get("link", "unknown")
@@ -198,7 +198,9 @@ def generate_ics(export_data: dict, link: str) -> str:
     cal.add("METHOD", "PUBLISH")
     cal.add("X-WR-CALNAME", title)
 
-    now_utc = datetime.utcnow()
+    # RFC 5545 requires DTSTAMP to be a UTC datetime (Z suffix).
+    # Using now(timezone.utc) gives icalendar the tzinfo it needs to emit Z.
+    now_utc = datetime.now(timezone.utc)
     event_count = 0
 
     for day in days:
