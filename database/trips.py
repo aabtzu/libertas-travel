@@ -110,6 +110,21 @@ _SQL_SQLITE_SET_TRIP_ARCHIVED = """
     WHERE user_id = ? AND link = ?
 """
 
+# Columns fetched for the multi-trip calendar feed. Minimal: we only need
+# enough to build the ICS and filter by date.
+_CALENDAR_FEED_COLUMNS = ["title", "link", "itinerary_data"]
+
+_SQL_PG_GET_PUBLISHED_TRIPS_WITH_DATES = (
+    f"SELECT {', '.join(_CALENDAR_FEED_COLUMNS)} FROM trips "
+    f"WHERE user_id = %s AND is_draft = FALSE AND itinerary_data IS NOT NULL "
+    f"ORDER BY created_at DESC"
+)
+_SQL_SQLITE_GET_PUBLISHED_TRIPS_WITH_DATES = (
+    f"SELECT {', '.join(_CALENDAR_FEED_COLUMNS)} FROM trips "
+    f"WHERE user_id = ? AND is_draft = 0 AND itinerary_data IS NOT NULL "
+    f"ORDER BY created_at DESC"
+)
+
 
 def get_user_trips(user_id: int) -> list[dict[str, Any]]:
     """Get all trips for a user."""
@@ -309,3 +324,29 @@ def set_trip_archived(user_id: int, link: str, is_archived: bool) -> bool:
         else:
             cursor.execute(_SQL_SQLITE_SET_TRIP_ARCHIVED, (is_archived, user_id, link))
         return cursor.rowcount > 0
+
+
+def get_published_trips_with_dates(user_id: int) -> list[dict[str, Any]]:
+    """Return published (non-draft) trips for a user that have itinerary_data.
+
+    Filters to only trips where itinerary_data contains a start_date so the
+    caller can safely assume date information exists.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GET_PUBLISHED_TRIPS_WITH_DATES, (user_id,))
+            rows = cursor.fetchall()
+            trips = [dict(zip(_CALENDAR_FEED_COLUMNS, row, strict=False)) for row in rows]
+        else:
+            cursor.execute(_SQL_SQLITE_GET_PUBLISHED_TRIPS_WITH_DATES, (user_id,))
+            rows = cursor.fetchall()
+            trips = []
+            for row in rows:
+                t = dict(row)
+                if t.get("itinerary_data") and isinstance(t["itinerary_data"], str):
+                    t["itinerary_data"] = json.loads(t["itinerary_data"])
+                trips.append(t)
+
+    # Keep only trips that actually have a start_date in the parsed data
+    return [t for t in trips if (t.get("itinerary_data") or {}).get("start_date")]

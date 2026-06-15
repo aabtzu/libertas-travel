@@ -14,7 +14,14 @@ import os
 
 import pytest
 
-from agents.trips.ics import calendar_subscribe_token, generate_ics, verify_subscribe_token
+from agents.trips.ics import (
+    calendar_subscribe_token,
+    generate_ics,
+    generate_ics_multi,
+    user_calendar_token,
+    verify_subscribe_token,
+    verify_user_calendar_token,
+)
 
 # ---------------------------------------------------------------------------
 # Token roundtrip
@@ -310,3 +317,138 @@ class TestGeneratedIcsFormat:
         # Check-in 2026-06-10 16:00, check-out 2026-06-15 11:00
         assert "20260610T160000" in ics
         assert "20260615T110000" in ics
+
+
+# ---------------------------------------------------------------------------
+# User-scoped calendar token
+# ---------------------------------------------------------------------------
+
+
+class TestUserCalendarToken:
+    def test_token_is_deterministic(self):
+        os.environ["SECRET_KEY"] = "test-secret"
+        assert user_calendar_token(1) == user_calendar_token(1)
+
+    def test_token_differs_per_user(self):
+        os.environ["SECRET_KEY"] = "test-secret"
+        assert user_calendar_token(1) != user_calendar_token(2)
+
+    def test_token_differs_from_per_trip_token(self):
+        # user-cal and calendar namespaces must not collide
+        os.environ["SECRET_KEY"] = "test-secret"
+        assert user_calendar_token(1) != calendar_subscribe_token(1, "")
+
+    def test_verify_accepts_valid_token(self):
+        os.environ["SECRET_KEY"] = "test-secret"
+        token = user_calendar_token(42)
+        assert verify_user_calendar_token(42, token) is True
+
+    def test_verify_rejects_wrong_user(self):
+        os.environ["SECRET_KEY"] = "test-secret"
+        token = user_calendar_token(1)
+        assert verify_user_calendar_token(2, token) is False
+
+    def test_verify_rejects_tampered_token(self):
+        os.environ["SECRET_KEY"] = "test-secret"
+        token = user_calendar_token(1)
+        assert verify_user_calendar_token(1, token + "X") is False
+
+    def test_refuses_when_secret_unset(self):
+        os.environ.pop("SECRET_KEY", None)
+        with pytest.raises(RuntimeError):
+            user_calendar_token(1)
+
+
+# ---------------------------------------------------------------------------
+# generate_ics_multi
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateIcsMulti:
+    def _trip(self, link, title, days):
+        return {"link": link, "title": title, "itinerary_data": {"days": days}}
+
+    def test_merges_events_from_multiple_trips(self):
+        trips = [
+            self._trip(
+                "trip-a.html",
+                "Paris",
+                [
+                    {
+                        "date": "2026-07-01",
+                        "items": [{"title": "Eiffel Tower", "category": "attraction"}],
+                    }
+                ],
+            ),
+            self._trip(
+                "trip-b.html",
+                "Rome",
+                [
+                    {
+                        "date": "2026-08-10",
+                        "items": [{"title": "Colosseum", "category": "attraction"}],
+                    }
+                ],
+            ),
+        ]
+        ics = generate_ics_multi(trips)
+        assert "Eiffel Tower" in ics
+        assert "Colosseum" in ics
+        assert ics.count("BEGIN:VEVENT") == 2
+
+    def test_empty_trips_produces_valid_calendar(self):
+        ics = generate_ics_multi([])
+        assert "BEGIN:VCALENDAR" in ics
+        assert "BEGIN:VEVENT" not in ics
+
+    def test_skips_days_without_date(self):
+        trips = [
+            self._trip(
+                "trip-x.html",
+                "No Dates",
+                [{"items": [{"title": "Ghost event"}]}],
+            )
+        ]
+        ics = generate_ics_multi(trips)
+        assert "Ghost event" not in ics
+
+    def test_calendar_name_is_libertas_travel(self):
+        ics = generate_ics_multi([])
+        assert "Libertas Travel" in ics
+
+
+# ---------------------------------------------------------------------------
+# /api/calendar/subscribe-url and /api/calendar/all.ics routes
+# ---------------------------------------------------------------------------
+
+
+class TestUserCalendarRoutes:
+    def test_subscribe_url_returns_webcal(self, client, app):
+        os.environ["SECRET_KEY"] = "test-secret"
+        resp = client.get("/api/calendar/subscribe-url")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        url = data.get("url", "")
+        assert url.startswith("webcal://")
+        assert "user_id=" in url
+        assert "token=" in url
+        assert "/api/calendar/all.ics" in url
+
+    def test_all_ics_valid_token_returns_calendar(self, client, app):
+        os.environ["SECRET_KEY"] = "test-secret"
+        token = user_calendar_token(1)
+        resp = client.get(f"/api/calendar/all.ics?user_id=1&token={token}")
+        assert resp.status_code == 200
+        assert resp.mimetype.startswith("text/calendar")
+        body = resp.get_data(as_text=True)
+        assert "BEGIN:VCALENDAR" in body
+
+    def test_all_ics_invalid_token_returns_403(self, client, app):
+        os.environ["SECRET_KEY"] = "test-secret"
+        resp = client.get("/api/calendar/all.ics?user_id=1&token=garbage")
+        assert resp.status_code == 403
+
+    def test_all_ics_missing_user_id_returns_400(self, client, app):
+        os.environ["SECRET_KEY"] = "test-secret"
+        resp = client.get("/api/calendar/all.ics?token=anything")
+        assert resp.status_code == 400

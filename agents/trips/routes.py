@@ -13,7 +13,14 @@ import database as db
 from agents.common.flask_utils import json_err, json_ok, require_auth
 from agents.create import handler as create_handler
 from agents.itinerary import geocoding_worker
-from agents.trips.ics import calendar_subscribe_token, generate_ics, verify_subscribe_token
+from agents.trips.ics import (
+    calendar_subscribe_token,
+    generate_ics,
+    generate_ics_multi,
+    user_calendar_token,
+    verify_subscribe_token,
+    verify_user_calendar_token,
+)
 
 trips_bp = Blueprint("trips", __name__)
 
@@ -136,6 +143,51 @@ def calendar_subscribe_url(link: str):
     )
     url = f"{base}/api/trips/{link}/calendar.ics?token={token}"
     return json_ok({"url": url})
+
+
+@trips_bp.get("/api/calendar/subscribe-url")
+@require_auth
+def user_calendar_subscribe_url():
+    """Return a webcal:// URL for the user's all-trips calendar feed.
+
+    The feed covers all published (non-draft) trips that have dates.
+    Uses a user-scoped HMAC token so calendar apps can poll without a session.
+    """
+    token = user_calendar_token(g.user_id)
+    base = (
+        request.host_url.rstrip("/")
+        .replace("http://", "webcal://")
+        .replace("https://", "webcal://")
+    )
+    url = f"{base}/api/calendar/all.ics?user_id={g.user_id}&token={token}"
+    return json_ok({"url": url})
+
+
+@trips_bp.get("/api/calendar/all.ics")
+def user_calendar_feed():
+    """Serve all published trips with dates as a single .ics feed.
+
+    Unauthenticated: validated by a user-scoped HMAC token (same pattern as
+    the per-trip subscribe URL). Calendar apps poll this URL periodically.
+    """
+    from flask import Response
+
+    try:
+        user_id = int(request.args.get("user_id", ""))
+    except (ValueError, TypeError):
+        return json_err("Missing user_id", status=400)
+
+    token = request.args.get("token", "").strip()
+    if not token or not verify_user_calendar_token(user_id, token):
+        return json_err("Invalid token", status=403)
+
+    trips = db.get_published_trips_with_dates(user_id)
+    ics_content = generate_ics_multi(trips)
+    return Response(
+        ics_content,
+        mimetype="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="libertas-trips.ics"'},
+    )
 
 
 @trips_bp.get("/api/trip/<link>/can-edit")
