@@ -78,6 +78,9 @@ async function subscribeAllTripsCalendar() {
 function _showSubscribeModal(url, copied, title) {
     // closeShareModal is defined in upload.js; only call it when the share modal is open.
     if (typeof closeShareModal === 'function') closeShareModal();
+    // Google Calendar fetches from their servers and works better with https://.
+    // Apple Calendar and Outlook both handle webcal:// natively.
+    const httpsUrl = url.replace(/^webcal:\/\//, 'https://');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
@@ -87,27 +90,25 @@ function _showSubscribeModal(url, copied, title) {
                 <h3>${title || 'Subscribe to this trip'}</h3>
             </div>
             <div class="modal-body">
-                <p style="margin-top:0">${copied ? '<i class="fas fa-check" style="color:#43a047"></i> Subscribe URL copied to clipboard.' : 'Copy this URL:'}</p>
+                <p style="margin-top:0">${copied ? '<i class="fas fa-check" style="color:#43a047"></i> Copied to clipboard.' : 'Copy this URL:'}</p>
                 <input type="text" class="modal-input" id="subscribe-url-input" readonly>
-                <p style="margin-top:18px; margin-bottom:6px; font-size:0.9rem; color:#333;">
-                    Paste it into your calendar app:
-                </p>
-                <ul class="subscribe-instructions">
+                <ul class="subscribe-instructions" style="margin-top:18px;">
                     <li>
                         <strong>Apple Calendar</strong>
-                        <span>File &rarr; New Calendar Subscription</span>
+                        <span>File &rarr; New Calendar Subscription &rarr; paste above</span>
                     </li>
                     <li>
                         <strong>Google Calendar</strong>
-                        <span>Other calendars + &rarr; From URL</span>
+                        <span>Other calendars + &rarr; From URL &rarr; paste the URL below</span>
                     </li>
                     <li>
                         <strong>Outlook</strong>
-                        <span>Add Calendar &rarr; Subscribe from web</span>
+                        <span>Add Calendar &rarr; Subscribe from web &rarr; paste above</span>
                     </li>
                 </ul>
-                <p style="font-size:0.8rem; color:#888; margin-top:14px;">
-                    The calendar refreshes from this URL automatically as you edit the trip. Or click <strong>Open in calendar</strong> below to hand it to your default app.
+                <input type="text" class="modal-input" id="subscribe-url-https" readonly style="margin-top:8px; font-size:0.8rem;">
+                <p style="font-size:0.75rem; color:#888; margin-top:6px; margin-bottom:0;">
+                    Google Calendar URL (https://)
                 </p>
             </div>
             <div class="modal-footer">
@@ -119,6 +120,9 @@ function _showSubscribeModal(url, copied, title) {
     document.body.appendChild(overlay);
     const input = overlay.querySelector('#subscribe-url-input');
     input.value = url;
-    input.addEventListener('click', () => input.select());
+    input.addEventListener('click', () => { input.select(); navigator.clipboard.writeText(url).catch(() => {}); });
+    const httpsInput = overlay.querySelector('#subscribe-url-https');
+    httpsInput.value = httpsUrl;
+    httpsInput.addEventListener('click', () => { httpsInput.select(); navigator.clipboard.writeText(httpsUrl).catch(() => {}); });
     overlay.querySelector('#subscribe-url-open').setAttribute('href', url);
 }
