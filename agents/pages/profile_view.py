@@ -35,6 +35,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
     rules = _esc(style_profile.get("rules", ""))
     user_notes = _esc(profile_data.get("user_notes", ""))
     has_profile = "true" if style_profile else "false"
+    current_timezone = _esc(profile_data.get("timezone", ""))
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -219,6 +220,42 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
             </div>
         </div>
 
+        <!-- Calendar Timezone -->
+        <div class="profile-section">
+            <h2><i class="fas fa-calendar-alt"></i> Calendar Timezone</h2>
+            <p style="color:#666;font-size:0.9rem;margin-bottom:16px">
+                Used for calendar subscriptions. Set this to your home timezone so events
+                show at the right time in Google Calendar.
+            </p>
+            <div class="field-group">
+                <select id="timezone-select">
+                    <option value="">Floating (default, works in Apple/Outlook)</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles (Pacific)</option>
+                    <option value="America/Denver">America/Denver (Mountain)</option>
+                    <option value="America/Chicago">America/Chicago (Central)</option>
+                    <option value="America/New_York">America/New_York (Eastern)</option>
+                    <option value="America/Anchorage">America/Anchorage (Alaska)</option>
+                    <option value="Pacific/Honolulu">Pacific/Honolulu (Hawaii)</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Paris">Europe/Paris (Central European)</option>
+                    <option value="Europe/Helsinki">Europe/Helsinki (Eastern European)</option>
+                    <option value="Asia/Dubai">Asia/Dubai (Gulf)</option>
+                    <option value="Asia/Kolkata">Asia/Kolkata (India)</option>
+                    <option value="Asia/Bangkok">Asia/Bangkok (Indochina)</option>
+                    <option value="Asia/Singapore">Asia/Singapore</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo (Japan)</option>
+                    <option value="Australia/Sydney">Australia/Sydney (AEDT)</option>
+                </select>
+                <div class="field-hint">Your home timezone. Applies to all calendar exports.</div>
+            </div>
+            <div style="margin-top:12px">
+                <button class="btn-primary" id="save-tz-btn">
+                    <i class="fas fa-save"></i> Save Timezone
+                </button>
+                <span class="status-msg" id="tz-status"></span>
+            </div>
+        </div>
+
         <!-- User Notes -->
         <div class="profile-section">
             <h2><i class="fas fa-sticky-note"></i> Notes for AI</h2>
@@ -318,6 +355,40 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
             }}
             btn.disabled = false;
         }});
+
+        // Timezone selector - pre-select saved value then save on click
+        (function() {{
+            const sel = document.getElementById('timezone-select');
+            const saved = {repr(current_timezone) if current_timezone else '""'};
+            if (saved) {{
+                for (const opt of sel.options) {{
+                    if (opt.value === saved) {{ opt.selected = true; break; }}
+                }}
+            }}
+            document.getElementById('save-tz-btn').addEventListener('click', async () => {{
+                const tz = sel.value;
+                const statusEl = document.getElementById('tz-status');
+                try {{
+                    const res = await fetch('/api/user/timezone', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify({{timezone: tz}}),
+                    }});
+                    const data = await res.json();
+                    if (data.ok) {{
+                        statusEl.textContent = 'Saved!';
+                        statusEl.className = 'status-msg success';
+                    }} else {{
+                        statusEl.textContent = data.error || 'Save failed';
+                        statusEl.className = 'status-msg error';
+                    }}
+                }} catch {{
+                    statusEl.textContent = 'Save failed';
+                    statusEl.className = 'status-msg error';
+                }}
+                setTimeout(() => {{ statusEl.textContent = ''; }}, 3000);
+            }});
+        }})();
     </script>
 </body>
 </html>"""
