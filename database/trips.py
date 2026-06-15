@@ -348,5 +348,11 @@ def get_published_trips_with_dates(user_id: int) -> list[dict[str, Any]]:
                     t["itinerary_data"] = json.loads(t["itinerary_data"])
                 trips.append(t)
 
-    # Keep only trips that actually have a start_date in the parsed data
-    return [t for t in trips if (t.get("itinerary_data") or {}).get("start_date")]
+    # Keep only trips that have at least one day with a date. Trips may lack
+    # a top-level start_date (older records, draft imports) but still have
+    # dated day entries - those are valid for the calendar feed.
+    def _has_dated_day(trip: dict) -> bool:
+        days = (trip.get("itinerary_data") or {}).get("days", [])
+        return any(d.get("date") for d in days)
+
+    return [t for t in trips if _has_dated_day(t)]
