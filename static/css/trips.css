@@ -26,32 +26,28 @@
     margin: 0 auto;
 }
 
-.trips-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 20px;
-    flex-wrap: wrap;
+.calendar-feed-link {
+    margin-top: 14px;
+    margin-bottom: 0;
 }
 
 .calendar-feed-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: transparent;
-    color: #fff;
-    padding: 10px 20px;
-    border-radius: 25px;
-    font-size: 0.95rem;
-    font-weight: 600;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.75);
+    font-size: 0.85rem;
     cursor: pointer;
-    border: 2px solid rgba(255,255,255,0.6);
-    transition: background 0.2s, border-color 0.2s;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.15s;
 }
 
 .calendar-feed-btn:hover {
-    background: rgba(255,255,255,0.15);
-    border-color: #fff;
+    color: #fff;
 }
 
 .new-trip-btn {
