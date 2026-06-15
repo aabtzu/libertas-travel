@@ -14,7 +14,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from datetime import date as _date
 
-from icalendar import Calendar, Event
+from icalendar import Calendar, Event, vDatetime, vText
 
 
 def calendar_subscribe_token(user_id: int, link: str) -> str:
@@ -68,13 +68,18 @@ def verify_user_calendar_token(user_id: int, provided: str) -> bool:
     return hmac.compare_digest(expected, provided)
 
 
-def generate_ics_multi(trips: list[dict]) -> str:
+def generate_ics_multi(trips: list[dict], tzid: str | None = None) -> str:
     """Generate a single ICS feed containing all events from multiple trips.
 
     Each trip dict must have ``title``, ``link``, and ``itinerary_data``
     (already parsed from JSON). Only days with a ``date`` are included;
     items without a date on their day are skipped (same rule as
     generate_ics).
+
+    tzid: IANA timezone name (e.g. "America/Los_Angeles"). When provided,
+    DTSTART/DTEND are tagged with TZID so Google Calendar displays the
+    correct local time. When None, times are emitted as floating (correct
+    per RFC 5545 but Google Calendar incorrectly interprets as UTC).
     """
     cal = Calendar()
     cal.add("VERSION", "2.0")
@@ -82,6 +87,8 @@ def generate_ics_multi(trips: list[dict]) -> str:
     cal.add("CALSCALE", "GREGORIAN")
     cal.add("METHOD", "PUBLISH")
     cal.add("X-WR-CALNAME", "Libertas Travel")
+    if tzid:
+        _add_tzid_calendar(cal, tzid)
 
     now_utc = datetime.now(UTC)
 
@@ -145,8 +152,8 @@ def generate_ics_multi(trips: list[dict]) -> str:
                             if end_hm
                             else start + timedelta(hours=1)
                         )
-                        event.add("DTSTART", start)
-                        event.add("DTEND", end)
+                        event.add("DTSTART", _dtstart(start, tzid))
+                        event.add("DTEND", _dtstart(end, tzid))
                 else:
                     event.add("DTSTART", day_date)
                     event.add("DTEND", day_date)
@@ -167,6 +174,20 @@ def generate_ics_multi(trips: list[dict]) -> str:
                 cal.add_component(event)
 
     return cal.to_ical().decode("utf-8")
+
+
+def _add_tzid_calendar(cal: Calendar, tzid: str) -> None:
+    """Add X-WR-TIMEZONE and a minimal VTIMEZONE stub so apps know the intent."""
+    cal.add("X-WR-TIMEZONE", vText(tzid))
+
+
+def _dtstart(dt: datetime, tzid: str | None):
+    """Return a vDatetime tagged with TZID, or a floating datetime if tzid is None."""
+    if tzid:
+        v = vDatetime(dt)
+        v.params["TZID"] = tzid
+        return v
+    return dt
 
 
 def _parse_hhmm(value: str) -> tuple[int, int] | None:

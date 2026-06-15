@@ -182,7 +182,9 @@ def user_calendar_feed():
         return json_err("Invalid token", status=403)
 
     trips = db.get_published_trips_with_dates(user_id)
-    ics_content = generate_ics_multi(trips)
+    profile = db.get_user_profile(user_id) or {}
+    tzid = profile.get("timezone") or None
+    ics_content = generate_ics_multi(trips, tzid=tzid)
     return Response(
         ics_content,
         mimetype="text/calendar; charset=utf-8",
@@ -581,3 +583,22 @@ def save_user_profile():
     db.set_user_profile(g.user_id, existing_profile)
 
     return json_ok({"success": True})
+
+
+@trips_bp.post("/api/user/timezone")
+@require_auth
+def save_user_timezone():
+    """Save the user's home timezone for calendar export."""
+    data = request.get_json(silent=True) or {}
+    tzid = (data.get("timezone") or "").strip()
+    # Basic sanity check: must look like a valid IANA zone (e.g. America/Los_Angeles).
+    # We don't do a full lookup; invalid values just mean floating times in the ICS.
+    if tzid and ("/" not in tzid or len(tzid) > 64):
+        return json_err("Invalid timezone")
+    existing_profile = db.get_user_profile(g.user_id) or {}
+    if tzid:
+        existing_profile["timezone"] = tzid
+    else:
+        existing_profile.pop("timezone", None)
+    db.set_user_profile(g.user_id, existing_profile)
+    return json_ok({"success": True, "timezone": tzid or None})
