@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/static/css/main.css?v=14">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=1">
     <link rel="stylesheet" href="/static/css/categories.css">
-    <link rel="stylesheet" href="/static/css/trips.css?v=14">
+    <link rel="stylesheet" href="/static/css/trips.css?v=15">
     <link rel="stylesheet" href="/static/css/trips-actions.css?v=3">
     <link rel="stylesheet" href="/static/css/trips-share-map.css?v=1">
 </head>
@@ -23,9 +23,14 @@
                 <h1><i class="fas fa-route"></i> My Trips</h1>
                 <p>Itineraries, ideas, and shared trips, all in one list.</p>
             </div>
-            <a href="/create.html" class="new-trip-btn">
-                <i class="fas fa-plus"></i> New Trip
-            </a>
+            <div class="trips-header-actions">
+                <button class="calendar-feed-btn" onclick="subscribeAllTripsCalendar()" title="Subscribe to all trips in your calendar app">
+                    <i class="fas fa-calendar-alt"></i> Subscribe
+                </button>
+                <a href="/create.html" class="new-trip-btn">
+                    <i class="fas fa-plus"></i> New Trip
+                </a>
+            </div>
         </div>
     </div>
 
@@ -165,7 +170,7 @@
     <script src="/static/js/archive.js?v=1"></script>
     <script src="/static/js/upload.js?v=15"></script>
     <script src="/static/js/trips-actions.js?v=1"></script>
-    <script src="/static/js/calendar-export.js?v=3"></script>
+    <script src="/static/js/calendar-export.js?v=4"></script>
     <script src="/static/js/trips.js?v=10"></script>
 </body>
 </html>
