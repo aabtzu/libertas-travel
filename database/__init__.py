@@ -31,6 +31,7 @@ from database.trips import (  # noqa: F401
     add_trip,
     delete_trip,
     get_pending_geocoding_trips,
+    get_published_trips_with_dates,
     get_trip_by_link,
     get_trip_owner,
     get_user_trips,

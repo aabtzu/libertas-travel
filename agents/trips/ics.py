@@ -47,6 +47,128 @@ def verify_subscribe_token(user_id: int, link: str, provided: str) -> bool:
     return hmac.compare_digest(expected, provided)
 
 
+def user_calendar_token(user_id: int) -> str:
+    """Build a deterministic per-user HMAC token for the all-trips feed.
+
+    Same HMAC approach as calendar_subscribe_token but scoped to the user
+    (no trip link), so one URL covers all their published trips. The "user-cal"
+    prefix prevents token reuse between the two surfaces.
+    """
+    secret = os.environ.get("SECRET_KEY", "")
+    if not secret:
+        raise RuntimeError("SECRET_KEY not set, cannot generate user calendar token")
+    payload = f"user-cal:{user_id}".encode()
+    digest = hmac.new(secret.encode(), payload, hashlib.sha256).digest()
+    return digest.hex()[:32]
+
+
+def verify_user_calendar_token(user_id: int, provided: str) -> bool:
+    """Constant-time check of a user calendar token."""
+    expected = user_calendar_token(user_id)
+    return hmac.compare_digest(expected, provided)
+
+
+def generate_ics_multi(trips: list[dict]) -> str:
+    """Generate a single ICS feed containing all events from multiple trips.
+
+    Each trip dict must have ``title``, ``link``, and ``itinerary_data``
+    (already parsed from JSON). Only days with a ``date`` are included;
+    items without a date on their day are skipped (same rule as
+    generate_ics).
+    """
+    cal = Calendar()
+    cal.add("VERSION", "2.0")
+    cal.add("PRODID", "-//Libertas Travel//Trip Planner//EN")
+    cal.add("CALSCALE", "GREGORIAN")
+    cal.add("METHOD", "PUBLISH")
+    cal.add("X-WR-CALNAME", "Libertas Travel")
+
+    now_utc = datetime.utcnow()
+
+    for trip in trips:
+        link = trip.get("link", "unknown")
+        itinerary_data = trip.get("itinerary_data") or {}
+        days = itinerary_data.get("days", [])
+        event_count = 0
+
+        for day in days:
+            day_date_str = day.get("date")
+            if not day_date_str:
+                continue
+            try:
+                day_date = _date.fromisoformat(day_date_str)
+            except ValueError:
+                continue
+
+            for item in day.get("items", []):
+                event_count += 1
+                item_title = item.get("title", "Activity")
+                item_time = item.get("time")
+                item_end_time = item.get("end_time")
+                item_location = item.get("location", "")
+                item_notes = item.get("notes", "")
+                item_category = item.get("category", "activity")
+                item_website = item.get("website", "")
+
+                event = Event()
+                event.add("UID", f"{link}-{day_date_str}-{event_count}@libertas.app")
+                event.add("DTSTAMP", now_utc)
+                event.add("SUMMARY", item_title)
+
+                if item_time:
+                    start_hm = _parse_hhmm(item_time)
+                    if start_hm is None:
+                        event.add("DTSTART", day_date)
+                        event.add("DTEND", day_date)
+                    else:
+                        start = datetime.combine(
+                            day_date,
+                            datetime.min.time().replace(hour=start_hm[0], minute=start_hm[1]),
+                        )
+                        end_hm = _parse_hhmm(item_end_time) if item_end_time else None
+
+                        end_date_str = item.get("end_date")
+                        end_date = day_date
+                        if end_date_str:
+                            try:
+                                end_date = _date.fromisoformat(end_date_str)
+                            except ValueError:
+                                pass
+                        elif end_hm and (end_hm[0], end_hm[1]) < (start_hm[0], start_hm[1]):
+                            end_date = day_date + timedelta(days=1)
+
+                        end = (
+                            datetime.combine(
+                                end_date,
+                                datetime.min.time().replace(hour=end_hm[0], minute=end_hm[1]),
+                            )
+                            if end_hm
+                            else start + timedelta(hours=1)
+                        )
+                        event.add("DTSTART", start)
+                        event.add("DTEND", end)
+                else:
+                    event.add("DTSTART", day_date)
+                    event.add("DTEND", day_date)
+
+                if item_location:
+                    event.add("LOCATION", item_location)
+
+                desc_parts = []
+                if item_category:
+                    desc_parts.append(f"Category: {item_category.title()}")
+                if item_notes:
+                    desc_parts.append(item_notes)
+                if item_website:
+                    desc_parts.append(f"Website: {item_website}")
+                if desc_parts:
+                    event.add("DESCRIPTION", "\n".join(desc_parts))
+
+                cal.add_component(event)
+
+    return cal.to_ical().decode("utf-8")
+
+
 def _parse_hhmm(value: str) -> tuple[int, int] | None:
     """Parse 'HH:MM' into (hour, minute), or None if malformed."""
     try:
