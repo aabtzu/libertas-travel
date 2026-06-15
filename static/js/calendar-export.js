@@ -52,15 +52,39 @@ async function subscribeTripCalendar() {
     }
 }
 
-function _showSubscribeModal(url, copied) {
-    closeShareModal();
+// All-trips feed: single webcal:// URL covering every published trip with dates.
+// Shown from a button on the trips page header (not the share modal).
+async function subscribeAllTripsCalendar() {
+    try {
+        const res = await fetch('/api/calendar/subscribe-url');
+        if (!res.ok) {
+            alert('Could not generate calendar URL. Try again.');
+            return;
+        }
+        const data = await res.json();
+        const url = data.url || '';
+        if (!url) return;
+        try {
+            await navigator.clipboard.writeText(url);
+            _showSubscribeModal(url, true, 'Subscribe to all trips');
+        } catch {
+            _showSubscribeModal(url, false, 'Subscribe to all trips');
+        }
+    } catch (e) {
+        alert('Could not generate calendar URL: ' + e.message);
+    }
+}
+
+function _showSubscribeModal(url, copied, title) {
+    // closeShareModal is defined in upload.js; only call it when the share modal is open.
+    if (typeof closeShareModal === 'function') closeShareModal();
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
         <div class="modal-dialog" style="max-width: 560px;">
             <div class="modal-header">
                 <i class="fas fa-rss" style="color: #f0c674; font-size: 1.6rem;"></i>
-                <h3>Subscribe to this trip</h3>
+                <h3>${title || 'Subscribe to this trip'}</h3>
             </div>
             <div class="modal-body">
                 <p style="margin-top:0">${copied ? '<i class="fas fa-check" style="color:#43a047"></i> Subscribe URL copied to clipboard.' : 'Copy this URL:'}</p>
