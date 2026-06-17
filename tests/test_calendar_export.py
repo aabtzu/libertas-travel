@@ -292,9 +292,8 @@ class TestGeneratedIcsFormat:
         # Arrival on Jun 22 06:34, NOT Jun 21
         assert "20260622T063400" in ics
 
-    def test_explicit_end_date_is_honored(self):
-        """Multi-day items (hotels, car rentals) carry their own end_date.
-        The exporter should use it directly."""
+    def test_hotel_emits_span_and_checkin(self):
+        """Hotels with end_date produce two events: an all-day span and a timed check-in."""
         ics = generate_ics(
             self._export_payload(
                 [
@@ -305,7 +304,6 @@ class TestGeneratedIcsFormat:
                                 "title": "Marriott Seattle",
                                 "category": "hotel",
                                 "time": "16:00",
-                                "end_time": "11:00",
                                 "end_date": "2026-06-15",
                             }
                         ],
@@ -314,9 +312,60 @@ class TestGeneratedIcsFormat:
             ),
             "trip.html",
         )
-        # Check-in 2026-06-10 16:00, check-out 2026-06-15 11:00
+        # All-day span: DTSTART;VALUE=DATE:20260610, DTEND;VALUE=DATE:20260616 (exclusive)
+        assert "20260610" in ics
+        assert "20260616" in ics
+        # Timed check-in event on start day
         assert "20260610T160000" in ics
-        assert "20260615T110000" in ics
+        # Summary includes "Check-in:" prefix
+        assert "Check-in: Marriott Seattle" in ics
+
+    def test_transport_emits_span_and_pickup(self):
+        """Car rentals (transport) with end_date produce a span and a timed pickup event."""
+        ics = generate_ics(
+            self._export_payload(
+                [
+                    {
+                        "date": "2026-06-10",
+                        "items": [
+                            {
+                                "title": "Hertz Midsize",
+                                "category": "transport",
+                                "time": "08:00",
+                                "end_date": "2026-06-20",
+                            }
+                        ],
+                    }
+                ]
+            ),
+            "trip.html",
+        )
+        assert "20260610" in ics
+        assert "20260621" in ics  # exclusive end = end_date + 1
+        assert "20260610T080000" in ics
+        assert "Pickup: Hertz Midsize" in ics
+
+    def test_hotel_without_end_date_is_timed_event(self):
+        """A hotel item without end_date falls through to a single timed event."""
+        ics = generate_ics(
+            self._export_payload(
+                [
+                    {
+                        "date": "2026-06-10",
+                        "items": [
+                            {
+                                "title": "Marriott Seattle",
+                                "category": "hotel",
+                                "time": "16:00",
+                            }
+                        ],
+                    }
+                ]
+            ),
+            "trip.html",
+        )
+        assert "20260610T160000" in ics
+        assert "Check-in:" not in ics
 
 
 # ---------------------------------------------------------------------------
