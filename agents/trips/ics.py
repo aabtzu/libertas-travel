@@ -4,6 +4,17 @@ Uses the icalendar library so escaping, line folding, and date/time
 serialization match RFC 5545 by construction. The previous hand-rolled
 emitter worked for the common case but had latent bugs in edge cases
 (unfolded long DESCRIPTIONs, escape order, no UTC normalization).
+
+Timezone strategy:
+- Each item's DTSTART/DTEND is tagged with the IANA timezone of its
+  geocoded location, derived from the map_data markers that the geocoding
+  worker already computed and stored. This is the TripIt model: a dinner in
+  NY is America/New_York, a hotel in LA is America/Los_Angeles.
+- Transit items (flight, train, bus) remain floating: departure and arrival
+  are in different timezones and we only store one location per item.
+- Items without geocoded coordinates remain floating (RFC 5545 correct for
+  wall-clock local time at the destination).
+- timezonefinder does the lat/lng -> IANA lookup entirely offline.
 """
 
 from __future__ import annotations
@@ -13,14 +24,17 @@ import hmac
 import os
 from datetime import UTC, datetime, timedelta
 from datetime import date as _date
+from typing import TYPE_CHECKING
 
-from icalendar import Calendar, Event, vDatetime, vText
+from icalendar import Calendar, Event, vDatetime
+
+if TYPE_CHECKING:
+    from timezonefinder import TimezoneFinder as _TFType
 
 # Categories that represent a stay or rental spanning multiple days.
 # Items in these categories with an end_date get:
 #   1. An all-day multi-day span event (the "bar" across the calendar)
 #   2. A separate timed check-in/pickup event on the start day
-# Everything else gets a single timed event (or all-day if no time).
 _SPAN_CATEGORIES = frozenset(["hotel", "lodging", "transport"])
 
 # Labels for the timed companion event by category.
@@ -29,6 +43,73 @@ _CHECKIN_LABEL = {
     "lodging": "Check-in: ",
     "transport": "Pickup: ",
 }
+
+# Transit categories: departure and arrival are in different timezones.
+# Using a single TZID would tag the departure time with the arrival timezone
+# (or vice versa), which is wrong. Floating times are the RFC 5545 correct
+# representation for these items.
+_TRANSIT_CATEGORIES = frozenset(["flight", "train", "bus"])
+
+# Module-level TimezoneFinder singleton - loaded once, reused across requests.
+# Loading reads ~20 MB of polygon data from disk; we don't want that per call.
+_TF: _TFType | None = None
+_TF_LOADED = False  # tracks whether we've attempted to load (even if it failed)
+
+
+def _get_tf() -> _TFType | None:
+    """Return the shared TimezoneFinder instance, or None if unavailable."""
+    global _TF, _TF_LOADED
+    if _TF_LOADED:
+        return _TF
+    _TF_LOADED = True
+    try:
+        from timezonefinder import TimezoneFinder
+
+        _TF = TimezoneFinder()
+    except Exception:
+        _TF = None
+    return _TF
+
+
+def _tz_from_latlon(lat: float, lng: float) -> str | None:
+    """Return IANA timezone name for a lat/lng, or None on failure."""
+    tf = _get_tf()
+    if tf is None:
+        return None
+    try:
+        return tf.timezone_at(lat=lat, lng=lng)
+    except Exception:
+        return None
+
+
+def _build_tz_lookup(itinerary_data: dict) -> dict[str, str]:
+    """Build a title-to-IANA-timezone mapping from geocoded map_data markers.
+
+    The geocoding worker already computed lat/lng for each item and stored the
+    result in itinerary_data["map_data"]["markers"]. We derive the timezone
+    from those coordinates so ICS generation doesn't need to do any geocoding.
+
+    Returns an empty dict when map_data is absent or timezonefinder is not
+    installed - callers treat missing entries as "use floating time."
+    """
+    lookup: dict[str, str] = {}
+    markers = (itinerary_data.get("map_data") or {}).get("markers", [])
+    if not markers:
+        return lookup
+    tf = _get_tf()
+    if tf is None:
+        return lookup
+    for marker in markers:
+        title = (marker.get("title") or "").strip()
+        pos = marker.get("position") or {}
+        lat = pos.get("lat")
+        lng = pos.get("lng")
+        if not title or lat is None or lng is None:
+            continue
+        tz = _tz_from_latlon(float(lat), float(lng))
+        if tz:
+            lookup[title] = tz
+    return lookup
 
 
 def calendar_subscribe_token(user_id: int, link: str) -> str:
@@ -82,18 +163,17 @@ def verify_user_calendar_token(user_id: int, provided: str) -> bool:
     return hmac.compare_digest(expected, provided)
 
 
-def generate_ics_multi(trips: list[dict], tzid: str | None = None) -> str:
+def generate_ics_multi(trips: list[dict]) -> str:
     """Generate a single ICS feed containing all events from multiple trips.
 
     Each trip dict must have ``title``, ``link``, and ``itinerary_data``
     (already parsed from JSON). Only days with a ``date`` are included;
-    items without a date on their day are skipped (same rule as
-    generate_ics).
+    items without a date on their day are skipped.
 
-    tzid: IANA timezone name (e.g. "America/Los_Angeles"). When provided,
-    DTSTART/DTEND are tagged with TZID so Google Calendar displays the
-    correct local time. When None, times are emitted as floating (correct
-    per RFC 5545 but Google Calendar incorrectly interprets as UTC).
+    Each item's timezone is derived from its geocoded location in map_data,
+    so events show in the correct local time in Google Calendar. Transit items
+    (flights, trains, buses) use floating times since departure and arrival
+    are in different timezones.
     """
     cal = Calendar()
     cal.add("VERSION", "2.0")
@@ -101,8 +181,6 @@ def generate_ics_multi(trips: list[dict], tzid: str | None = None) -> str:
     cal.add("CALSCALE", "GREGORIAN")
     cal.add("METHOD", "PUBLISH")
     cal.add("X-WR-CALNAME", "Libertas Travel")
-    if tzid:
-        _add_tzid_calendar(cal, tzid)
 
     now_utc = datetime.now(UTC)
     event_count = 0
@@ -111,6 +189,7 @@ def generate_ics_multi(trips: list[dict], tzid: str | None = None) -> str:
         link = trip.get("link", "unknown")
         itinerary_data = trip.get("itinerary_data") or {}
         days = itinerary_data.get("days", [])
+        tz_lookup = _build_tz_lookup(itinerary_data)
 
         for day in days:
             day_date_str = day.get("date")
@@ -124,7 +203,7 @@ def generate_ics_multi(trips: list[dict], tzid: str | None = None) -> str:
             for item in day.get("items", []):
                 event_count += 1
                 uid_prefix = f"{link}-{day_date_str}-{event_count}"
-                for event in _build_events(item, day_date, uid_prefix, now_utc, tzid):
+                for event in _build_events(item, day_date, uid_prefix, now_utc, tz_lookup):
                     cal.add_component(event)
 
     return cal.to_ical().decode("utf-8")
@@ -138,10 +217,14 @@ def generate_ics(export_data: dict, link: str) -> str:
     a ``date`` on their day are skipped. Items without a ``time`` become
     all-day events; with a ``time``, they get a 1-hour default unless an
     ``end_time`` is set.
+
+    Timezones are derived from geocoded map_data markers - same logic as
+    generate_ics_multi.
     """
     title = export_data.get("title", "Trip")
     itinerary_data = export_data.get("itinerary_data", {})
     days = itinerary_data.get("days", [])
+    tz_lookup = _build_tz_lookup(itinerary_data)
 
     cal = Calendar()
     cal.add("VERSION", "2.0")
@@ -151,7 +234,6 @@ def generate_ics(export_data: dict, link: str) -> str:
     cal.add("X-WR-CALNAME", title)
 
     # RFC 5545 requires DTSTAMP to be a UTC datetime (Z suffix).
-    # Using now(UTC) gives icalendar the tzinfo it needs to emit Z.
     now_utc = datetime.now(UTC)
     event_count = 0
 
@@ -168,7 +250,7 @@ def generate_ics(export_data: dict, link: str) -> str:
         for item in day.get("items", []):
             event_count += 1
             uid_prefix = f"{link}-{day_date_str}-{event_count}"
-            for event in _build_events(item, day_date, uid_prefix, now_utc, tzid=None):
+            for event in _build_events(item, day_date, uid_prefix, now_utc, tz_lookup):
                 cal.add_component(event)
 
     return cal.to_ical().decode("utf-8")
@@ -179,7 +261,7 @@ def _build_events(
     day_date: _date,
     uid_prefix: str,
     now_utc: datetime,
-    tzid: str | None,
+    tz_lookup: dict[str, str],
 ) -> list[Event]:
     """Build one or two VEVENT objects for a single itinerary item.
 
@@ -189,6 +271,10 @@ def _build_events(
 
     Everything else (flights, meals, activities) produces one timed event,
     or an all-day event when no time is given.
+
+    Transit items (flights, trains, buses) always get floating times.
+    All other items get TZID from their geocoded location in tz_lookup,
+    so a 9pm dinner in NY shows as 9pm ET regardless of where the viewer is.
     """
     category = (item.get("category") or "activity").lower()
     title = item.get("title", "Activity")
@@ -199,6 +285,13 @@ def _build_events(
     notes = item.get("notes", "")
     website = item.get("website", "")
 
+    # Derive timezone from geocoded location. Transit items stay floating:
+    # a flight has departure timezone != arrival timezone, and we only have
+    # one location per item (the destination).
+    tzid: str | None = None
+    if category not in _TRANSIT_CATEGORIES:
+        tzid = tz_lookup.get(title)
+
     desc_parts = []
     if category:
         desc_parts.append(f"Category: {category.title()}")
@@ -208,8 +301,6 @@ def _build_events(
         desc_parts.append(f"Website: {website}")
     description = "\n".join(desc_parts) if desc_parts else None
 
-    # Hotels and rentals with a known end date get an all-day span + timed
-    # companion event, matching how TripIt renders them.
     if category in _SPAN_CATEGORIES and end_date_str:
         return _build_span_events(
             title,
@@ -224,7 +315,6 @@ def _build_events(
             tzid,
         )
 
-    # All other categories: single timed (or all-day) event.
     return [
         _build_timed_event(
             title,
@@ -363,11 +453,6 @@ def _build_timed_event(
         event.add("DESCRIPTION", description)
 
     return event
-
-
-def _add_tzid_calendar(cal: Calendar, tzid: str) -> None:
-    """Add X-WR-TIMEZONE hint so apps know the intended timezone."""
-    cal.add("X-WR-TIMEZONE", vText(tzid))
 
 
 def _dtstart(dt: datetime, tzid: str | None):
