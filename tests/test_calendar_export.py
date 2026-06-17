@@ -501,3 +501,117 @@ class TestUserCalendarRoutes:
         os.environ["SECRET_KEY"] = "test-secret"
         resp = client.get("/api/calendar/all.ics?token=anything")
         assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Per-location timezone via timezonefinder
+# ---------------------------------------------------------------------------
+
+
+class TestPerLocationTimezone:
+    """Timezone is derived from geocoded map_data markers, not from a global setting."""
+
+    _NYC_MARKER = {
+        "title": "Dinner at Le Bernardin",
+        "position": {"lat": 40.7614, "lng": -73.9814},
+    }
+    _LA_MARKER = {
+        "title": "Dinner at Nobu Malibu",
+        "position": {"lat": 34.0195, "lng": -118.6783},
+    }
+
+    def _export(self, items, markers=None):
+        return {
+            "title": "Trip",
+            "itinerary_data": {
+                "days": [{"date": "2026-07-10", "items": items}],
+                "map_data": {"markers": markers or []},
+            },
+        }
+
+    def test_geocoded_meal_gets_tzid(self):
+        ics = generate_ics(
+            self._export(
+                [{"title": "Dinner at Le Bernardin", "category": "meal", "time": "21:00"}],
+                markers=[self._NYC_MARKER],
+            ),
+            "trip.html",
+        )
+        assert "TZID=America/New_York" in ics
+
+    def test_two_cities_get_different_tzids(self):
+        ics = generate_ics(
+            self._export(
+                [
+                    {
+                        "title": "Dinner at Le Bernardin",
+                        "category": "meal",
+                        "time": "21:00",
+                    },
+                    {
+                        "title": "Dinner at Nobu Malibu",
+                        "category": "meal",
+                        "time": "19:00",
+                    },
+                ],
+                markers=[self._NYC_MARKER, self._LA_MARKER],
+            ),
+            "trip.html",
+        )
+        assert "TZID=America/New_York" in ics
+        assert "TZID=America/Los_Angeles" in ics
+
+    def test_flight_stays_floating_despite_map_data(self):
+        """Flights must not get a TZID - departure and arrival are different timezones."""
+        flight_marker = {
+            "title": "DL 699 JFK to SEA",
+            "position": {"lat": 47.449, "lng": -122.308},
+        }
+        ics = generate_ics(
+            self._export(
+                [
+                    {
+                        "title": "DL 699 JFK to SEA",
+                        "category": "flight",
+                        "time": "07:00",
+                        "end_time": "10:05",
+                    }
+                ],
+                markers=[flight_marker],
+            ),
+            "trip.html",
+        )
+        assert "TZID" not in ics
+
+    def test_no_map_data_produces_floating_times(self):
+        ics = generate_ics(
+            self._export(
+                [{"title": "Dinner somewhere", "category": "meal", "time": "20:00"}],
+                markers=[],
+            ),
+            "trip.html",
+        )
+        assert "TZID" not in ics
+        assert "20260710T200000" in ics
+
+    def test_hotel_span_gets_tzid_on_checkin_event(self):
+        hotel_marker = {
+            "title": "Casas De Suenos",
+            "position": {"lat": 35.0844, "lng": -106.6504},
+        }
+        ics = generate_ics(
+            self._export(
+                [
+                    {
+                        "title": "Casas De Suenos",
+                        "category": "hotel",
+                        "time": "15:00",
+                        "end_date": "2026-07-14",
+                    }
+                ],
+                markers=[hotel_marker],
+            ),
+            "trip.html",
+        )
+        assert "TZID=America/Denver" in ics
+        assert "Check-in: Casas De Suenos" in ics
