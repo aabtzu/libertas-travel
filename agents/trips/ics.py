@@ -217,7 +217,6 @@ def _build_events(
             day_date,
             end_date_str,
             item_time,
-            item_end_time,
             location,
             description,
             uid_prefix,
@@ -248,7 +247,6 @@ def _build_span_events(
     day_date: _date,
     end_date_str: str,
     item_time: str | None,
-    item_end_time: str | None,
     location: str,
     description: str | None,
     uid_prefix: str,
@@ -278,6 +276,8 @@ def _build_span_events(
     events.append(span)
 
     # Timed companion event on the start day for the check-in/pickup time.
+    # Always 1 hour long: end_time on a rental/hotel is the dropoff/checkout
+    # time on end_date, not a duration for this event.
     if item_time:
         start_hm = _parse_hhmm(item_time)
         if start_hm:
@@ -285,15 +285,7 @@ def _build_span_events(
                 day_date,
                 datetime.min.time().replace(hour=start_hm[0], minute=start_hm[1]),
             )
-            end_hm = _parse_hhmm(item_end_time) if item_end_time else None
-            end = (
-                datetime.combine(
-                    day_date,
-                    datetime.min.time().replace(hour=end_hm[0], minute=end_hm[1]),
-                )
-                if end_hm
-                else start + timedelta(hours=1)
-            )
+            end = start + timedelta(hours=1)
             label = _CHECKIN_LABEL.get(category, "")
             checkin = Event()
             checkin.add("UID", f"{uid_prefix}-checkin@libertas.app")

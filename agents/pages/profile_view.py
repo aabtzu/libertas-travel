@@ -375,7 +375,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                         body: JSON.stringify({{timezone: tz}}),
                     }});
                     const data = await res.json();
-                    if (data.ok) {{
+                    if (data.success) {{
                         statusEl.textContent = 'Saved!';
                         statusEl.className = 'status-msg success';
                     }} else {{
