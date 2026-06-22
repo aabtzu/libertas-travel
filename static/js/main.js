@@ -718,3 +718,11 @@ window.showFeedbackPopup = function (subject) {
         }
     });
 };
+
+// Identify the logged-in user to PostHog so sessions are tied to accounts.
+// Runs once per page load; posthog.identify is a no-op for anonymous users.
+fetch('/api/user/me').then(r => r.json()).then(data => {
+    if (data.user_id && window.posthog) {
+        posthog.identify(String(data.user_id));
+    }
+}).catch(() => {});

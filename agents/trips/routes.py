@@ -538,6 +538,14 @@ def fill_trip_links(link: str):
     return json_err(result.get("error", "Unknown error"), status=status)
 
 
+@trips_bp.get("/api/user/me")
+def get_current_user():
+    """Return minimal current user info for client-side analytics identification."""
+    if not g.user_id:
+        return json_ok({"user_id": None})
+    return json_ok({"user_id": g.user_id})
+
+
 @trips_bp.get("/api/user/profile")
 @require_auth
 def get_user_profile_api():
