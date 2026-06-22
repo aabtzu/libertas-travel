@@ -141,3 +141,11 @@ def generate_login_page() -> str:
 def generate_register_page() -> str:
     """Generate the Register page HTML."""
     return get_template("register.html")
+
+
+def generate_forgot_password_page() -> str:
+    return get_template("forgot-password.html")
+
+
+def generate_reset_password_page() -> str:
+    return get_template("reset-password.html")
