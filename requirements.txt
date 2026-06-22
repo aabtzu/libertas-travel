@@ -1,4 +1,4 @@
-fiat-lux-agents @ git+https://github.com/aabtzu/fiat-lux-agents.git
+fiat-lux-agents @ file:///Users/amitbhattacharyya/repos/fiat-lux-agents
 flask>=3.0.0
 gunicorn>=21.0.0
 airportsdata>=20240720

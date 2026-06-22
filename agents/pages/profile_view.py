@@ -228,6 +228,29 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
             </div>
         </div>
 
+        <!-- Change Password -->
+        <div class="profile-section">
+            <h2><i class="fas fa-lock"></i> Change Password</h2>
+            <div class="field-group">
+                <label>Current Password</label>
+                <input type="password" id="pw-current" autocomplete="current-password">
+            </div>
+            <div class="field-group">
+                <label>New Password</label>
+                <input type="password" id="pw-new" autocomplete="new-password">
+            </div>
+            <div class="field-group">
+                <label>Confirm New Password</label>
+                <input type="password" id="pw-confirm" autocomplete="new-password">
+            </div>
+            <div class="profile-actions">
+                <button class="btn-primary" id="change-pw-btn">
+                    <i class="fas fa-key"></i> Change Password
+                </button>
+                <span class="status-msg" id="change-pw-status"></span>
+            </div>
+        </div>
+
     </div>
 
     <script src="/static/js/main.js?v=7"></script>
@@ -315,6 +338,40 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
             }} catch {{
                 document.getElementById('save-status').textContent = 'Failed to save';
                 document.getElementById('save-status').className = 'status-msg error';
+            }}
+            btn.disabled = false;
+        }});
+
+        document.getElementById('change-pw-btn').addEventListener('click', async () => {{
+            const btn = document.getElementById('change-pw-btn');
+            const status = document.getElementById('change-pw-status');
+            const body = {{
+                current_password: document.getElementById('pw-current').value,
+                new_password: document.getElementById('pw-new').value,
+                confirm_password: document.getElementById('pw-confirm').value,
+            }};
+            btn.disabled = true;
+            status.textContent = '';
+            try {{
+                const res = await fetch('/api/user/change-password', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify(body),
+                }});
+                const data = await res.json();
+                if (data.success) {{
+                    status.textContent = 'Password changed!';
+                    status.className = 'status-msg success';
+                    document.getElementById('pw-current').value = '';
+                    document.getElementById('pw-new').value = '';
+                    document.getElementById('pw-confirm').value = '';
+                }} else {{
+                    status.textContent = data.error || 'Failed to change password';
+                    status.className = 'status-msg error';
+                }}
+            }} catch {{
+                status.textContent = 'Failed to connect';
+                status.className = 'status-msg error';
             }}
             btn.disabled = false;
         }});
