@@ -87,6 +87,13 @@ def generate_writeup_for_trip(user_id: int, link: str) -> tuple[dict, int]:
     except Exception as e:
         return {"error": f"Write-up generation failed: {e}"}, 500
 
+    # Persist so the /w/ public page uses this version without regenerating.
+    itinerary_data["writeup"] = text
+    try:
+        db.update_trip_itinerary_data(user_id, link, itinerary_data)
+    except Exception as e:
+        print(f"[writeup] failed to persist for {link}: {e}")
+
     return {"writeup": text, "personalized": bool(style_profile)}, 200
 
 

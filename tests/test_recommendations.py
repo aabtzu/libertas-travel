@@ -173,6 +173,102 @@ class TestRecommendationRoutes:
 
 
 # ---------------------------------------------------------------------------
+# Writeup persistence
+# ---------------------------------------------------------------------------
+
+
+class TestWriteupPersistence:
+    def test_autosave_preserves_existing_writeup(self, client):
+        """A normal autosave (no writeup in payload) must not clear a saved writeup."""
+        import database as db
+
+        resp = client.post("/api/trips/create", json={"title": "Writeup Persist Test"})
+        link = resp.get_json().get("trip", {}).get("link", "")
+        assert link
+
+        try:
+            # Seed the DB with a writeup
+            trip = db.get_trip_by_link(1, link)
+            seed_data = trip.get("itinerary_data") or {}
+            seed_data["writeup"] = "Original write-up text"
+            db.update_trip_itinerary_data(1, link, seed_data)
+
+            # Autosave without writeup in payload
+            save_resp = client.post(
+                f"/api/trips/{link}/save",
+                json={
+                    "title": "Writeup Persist Test",
+                    "itinerary_data": {"days": [], "ideas": [], "tips": []},
+                },
+            )
+            assert save_resp.status_code == 200
+
+            # Writeup must still be there
+            updated = db.get_trip_by_link(1, link)
+            assert updated["itinerary_data"].get("writeup") == "Original write-up text"
+        finally:
+            if link:
+                db.delete_trip(1, link)
+
+    def test_autosave_with_writeup_in_payload_updates_it(self, client):
+        """If a save explicitly includes a writeup, it replaces the stored one."""
+        import database as db
+
+        resp = client.post("/api/trips/create", json={"title": "Writeup Replace Test"})
+        link = resp.get_json().get("trip", {}).get("link", "")
+        assert link
+
+        try:
+            save_resp = client.post(
+                f"/api/trips/{link}/save",
+                json={
+                    "title": "Writeup Replace Test",
+                    "itinerary_data": {
+                        "days": [],
+                        "ideas": [],
+                        "tips": [],
+                        "writeup": "Updated write-up",
+                    },
+                },
+            )
+            assert save_resp.status_code == 200
+
+            updated = db.get_trip_by_link(1, link)
+            assert updated["itinerary_data"].get("writeup") == "Updated write-up"
+        finally:
+            if link:
+                db.delete_trip(1, link)
+
+    def test_generate_writeup_endpoint_persists_to_db(self, client):
+        """POST /api/trips/<link>/writeup must save the writeup into itinerary_data."""
+        import unittest.mock as mock
+
+        import database as db
+
+        resp = client.post("/api/trips/create", json={"title": "Gen Writeup Test"})
+        link = resp.get_json().get("trip", {}).get("link", "")
+        assert link
+
+        try:
+            with mock.patch(
+                "agents.trips.writeup.generate_writeup",
+                return_value="Mocked write-up text",
+            ):
+                gen_resp = client.post(f"/api/trips/{link}/writeup")
+
+            assert gen_resp.status_code == 200
+            data = gen_resp.get_json()
+            assert data.get("writeup") == "Mocked write-up text"
+
+            # Must be persisted
+            saved = db.get_trip_by_link(1, link)
+            assert saved["itinerary_data"].get("writeup") == "Mocked write-up text"
+        finally:
+            if link:
+                db.delete_trip(1, link)
+
+
+# ---------------------------------------------------------------------------
 # Data model: ideas with links
 # ---------------------------------------------------------------------------
 
