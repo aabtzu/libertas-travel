@@ -10,10 +10,12 @@ import database as db
 from agents.common.flask_utils import require_auth
 from agents.common.templates import (
     generate_about_page,
+    generate_forgot_password_page,
     generate_home_page,
     generate_how_it_works_page,
     generate_login_page,
     generate_register_page,
+    generate_reset_password_page,
     get_nav_html,
 )
 from agents.explore.templates import generate_explore_page
@@ -136,6 +138,18 @@ def register():
     if g.user_id and not g.auth_disabled:
         return redirect("/")
     return _html(generate_register_page())
+
+
+@pages_bp.get("/forgot-password")
+@pages_bp.get("/forgot-password.html")
+def forgot_password():
+    return _html(generate_forgot_password_page())
+
+
+@pages_bp.get("/reset-password")
+@pages_bp.get("/reset-password.html")
+def reset_password():
+    return _html(generate_reset_password_page())
 
 
 @pages_bp.get("/profile")

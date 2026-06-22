@@ -1,65 +1,26 @@
-"""Auth blueprint: login, register, logout."""
+"""Auth blueprint - thin shim that delegates to fiat_lux_agents.auth.
+
+All logic lives in the fla-auth plugin. This file just configures it
+with the app's DB connection and env vars.
+"""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import os
 
-from flask import Blueprint, request, session
+from fiat_lux_agents.auth import make_auth_blueprint
 
-from agents.auth import credentials as auth
-from agents.common.flask_utils import json_err, json_ok
+from database.connection import USE_POSTGRES, get_db
 
-auth_bp = Blueprint("auth", __name__)
+_APP_URL = os.environ.get("APP_URL", "https://libertas-travel.onrender.com")
+_FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@libertas-travel.onrender.com")
 
-
-@auth_bp.post("/api/login")
-def login():
-    data = request.get_json(silent=True) or {}
-    username = data.get("username", "").strip()
-    password = data.get("password", "").strip()
-
-    if not username or not password:
-        return json_err("Username and password required")
-
-    user = auth.verify_credentials(username, password)
-    if not user:
-        return json_err("Invalid username or password", status=401)
-
-    session["user_id"] = user["id"]
-    session["username"] = user["username"]
-    return json_ok({"success": True, "username": user["username"]})
-
-
-@auth_bp.post("/api/register")
-def register():
-    import os
-
-    data = request.get_json(silent=True) or {}
-    username = data.get("username", "").strip()
-    email = data.get("email", "").strip()
-    password = data.get("password", "").strip()
-    invite_code = data.get("invite_code", "").strip()
-
-    # If INVITE_CODE env var is set, require a matching code to register.
-    expected = os.environ.get("INVITE_CODE", "")
-    if expected:
-        if not invite_code:
-            return json_err("An invite code is required to register.")
-        if invite_code != expected:
-            return json_err("Invalid invite code.")
-
-    success, error = auth.register_user(username, email, password)
-    if success:
-        # Greppable line in Render logs so the owner can monitor signups
-        # via `render logs | grep '\[SIGNUP\]'`. Email/IP intentionally
-        # omitted from logs, keep PII out of the log stream.
-        ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-        print(f"[SIGNUP] {username} @ {ts}", flush=True)
-        return json_ok({"success": True})
-    return json_err(error)
-
-
-@auth_bp.post("/api/logout")
-def logout():
-    session.clear()
-    return json_ok({"success": True})
+auth_bp = make_auth_blueprint(
+    get_connection=get_db,
+    use_postgres=USE_POSTGRES,
+    invite_code=os.environ.get("INVITE_CODE", ""),
+    secret_key=os.environ.get("SECRET_KEY", ""),
+    app_url=_APP_URL,
+    from_email=_FROM_EMAIL,
+    app_name="Libertas",
+)
