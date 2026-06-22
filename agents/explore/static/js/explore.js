@@ -443,11 +443,7 @@ function createVenueCard(venue) {
 
     const location = buildVenueLocation(venue);
 
-    // Description (truncated to ~100 chars)
-    let description = venue.description || venue.notes || '';
-    if (description.length > 120) {
-        description = description.substring(0, 117) + '...';
-    }
+    const description = venue.description || venue.notes || '';
     const descriptionHtml = description
         ? `<div class="venue-card-description">${description}</div>`
         : '';
