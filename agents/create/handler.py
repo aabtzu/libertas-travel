@@ -127,18 +127,25 @@ def save_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str
         return {"error": "No itinerary data provided"}, 400
 
     needs_map_regen = False
-    if "map_data" not in itinerary_data:
+    needs_existing = "map_data" not in itinerary_data or "writeup" not in itinerary_data
+    existing_data: dict = {}
+    if needs_existing:
         existing_trip = db.get_trip_by_link(user_id, link)
         if existing_trip:
             existing_data = existing_trip.get("itinerary_data") or {}
-            if existing_data.get("map_data"):
-                old_flags = _extract_home_location_flags(existing_data)
-                new_flags = _extract_home_location_flags(itinerary_data)
-                if old_flags == new_flags:
-                    itinerary_data["map_data"] = existing_data["map_data"]
-                else:
-                    print(f"[SAVE] is_home_location changed for {link}, will regen map")
-                    needs_map_regen = True
+
+    if "map_data" not in itinerary_data and existing_data.get("map_data"):
+        old_flags = _extract_home_location_flags(existing_data)
+        new_flags = _extract_home_location_flags(itinerary_data)
+        if old_flags == new_flags:
+            itinerary_data["map_data"] = existing_data["map_data"]
+        else:
+            print(f"[SAVE] is_home_location changed for {link}, will regen map")
+            needs_map_regen = True
+
+    # Preserve a saved writeup unless the caller is explicitly sending a new one.
+    if "writeup" not in itinerary_data and existing_data.get("writeup"):
+        itinerary_data["writeup"] = existing_data["writeup"]
 
     title = data.get("title")
     print(f"[SAVE] link={link}, title={title}")

@@ -345,6 +345,12 @@ def writeup_view(rec_name: str):
                 style_profile=style_profile,
                 writing_samples=writing_samples,
             )
+            # Cache so future visits don't regenerate.
+            itinerary_data["writeup"] = writeup_text
+            try:
+                db.update_trip_itinerary_data(owner_id, link, itinerary_data)
+            except Exception as save_err:
+                print(f"[writeup] failed to cache for {link}: {save_err}")
         except Exception as e:
             # Log the actual cause, silently swallowing made debugging painful
             import traceback
