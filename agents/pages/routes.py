@@ -140,6 +140,13 @@ def register():
     return _html(generate_register_page())
 
 
+@pages_bp.get("/admin")
+def admin_dashboard():
+    from agents.admin.dashboard import generate_admin_dashboard_page
+
+    return _html(generate_admin_dashboard_page())
+
+
 @pages_bp.get("/forgot-password")
 @pages_bp.get("/forgot-password.html")
 def forgot_password():
