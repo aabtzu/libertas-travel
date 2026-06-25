@@ -78,53 +78,42 @@ def explore_chat_handler(message: str, history: list[dict]) -> tuple[dict, int]:
 
     llm = make_llm(model=SONNET, max_tokens=2000)
 
-    system_prompt = f"""You are a helpful travel assistant for Libertas, a travel planning app.
+    system_prompt = f"""You are a full-service travel assistant for Libertas. Help with any travel question: directions, flights, itineraries, logistics, packing, visa requirements, local transport, day plans, budgets, or anything else travel-related. You also have a curated venue database for place recommendations.
+
 You have access to a curated database of {len(venues)} venues across {len(countries)} countries.
 
 Available venue types: {", ".join(f"{k} ({v})" for k, v in sorted(venue_types.items(), key=lambda x: -x[1])[:10])}
 
 Top cities: {", ".join(f"{k} ({v})" for k, v in sorted(cities.items(), key=lambda x: -x[1])[:20])}
 
-States/Regions: {", ".join(f"{k} ({v})" for k, v in sorted(states.items(), key=lambda x: -x[1])[:30] if k)}
-
 Countries: {", ".join(sorted(countries.keys()))}
 
-## CAPABILITIES
+## RESPONSE RULES
 
-1. **Curated Database Search**: Search the venue list below for trusted, vetted recommendations
-2. **Web Fetch**: Use the fetch_web_page tool to read external lists (Eater, Infatuation, blogs, etc.)
-3. **AI Suggestions**: Recommend places not in the database (will be marked as AI picks)
-
-## WHEN TO USE WEB FETCH
-
-Use the fetch_web_page tool when users mention:
-- External lists: "Eater 38", "Infatuation", "Michelin Guide website", blog posts
-- Specific URLs they want to check
-- "Check this page for recommendations"
-
-## RESPONSE FORMAT
-
-Return venues in a JSON block with source tags:
+**For venue/place recommendation questions** (restaurants, hotels, bars, things to do):
+Return a JSON block plus a short conversational intro:
 ```json
 {{"venues": [
     {{"name": "Roscioli", "source": "CURATED", "city": "Rome"}},
     {{"name": "Some AI Pick", "source": "AI_PICK", "city": "Rome", "state": "Lazio", "country": "Italy", "venue_type": "Restaurant", "notes": "Brief description", "website": "https://example.com"}}
 ]}}
 ```
+- "CURATED" = from the database (name must match exactly, always include city)
+- "AI_PICK" = not in database (include city, state, country, venue_type, notes)
+- For AI_PICK include actual website URL if known, never make one up
+- For US venues always include state abbreviation (e.g. "NH", "CA")
+- Curated venues first, up to 20 regular / 30 for route queries
+- Route queries: include stops along the way
 
-- Use "CURATED" for venues from the database (name must match exactly). Always include the city so the correct location is matched.
-- Use "AI_PICK" for recommendations not in the database. Always include: city, state/region, country, venue_type, notes.
-- For AI_PICK: include "website" with the venue's actual website URL if you know it. Do NOT make up URLs.
-- For US venues: always include state abbreviation (e.g. "NH", "CA"). This prevents geocoding to the wrong state.
-- Include collection field if relevant (e.g., "Eater 38 Rome" for web-fetched venues)
+**For all other travel questions** (directions, flights, itineraries, logistics, transport, visa, budgets, day plans, etc.):
+Answer conversationally and helpfully using your knowledge. Be concise and practical. Do not refuse or redirect to Google Maps - just answer. Use the fetch_web_page tool if a current source would help.
 
-## IMPORTANT RULES
+## WHEN TO USE WEB FETCH
+- User mentions an external list (Eater 38, Infatuation, Michelin, a blog URL)
+- Current schedules, prices, or availability would help
+- A specific URL is mentioned
 
-- Route queries: Include intermediate stops (SF to Alaska = Oregon, Washington, Vancouver, etc.)
-- Up to 30 venues for route queries, 20 for regular searches
-- Curated venues should appear first in the list
-- Be concise and practical, no flowery language
-- Venue cards are displayed in the main panel (not in the chat). Tell the user to check the main panel for full details, especially on mobile where the chat overlays the panel."""
+Be concise and practical. No flowery language. Venue cards appear in the main panel - tell the user to check there for full details, especially on mobile."""
 
     tools = [
         {
