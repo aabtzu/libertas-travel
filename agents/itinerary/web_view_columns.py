@@ -9,7 +9,6 @@ from __future__ import annotations
 import calendar
 import html as html_module
 import json
-import urllib.parse
 from datetime import date
 
 from agents.common.categories import CATEGORY_ICONS, TRAVEL_CATEGORIES
@@ -255,16 +254,10 @@ def format_column_item(item: ItineraryItem) -> str:
             f'<div class="column-item-time"><i class="fas fa-clock"></i> {time_display}</div>'
         )
 
-    # Display location as a Google Maps link so anyone (logged in or not) can tap to navigate.
-    # Prefer the stored google_maps_link (set by Fill Links) - it has been validated and is exact.
-    # Fall back to a constructed query only when no stored link exists.
+    # Use item.maps_url (defined on ItineraryItem) - prefers stored link, falls back to query
     if show_location and short_location:
-        maps_url = item.google_maps_link
-        if not maps_url:
-            query = urllib.parse.quote(f"{title} {location_name}")
-            maps_url = f"https://www.google.com/maps/search/?api=1&query={query}"
         parts.append(
-            f'<div class="column-item-location"><a href="{html_module.escape(maps_url)}" target="_blank" rel="noopener" class="column-item-maps-link"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</a></div>'
+            f'<div class="column-item-location"><a href="{html_module.escape(item.maps_url)}" target="_blank" rel="noopener" class="column-item-maps-link"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</a></div>'
         )
 
     # Show website link if available
