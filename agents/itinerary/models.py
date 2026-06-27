@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import urllib.parse
 from dataclasses import dataclass, field
 from datetime import date, time
 
@@ -48,6 +49,19 @@ class ItineraryItem:
     is_home_location: bool = False  # True if this is the traveler's home/origin
     website_url: str | None = None  # Direct link to hotel/activity website if available
     google_maps_link: str | None = None  # Stored Maps URL set by fill_missing_links
+
+    @property
+    def maps_url(self) -> str:
+        """Return a Google Maps URL for this item.
+
+        Prefers the stored google_maps_link (set by Fill Links, which is precise).
+        Falls back to a constructed search query when none is stored.
+        """
+        if self.google_maps_link:
+            return self.google_maps_link
+        loc = self.location.name if self.location else None
+        query = urllib.parse.quote(f"{self.title} {loc}" if loc else self.title)
+        return f"https://www.google.com/maps/search/?api=1&query={query}"
 
     def to_dict(self) -> dict:
         return {

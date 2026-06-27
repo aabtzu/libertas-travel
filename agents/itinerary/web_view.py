@@ -267,7 +267,14 @@ class ItineraryWebView:
 
         lines.append('<div class="activity-info">')
         lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
-        lines.append(f'<span class="activity-location">{html_module.escape(location)}</span>')
+        if location:
+            maps_url = html_module.escape(item.maps_url)
+            lines.append(
+                f'<a class="activity-location" href="{maps_url}" target="_blank" rel="noopener">'
+                f"{html_module.escape(location)}</a>"
+            )
+        else:
+            lines.append('<span class="activity-location"></span>')
         lines.append("</div>")
         lines.append("</div>")
         return lines

@@ -297,6 +297,12 @@ body {
     color: #888;
     font-size: 0.85rem;
     margin-top: 2px;
+    text-decoration: none;
+}
+
+a.activity-location:hover {
+    color: #667eea;
+    text-decoration: underline;
 }
 
 /* ==================== Locations Section ==================== */
