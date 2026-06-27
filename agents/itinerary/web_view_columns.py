@@ -255,12 +255,22 @@ def format_column_item(item: ItineraryItem) -> str:
             f'<div class="column-item-time"><i class="fas fa-clock"></i> {time_display}</div>'
         )
 
-    # Display location as a Google Maps link so anyone (logged in or not) can tap to navigate
+    # Display location as a Google Maps link so anyone (logged in or not) can tap to navigate.
+    # Prefer the stored google_maps_link (set by Fill Links) - it has been validated and is exact.
+    # Fall back to a constructed query only when no stored link exists.
     if show_location and short_location:
-        query = urllib.parse.quote(f"{title} {location_name}")
-        maps_url = f"https://www.google.com/maps/search/?api=1&query={query}"
+        maps_url = item.google_maps_link
+        if not maps_url:
+            query = urllib.parse.quote(f"{title} {location_name}")
+            maps_url = f"https://www.google.com/maps/search/?api=1&query={query}"
         parts.append(
-            f'<div class="column-item-location"><a href="{maps_url}" target="_blank" rel="noopener" class="column-item-maps-link"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</a></div>'
+            f'<div class="column-item-location"><a href="{html_module.escape(maps_url)}" target="_blank" rel="noopener" class="column-item-maps-link"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</a></div>'
+        )
+
+    # Show website link if available
+    if item.website_url:
+        parts.append(
+            f'<div class="column-item-website"><a href="{html_module.escape(item.website_url)}" target="_blank" rel="noopener" class="column-item-maps-link"><i class="fas fa-external-link-alt"></i> Website</a></div>'
         )
 
     # Display notes/description if present

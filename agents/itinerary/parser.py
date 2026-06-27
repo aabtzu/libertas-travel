@@ -310,6 +310,8 @@ class ItineraryParser:
                 notes=item_data.get("notes"),
                 day_number=item_data.get("day_number"),
                 is_home_location=item_data.get("is_home_location", False),
+                website_url=item_data.get("website_url") or item_data.get("website"),
+                google_maps_link=item_data.get("google_maps_link"),
             )
             items.append(item)
 

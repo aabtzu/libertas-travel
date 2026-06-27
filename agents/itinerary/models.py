@@ -47,6 +47,7 @@ class ItineraryItem:
     day_number: int | None = None
     is_home_location: bool = False  # True if this is the traveler's home/origin
     website_url: str | None = None  # Direct link to hotel/activity website if available
+    google_maps_link: str | None = None  # Stored Maps URL set by fill_missing_links
 
     def to_dict(self) -> dict:
         return {
@@ -63,6 +64,7 @@ class ItineraryItem:
             "day_number": self.day_number,
             "is_home_location": self.is_home_location,
             "website_url": self.website_url,
+            "google_maps_link": self.google_maps_link,
         }
 
 
