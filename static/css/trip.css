@@ -276,6 +276,16 @@
     margin-top: 4px;
 }
 
+.column-item-maps-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.column-item-maps-link:hover {
+    color: #667eea;
+    text-decoration: underline;
+}
+
 .column-item-notes {
     font-size: 0.8rem;
     color: #666;

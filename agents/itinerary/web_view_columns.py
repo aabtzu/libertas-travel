@@ -9,6 +9,7 @@ from __future__ import annotations
 import calendar
 import html as html_module
 import json
+import urllib.parse
 from datetime import date
 
 from agents.common.categories import CATEGORY_ICONS, TRAVEL_CATEGORIES
@@ -254,10 +255,12 @@ def format_column_item(item: ItineraryItem) -> str:
             f'<div class="column-item-time"><i class="fas fa-clock"></i> {time_display}</div>'
         )
 
-    # Display location only if it adds value
+    # Display location as a Google Maps link so anyone (logged in or not) can tap to navigate
     if show_location and short_location:
+        query = urllib.parse.quote(f"{title} {location_name}")
+        maps_url = f"https://www.google.com/maps/search/?api=1&query={query}"
         parts.append(
-            f'<div class="column-item-location"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</div>'
+            f'<div class="column-item-location"><a href="{maps_url}" target="_blank" rel="noopener" class="column-item-maps-link"><i class="fas fa-map-marker-alt"></i> {html_module.escape(short_location)}</a></div>'
         )
 
     # Display notes/description if present
