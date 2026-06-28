@@ -294,14 +294,14 @@ body {
 
 .activity-location {
     display: block;
-    color: #888;
+    color: #667eea;
     font-size: 0.85rem;
     margin-top: 2px;
     text-decoration: none;
 }
 
 a.activity-location:hover {
-    color: #667eea;
+    color: #5a6fd6;
     text-decoration: underline;
 }
 

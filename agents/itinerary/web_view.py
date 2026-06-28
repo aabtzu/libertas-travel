@@ -271,6 +271,7 @@ class ItineraryWebView:
             maps_url = html_module.escape(item.maps_url)
             lines.append(
                 f'<a class="activity-location" href="{maps_url}" target="_blank" rel="noopener">'
+                f'<i class="fas fa-map-marker-alt" style="font-size:0.75rem;margin-right:3px;"></i>'
                 f"{html_module.escape(location)}</a>"
             )
         else:
