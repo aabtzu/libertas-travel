@@ -305,6 +305,25 @@ a.activity-location:hover {
     text-decoration: underline;
 }
 
+.activity-links {
+    display: flex;
+    gap: 16px;
+    margin-top: 4px;
+}
+
+.activity-inline-link {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.activity-inline-link:hover {
+    text-decoration: underline;
+}
+
 /* ==================== Locations Section ==================== */
 .locations-section {
     margin-top: 30px;
