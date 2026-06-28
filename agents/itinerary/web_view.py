@@ -276,6 +276,18 @@ class ItineraryWebView:
             )
         else:
             lines.append('<span class="activity-location"></span>')
+        # Inline Website + Map links, same as the recommendation view
+        item_links = ""
+        if item.website_url:
+            item_links += (
+                f'<a class="activity-inline-link" href="{html_module.escape(item.website_url)}"'
+                f' target="_blank" rel="noopener"><i class="fas fa-globe"></i> Website</a>'
+            )
+        item_links += (
+            f'<a class="activity-inline-link" href="{html_module.escape(item.maps_url)}"'
+            f' target="_blank" rel="noopener"><i class="fas fa-map"></i> Map</a>'
+        )
+        lines.append(f'<div class="activity-links">{item_links}</div>')
         lines.append("</div>")
         lines.append("</div>")
         return lines
