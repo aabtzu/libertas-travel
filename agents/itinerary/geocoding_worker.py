@@ -198,6 +198,7 @@ def deserialize_itinerary(data):
             notes=item_data.get("notes"),
             is_home_location=item_data.get("is_home_location", False),
             website_url=item_data.get("website_url"),
+            google_maps_link=item_data.get("google_maps_link"),
         )
         items.append(item)
 
@@ -358,6 +359,7 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
                     "notes": item.get("notes"),
                     "is_home_location": False,
                     "website_url": item.get("website"),
+                    "google_maps_link": item.get("google_maps_link"),
                 }
             )
 
@@ -380,6 +382,7 @@ def _convert_itinerary_data_to_worker_format(itinerary_data, trip_title=None):
                 "notes": item.get("notes"),
                 "is_home_location": False,
                 "website_url": item.get("website"),
+                "google_maps_link": item.get("google_maps_link"),
             }
         )
 
