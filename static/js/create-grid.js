@@ -20,6 +20,12 @@ function switchTimelineTab(tabName) {
         timeline.classList.toggle('tab-no-ideas', tabName !== 'itinerary');
     }
 
+    // Let the page scroll naturally on grid/map/calendar; restore fixed height on itinerary
+    const container = document.querySelector('.create-container');
+    if (container) {
+        container.classList.toggle('timeline-scrolls', tabName !== 'itinerary');
+    }
+
     // Initialize map when switching to map tab
     if (tabName === 'map') {
         updateMapDaySelector();
