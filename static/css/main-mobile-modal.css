@@ -116,6 +116,48 @@
     .column-item-title {
         font-size: 0.85rem;
     }
+
+    /* Ideas pile: collapse to a compact strip so it doesn't eat the grid's
+       vertical space. The list scrolls within the small box if there are items. */
+    .ideas-pile {
+        padding: 6px 10px;
+        margin-top: 6px;
+    }
+
+    .ideas-header {
+        margin-bottom: 4px;
+    }
+
+    .ideas-header h4 {
+        font-size: 0.8rem;
+    }
+
+    .ideas-list {
+        min-height: 0;
+        max-height: 64px;
+        overflow-y: auto;
+        margin-bottom: 4px;
+    }
+
+    .ideas-empty {
+        padding: 6px;
+        font-size: 0.75rem;
+    }
+
+    .ideas-actions {
+        gap: 4px;
+    }
+
+    .btn-add-idea,
+    .btn-upload-plan {
+        padding: 5px 8px;
+        font-size: 0.78rem;
+    }
+
+    .tips-section {
+        margin-top: 6px;
+        padding: 6px 8px;
+    }
 }
 
 /* ==================== Shared Mobile Components ==================== */
