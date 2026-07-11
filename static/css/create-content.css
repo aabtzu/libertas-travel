@@ -1,6 +1,12 @@
 /* Create Trip Page, Ideas pile, tips, write-up, upload indicator (split from create.css) */
 
 /* ==================== Ideas Pile ==================== */
+
+/* Hide the ideas pile when grid/map/calendar tab is active - only relevant on itinerary view */
+.tab-no-ideas .ideas-pile {
+    display: none;
+}
+
 .ideas-pile {
     background: white;
     border-radius: 12px;

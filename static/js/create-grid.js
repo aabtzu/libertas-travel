@@ -14,6 +14,12 @@ function switchTimelineTab(tabName) {
         content.classList.toggle('active', content.id === tabName + '-tab');
     });
 
+    // Hide the ideas pile when on grid/map/calendar - it's only useful on itinerary view
+    const timeline = document.querySelector('.editor-timeline');
+    if (timeline) {
+        timeline.classList.toggle('tab-no-ideas', tabName !== 'itinerary');
+    }
+
     // Initialize map when switching to map tab
     if (tabName === 'map') {
         updateMapDaySelector();
