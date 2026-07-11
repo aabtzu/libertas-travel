@@ -93,6 +93,29 @@
         padding: 5px 10px;
         font-size: 0.8rem;
     }
+
+    /* Grid/column view: remove the fixed max-height so the page scrolls
+       instead of a tiny box inside an already short viewport */
+    .column-table-wrapper {
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    /* Shrink column table text so more fits horizontally */
+    .column-table th,
+    .column-table td {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    .column-item {
+        padding: 8px;
+        margin-bottom: 10px;
+    }
+
+    .column-item-title {
+        font-size: 0.85rem;
+    }
 }
 
 /* ==================== Shared Mobile Components ==================== */
