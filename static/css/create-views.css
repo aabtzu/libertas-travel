@@ -161,8 +161,8 @@
 /* ==================== Column Table View (Grid Tab) ==================== */
 .column-table-wrapper {
     width: 100%;
-    max-height: calc(100vh - 250px);
-    overflow-y: auto;
+    /* No max-height: the table grows to full content height and the page scrolls.
+       Capping it creates a tiny nested scroll box which is worse on mobile. */
     overflow-x: auto;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
