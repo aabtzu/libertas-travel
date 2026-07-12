@@ -424,12 +424,6 @@
 
 /* ==================== Responsive ==================== */
 @media (max-width: 900px) {
-    /* Prevent horizontal scroll on mobile */
-    html, body {
-        overflow-x: hidden;
-        max-width: 100vw;
-    }
-
     /* Hide sidebar by default on mobile */
     .editor-sidebar {
         position: fixed;
