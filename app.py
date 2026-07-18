@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+_SESSION_DAYS = int(os.environ.get("SESSION_LIFETIME_DAYS", "90"))
 
 
 def create_app() -> Flask:
     app = Flask(__name__, static_folder="static", static_url_path="/static")
     app.secret_key = os.environ["SECRET_KEY"]
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=_SESSION_DAYS)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     from agents.admin.routes import admin_bp
