@@ -109,6 +109,13 @@ _SQL_SQLITE_FIND_VENUE_BY_NAME_AND_CITY = """
 
 _SQL_GET_VENUE_COUNT = "SELECT COUNT(*) FROM venues"
 
+_SQL_PG_DELETE_VENUE_BY_NAME_AND_CITY = (
+    "DELETE FROM venues WHERE LOWER(name) = LOWER(%s) AND LOWER(city) = LOWER(%s) RETURNING id"
+)
+_SQL_SQLITE_DELETE_VENUE_BY_NAME_AND_CITY = (
+    "DELETE FROM venues WHERE LOWER(name) = LOWER(?) AND LOWER(city) = LOWER(?)"
+)
+
 _SQL_GET_VENUE_STATS_BY_COUNTRY = """
     SELECT country, COUNT(*) as count
     FROM venues
@@ -448,6 +455,17 @@ def get_venue_count() -> int:
         cursor = conn.cursor()
         cursor.execute(_SQL_GET_VENUE_COUNT)
         return cursor.fetchone()[0]
+
+
+def delete_venue_by_name_and_city(name: str, city: str) -> bool:
+    """Delete a venue by exact name and city match (case-insensitive). Returns True if deleted."""
+    sql = _SQL_PG_DELETE_VENUE_BY_NAME_AND_CITY if USE_POSTGRES else _SQL_SQLITE_DELETE_VENUE_BY_NAME_AND_CITY
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(sql, (name, city))
+        if USE_POSTGRES:
+            return cursor.fetchone() is not None
+        return cursor.rowcount > 0
 
 
 def get_venue_stats() -> dict[str, Any]:
