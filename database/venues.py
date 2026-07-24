@@ -459,7 +459,11 @@ def get_venue_count() -> int:
 
 def delete_venue_by_name_and_city(name: str, city: str) -> bool:
     """Delete a venue by exact name and city match (case-insensitive). Returns True if deleted."""
-    sql = _SQL_PG_DELETE_VENUE_BY_NAME_AND_CITY if USE_POSTGRES else _SQL_SQLITE_DELETE_VENUE_BY_NAME_AND_CITY
+    sql = (
+        _SQL_PG_DELETE_VENUE_BY_NAME_AND_CITY
+        if USE_POSTGRES
+        else _SQL_SQLITE_DELETE_VENUE_BY_NAME_AND_CITY
+    )
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(sql, (name, city))
