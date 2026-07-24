@@ -56,6 +56,7 @@ from database.users import (  # noqa: F401
 )
 from database.venues import (  # noqa: F401
     add_venue,
+    delete_venue_by_name_and_city,
     find_venue_by_name_and_city,
     flexible_venue_search,
     get_all_venues,

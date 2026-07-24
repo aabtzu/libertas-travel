@@ -326,6 +326,31 @@ def admin_add_venues():
     return json_ok({"success": True, "added": added, "skipped": skipped})
 
 
+@admin_bp.post("/api/admin/delete-venue")
+def admin_delete_venue():
+    """Delete a venue by name + city. Protected by SECRET_KEY (X-Admin-Key header).
+
+    Body JSON: {"name": "Frenchie", "city": "New York"}
+    """
+    import os
+
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    name = data.get("name", "").strip()
+    city = data.get("city", "").strip()
+    if not name or not city:
+        return json_err("name and city are required")
+
+    deleted = db.delete_venue_by_name_and_city(name, city)
+    if deleted:
+        return json_ok({"success": True, "deleted": f"{name} in {city}"})
+    return json_err(f"No venue found matching name='{name}' city='{city}'", status=404)
+
+
 @admin_bp.post("/api/admin/delete-trip")
 def admin_delete_trip():
     """Delete a single trip by username + link. Useful when a trip needs
