@@ -315,11 +315,26 @@ class ItineraryParser:
             )
             items.append(item)
 
+        # Use the top-level dates from the LLM, but also scan item dates
+        # (including end_date for car rentals / hotels) so a Hertz rental
+        # that runs Dec 27 - Jan 3 produces end_date=Jan 3, not Dec 27.
+        start_date = self._parse_date(data.get("start_date"))
+        end_date = self._parse_date(data.get("end_date"))
+        for item in items:
+            if item.date:
+                if start_date is None or item.date < start_date:
+                    start_date = item.date
+                if end_date is None or item.date > end_date:
+                    end_date = item.date
+            if item.end_date:
+                if end_date is None or item.end_date > end_date:
+                    end_date = item.end_date
+
         return Itinerary(
             title=data.get("title", "Untitled Itinerary"),
             items=items,
-            start_date=self._parse_date(data.get("start_date")),
-            end_date=self._parse_date(data.get("end_date")),
+            start_date=start_date,
+            end_date=end_date,
             travelers=data.get("travelers", []),
             source_file=source_file,
         )

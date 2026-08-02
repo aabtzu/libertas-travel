@@ -64,12 +64,17 @@ def itinerary_to_data(itinerary) -> dict:
             ideas.append(item_data)
 
     days = []
-    if days_dict:
-        # Fill every day number from 1 to the last day that has items.
-        # Without this, gaps (e.g. days 2 and 3 when only 1 and 4 have items)
-        # are invisible in the editor and can't receive new items.
-        max_day = max(days_dict.keys())
+    if days_dict or (start_date and itinerary.end_date):
         from datetime import timedelta
+
+        # Extend max_day to cover the full trip date range, including item
+        # end_dates (e.g. a Hertz rental Dec 27 - Jan 3 should produce 8 days,
+        # not just 1). Without this the return-trip day has no slot.
+        max_day = max(days_dict.keys()) if days_dict else 0
+        if start_date and itinerary.end_date:
+            date_span = (itinerary.end_date - start_date).days + 1
+            if date_span > max_day:
+                max_day = date_span
 
         for day_num in range(1, max_day + 1):
             day_items = days_dict.get(day_num, [])
