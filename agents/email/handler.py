@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
 import database as db
 from agents.create.upload_handlers import upload_plan_handler
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_sender_email(from_header: str) -> str:
@@ -28,8 +31,10 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
     from_header = form_data.get("from", "")
     sender_email = _extract_sender_email(from_header)
 
+    logger.info("Inbound email from: %s", sender_email)
     user = db.get_user_by_email(sender_email)
     if user is None:
+        logger.info("No user found for email: %s", sender_email)
         return {
             "success": False,
             "error": f"No Libertas account found for sender: {sender_email}",
