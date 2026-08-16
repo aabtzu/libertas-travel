@@ -20,11 +20,12 @@ def create_app() -> Flask:
     from agents.admin.routes import admin_bp
     from agents.auth.routes import auth_bp
     from agents.create.routes import create_bp
+    from agents.email.routes import email_bp
     from agents.explore.routes import explore_bp
     from agents.pages.routes import pages_bp
     from agents.trips.routes import trips_bp
 
-    for bp in (pages_bp, auth_bp, trips_bp, create_bp, explore_bp, admin_bp):
+    for bp in (pages_bp, auth_bp, trips_bp, create_bp, explore_bp, admin_bp, email_bp):
         app.register_blueprint(bp)
 
     # Run DB migrations (adds new columns if missing)

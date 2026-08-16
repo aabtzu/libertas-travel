@@ -31,6 +31,11 @@ _SQL_SQLITE_USERNAME_EXISTS = "SELECT 1 FROM users WHERE username = ?"
 _SQL_PG_EMAIL_EXISTS = "SELECT 1 FROM users WHERE email = %s"
 _SQL_SQLITE_EMAIL_EXISTS = "SELECT 1 FROM users WHERE email = ?"
 
+_SQL_PG_GET_USER_BY_EMAIL = "SELECT id, username, email FROM users WHERE LOWER(email) = LOWER(%s)"
+_SQL_SQLITE_GET_USER_BY_EMAIL = (
+    "SELECT id, username, email FROM users WHERE LOWER(email) = LOWER(?)"
+)
+
 _SQL_GET_ALL_USERS = "SELECT id, username FROM users ORDER BY username"
 
 _SQL_PG_DELETE_USER = "DELETE FROM users WHERE username = %s"
@@ -130,6 +135,20 @@ def email_exists(email: str) -> bool:
         else:
             cursor.execute(_SQL_SQLITE_EMAIL_EXISTS, (email,))
         return cursor.fetchone() is not None
+
+
+def get_user_by_email(email: str) -> dict[str, Any] | None:
+    """Look up a user by email address (case-insensitive)."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GET_USER_BY_EMAIL, (email,))
+        else:
+            cursor.execute(_SQL_SQLITE_GET_USER_BY_EMAIL, (email,))
+        row = cursor.fetchone()
+        if row:
+            return {"id": row[0], "username": row[1], "email": row[2]}
+        return None
 
 
 def ensure_demo_user() -> int:

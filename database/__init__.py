@@ -46,6 +46,7 @@ from database.users import (  # noqa: F401
     email_exists,
     ensure_demo_user,
     get_all_users,
+    get_user_by_email,
     get_user_by_id,
     get_user_by_username,
     get_user_profile,
