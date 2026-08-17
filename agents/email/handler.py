@@ -31,10 +31,10 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
     from_header = form_data.get("from", "")
     sender_email = _extract_sender_email(from_header)
 
-    logger.info("Inbound email from: %s", sender_email)
+    print(f"[email-inbound] from={sender_email}", flush=True)
     user = db.get_user_by_email(sender_email)
     if user is None:
-        logger.info("No user found for email: %s", sender_email)
+        print(f"[email-inbound] no user for email={sender_email}", flush=True)
         return {
             "success": False,
             "error": f"No Libertas account found for sender: {sender_email}",
