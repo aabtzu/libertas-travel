@@ -384,6 +384,31 @@ def admin_delete_trip():
     return json_ok({"success": True, "username": username, "link": link})
 
 
+@admin_bp.post("/api/admin/set-user-email")
+def admin_set_user_email():
+    """Set the email address for a user by username. Protected by SECRET_KEY.
+
+    Body JSON: {"username": "aab", "email": "aabtzu@gmail.com"}
+    """
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip().lower()
+    if not username or not email:
+        return json_err("username and email are required")
+
+    updated = db.set_user_email(username, email)
+    if not updated:
+        return json_err(f"No user named '{username}' found", status=404)
+
+    print(f"[ADMIN] Set email for user '{username}' to '{email}'", flush=True)
+    return json_ok({"success": True, "username": username, "email": email})
+
+
 @admin_bp.post("/api/admin/delete-user")
 def admin_delete_user():
     """Delete a user (and their trips, via FK CASCADE) by username. Useful

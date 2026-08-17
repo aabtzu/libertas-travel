@@ -38,6 +38,9 @@ _SQL_SQLITE_GET_USER_BY_EMAIL = (
 
 _SQL_GET_ALL_USERS = "SELECT id, username FROM users ORDER BY username"
 
+_SQL_PG_SET_USER_EMAIL = "UPDATE users SET email = %s WHERE username = %s"
+_SQL_SQLITE_SET_USER_EMAIL = "UPDATE users SET email = ? WHERE username = ?"
+
 _SQL_PG_DELETE_USER = "DELETE FROM users WHERE username = %s"
 _SQL_SQLITE_DELETE_USER = "DELETE FROM users WHERE username = ?"
 
@@ -149,6 +152,17 @@ def get_user_by_email(email: str) -> dict[str, Any] | None:
         if row:
             return {"id": row[0], "username": row[1], "email": row[2]}
         return None
+
+
+def set_user_email(username: str, email: str) -> bool:
+    """Update the email address for a user by username."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_SET_USER_EMAIL, (email, username))
+        else:
+            cursor.execute(_SQL_SQLITE_SET_USER_EMAIL, (email, username))
+        return cursor.rowcount > 0
 
 
 def ensure_demo_user() -> int:
