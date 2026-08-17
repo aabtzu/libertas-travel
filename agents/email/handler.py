@@ -33,6 +33,7 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
 
     print(f"[email-inbound] from={sender_email}", flush=True)
     user = db.get_user_by_email(sender_email)
+    print(f"[email-inbound] user lookup result={user}", flush=True)
     if user is None:
         print(f"[email-inbound] no user for email={sender_email}", flush=True)
         return {
