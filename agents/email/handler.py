@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import email as email_lib
 import logging
 import re
 from collections import defaultdict
@@ -90,6 +91,33 @@ def _save_email_items_as_draft(user_id: int, subject: str, items: list[dict]) ->
     return link
 
 
+def _extract_body_from_raw_mime(raw_mime: str) -> tuple[str, str]:
+    """Parse a raw MIME email string and return (plain_text, html_text)."""
+    msg = email_lib.message_from_string(raw_mime)
+    plain = ""
+    html = ""
+    if msg.is_multipart():
+        for part in msg.walk():
+            ct = part.get_content_type()
+            if ct == "text/plain" and not plain:
+                payload = part.get_payload(decode=True)
+                if payload:
+                    plain = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+            elif ct == "text/html" and not html:
+                payload = part.get_payload(decode=True)
+                if payload:
+                    html = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+    else:
+        payload = msg.get_payload(decode=True)
+        if payload:
+            text = payload.decode(msg.get_content_charset() or "utf-8", errors="replace")
+            if msg.get_content_type() == "text/html":
+                html = text
+            else:
+                plain = text
+    return plain, html
+
+
 def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
     """Process a SendGrid Inbound Parse webhook POST.
 
@@ -130,6 +158,14 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
     if not results:
         body = form_data.get("text") or ""
         html_body = form_data.get("html") or ""
+
+        # When SendGrid "POST raw MIME" is enabled, text/html may be empty
+        # even though the raw email has content. Parse it ourselves.
+        if not body.strip() and not html_body.strip():
+            raw_mime = form_data.get("email") or ""
+            if raw_mime:
+                body, html_body = _extract_body_from_raw_mime(raw_mime)
+
         print(
             f"[email-inbound] text_len={len(body)} html_len={len(html_body)} preview={body[:200]!r}",
             flush=True,
