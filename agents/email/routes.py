@@ -40,5 +40,5 @@ def inbound_email():
         "ok": True,
         "user": result["username"],
         "items_extracted": result["items_extracted"],
-        "items": result["items"],
+        "trip_link": result.get("trip_link"),
     }, 200
