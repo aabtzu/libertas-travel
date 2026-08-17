@@ -130,6 +130,10 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
     if not results:
         body = form_data.get("text") or ""
         html_body = form_data.get("html") or ""
+        print(
+            f"[email-inbound] text_len={len(body)} html_len={len(html_body)} preview={body[:200]!r}",
+            flush=True,
+        )
 
         # Prefer plain text; strip HTML tags as a last resort
         content = body if body.strip() else re.sub(r"<[^>]+>", " ", html_body)
