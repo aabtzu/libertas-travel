@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from agents.email.handler import _clean_subject, _save_email_items_as_draft
 
@@ -34,17 +33,43 @@ class TestCleanSubject:
 class TestSaveEmailItemsAsDraft:
     def _make_items(self):
         return [
-            {"title": "Flight to JFK", "category": "flight", "date": "2026-09-15", "time": "08:00", "location": "JFK", "notes": ""},
-            {"title": "Hotel check-in", "category": "hotel", "date": "2026-09-15", "time": None, "location": "NYC", "notes": ""},
-            {"title": "Museum visit", "category": "activity", "date": None, "location": "MoMA", "notes": ""},
+            {
+                "title": "Flight to JFK",
+                "category": "flight",
+                "date": "2026-09-15",
+                "time": "08:00",
+                "location": "JFK",
+                "notes": "",
+            },
+            {
+                "title": "Hotel check-in",
+                "category": "hotel",
+                "date": "2026-09-15",
+                "time": None,
+                "location": "NYC",
+                "notes": "",
+            },
+            {
+                "title": "Museum visit",
+                "category": "activity",
+                "date": None,
+                "location": "MoMA",
+                "notes": "",
+            },
         ]
 
     def test_returns_trip_link_on_success(self):
         items = self._make_items()
         fake_trip = {"link": "paris_trip.html", "id": 1}
 
-        with patch("agents.email.handler.db.create_draft_trip", return_value=fake_trip) as mock_create, \
-             patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_update:
+        with (
+            patch(
+                "agents.email.handler.db.create_draft_trip", return_value=fake_trip
+            ) as mock_create,
+            patch(
+                "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+            ) as mock_update,
+        ):
             link = _save_email_items_as_draft(42, "Fwd: Paris trip", items)
 
         assert link == "paris_trip.html"
@@ -70,8 +95,12 @@ class TestSaveEmailItemsAsDraft:
         ]
         fake_trip = {"link": "email_trip.html", "id": 2}
 
-        with patch("agents.email.handler.db.create_draft_trip", return_value=fake_trip), \
-             patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_update:
+        with (
+            patch("agents.email.handler.db.create_draft_trip", return_value=fake_trip),
+            patch(
+                "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+            ) as mock_update,
+        ):
             link = _save_email_items_as_draft(1, "some subject", items)
 
         assert link == "email_trip.html"
@@ -92,8 +121,12 @@ class TestSaveEmailItemsAsDraft:
         ]
         fake_trip = {"link": "trip.html", "id": 3}
 
-        with patch("agents.email.handler.db.create_draft_trip", return_value=fake_trip), \
-             patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_update:
+        with (
+            patch("agents.email.handler.db.create_draft_trip", return_value=fake_trip),
+            patch(
+                "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+            ) as mock_update,
+        ):
             _save_email_items_as_draft(1, "subject", items)
 
         itinerary_data = mock_update.call_args[0][2]
