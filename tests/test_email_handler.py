@@ -100,7 +100,9 @@ class TestCandidateTrips:
                 "title": "JSON trip",
                 "link": "json_trip.html",
                 "is_archived": False,
-                "itinerary_data": json.dumps({"start_date": "2026-09-01", "end_date": "2026-09-10"}),
+                "itinerary_data": json.dumps(
+                    {"start_date": "2026-09-01", "end_date": "2026-09-10"}
+                ),
             }
         ]
         with patch("agents.email.handler.db.get_user_trips", return_value=trips):
@@ -163,7 +165,9 @@ class TestMergeItemsIntoTrip:
         trip = self._trip({"2026-09-15": [{"title": "Existing item"}]})
         new_item = {"title": "New flight", "date": "2026-09-15"}
 
-        with patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_up:
+        with patch(
+            "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+        ) as mock_up:
             _merge_items_into_trip(1, trip, [new_item])
 
         itinerary = mock_up.call_args[0][2]
@@ -175,7 +179,9 @@ class TestMergeItemsIntoTrip:
         trip = self._trip({"2026-09-15": [{"title": "Existing"}]})
         new_item = {"title": "New hotel", "date": "2026-09-16"}
 
-        with patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_up:
+        with patch(
+            "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+        ) as mock_up:
             _merge_items_into_trip(1, trip, [new_item])
 
         itinerary = mock_up.call_args[0][2]
@@ -187,7 +193,9 @@ class TestMergeItemsIntoTrip:
         trip = self._trip()
         new_item = {"title": "Restaurant idea", "date": None}
 
-        with patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_up:
+        with patch(
+            "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+        ) as mock_up:
             _merge_items_into_trip(1, trip, [new_item])
 
         itinerary = mock_up.call_args[0][2]
@@ -198,7 +206,9 @@ class TestMergeItemsIntoTrip:
         trip = self._trip({"2026-09-15": [], "2026-09-17": []})
         new_item = {"title": "New item", "date": "2026-09-16"}
 
-        with patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_up:
+        with patch(
+            "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+        ) as mock_up:
             _merge_items_into_trip(1, trip, [new_item])
 
         itinerary = mock_up.call_args[0][2]
@@ -209,9 +219,29 @@ class TestMergeItemsIntoTrip:
 class TestSaveEmailItemsAsDraft:
     def _make_items(self):
         return [
-            {"title": "Flight to JFK", "category": "flight", "date": "2026-09-15", "time": "08:00", "location": "JFK", "notes": ""},
-            {"title": "Hotel check-in", "category": "hotel", "date": "2026-09-15", "time": None, "location": "NYC", "notes": ""},
-            {"title": "Museum visit", "category": "activity", "date": None, "location": "MoMA", "notes": ""},
+            {
+                "title": "Flight to JFK",
+                "category": "flight",
+                "date": "2026-09-15",
+                "time": "08:00",
+                "location": "JFK",
+                "notes": "",
+            },
+            {
+                "title": "Hotel check-in",
+                "category": "hotel",
+                "date": "2026-09-15",
+                "time": None,
+                "location": "NYC",
+                "notes": "",
+            },
+            {
+                "title": "Museum visit",
+                "category": "activity",
+                "date": None,
+                "location": "MoMA",
+                "notes": "",
+            },
         ]
 
     def test_returns_trip_link_on_success(self):
@@ -219,8 +249,12 @@ class TestSaveEmailItemsAsDraft:
         fake_trip = {"link": "paris_trip.html", "id": 1}
 
         with (
-            patch("agents.email.handler.db.create_draft_trip", return_value=fake_trip) as mock_create,
-            patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_update,
+            patch(
+                "agents.email.handler.db.create_draft_trip", return_value=fake_trip
+            ) as mock_create,
+            patch(
+                "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+            ) as mock_update,
         ):
             link = _save_email_items_as_draft(42, "Fwd: Paris trip", items)
 
@@ -240,7 +274,9 @@ class TestSaveEmailItemsAsDraft:
 
         with (
             patch("agents.email.handler.db.create_draft_trip", return_value=fake_trip),
-            patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_update,
+            patch(
+                "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+            ) as mock_update,
         ):
             _save_email_items_as_draft(1, "some subject", items)
 
@@ -263,7 +299,9 @@ class TestSaveEmailItemsAsDraft:
 
         with (
             patch("agents.email.handler.db.create_draft_trip", return_value=fake_trip),
-            patch("agents.email.handler.db.update_trip_itinerary_data", return_value=True) as mock_update,
+            patch(
+                "agents.email.handler.db.update_trip_itinerary_data", return_value=True
+            ) as mock_update,
         ):
             _save_email_items_as_draft(1, "subject", items)
 
