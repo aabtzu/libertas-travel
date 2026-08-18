@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import email as email_lib
+import json
 import logging
+import os
 import re
 from collections import defaultdict
+from datetime import date, timedelta
 from typing import Any
+
+import anthropic
 
 import database as db
 from agents.create.upload_handlers import upload_plan_handler
@@ -15,6 +20,17 @@ logger = logging.getLogger(__name__)
 
 # Prefixes to strip when deriving a trip title from an email subject
 _SUBJECT_PREFIX_RE = re.compile(r"^\s*(fwd?|re)\s*:\s*", re.IGNORECASE)
+
+# Marker Gmail inserts at the start of a forwarded message block
+_FORWARD_MARKER_RE = re.compile(
+    r"^-{3,}\s*Forwarded message\s*-{3,}",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+# Trips that ended more than this many days ago are ignored for auto-routing
+_RECENCY_CUTOFF_DAYS = 180
+
+_HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
 
 def _extract_sender_email(from_header: str) -> str:
@@ -28,38 +44,164 @@ def _extract_sender_email(from_header: str) -> str:
 def _clean_subject(subject: str) -> str:
     """Strip reply/forward prefixes and return a clean title string."""
     title = subject.strip()
-    # Remove chains like "Re: Fwd: Re: ..."
     while _SUBJECT_PREFIX_RE.match(title):
         title = _SUBJECT_PREFIX_RE.sub("", title)
     return title.strip() or "Email trip"
 
 
-def _save_email_items_as_draft(user_id: int, subject: str, items: list[dict]) -> str | None:
-    """Convert a flat items list into itinerary_data and save as a new draft trip.
+def _extract_user_instruction(body: str) -> str:
+    """Return text the user typed above the forwarded-message marker, if any."""
+    match = _FORWARD_MARKER_RE.search(body)
+    if not match:
+        return ""
+    prefix = body[: match.start()].strip()
+    return prefix
 
-    Items that carry a date are grouped into days; items without a date go into
-    ideas. Returns the trip link on success, or None if the DB write fails.
-    """
-    title = _clean_subject(subject)
 
-    # Group by date
-    days_dict: dict[str, list[dict]] = defaultdict(list)
-    ideas: list[dict] = []
+def _candidate_trips(user_id: int) -> list[dict]:
+    """Return non-archived trips with parsed itinerary_data, recency-filtered."""
+    cutoff = (date.today() - timedelta(days=_RECENCY_CUTOFF_DAYS)).isoformat()
+    trips = db.get_user_trips(user_id)
+    candidates = []
+    for t in trips:
+        if t.get("is_archived"):
+            continue
+        raw = t.get("itinerary_data")
+        if isinstance(raw, str):
+            try:
+                t["itinerary_data"] = json.loads(raw)
+            except Exception:
+                t["itinerary_data"] = {}
+        elif not isinstance(raw, dict):
+            t["itinerary_data"] = {}
+        end = t["itinerary_data"].get("end_date") or ""
+        # Keep trips with no end date (undated/ongoing) or end date within cutoff
+        if end and end < cutoff:
+            continue
+        candidates.append(t)
+    return candidates
+
+
+def _match_by_instruction(instruction: str, trips: list[dict]) -> dict | None:
+    """Use Haiku to extract a trip name from the instruction, then fuzzy-match."""
+    if not instruction.strip():
+        return None
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+
+    client = anthropic.Anthropic(api_key=api_key)
+    trip_titles = [t["title"] for t in trips if t.get("title")]
+    if not trip_titles:
+        return None
+
+    titles_list = "\n".join(f"- {t}" for t in trip_titles)
+    prompt = (
+        f'The user typed this instruction before forwarding an email:\n"{instruction}"\n\n'
+        f"Available trips:\n{titles_list}\n\n"
+        "Which trip title best matches the user's instruction? "
+        "Reply with ONLY the exact trip title from the list, or 'NONE' if no match is clear."
+    )
+    try:
+        msg = client.messages.create(
+            model=_HAIKU_MODEL,
+            max_tokens=100,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        chosen = msg.content[0].text.strip().strip('"').strip("'")
+        if chosen.upper() == "NONE" or not chosen:
+            return None
+        for t in trips:
+            if t.get("title", "").strip() == chosen:
+                return t
+        # Fallback: case-insensitive partial match
+        chosen_lower = chosen.lower()
+        for t in trips:
+            if chosen_lower in (t.get("title") or "").lower():
+                return t
+    except Exception as e:
+        print(f"[email-inbound] Haiku instruction match failed: {e}", flush=True)
+    return None
+
+
+def _match_by_dates(item_dates: list[str], trips: list[dict]) -> dict | None:
+    """Return the single trip whose date range overlaps all item dates, or None."""
+    if not item_dates:
+        return None
+    min_date = min(item_dates)
+    max_date = max(item_dates)
+    matches = []
+    for t in trips:
+        start = t["itinerary_data"].get("start_date") or ""
+        end = t["itinerary_data"].get("end_date") or ""
+        if not start or not end:
+            continue
+        # Overlap: item range intersects trip range
+        if start <= max_date and end >= min_date:
+            matches.append(t)
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
+def _merge_items_into_trip(user_id: int, trip: dict, items: list[dict]) -> bool:
+    """Append new items into an existing trip's itinerary_data in-place."""
+    itinerary_data = trip["itinerary_data"]
+    days: list[dict] = itinerary_data.get("days") or []
+    ideas: list[dict] = itinerary_data.get("ideas") or []
+
+    days_by_date = {d["date"]: d for d in days if d.get("date")}
+
     for item in items:
-        date = item.get("date")
-        if date:
-            days_dict[date].append(item)
+        item_date = item.get("date")
+        if item_date and item_date in days_by_date:
+            days_by_date[item_date].setdefault("items", []).append(item)
+        elif item_date:
+            # New date not yet in the trip - add a day entry
+            new_day = {"date": item_date, "items": [item]}
+            days.append(new_day)
+            days_by_date[item_date] = new_day
         else:
             ideas.append(item)
 
-    # Build days list sorted chronologically
+    # Re-sort days chronologically and renumber
+    days.sort(key=lambda d: d.get("date") or "")
+    for idx, day in enumerate(days):
+        day["day_number"] = idx + 1
+
+    itinerary_data["days"] = days
+    itinerary_data["ideas"] = ideas
+
+    # Expand trip date range if items fall outside it
+    all_dates = [d["date"] for d in days if d.get("date")]
+    if all_dates:
+        itinerary_data["start_date"] = min(all_dates)
+        itinerary_data["end_date"] = max(all_dates)
+
+    return db.update_trip_itinerary_data(user_id, trip["link"], itinerary_data)
+
+
+def _save_email_items_as_draft(user_id: int, subject: str, items: list[dict]) -> str | None:
+    """Convert a flat items list into itinerary_data and save as a new draft trip."""
+    title = _clean_subject(subject)
+
+    days_dict: dict[str, list[dict]] = defaultdict(list)
+    ideas: list[dict] = []
+    for item in items:
+        date_val = item.get("date")
+        if date_val:
+            days_dict[date_val].append(item)
+        else:
+            ideas.append(item)
+
     sorted_dates = sorted(days_dict.keys())
     start_date = sorted_dates[0] if sorted_dates else None
     end_date = sorted_dates[-1] if sorted_dates else None
 
     days = [
-        {"day_number": idx + 1, "date": date, "items": days_dict[date]}
-        for idx, date in enumerate(sorted_dates)
+        {"day_number": idx + 1, "date": d, "items": days_dict[d]}
+        for idx, d in enumerate(sorted_dates)
     ]
 
     itinerary_data = {
@@ -118,11 +260,54 @@ def _extract_body_from_raw_mime(raw_mime: str) -> tuple[str, str]:
     return plain, html
 
 
+def _route_items_to_trip(
+    user_id: int,
+    subject: str,
+    items: list[dict],
+    user_instruction: str,
+) -> tuple[str | None, bool]:
+    """Decide where items go and save them. Returns (trip_link, merged_into_existing).
+
+    Priority:
+    1. Explicit user instruction above the forwarded-message marker
+    2. Date overlap with a single existing trip
+    3. New draft
+    """
+    candidates = _candidate_trips(user_id)
+
+    # 1. Explicit instruction
+    matched = _match_by_instruction(user_instruction, candidates)
+    if matched:
+        print(
+            f"[email-inbound] routing by instruction -> trip={matched['title']!r}",
+            flush=True,
+        )
+        ok = _merge_items_into_trip(user_id, matched, items)
+        return (matched["link"] if ok else None), True
+
+    # 2. Date overlap
+    item_dates = [item["date"] for item in items if item.get("date")]
+    matched = _match_by_dates(item_dates, candidates)
+    if matched:
+        print(
+            f"[email-inbound] routing by date overlap -> trip={matched['title']!r}",
+            flush=True,
+        )
+        ok = _merge_items_into_trip(user_id, matched, items)
+        return (matched["link"] if ok else None), True
+
+    # 3. New draft
+    print("[email-inbound] no matching trip found, creating new draft", flush=True)
+    link = _save_email_items_as_draft(user_id, subject, items)
+    return link, False
+
+
 def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
     """Process a SendGrid Inbound Parse webhook POST.
 
-    Identifies the Libertas user by matching the sender email, then runs the
-    body/attachments through the same parser used for file uploads.
+    Identifies the Libertas user by matching the sender email, runs the
+    body/attachments through the same parser used for file uploads, then
+    routes extracted items to an existing trip or a new draft.
 
     Returns a result dict with keys: success, user_id, items_extracted, error.
     """
@@ -142,6 +327,7 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
     user_id = user["id"]
     subject = form_data.get("subject", "forwarded email")
     results = []
+    user_instruction = ""
 
     # Try attachments first (PDFs, images) - they usually have richer data
     for _field_name, file_storage in files.items():
@@ -159,8 +345,8 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
         body = form_data.get("text") or ""
         html_body = form_data.get("html") or ""
 
-        # When SendGrid "POST raw MIME" is enabled, text/html may be empty
-        # even though the raw email has content. Parse it ourselves.
+        # When SendGrid "POST raw MIME" is enabled, text/html may be empty.
+        # Parse the raw email field ourselves.
         if not body.strip() and not html_body.strip():
             raw_mime = form_data.get("email") or ""
             if raw_mime:
@@ -171,7 +357,10 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
             flush=True,
         )
 
-        # Prefer plain text; strip HTML tags as a last resort
+        user_instruction = _extract_user_instruction(body)
+        if user_instruction:
+            print(f"[email-inbound] user_instruction={user_instruction!r}", flush=True)
+
         content = body if body.strip() else re.sub(r"<[^>]+>", " ", html_body)
         content = content.strip()
 
@@ -183,12 +372,14 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
                 results.extend(result["items"])
 
     trip_link = None
+    merged = False
     if results:
-        trip_link = _save_email_items_as_draft(user_id, subject, results)
+        trip_link, merged = _route_items_to_trip(user_id, subject, results, user_instruction)
         if trip_link:
-            print(f"[email-inbound] saved draft trip link={trip_link}", flush=True)
+            action = "merged into existing trip" if merged else "saved as new draft"
+            print(f"[email-inbound] {action} link={trip_link}", flush=True)
         else:
-            logger.error("[email-inbound] failed to save draft trip for user_id=%s", user_id)
+            logger.error("[email-inbound] failed to save items for user_id=%s", user_id)
 
     return {
         "success": True,
@@ -196,4 +387,5 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
         "username": user["username"],
         "items_extracted": len(results),
         "trip_link": trip_link,
+        "merged_into_existing": merged,
     }
