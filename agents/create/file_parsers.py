@@ -11,7 +11,7 @@ from typing import Any
 from agents.common.categories import normalize_category
 
 # Single source of truth for supported upload extensions, used by all upload
-# handlers and the frontend (via LibertasUpload in main.js, which must stay in sync).
+# handlers and the frontend (via LibertasUpload in main.js, which reads from /app-config.js).
 SUPPORTED_EXTENSIONS = [
     ".pdf",
     ".txt",

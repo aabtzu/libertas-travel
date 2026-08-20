@@ -253,6 +253,7 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
 
     </div>
 
+    <script src="/app-config.js"></script>
     <script src="/static/js/main.js?v=7"></script>
     <script>
         const hasProfile = {has_profile};
