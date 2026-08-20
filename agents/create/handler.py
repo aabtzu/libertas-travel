@@ -173,6 +173,42 @@ def save_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str
         return {"error": "Failed to save trip"}, 500
 
 
+def _auto_import_trip_venues(user_id: int, itinerary_data: dict) -> int:
+    """Save any place-category items from a trip to the curated venue database.
+
+    Returns the number of newly saved venues.
+    """
+    from agents.common.venue_capture import is_place_category, save_venue_to_curated
+
+    saved = 0
+    all_items: list[dict] = []
+    for day in itinerary_data.get("days", []):
+        all_items.extend(day.get("items", []))
+    all_items.extend(itinerary_data.get("ideas", []))
+
+    for item in all_items:
+        category = item.get("category", "")
+        if not is_place_category(category):
+            continue
+        name = item.get("title", "").strip()
+        if not name:
+            continue
+        # City may live at item level or inside a nested location dict
+        loc = item.get("location") or {}
+        city = ""
+        if isinstance(loc, dict):
+            city = loc.get("city") or loc.get("name") or ""
+        elif isinstance(loc, str):
+            city = loc
+        city = city.strip()
+        notes = item.get("notes", "")
+        result = save_venue_to_curated(name, city, notes, category, user_id=user_id)
+        if result["saved"]:
+            saved += 1
+
+    return saved
+
+
 def publish_trip_handler(user_id: int, link: str) -> dict[str, Any]:
     """Publish a draft trip (set is_draft=False) and generate HTML."""
     trip = db.get_trip_by_link(user_id, link)
@@ -188,7 +224,10 @@ def publish_trip_handler(user_id: int, link: str) -> dict[str, Any]:
     success = db.publish_draft(user_id, link)
 
     if success:
-        return {"success": True}, 200
+        venues_saved = _auto_import_trip_venues(user_id, itinerary_data)
+        if venues_saved:
+            print(f"[PUBLISH] auto-imported {venues_saved} venues from trip {link}", flush=True)
+        return {"success": True, "venues_imported": venues_saved}, 200
     else:
         return {"error": "Failed to publish trip"}, 500
 
