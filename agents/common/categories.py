@@ -1,11 +1,12 @@
 """
-Canonical category → icon and category → color mappings.
+Canonical category → icon and category → color mappings, plus shared date helpers.
 
-Single source of truth for the Python side. The JS equivalent lives in
-static/js/main.js (CATEGORY_ICONS / CATEGORY_COLORS). Keep these in sync.
+Single source of truth. JS reads CATEGORY_ICONS/COLORS via /app-config.js (served by
+pages/routes.py), so there is no separate JS copy to keep in sync.
 
 Usage:
     from agents.common.categories import CATEGORY_ICONS, CATEGORY_COLORS
+    from agents.common.categories import get_trip_date_range, get_trip_start_date
 """
 
 # Aliases: raw strings the LLM or parsers might produce → canonical category name.
@@ -106,3 +107,29 @@ CATEGORY_COLORS: dict[str, str] = {
     "attraction": "#06b6d4",
     "other": "#6b7280",
 }
+
+
+def get_trip_start_date(itinerary_data: dict) -> str | None:
+    """Return the trip start date, falling back to the first day in the days array."""
+    if not itinerary_data:
+        return None
+    if itinerary_data.get("start_date"):
+        return itinerary_data["start_date"]
+    days = itinerary_data.get("days", [])
+    if days:
+        first = days[0]
+        if isinstance(first, dict) and first.get("date"):
+            return first["date"]
+    return None
+
+
+def get_trip_date_range(itinerary_data: dict) -> tuple[str, str]:
+    """Return (start_date, end_date), falling back to the days array when top-level fields absent."""
+    start = itinerary_data.get("start_date") or ""
+    end = itinerary_data.get("end_date") or ""
+    if start and end:
+        return start, end
+    day_dates = [d["date"] for d in itinerary_data.get("days", []) if d.get("date")]
+    if day_dates:
+        return min(day_dates), max(day_dates)
+    return "", ""

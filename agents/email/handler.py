@@ -14,6 +14,7 @@ from typing import Any
 import anthropic
 
 import database as db
+from agents.common.categories import get_trip_date_range as _trip_date_range
 from agents.common.llm import HAIKU as _HAIKU_MODEL
 from agents.create.upload_handlers import upload_plan_handler
 
@@ -55,19 +56,6 @@ def _extract_user_instruction(body: str) -> str:
         return ""
     prefix = body[: match.start()].strip()
     return prefix
-
-
-def _trip_date_range(itinerary_data: dict) -> tuple[str, str]:
-    """Return (start_date, end_date) for a trip, falling back to days array if needed."""
-    start = itinerary_data.get("start_date") or ""
-    end = itinerary_data.get("end_date") or ""
-    if start and end:
-        return start, end
-    # Derive from days array when top-level fields are absent
-    day_dates = [d["date"] for d in itinerary_data.get("days", []) if d.get("date")]
-    if day_dates:
-        return min(day_dates), max(day_dates)
-    return "", ""
 
 
 def _candidate_trips(user_id: int) -> list[dict]:

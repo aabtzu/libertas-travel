@@ -1,50 +1,25 @@
 /* Libertas - Main JavaScript */
 
-/**
- * Shared category→icon and category→color maps.
- * Single source of truth, used by create.js, create-grid.js, create-map.js,
- * trip.js, item-detail.js, and calendar.js. Change here; nowhere else.
- */
-const CATEGORY_ICONS = {
-    'travel':     'fa-plane',
-    'flight':     'fa-plane',
-    'transport':  'fa-car',
-    'train':      'fa-train',
-    'bus':        'fa-bus',
-    'hotel':      'fa-bed',
-    'lodging':    'fa-bed',
-    'meal':       'fa-utensils',
-    'restaurant': 'fa-utensils',
-    'activity':   'fa-star',
-    'attraction': 'fa-landmark',
-    'other':      'fa-calendar-day'
-};
-
-const CATEGORY_COLORS = {
-    'flight':     '#3b82f6',
-    'transport':  '#f59e0b',
-    'train':      '#f59e0b',
-    'bus':        '#f59e0b',
-    'hotel':      '#8b5cf6',
-    'lodging':    '#8b5cf6',
-    'meal':       '#ef4444',
-    'activity':   '#22c55e',
-    'attraction': '#06b6d4',
-    'other':      '#6b7280'
-};
+// CATEGORY_ICONS and CATEGORY_COLORS are injected by /app-config.js (served from
+// agents/common/categories.py). Do not redefine them here.
+// defined in /app-config.js (categories.py is the source of truth)
 
 /**
- * Shared file upload validation, single source of truth for allowed types.
- * Used by both the trips page upload widget (upload.js) and the create page (create.js).
+ * Shared file upload validation. Extension list comes from /app-config.js
+ * (agents/create/file_parsers.py is the source of truth).
  */
 const LibertasUpload = {
-    ALLOWED_EXTENSIONS: ['.pdf', '.txt', '.png', '.jpg', '.jpeg', '.html', '.htm', '.eml', '.ics', '.json', '.xlsx', '.xls', '.docx'],
-    ACCEPT_ATTR: '.pdf,.txt,.png,.jpg,.jpeg,.html,.htm,.eml,.ics,.json,.xlsx,.xls,.docx',
+    get ALLOWED_EXTENSIONS() {
+        return window.LIBERTAS_ALLOWED_EXTENSIONS || [];
+    },
+    get ACCEPT_ATTR() {
+        return (window.LIBERTAS_ALLOWED_EXTENSIONS || []).join(',');
+    },
     DESCRIPTION: 'PDF, Word (docx), images (PNG, JPG), text, HTML, email, calendar (ICS), JSON, Excel',
 
     isAllowed: function(filename) {
         const lower = filename.toLowerCase();
-        return this.ALLOWED_EXTENSIONS.some(ext => lower.endsWith(ext));
+        return (window.LIBERTAS_ALLOWED_EXTENSIONS || []).some(ext => lower.endsWith(ext));
     },
 };
 

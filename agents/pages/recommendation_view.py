@@ -326,6 +326,7 @@ def generate_recommendation_page(
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/app-config.js"></script>
     <script src="/static/js/main.js?v=7"></script>
     <script>
         // Map and save button use shared functions from main.js
@@ -464,6 +465,7 @@ def render_writeup_page(
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/app-config.js"></script>
     <script src="/static/js/main.js?v=7"></script>
     <script>
         // Map and save button use shared functions from main.js

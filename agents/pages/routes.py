@@ -31,6 +31,26 @@ def _html(content: str) -> Response:
     return Response(content, mimetype="text/html")
 
 
+@pages_bp.get("/app-config.js")
+def app_config_js():
+    """Serve shared Python constants as a JS file so the frontend has one source of truth.
+
+    All constants injected here are derived from the Python side; the JS copies
+    in main.js are removed. Add any future Python-to-JS constant here.
+    """
+    import json
+
+    from agents.common.categories import CATEGORY_COLORS, CATEGORY_ICONS
+    from agents.create.file_parsers import SUPPORTED_EXTENSIONS
+
+    js = (
+        f"window.CATEGORY_ICONS = {json.dumps(CATEGORY_ICONS)};\n"
+        f"window.CATEGORY_COLORS = {json.dumps(CATEGORY_COLORS)};\n"
+        f"window.LIBERTAS_ALLOWED_EXTENSIONS = {json.dumps(SUPPORTED_EXTENSIONS)};\n"
+    )
+    return Response(js, mimetype="application/javascript")
+
+
 # Status used for "trip exists but is no longer publicly shared." 410 Gone is
 # the right semantic: the resource was here, the owner pulled it. 404 would
 # have implied it never existed.

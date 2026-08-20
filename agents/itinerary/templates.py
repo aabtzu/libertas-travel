@@ -4,7 +4,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from agents.common.categories import CATEGORY_ICONS  # noqa: F401 – re-exported for callers
+from agents.common.categories import (
+    CATEGORY_ICONS,  # noqa: F401 – re-exported for callers
+    get_trip_start_date,  # noqa: F401 – re-exported for callers
+)
 from agents.common.templates import get_nav_html
 from agents.common.templates import get_static_css as common_get_static_css
 from agents.common.templates import get_static_js as common_get_static_js
@@ -93,23 +96,7 @@ def _bucket_trip_by_date(trip: dict, today_iso: str) -> str:
     return "upcoming" if start >= today_iso else "past"
 
 
-def get_trip_start_date(itinerary_data: dict) -> str | None:
-    """Extract start date from itinerary_data, checking multiple locations."""
-    if not itinerary_data:
-        return None
-    # Check start_date field first
-    if itinerary_data.get("start_date"):
-        return itinerary_data["start_date"]
-    # Check first day's date
-    days = itinerary_data.get("days", [])
-    if days and len(days) > 0:
-        first_day = days[0]
-        if isinstance(first_day, dict) and first_day.get("date"):
-            return first_day["date"]
-    return None
-
-
-# CATEGORY_ICONS imported from agents.common.categories, do not redefine here
+# get_trip_start_date and CATEGORY_ICONS imported from agents.common.categories
 
 # Path to itinerary-specific static files and templates
 STATIC_DIR = Path(__file__).parent / "static"
