@@ -47,7 +47,9 @@ class TestSaveVenueToCurated:
 
     def test_skips_duplicate(self):
         existing = {"id": 42, "name": "Roscioli", "city": "Rome"}
-        with patch("agents.common.venue_capture.db.find_venue_by_name_and_city", return_value=existing):
+        with patch(
+            "agents.common.venue_capture.db.find_venue_by_name_and_city", return_value=existing
+        ):
             result = save_venue_to_curated("Roscioli", "Rome")
         assert result["saved"] is False
         assert result["skipped"] is True
@@ -57,7 +59,14 @@ class TestSaveVenueToCurated:
     def test_saves_new_venue(self):
         with (
             patch("agents.common.venue_capture.db.find_venue_by_name_and_city", return_value=None),
-            patch("agents.common.venue_capture._enrich_with_haiku", return_value={"venue_type": "Restaurant", "cuisine_type": "Italian", "description": "A great trattoria."}),
+            patch(
+                "agents.common.venue_capture._enrich_with_haiku",
+                return_value={
+                    "venue_type": "Restaurant",
+                    "cuisine_type": "Italian",
+                    "description": "A great trattoria.",
+                },
+            ),
             patch("agents.common.venue_capture.db.add_venue", return_value=99),
         ):
             result = save_venue_to_curated("Trattoria da Mario", "Florence")
@@ -98,7 +107,9 @@ class TestAutoImportTripVenues:
     def test_skips_flight_items(self):
         from agents.create.handler import _auto_import_trip_venues
 
-        itinerary = self._itinerary({"2026-09-15": [{"title": "Flight to JFK", "category": "flight"}]})
+        itinerary = self._itinerary(
+            {"2026-09-15": [{"title": "Flight to JFK", "category": "flight"}]}
+        )
         with patch("agents.common.venue_capture.db.find_venue_by_name_and_city", return_value=None):
             count = _auto_import_trip_venues(1, itinerary)
         assert count == 0
@@ -107,7 +118,16 @@ class TestAutoImportTripVenues:
         from agents.create.handler import _auto_import_trip_venues
 
         itinerary = self._itinerary(
-            {"2026-09-15": [{"title": "Roscioli", "category": "restaurant", "notes": "great pasta", "location": {"city": "Rome"}}]}
+            {
+                "2026-09-15": [
+                    {
+                        "title": "Roscioli",
+                        "category": "restaurant",
+                        "notes": "great pasta",
+                        "location": {"city": "Rome"},
+                    }
+                ]
+            }
         )
         with (
             patch("agents.common.venue_capture.db.find_venue_by_name_and_city", return_value=None),
@@ -120,7 +140,11 @@ class TestAutoImportTripVenues:
     def test_saves_ideas_too(self):
         from agents.create.handler import _auto_import_trip_venues
 
-        itinerary = self._itinerary(ideas=[{"title": "Blue Lagoon", "category": "activity", "location": {"city": "Reykjavik"}}])
+        itinerary = self._itinerary(
+            ideas=[
+                {"title": "Blue Lagoon", "category": "activity", "location": {"city": "Reykjavik"}}
+            ]
+        )
         with (
             patch("agents.common.venue_capture.db.find_venue_by_name_and_city", return_value=None),
             patch("agents.common.venue_capture._enrich_with_haiku", return_value={}),
