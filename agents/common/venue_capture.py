@@ -6,8 +6,7 @@ import json
 import os
 
 import database as db
-
-_HAIKU_MODEL = "claude-haiku-4-5-20251001"
+from agents.common.llm import HAIKU as _HAIKU_MODEL
 
 # Item categories that represent real places worth capturing
 _PLACE_CATEGORIES = {

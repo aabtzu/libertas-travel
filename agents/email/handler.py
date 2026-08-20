@@ -14,6 +14,7 @@ from typing import Any
 import anthropic
 
 import database as db
+from agents.common.llm import HAIKU as _HAIKU_MODEL
 from agents.create.upload_handlers import upload_plan_handler
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,6 @@ _FORWARD_MARKER_RE = re.compile(
 
 # Trips that ended more than this many days ago are ignored for auto-routing
 _RECENCY_CUTOFF_DAYS = 180
-
-_HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
 
 def _extract_sender_email(from_header: str) -> str:
