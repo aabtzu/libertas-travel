@@ -10,6 +10,7 @@ from flask import Blueprint, g, request
 
 import database as db
 from agents.common.flask_utils import json_err, json_ok, require_auth
+from agents.common.venue_capture import save_venue_to_curated
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -295,52 +296,6 @@ def admin_add_trip():
     return json_ok({"success": True, "link": link, "user_id": user_id})
 
 
-def _enrich_venue(v: dict) -> dict:
-    """Fill in missing venue fields using Haiku so search works properly.
-
-    Only fills fields that are absent or empty - never overwrites explicit values.
-    """
-    import json as _json
-
-    import anthropic
-
-    missing = not v.get("cuisine_type") or not v.get("description") or not v.get("venue_type")
-    if not missing:
-        return v
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        return v
-
-    name = v.get("name", "")
-    city = v.get("city", "")
-    notes = v.get("notes", "")
-
-    prompt = (
-        f'Venue: "{name}" in {city}.\n'
-        f"Additional context: {notes or 'none'}\n\n"
-        "Return a JSON object with these fields (use null if unknown):\n"
-        '{"venue_type": "restaurant|cafe|bar|hotel|attraction|shop|other", '
-        '"cuisine_type": "e.g. Italian, Indonesian, French, null if not food", '
-        '"description": "one sentence describing what this place is known for"}\n'
-        "Reply with only valid JSON, no other text."
-    )
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=200,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        enriched = _json.loads(msg.content[0].text.strip())
-        for field in ("venue_type", "cuisine_type", "description"):
-            if not v.get(field) and enriched.get(field):
-                v[field] = enriched[field]
-    except Exception as e:
-        print(f"[admin] venue enrichment failed for {name!r}: {e}", flush=True)
-    return v
-
-
 @admin_bp.post("/api/admin/add-venues")
 def admin_add_venues():
     """Bulk-add curated venues. Protected by SECRET_KEY (X-Admin-Key header).
@@ -361,13 +316,16 @@ def admin_add_venues():
     added = 0
     skipped = 0
     for v in venues:
-        existing = db.find_venue_by_name_and_city(v.get("name", ""), v.get("city", ""))
-        if existing:
+        result = save_venue_to_curated(
+            name=v.get("name", ""),
+            city=v.get("city", ""),
+            notes=v.get("notes", ""),
+            venue_type=v.get("venue_type", ""),
+        )
+        if result["saved"]:
+            added += 1
+        else:
             skipped += 1
-            continue
-        v = _enrich_venue(v)
-        db.add_venue(v)
-        added += 1
 
     return json_ok({"success": True, "added": added, "skipped": skipped})
 
