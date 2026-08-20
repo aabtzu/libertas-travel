@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 import database as db
+from agents.common.venue_capture import save_venue_to_curated
 
 VENUES_SEED_CSV = Path(__file__).parent.parent.parent / "data" / "venues_seed.csv"
 
@@ -54,10 +55,62 @@ def load_venues() -> list[dict]:
     return _venues_cache
 
 
-def explore_chat_handler(message: str, history: list[dict]) -> tuple[dict, int]:
+_SAVE_ALL_RE = re.compile(
+    r"^\s*(save|add|keep)\s+(all|these|them|those|the results?|the venues?|everything)\b",
+    re.IGNORECASE,
+)
+_SAVE_NAMED_RE = re.compile(
+    r"^\s*(save|add)\s+(.+?)(\s+to\s+(my\s+)?(list|curated|db|database))?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _handle_save_intent(
+    message: str, current_venues: list[dict], user_id: int | None
+) -> dict | None:
+    """Detect save commands. Returns response dict or None if not a save command."""
+    if _SAVE_ALL_RE.match(message):
+        if not current_venues:
+            return {"response": "No venues to save - search for some places first.", "venues": []}
+        saved, skipped = 0, 0
+        for v in current_venues:
+            r = save_venue_to_curated(
+                v.get("name", ""),
+                v.get("city", ""),
+                v.get("notes", ""),
+                v.get("venue_type", ""),
+                user_id=user_id,
+            )
+            if r["saved"]:
+                saved += 1
+            elif r["skipped"]:
+                skipped += 1
+        parts = []
+        if saved:
+            parts.append(f"Saved {saved} venue{'s' if saved != 1 else ''} to your curated list.")
+        if skipped:
+            parts.append(f"{skipped} already existed.")
+        return {
+            "response": " ".join(parts) or "Nothing new to save.",
+            "venues": current_venues,
+        }
+    return None
+
+
+def explore_chat_handler(
+    message: str,
+    history: list[dict],
+    user_id: int | None = None,
+    current_venues: list[dict] | None = None,
+) -> tuple[dict, int]:
     """Handle an explore chat message. Returns (result, status_code)."""
     from agents.common.llm import SONNET, make_llm
     from agents.create.web_utils import fetch_webpage_for_chat
+
+    # Fast path: detect save-all commands before calling the LLM
+    save_result = _handle_save_intent(message, current_venues or [], user_id)
+    if save_result is not None:
+        return save_result, 200
 
     venues = load_venues()
 

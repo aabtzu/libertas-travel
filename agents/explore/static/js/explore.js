@@ -252,7 +252,8 @@ async function handleChatMessage(message, abortController) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 message: message,
-                history: chatHistory.slice(-10) // Send last 10 messages for context
+                history: chatHistory.slice(-10),
+                current_venues: filteredVenues
             }),
             signal: abortController.signal
         });
@@ -411,6 +412,38 @@ function displayVenues(venueList) {
             openWebsite(venueList[index]);
         });
     });
+
+    resultsContainer.querySelectorAll('.venue-action-btn.save-to-curated').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const name = btn.dataset.name;
+            const city = btn.dataset.city;
+            const notes = btn.dataset.notes;
+            const venue_type = btn.dataset.vtype;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            try {
+                const res = await fetch('/api/explore/save-venue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, city, notes, venue_type })
+                });
+                const data = await res.json();
+                if (data.result && data.result.skipped) {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Already saved';
+                } else if (data.result && data.result.saved) {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Saved';
+                    btn.classList.add('saved');
+                } else {
+                    btn.innerHTML = '<i class="fas fa-times"></i> Error';
+                    btn.disabled = false;
+                }
+            } catch {
+                btn.innerHTML = '<i class="fas fa-times"></i> Error';
+                btn.disabled = false;
+            }
+        });
+    });
 }
 
 /**
@@ -475,6 +508,7 @@ function createVenueCard(venue) {
                     <button class="venue-action-btn website">
                         <i class="fas fa-globe"></i> Website
                     </button>
+                    ${source === 'AI_PICK' ? `<button class="venue-action-btn save-to-curated" data-name="${venue.name.replace(/"/g,'&quot;')}" data-city="${(venue.city||'').replace(/"/g,'&quot;')}" data-notes="${(venue.notes||'').replace(/"/g,'&quot;')}" data-vtype="${(venue.venue_type||'').replace(/"/g,'&quot;')}" title="Save to your curated list"><i class="fas fa-bookmark"></i> Save</button>` : ''}
                     <button class="venue-action-btn add-to-trip" data-venue='${JSON.stringify({name: venue.name, city: venue.city, state: venue.state, country: venue.country, venue_type: venue.venue_type, cuisine_type: venue.cuisine_type, latitude: venue.latitude, longitude: venue.longitude, website: venue.website, google_maps_link: venue.google_maps_link}).replace(/'/g, "&#39;")}' title="Add this venue to one of your trips">
                         <i class="fas fa-plus"></i> Add to trip
                     </button>
