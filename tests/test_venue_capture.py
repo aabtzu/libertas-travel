@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from agents.common.venue_capture import is_place_category, save_venue_to_curated
 
