@@ -95,9 +95,7 @@ def _candidate_trips(user_id: int) -> list[dict]:
     return candidates
 
 
-def _match_by_instruction(
-    instruction: str, trips: list[dict]
-) -> tuple[dict | None, str | None]:
+def _match_by_instruction(instruction: str, trips: list[dict]) -> tuple[dict | None, str | None]:
     """Use Haiku to interpret the user's instruction.
 
     Returns (matched_trip, new_trip_name):
