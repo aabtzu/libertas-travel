@@ -58,6 +58,19 @@ def _extract_user_instruction(body: str) -> str:
     return prefix
 
 
+def _trip_date_range(itinerary_data: dict) -> tuple[str, str]:
+    """Return (start_date, end_date) for a trip, falling back to days array if needed."""
+    start = itinerary_data.get("start_date") or ""
+    end = itinerary_data.get("end_date") or ""
+    if start and end:
+        return start, end
+    # Derive from days array when top-level fields are absent
+    day_dates = [d["date"] for d in itinerary_data.get("days", []) if d.get("date")]
+    if day_dates:
+        return min(day_dates), max(day_dates)
+    return "", ""
+
+
 def _candidate_trips(user_id: int) -> list[dict]:
     """Return non-archived trips with parsed itinerary_data, recency-filtered."""
     cutoff = (date.today() - timedelta(days=_RECENCY_CUTOFF_DAYS)).isoformat()
@@ -74,7 +87,7 @@ def _candidate_trips(user_id: int) -> list[dict]:
                 t["itinerary_data"] = {}
         elif not isinstance(raw, dict):
             t["itinerary_data"] = {}
-        end = t["itinerary_data"].get("end_date") or ""
+        _, end = _trip_date_range(t["itinerary_data"])
         # Keep trips with no end date (undated/ongoing) or end date within cutoff
         if end and end < cutoff:
             continue
@@ -126,15 +139,14 @@ def _match_by_instruction(instruction: str, trips: list[dict]) -> dict | None:
 
 
 def _match_by_dates(item_dates: list[str], trips: list[dict]) -> dict | None:
-    """Return the single trip whose date range overlaps all item dates, or None."""
+    """Return the single trip whose date range overlaps the item dates, or None."""
     if not item_dates:
         return None
     min_date = min(item_dates)
     max_date = max(item_dates)
     matches = []
     for t in trips:
-        start = t["itinerary_data"].get("start_date") or ""
-        end = t["itinerary_data"].get("end_date") or ""
+        start, end = _trip_date_range(t["itinerary_data"])
         if not start or not end:
             continue
         # Overlap: item range intersects trip range
