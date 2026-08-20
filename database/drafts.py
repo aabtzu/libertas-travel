@@ -169,6 +169,12 @@ def get_draft_trips(user_id: int) -> list[dict[str, Any]]:
 
 def update_trip_itinerary_data(user_id: int, link: str, itinerary_data: dict) -> bool:
     """Update a trip's itinerary_data (for auto-save)."""
+    # Keep start_date/end_date in sync with the days array
+    day_dates = [d["date"] for d in itinerary_data.get("days", []) if d.get("date")]
+    if day_dates:
+        itinerary_data["start_date"] = min(day_dates)
+        itinerary_data["end_date"] = max(day_dates)
+
     with get_db() as conn:
         cursor = conn.cursor()
         try:
