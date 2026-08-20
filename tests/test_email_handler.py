@@ -145,6 +145,23 @@ class TestMatchByDates:
         trips = [self._trip("Tokyo trip", "2026-09-10", "2026-09-20")]
         assert _match_by_dates([], trips) is None
 
+    def test_matches_trip_without_top_level_dates_using_days_array(self):
+        # Trips created manually may not have start_date/end_date at top level
+        trip = {
+            "title": "Cycling Worlds",
+            "link": "cycling.html",
+            "itinerary_data": {
+                "days": [
+                    {"date": "2026-09-25", "items": []},
+                    {"date": "2026-09-26", "items": []},
+                    {"date": "2026-09-27", "items": []},
+                ]
+            },
+        }
+        result = _match_by_dates(["2026-09-25"], [trip])
+        assert result is not None
+        assert result["title"] == "Cycling Worlds"
+
 
 class TestMergeItemsIntoTrip:
     def _trip(self, existing_items_by_date=None, ideas=None):
