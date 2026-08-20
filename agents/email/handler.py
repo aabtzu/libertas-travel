@@ -95,26 +95,34 @@ def _candidate_trips(user_id: int) -> list[dict]:
     return candidates
 
 
-def _match_by_instruction(instruction: str, trips: list[dict]) -> dict | None:
-    """Use Haiku to extract a trip name from the instruction, then fuzzy-match."""
+def _match_by_instruction(
+    instruction: str, trips: list[dict]
+) -> tuple[dict | None, str | None]:
+    """Use Haiku to interpret the user's instruction.
+
+    Returns (matched_trip, new_trip_name):
+    - (trip, None)  - merge into an existing trip
+    - (None, name)  - create a new trip with this specific name
+    - (None, None)  - no clear instruction; fall through to date matching
+    """
     if not instruction.strip():
-        return None
+        return None, None
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
-        return None
+        return None, None
 
     client = anthropic.Anthropic(api_key=api_key)
     trip_titles = [t["title"] for t in trips if t.get("title")]
-    if not trip_titles:
-        return None
-
-    titles_list = "\n".join(f"- {t}" for t in trip_titles)
+    titles_list = "\n".join(f"- {t}" for t in trip_titles) if trip_titles else "(none)"
     prompt = (
         f'The user typed this instruction before forwarding an email:\n"{instruction}"\n\n'
-        f"Available trips:\n{titles_list}\n\n"
-        "Which trip title best matches the user's instruction? "
-        "Reply with ONLY the exact trip title from the list, or 'NONE' if no match is clear."
+        f"Existing trips:\n{titles_list}\n\n"
+        "Interpret the instruction and reply with exactly one of:\n"
+        "- The exact trip title from the list above, if the user wants to add to an existing trip\n"
+        "- NEW: <trip name>, if the user wants to create a new trip with a specific name\n"
+        "- NONE, if the instruction is unclear or contains no routing intent\n"
+        "Reply with only one line."
     )
     try:
         msg = client.messages.create(
@@ -124,18 +132,21 @@ def _match_by_instruction(instruction: str, trips: list[dict]) -> dict | None:
         )
         chosen = msg.content[0].text.strip().strip('"').strip("'")
         if chosen.upper() == "NONE" or not chosen:
-            return None
+            return None, None
+        if chosen.upper().startswith("NEW:"):
+            new_name = chosen[4:].strip().strip('"').strip("'")
+            return None, new_name if new_name else None
+        # Match against existing trips (exact, then partial)
         for t in trips:
             if t.get("title", "").strip() == chosen:
-                return t
-        # Fallback: case-insensitive partial match
+                return t, None
         chosen_lower = chosen.lower()
         for t in trips:
             if chosen_lower in (t.get("title") or "").lower():
-                return t
+                return t, None
     except Exception as e:
         print(f"[email-inbound] Haiku instruction match failed: {e}", flush=True)
-    return None
+    return None, None
 
 
 def _match_by_dates(item_dates: list[str], trips: list[dict]) -> dict | None:
@@ -288,7 +299,7 @@ def _route_items_to_trip(
     candidates = _candidate_trips(user_id)
 
     # 1. Explicit instruction
-    matched = _match_by_instruction(user_instruction, candidates)
+    matched, new_trip_name = _match_by_instruction(user_instruction, candidates)
     if matched:
         print(
             f"[email-inbound] routing by instruction -> trip={matched['title']!r}",
@@ -296,6 +307,13 @@ def _route_items_to_trip(
         )
         ok = _merge_items_into_trip(user_id, matched, items)
         return (matched["link"] if ok else None), True
+    if new_trip_name:
+        print(
+            f"[email-inbound] instruction says create new trip {new_trip_name!r}",
+            flush=True,
+        )
+        link = _save_email_items_as_draft(user_id, new_trip_name, items)
+        return link, False
 
     # 2. Date overlap
     item_dates = [item["date"] for item in items if item.get("date")]
@@ -308,7 +326,7 @@ def _route_items_to_trip(
         ok = _merge_items_into_trip(user_id, matched, items)
         return (matched["link"] if ok else None), True
 
-    # 3. New draft
+    # 3. New draft named after email subject
     print("[email-inbound] no matching trip found, creating new draft", flush=True)
     link = _save_email_items_as_draft(user_id, subject, items)
     return link, False
