@@ -29,6 +29,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHAT_CSS = REPO_ROOT / "static" / "css" / "create-chat.css"
 VIEWS_CSS = REPO_ROOT / "static" / "css" / "create-views.css"
+CHAT_JS = REPO_ROOT / "static" / "js" / "create-chat.js"
 CREATE_HTML = REPO_ROOT / "agents" / "create" / "templates" / "create.html"
 
 # The breakpoint the editor uses for its mobile layout.
@@ -187,3 +188,72 @@ def test_grid_table_keeps_its_own_horizontal_scroller():
         "800px wide by design; without its own scroller the editor's mobile "
         "overflow clamp would make it unreachable (see #117)"
     )
+
+
+def _z_index(rule: str) -> int:
+    match = re.search(r"z-index:\s*(\d+)", rule)
+    assert match, f"no z-index in rule: {rule.strip()[:60]}"
+    return int(match.group(1))
+
+
+def test_day_picker_stacks_above_the_mobile_chat_sidebar(mobile_css: str):
+    """ "Add to Day" opens a picker appended to <body>.
+
+    It is triggered from a button inside the chat sidebar, which on mobile is
+    position:fixed with its own stacking order. When the picker sat below the
+    sidebar it rendered behind the panel: created, laid out, and completely
+    invisible, so the button looked like it did nothing.
+    """
+    css = CHAT_CSS.read_text()
+    picker = re.search(r"\.day-picker-popup\s*\{([^}]*)\}", css)
+    assert picker, ".day-picker-popup rule is missing"
+    sidebar_z = _z_index(_rule(mobile_css, ".editor-sidebar"))
+    assert _z_index(picker.group(1)) > sidebar_z, (
+        f"the day picker must stack above the mobile chat sidebar "
+        f"(z-index {sidebar_z}); below it the picker opens behind the panel "
+        f"and the Add to Day button silently does nothing"
+    )
+
+
+def test_chat_matches_item_titles_loosely_enough_for_model_phrasing():
+    """The model retypes titles from the user's words, so exact match fails.
+
+    "move bodega to day 2" sends find_title "bodega" while the item is stored
+    as "Bodega 138". Matching only on string equality made the edit a silent
+    no-op.
+    """
+    js = CHAT_JS.read_text()
+    assert "function findTripItemByTitle" in js, (
+        "chat edits must resolve titles through findTripItemByTitle, which "
+        "falls back to an unambiguous partial match; exact equality alone "
+        "silently drops edits whenever the model shortens a title"
+    )
+    match_fn = js.split("function findTripItemByTitle", 1)[1]
+    assert "includes(needle)" in match_fn and "includes(title)" in match_fn, (
+        "the fallback must compare containment in both directions, since the "
+        "model can send either a shorter or a longer title than is stored"
+    )
+
+
+def test_chat_reports_edits_it_could_not_apply():
+    """Silence is the worst outcome: the model's reply already claims success."""
+    js = CHAT_JS.read_text()
+    assert "notFound" in js, "processEditItems must collect unmatched titles"
+    assert "could not find" in js.lower(), (
+        "when an edit matches nothing the user must be told; otherwise the "
+        "reply says the item moved while nothing changed"
+    )
+
+
+def test_chat_synthesizes_confirmation_text_for_edits():
+    """A tool call with no prose used to render an empty chat bubble.
+
+    Fallback text already existed for add_items and delete_items; edit_items
+    had none, so a bare "move X to day 2" produced a blank reply.
+    """
+    js = CHAT_JS.read_text()
+    for marker in ("data.delete_items", "data.add_items", "editResult.changed"):
+        assert marker in js, (
+            f"missing empty-response fallback for {marker}; every tool result "
+            f"type needs one or the user sees an empty bubble"
+        )

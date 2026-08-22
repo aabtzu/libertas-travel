@@ -39,7 +39,7 @@ ALLOWLIST_FILES = {
 REGEX_ALLOWLIST_LINES = {
     # path -> set of line numbers (1-indexed)
     "agents/create/chat_prompt.py": {327, 331, 335, 339},
-    "static/js/create-chat.js": {395},
+    "static/js/create-chat.js": {441},
     "agents/trips/writeup.py": {88},
 }
 

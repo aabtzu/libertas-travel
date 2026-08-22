@@ -84,8 +84,9 @@ async function handleChatMessage(message, abortController) {
             if (data.delete_items && data.delete_items.length > 0) {
                 processDeleteItems(data.delete_items);
             }
+            let editResult = { changed: 0, notFound: [] };
             if (data.edit_items && data.edit_items.length > 0) {
-                processEditItems(data.edit_items);
+                editResult = processEditItems(data.edit_items);
             }
             if (data.add_items && data.add_items.length > 0) {
                 processAddItems(data.add_items);
@@ -107,6 +108,16 @@ async function handleChatMessage(message, abortController) {
                 });
                 responseText = `Removed ${names.join(', ')} from your trip.`;
             }
+            if (!responseText && editResult.changed > 0) {
+                const changes = data.edit_items.map(it => {
+                    let dayLabel = '';
+                    if ('day' in it) {
+                        dayLabel = it.day > 0 ? ` to Day ${it.day}` : ' to your ideas pile';
+                    }
+                    return `**${it.find_title}**${dayLabel}`;
+                });
+                responseText = `Updated ${changes.join(', ')}.`;
+            }
             if (!responseText && data.add_items && data.add_items.length > 0) {
                 const descriptions = data.add_items.map(it => {
                     const dayLabel = it.day ? ` (Day ${it.day})` : '';
@@ -114,6 +125,15 @@ async function handleChatMessage(message, abortController) {
                     return `**${it.title}**${dayLabel}${timeLabel}`;
                 });
                 responseText = `Added ${descriptions.join(', ')} to your trip.`;
+            }
+
+            // Say so when an edit could not be applied. The model writes its
+            // confirmation before we try to match, so without this the reply
+            // claims the item moved while nothing actually changed.
+            if (editResult.notFound.length > 0) {
+                const missing = editResult.notFound.map(name => `"${name}"`).join(', ');
+                const note = `I could not find ${missing} in this trip, so nothing moved. Try the exact item name.`;
+                responseText = responseText ? `${responseText}\n\n${note}` : note;
             }
 
             // Add response with suggested items (filtered)
@@ -199,41 +219,24 @@ function processDeleteItems(deleteRequests) {
  * day=0 moves item to ideas pile; day>0 moves it to that day; day absent = stay in place.
  */
 function processEditItems(edits) {
-    if (!edits || edits.length === 0) return;
+    if (!edits || edits.length === 0) return { changed: 0, notFound: [] };
 
     let changedCount = 0;
+    const notFound = [];
 
     edits.forEach(edit => {
         const findTitle = (edit.find_title || '').toLowerCase().trim();
         if (!findTitle) return;
 
         // Find the item in ideas or days
-        let foundItem = null;
-        let foundIn = null; // 'ideas' or day index (number)
-
-        const ideasMatch = currentTrip.ideas.findIndex(
-            it => (it.title || '').toLowerCase().trim() === findTitle
-        );
-        if (ideasMatch >= 0) {
-            foundItem = currentTrip.ideas[ideasMatch];
-            foundIn = 'ideas';
-        } else {
-            outer: for (let d = 0; d < currentTrip.days.length; d++) {
-                const items = currentTrip.days[d].items || [];
-                for (let i = 0; i < items.length; i++) {
-                    if ((items[i].title || '').toLowerCase().trim() === findTitle) {
-                        foundItem = items[i];
-                        foundIn = d;
-                        break outer;
-                    }
-                }
-            }
-        }
-
-        if (!foundItem) {
+        const match = findTripItemByTitle(findTitle);
+        if (!match) {
             console.warn('[edit_item] Item not found:', edit.find_title);
+            notFound.push(edit.find_title);
             return;
         }
+        const foundItem = match.item;
+        const foundIn = match.foundIn; // 'ideas' or day index (number)
 
         // Apply field updates (only keys explicitly present in the edit)
         if ('title' in edit) foundItem.title = edit.title;
@@ -277,6 +280,49 @@ function processEditItems(edits) {
         renderIdeas();
         triggerAutoSave();
     }
+
+    return { changed: changedCount, notFound };
+}
+
+/**
+ * Locate an item anywhere in the trip by title, for chat-driven edits.
+ *
+ * The title comes back from the model, which retypes it from the user's
+ * phrasing, so it often is not character-identical to what is stored:
+ * asking to "move bodega to day 2" yields find_title "bodega" while the
+ * item is saved as "Bodega 138". Exact matching alone made those edits
+ * fail silently.
+ *
+ * Exact match wins. Otherwise a case-insensitive containment match in
+ * either direction is accepted, but only when it is unambiguous: matching
+ * several items means we cannot tell which one was meant, so we report a
+ * miss rather than moving the wrong thing.
+ *
+ * Returns { item, foundIn } where foundIn is 'ideas' or a day index, or
+ * null when there is no confident match.
+ */
+function findTripItemByTitle(findTitle) {
+    const needle = (findTitle || '').toLowerCase().trim();
+    if (!needle) return null;
+
+    const candidates = [];
+    (currentTrip.ideas || []).forEach(it => candidates.push({ item: it, foundIn: 'ideas' }));
+    (currentTrip.days || []).forEach((day, d) => {
+        (day.items || []).forEach(it => candidates.push({ item: it, foundIn: d }));
+    });
+
+    const norm = c => (c.item.title || '').toLowerCase().trim();
+
+    const exact = candidates.filter(c => norm(c) === needle);
+    if (exact.length > 0) return exact[0];
+
+    const partial = candidates.filter(c => {
+        const title = norm(c);
+        return title && (title.includes(needle) || needle.includes(title));
+    });
+    if (partial.length === 1) return partial[0];
+
+    return null;
 }
 
 /**

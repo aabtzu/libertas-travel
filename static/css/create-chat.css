@@ -191,7 +191,10 @@
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     min-width: 180px;
-    z-index: 1000;
+    /* Above the mobile chat sidebar (1001). The picker is appended to <body>
+       but is opened from a button inside that fixed, stacked panel, so at
+       1000 it rendered behind the panel and the button looked dead. */
+    z-index: 1100;
     overflow: hidden;
 }
 
