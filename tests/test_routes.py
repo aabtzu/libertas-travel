@@ -398,3 +398,37 @@ class TestVenueDB:
 
         result = db.find_venue_by_name_and_city("No Such Place", "Nowhere")
         assert result is None
+
+
+class TestCacheHeaders:
+    """Dynamic responses must not be cached by the browser.
+
+    Trip pages and the JSON APIs render whatever is in the database at that
+    moment, and a trip changes constantly while it is being edited. These
+    routes previously sent no cache directive at all, which lets a browser
+    apply heuristic caching and serve a stale copy: the public view of a trip
+    and the editor could then disagree about the same item's time and
+    position. Static assets are excluded on purpose, they are versioned with
+    ?v= query strings and are meant to be cached.
+    """
+
+    def test_html_page_is_not_cached(self, client):
+        resp = client.get("/")
+        assert resp.headers.get("Cache-Control") == "no-store", (
+            "HTML pages render live data and must send no-store; without a "
+            "cache directive a mobile browser may show a stale trip"
+        )
+
+    def test_json_api_is_not_cached(self, client):
+        resp = client.get("/api/trips/list")
+        assert resp.headers.get("Cache-Control") == "no-store", (
+            "trip JSON must send no-store, the editor reads it to build its "
+            "in-memory copy and a cached response desyncs it from the database"
+        )
+
+    def test_static_assets_keep_their_caching(self, client):
+        resp = client.get("/static/js/main.js")
+        assert resp.headers.get("Cache-Control") != "no-store", (
+            "static assets are versioned with ?v= query strings and should "
+            "stay cacheable; blanket no-store would refetch them every page load"
+        )

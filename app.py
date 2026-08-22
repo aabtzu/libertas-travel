@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 
-from flask import Flask
+from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 _SESSION_DAYS = int(os.environ.get("SESSION_LIFETIME_DAYS", "90"))
@@ -38,6 +38,25 @@ def create_app() -> Flask:
         from agents.common.flask_utils import load_current_user
 
         load_current_user()
+
+    @app.after_request
+    def no_store_dynamic_responses(response):
+        """Keep browsers from caching anything that renders live trip data.
+
+        Trip pages, the /r/ and /w/ share links, and every JSON API render
+        whatever is in the database right now, and a trip changes constantly
+        while it is being edited. None of these routes sent a cache directive,
+        which leaves a browser free to apply heuristic caching and serve a
+        stale copy: the public view of a trip and the editor could then show
+        different times and orderings for the same item.
+
+        Static assets are excluded, they are versioned with ?v= query strings
+        and are meant to be cached. Routes that set their own Cache-Control
+        keep it.
+        """
+        if not request.path.startswith("/static/"):
+            response.headers.setdefault("Cache-Control", "no-store")
+        return response
 
     return app
 
