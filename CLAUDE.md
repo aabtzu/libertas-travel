@@ -230,6 +230,52 @@ Dataclasses for parsing live in `agents/itinerary/models.py`: `Location`,
 - Batch related changes into one push rather than pushing after each individual fix
 - Only push when: the user explicitly says to, or a coherent feature/fix is complete and locally verified
 
+### Remote sessions (Claude Code on the web, phone or browser)
+
+These run in an ephemeral cloud container, not on the dev machine, so parts of the
+workflow above do not apply. The rules here replace them for those sessions only;
+local desktop work is unchanged.
+
+- **Push straight to `main`.** Render deploys from `main`, and a feature branch is
+  not testable from a phone. Do not stop for per-push approval: the checklist below
+  replaces it. The person who asked for the change is the final check.
+- **Outbound network is allowlisted.** pypi, npm, and GitHub are reachable;
+  `libertas-travel.onrender.com` is **not** (the proxy answers 403 to CONNECT). A
+  remote session therefore cannot do the "verify on Render after every push" step
+  above. Confirm the GitHub Actions run went green instead, and say so.
+- **No secrets.** `ANTHROPIC_API_KEY` is unset and `~/.profile` is the container's
+  own, not yours, so `source ~/.profile && ./dev.sh start` does not apply. Anything
+  LLM-backed (parsing, create/explore chat, write-ups, venue enrichment) cannot be
+  exercised end to end. Say so rather than implying it was tested.
+- **No `.venv` on a fresh container.** Create one once per session:
+  `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt pytest pytest-asyncio`.
+  After that the full Pre-Push Checklist runs normally.
+
+### Verifying mobile behaviour without a phone
+
+Chromium and Playwright are preinstalled in remote sessions. Drive the local server
+at a real mobile viewport (390x844, `is_mobile=True`) instead of reading the CSS and
+reasoning about it. The chat-button bug in commit `0989e65` was found by bisecting
+elements in a live browser, and the first hypothesis taken from reading the CSS was
+wrong.
+
+```python
+b = p.chromium.launch(executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
+                      args=["--no-sandbox"])
+```
+
+Three traps that will waste an hour each:
+
+- **CDN assets do not load** (Font Awesome from cdnjs, Leaflet from unpkg). Icons
+  collapse to zero width, which silently understates every width measurement, and
+  maps do not render at all. Stub the icon metrics before measuring layout:
+  `.fa,.fas,.far,.fab{display:inline-block;width:1.28571429em;height:1em}`
+- **The editor opens from `?link=<trip>.html`** (or `?edit=`), not `?trip=`. With the
+  wrong parameter `#editor-container` stays `display:none` and every measurement is
+  of the empty start screen, which looks like a passing result.
+- **A backgrounded dev server does not survive between turns.** Re-check it is up
+  (and restart it) at the start of any turn that drives the browser.
+
 ## No Manual Production Steps
 - **Never require manual actions on the production server**: no SSH, no copy-pasting data into a console
 - Any production data setup (demo trips, seed data, config) must be handled by a script or admin route
