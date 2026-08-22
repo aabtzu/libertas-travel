@@ -28,6 +28,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHAT_CSS = REPO_ROOT / "static" / "css" / "create-chat.css"
+VIEWS_CSS = REPO_ROOT / "static" / "css" / "create-views.css"
 CREATE_HTML = REPO_ROOT / "agents" / "create" / "templates" / "create.html"
 
 # The breakpoint the editor uses for its mobile layout.
@@ -162,4 +163,27 @@ def test_chat_button_is_a_direct_child_of_body(mobile_css: str):
         "the chat button must remain a direct child of <body>; nesting it "
         "inside a transformed or filtered ancestor would make position:fixed "
         "resolve against that ancestor instead of the viewport"
+    )
+
+
+def test_grid_table_keeps_its_own_horizontal_scroller():
+    """The editor's overflow clamp must not trap the grid table.
+
+    `.create-container { overflow-x: hidden }` on mobile is safe only because
+    the wide grid table scrolls inside `.column-table-wrapper`. An ancestor
+    clip does not disable an inner scroller, but it does mean the inner
+    scroller has to exist.
+
+    This pairing has bitten before: fe0b02b (#117) removed an
+    `html, body { overflow-x: hidden }` rule precisely because it blocked the
+    grid table's intentional horizontal scroll. If the wrapper ever loses its
+    own overflow-x, the clamp becomes that same bug again.
+    """
+    css = VIEWS_CSS.read_text()
+    match = re.search(r"\.column-table-wrapper\s*\{([^}]*)\}", css)
+    assert match, ".column-table-wrapper rule is missing from create-views.css"
+    assert "overflow-x: auto" in match.group(1), (
+        ".column-table-wrapper must keep overflow-x: auto. The grid table is "
+        "800px wide by design; without its own scroller the editor's mobile "
+        "overflow clamp would make it unreachable (see #117)"
     )
