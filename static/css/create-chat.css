@@ -424,22 +424,31 @@
 
 /* ==================== Responsive ==================== */
 @media (max-width: 900px) {
-    /* Hide sidebar by default on mobile */
+    /* Hide sidebar off-canvas on mobile.
+
+       Park it with a transform, never with a negative `right`. An element
+       sitting outside the right edge counts as scrollable overflow, and
+       mobile browsers respond by widening the layout viewport to fit it
+       (measured: 390px viewport became 736px). The chat FAB is
+       position:fixed against that viewport, so it got dragged off-screen
+       with the panel and could only be reached by scrolling sideways.
+       Transforms do not affect layout, so the page stays one screen wide. */
     .editor-sidebar {
         position: fixed;
-        right: -100%;
+        right: 0;
         top: 0;
         bottom: 0;
         width: 100%;
         max-width: 400px;
         z-index: 1001;
-        transition: right 0.3s ease;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
         box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
     }
 
     /* Show sidebar when open */
     .editor-sidebar.open {
-        right: 0;
+        transform: translateX(0);
     }
 
     /* Show close button on mobile */
@@ -507,13 +516,109 @@
         display: none;
     }
 
-    /* Make header more compact on mobile */
+    /* Make header more compact on mobile.
+
+       The header is the reason the chat FAB used to be unreachable. It is a
+       nowrap flex row, and `.title-input` carried a hard `min-width: 250px`,
+       so with the Saved badge and the two buttons the row's minimum width
+       came to ~736px. Mobile browsers widen the layout viewport to fit an
+       overflowing row, and everything position:fixed (the FAB) anchors to
+       that widened viewport instead of the phone screen.
+
+       So: let the row wrap, and let the title shrink. `min-width: 0` on both
+       the title and its flex parent is the load-bearing part, since a flex
+       item will not shrink below the intrinsic width of an <input> without
+       it. The previous rule here targeted `.header-title input`, a selector
+       that matches nothing in create.html, which is why it never helped. */
     .editor-header {
         padding: 12px 16px;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
-    .header-title input {
+    .header-left {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .title-input {
+        min-width: 0;
+        width: 100%;
         font-size: 1.1rem;
+    }
+
+    /* Wrap, do not squash. Without this the three controls are compressed
+       below their intrinsic width (the save button held 192px of content in
+       a 135px box), and the leftover spills as 41px of overflow. */
+    .header-right {
+        flex: 1 1 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /* Size to content and wrap to the next line if needed. Letting these
+       shrink is what produced the leftover overflow: the button box was
+       squeezed narrower than its own label. */
+    .header-right > * {
+        flex: 0 0 auto;
+    }
+
+    /* Compact enough that the status and both buttons sit on one row rather
+       than stacking, which costs three header rows on a phone. */
+    .header-right .btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .save-status {
+        font-size: 0.8rem;
+    }
+
+    /* Let the view-tab strip scroll instead of widening the page.
+
+       Same failure mode as the header above: four tabs plus the add-day
+       button need ~509px, and a nowrap flex row that wide makes the browser
+       widen the layout viewport, which drags the position:fixed chat FAB
+       off-screen. Containing the overflow here keeps the page one screen
+       wide. Tabs keep their labels (no truncation) and the strip scrolls
+       sideways only if they genuinely do not fit. */
+    /* Belt and braces: contain any residual horizontal overflow inside the
+       editor, so the layout viewport can never widen past the phone screen
+       and drag the position:fixed chat FAB off with it. Content that
+       genuinely needs to scroll sideways (the grid table, the tab strip)
+       has its own overflow-x container and is unaffected. */
+    .create-container {
+        overflow-x: hidden;
+    }
+
+    /* A flex item will not shrink below its content's intrinsic width unless
+       min-width is cleared. Without this the tab strip's overflow-x has
+       nothing to scroll inside, and the row pushes the page wide anyway. */
+    .editor-main,
+    .editor-timeline {
+        min-width: 0;
+    }
+
+    .timeline-tabs {
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .timeline-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .timeline-tab {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        padding: 12px 12px;
+    }
+
+    .timeline-tab-actions {
+        flex: 0 0 auto;
     }
 
     /* Adjust main content to full width */
