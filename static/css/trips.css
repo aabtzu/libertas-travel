@@ -3,7 +3,7 @@
 /* Libertas - My Trips Page Styles */
 
 .trips-header {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     padding: 60px 40px;
     text-align: center;
@@ -88,7 +88,7 @@
 
 .trips-header-row h2 {
     font-size: 1.2rem;
-    color: #333;
+    color: var(--ink);
     margin: 0;
 }
 
@@ -96,7 +96,7 @@
 .trips-view-tabs {
     display: flex;
     gap: 4px;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     padding: 4px;
     border-radius: 10px;
 }
@@ -110,20 +110,20 @@
     background: transparent;
     border-radius: 8px;
     cursor: pointer;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.9rem;
     font-weight: 500;
     transition: all 0.2s ease;
 }
 
 .trips-tab:hover {
-    color: #333;
+    color: var(--ink);
     background: rgba(255, 255, 255, 0.5);
 }
 
 .trips-tab.active {
     background: white;
-    color: #667eea;
+    color: var(--accent);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -155,17 +155,17 @@
     background: transparent;
     border-radius: 6px;
     cursor: pointer;
-    color: #666;
+    color: var(--ink-muted);
     transition: all 0.2s;
 }
 
 .view-toggle-btn:hover {
-    color: #333;
+    color: var(--ink);
 }
 
 .view-toggle-btn.active {
     background: white;
-    color: #667eea;
+    color: var(--accent);
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
@@ -205,7 +205,7 @@
     text-transform: none;
 }
 .trips-section[data-section="past"] .trips-section-title {
-    color: #666;
+    color: var(--ink-muted);
 }
 .trips-section[data-section="past"] .trip-card {
     opacity: 0.85;
@@ -215,14 +215,14 @@
     border-radius: 12px;
     padding: 16px 16px 8px;
     margin-bottom: 8px;
-    border: 2px solid #667eea;
+    border: 2px solid var(--accent);
 }
 .trips-section[data-section="current"] .trips-section-title {
-    color: #667eea;
+    color: var(--accent);
     font-size: 1.05rem;
 }
 .trips-section[data-section="current"] .trips-section-count {
-    background: #667eea;
+    background: var(--accent);
     color: #fff;
 }
 
@@ -333,7 +333,7 @@
     top: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
     padding: 4px 8px;
     border-radius: 6px;
@@ -361,11 +361,11 @@
 
 .trip-action-btn.copy-btn {
     background: rgba(255, 255, 255, 0.95);
-    color: #667eea;
+    color: var(--accent);
 }
 
 .trip-action-btn.copy-btn:hover {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     transform: scale(1.1);
 }
@@ -418,7 +418,7 @@
 .trip-card-title {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 8px;
 }
 
@@ -426,7 +426,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.9rem;
 }
 
@@ -437,7 +437,7 @@
 }
 
 .trip-card-meta i {
-    color: #667eea;
+    color: var(--accent);
     font-size: 0.85rem;
 }
 
@@ -457,12 +457,12 @@
 .trip-stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #667eea;
+    color: var(--accent);
 }
 
 .trip-stat-label {
     font-size: 0.75rem;
-    color: #666;
+    color: var(--ink-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -470,7 +470,7 @@
 .no-trips {
     text-align: center;
     padding: 60px 20px;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .no-trips i {
@@ -492,17 +492,17 @@
     padding: 18px 44px 18px 22px;
     background: #f0f1ff;
     border: 1px solid #c7c9f7;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid var(--accent);
     border-radius: 10px;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.08);
 }
 .trips-intro h3 {
     margin: 0 0 8px;
     font-size: 1.05rem;
-    color: #1a1a2e;
+    color: var(--surface-dark);
 }
-.trips-intro h3 i { color: #f0c674; margin-right: 6px; }
+.trips-intro h3 i { color: var(--highlight); margin-right: 6px; }
 .trips-intro p { margin: 0 0 8px; color: #444; }
 .trips-intro ul {
     margin: 0 0 14px;
@@ -512,7 +512,7 @@
 }
 .trips-intro ul strong { color: #4a5fd6; }
 .trips-intro-got-it {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 8px;
@@ -520,7 +520,7 @@
     font-size: 0.9rem;
     cursor: pointer;
 }
-.trips-intro-got-it:hover { background: #5a6fd6; }
+.trips-intro-got-it:hover { background: var(--accent-hover); }
 .trips-intro-close {
     position: absolute;
     top: 10px;
@@ -532,4 +532,4 @@
     line-height: 1;
     cursor: pointer;
 }
-.trips-intro-close:hover { color: #1a1a2e; }
+.trips-intro-close:hover { color: var(--surface-dark); }

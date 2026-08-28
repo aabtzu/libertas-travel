@@ -4,14 +4,14 @@
 .editor-sidebar {
     width: 380px;
     background: white;
-    border-left: 1px solid #eee;
+    border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
 }
 
 .sidebar-header {
     padding: 20px;
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
 }
 
@@ -60,13 +60,13 @@
 }
 
 .chat-message.assistant .avatar {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
 .chat-message.user .avatar {
-    background: #f5f5f5;
-    color: #666;
+    background: var(--surface-sunken);
+    color: var(--ink-muted);
 }
 
 .chat-message .bubble {
@@ -78,12 +78,12 @@
 }
 
 .chat-message.assistant .bubble {
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     border-bottom-left-radius: 4px;
 }
 
 .chat-message.user .bubble {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border-bottom-right-radius: 4px;
 }
@@ -91,7 +91,7 @@
 /* Suggested items in chat */
 .suggestion-item {
     background: white;
-    border: 1px solid #eee;
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px;
     margin-top: 10px;
@@ -110,7 +110,7 @@
 
 .suggestion-item-title {
     font-weight: 500;
-    color: #333;
+    color: var(--ink);
 }
 
 .suggestion-links {
@@ -124,17 +124,17 @@
     align-items: center;
     gap: 4px;
     font-size: 0.8rem;
-    color: #666;
+    color: var(--ink-muted);
     text-decoration: none;
     padding: 4px 8px;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     border-radius: 4px;
     transition: all 0.2s;
 }
 
 .suggestion-link:hover {
     background: #e8e8e8;
-    color: #333;
+    color: var(--ink);
 }
 
 .suggestion-link i {
@@ -143,7 +143,7 @@
 
 .suggestion-item-notes {
     font-size: 0.85rem;
-    color: #666;
+    color: var(--ink-muted);
     margin-bottom: 8px;
 }
 
@@ -151,7 +151,7 @@
 .btn-add-to-itinerary {
     font-size: 0.85rem;
     padding: 6px 12px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 6px;
@@ -202,9 +202,9 @@
     padding: 10px 14px;
     font-size: 0.85rem;
     font-weight: 600;
-    color: #333;
-    border-bottom: 1px solid #eee;
-    background: #f8f9fa;
+    color: var(--ink);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-raised);
 }
 
 .day-picker-list {
@@ -231,11 +231,11 @@
 }
 
 .day-picker-option strong {
-    color: #333;
+    color: var(--ink);
 }
 
 .day-picker-option span {
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.8rem;
 }
 
@@ -270,7 +270,7 @@
 /* Chat input */
 .chat-input-container {
     padding: 12px 16px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border);
 }
 
 .quick-suggestions {
@@ -282,17 +282,17 @@
 
 .suggestion-chip {
     padding: 6px 12px;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     border-radius: 20px;
     font-size: 0.8rem;
-    color: #666;
+    color: var(--ink-muted);
     cursor: pointer;
     transition: background 0.2s;
 }
 
 .suggestion-chip:hover {
-    background: #eee;
-    color: #333;
+    background: var(--border);
+    color: var(--ink);
 }
 
 .chat-input-wrapper {
@@ -304,7 +304,7 @@
 .chat-input {
     flex: 1;
     padding: 12px 16px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-strong);
     border-radius: 24px;
     font-size: 0.9rem;
     font-family: inherit;
@@ -315,7 +315,7 @@
 
 .chat-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -323,7 +323,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     cursor: pointer;
@@ -352,7 +352,7 @@
     margin: 16px 0;
     background: #f0f4ff;
     border-radius: 8px;
-    color: #667eea;
+    color: var(--accent);
     font-size: 0.85rem;
     display: flex;
     align-items: center;
@@ -382,7 +382,7 @@
 .day-items.drag-over,
 #ideas-list.drag-over {
     background: rgba(102, 126, 234, 0.1);
-    border: 2px dashed #667eea;
+    border: 2px dashed var(--accent);
     border-radius: 8px;
     min-height: 60px;
 }
@@ -408,7 +408,7 @@
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);

@@ -19,37 +19,37 @@
 }
 
 .upload-area:hover {
-    border-color: #667eea;
+    border-color: var(--accent);
     background: #f8f9ff;
 }
 
 .upload-area.drag-over {
-    border-color: #667eea;
+    border-color: var(--accent);
     background: #f0f2ff;
     transform: scale(1.01);
 }
 
 .upload-area i {
     font-size: 2rem;
-    color: #667eea;
+    color: var(--accent);
     margin-bottom: 10px;
 }
 
 .upload-area h3 {
-    color: #333;
+    color: var(--ink);
     margin-bottom: 6px;
     font-size: 1rem;
 }
 
 .upload-area p {
-    color: #666;
+    color: var(--ink-muted);
     margin-bottom: 10px;
     font-size: 0.85rem;
 }
 
 .upload-area .supported-formats {
     font-size: 0.75rem;
-    color: #666;
+    color: var(--ink-muted);
     margin-top: 8px;
     margin-bottom: 0;
 }
@@ -59,9 +59,9 @@
    that" feedback (issue #57). */
 .upload-area .upload-existing-hint {
     font-size: 0.78rem;
-    color: #666;
+    color: var(--ink-muted);
     background: #f0f1ff;
-    border-left: 3px solid #667eea;
+    border-left: 3px solid var(--accent);
     padding: 8px 12px;
     margin-top: 14px;
     margin-bottom: 0;
@@ -74,7 +74,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     padding: 8px 16px;
@@ -162,7 +162,7 @@
 
 .url-divider span {
     padding: 0 12px;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -176,7 +176,7 @@
 .url-input {
     flex: 1;
     padding: 10px 12px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--border-strong);
     border-radius: 6px;
     font-size: 0.85rem;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -184,7 +184,7 @@
 
 .url-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -197,7 +197,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     padding: 10px 16px;
@@ -256,7 +256,7 @@
 
 .modal-header h3 {
     margin: 10px 0 0 0;
-    color: #333;
+    color: var(--ink);
     font-size: 1.3rem;
 }
 
@@ -265,7 +265,7 @@
 }
 
 .modal-body p {
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.9rem;
     margin-bottom: 12px;
 }
@@ -273,7 +273,7 @@
 .modal-input {
     width: 100%;
     padding: 12px 16px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--border-strong);
     border-radius: 8px;
     font-size: 1rem;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -282,7 +282,7 @@
 
 .modal-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }
 
@@ -304,15 +304,15 @@
 .modal-btn-secondary {
     background: #f0f0f0;
     border: none;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .modal-btn-secondary:hover {
-    background: #e0e0e0;
+    background: var(--border-strong);
 }
 
 .modal-btn-primary {
-    background: #667eea;
+    background: var(--accent);
     border: none;
     color: white;
 }
@@ -493,8 +493,8 @@
     margin: 16px 0 8px;
     padding: 8px 16px;
     background: white;
-    color: #667eea;
-    border: 1px solid #667eea;
+    color: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.9rem;
@@ -503,7 +503,7 @@
     gap: 6px;
 }
 .archived-toggle-btn:hover {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
@@ -528,5 +528,5 @@
     border-bottom: 1px solid #f0f0f0;
 }
 .subscribe-instructions li:last-child { border-bottom: none; }
-.subscribe-instructions li strong { color: #1a1a2e; }
-.subscribe-instructions li span { color: #666; font-size: 0.82rem; text-align: right; }
+.subscribe-instructions li strong { color: var(--surface-dark); }
+.subscribe-instructions li span { color: var(--ink-muted); font-size: 0.82rem; text-align: right; }

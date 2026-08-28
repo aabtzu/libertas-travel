@@ -173,3 +173,129 @@ class TestNoBrowserDialogs:
             "calendar-export.js reports its errors through LibertasModal; it "
             "is loaded only on trips.html, which loads main.js first"
         )
+
+
+class TestDesignTokens:
+    """The token layer from issue #150.
+
+    Colours are defined once and referenced by role. A raw hex in a feature
+    stylesheet is how this codebase accumulated 97 colours and six separate
+    category palettes.
+    """
+
+    def test_root_tokens_are_declared_once(self):
+        """Only main.css may declare the shared :root palette."""
+        declaring = [
+            _relative(p)
+            for p in CSS_FILES
+            if re.search(r"^:root\s*\{", p.read_text(), re.MULTILINE)
+        ]
+        assert declaring == ["static/css/tokens.css"], (
+            f"the :root palette must live only in tokens.css, found it in "
+            f"{declaring}. A second declaration silently wins by cascade "
+            f"order, which is exactly how categories.css made a flight cyan "
+            f"while the rest of the app drew it blue"
+        )
+
+    def test_no_stylesheet_redefines_a_category_token(self):
+        """Category colours come from /app-config.css, served from Python."""
+        offenders = []
+        for path in CSS_FILES:
+            for i, line in enumerate(path.read_text().splitlines(), 1):
+                if re.match(r"\s*--cat-[a-z-]+\s*:", line):
+                    offenders.append(f"{_relative(path)}:{i}")
+        assert not offenders, (
+            "category colours are owned by agents/common/categories.py and "
+            "served as custom properties by /app-config.css; consume them "
+            "with var(--cat-<name>), never redeclare them:\n  " + "\n  ".join(offenders)
+        )
+
+    def test_every_category_token_used_is_actually_served(self):
+        from agents.common.categories import CATEGORY_COLORS
+
+        served = set()
+        for cat in CATEGORY_COLORS:
+            served |= {f"--cat-{cat}", f"--cat-{cat}-tint", f"--cat-{cat}-ink"}
+        used = set()
+        for path in CSS_FILES:
+            used |= set(re.findall(r"var\((--cat-[a-z-]+)\)", path.read_text()))
+        assert not (used - served), (
+            f"these category tokens are referenced but never served by "
+            f"/app-config.css: {sorted(used - served)}"
+        )
+
+
+class TestDerivedCategoryContrast:
+    """The tint and ink variants must stay readable together.
+
+    They are derived from CATEGORY_COLORS, so changing a category colour
+    changes both. This is the check that stops a palette tweak from quietly
+    making a badge unreadable.
+    """
+
+    @staticmethod
+    def _ratio(a: str, b: str) -> float:
+        def lum(h: str) -> float:
+            h = h.lstrip("#")
+            channels = [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+            channels = [
+                c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels
+            ]
+            return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+        high, low = max(lum(a), lum(b)), min(lum(a), lum(b))
+        return (high + 0.05) / (low + 0.05)
+
+    def test_ink_is_readable_on_its_own_tint(self):
+        """Badges put -ink text on a -tint background."""
+        from agents.common.categories import CATEGORY_INKS, CATEGORY_TINTS
+
+        for cat, ink in CATEGORY_INKS.items():
+            ratio = self._ratio(ink, CATEGORY_TINTS[cat])
+            assert ratio >= 4.5, (
+                f"{cat}: ink {ink} on tint {CATEGORY_TINTS[cat]} is "
+                f"{ratio:.2f}:1, below the 4.5:1 minimum. If you changed a "
+                f"category colour or _INK_STRENGTH in categories.py, the "
+                f"derived pair no longer holds"
+            )
+
+    def test_white_is_readable_on_ink(self):
+        """Calendar chips and category badges put white text on -ink."""
+        from agents.common.categories import CATEGORY_INKS
+
+        for cat, ink in CATEGORY_INKS.items():
+            ratio = self._ratio("#ffffff", ink)
+            assert ratio >= 4.5, (
+                f"{cat}: white on ink {ink} is {ratio:.2f}:1, below 4.5:1. "
+                f"White on the undarkened category colour is as low as "
+                f"2.15:1, which is why these use the ink variant"
+            )
+
+    def test_app_config_css_serves_every_category(self, client):
+        from agents.common.categories import CATEGORY_COLORS
+
+        resp = client.get("/app-config.css")
+        assert resp.status_code == 200
+        assert resp.mimetype == "text/css"
+        body = resp.get_data(as_text=True)
+        for cat, color in CATEGORY_COLORS.items():
+            assert f"--cat-{cat}: {color};" in body, f"{cat} missing from /app-config.css"
+            assert f"--cat-{cat}-tint:" in body
+            assert f"--cat-{cat}-ink:" in body
+
+
+def test_pages_that_use_category_tokens_load_the_stylesheet():
+    """A page referencing var(--cat-*) must link /app-config.css.
+
+    Otherwise the token resolves to nothing and the element renders unstyled.
+    """
+    pages = [
+        p
+        for p in list(REPO_ROOT.glob("agents/*/templates/*.html"))
+        if "/static/css/main.css" in p.read_text()
+    ]
+    missing = [_relative(p) for p in pages if "/app-config.css" not in p.read_text()]
+    assert not missing, (
+        "these pages load the app stylesheets but not the category tokens "
+        "they depend on:\n  " + "\n  ".join(missing)
+    )

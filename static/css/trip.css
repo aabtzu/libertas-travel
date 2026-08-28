@@ -42,8 +42,8 @@
 .map-loading-spinner {
     width: 50px;
     height: 50px;
-    border: 4px solid #e0e0e0;
-    border-top-color: #667eea;
+    border: 4px solid var(--border-strong);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -55,13 +55,13 @@
 .map-loading-text {
     margin-top: 20px;
     font-size: 1.1rem;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .map-loading-subtext {
     margin-top: 8px;
     font-size: 0.9rem;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .map-status-ready {
@@ -90,8 +90,8 @@
 .map-legend h4 {
     margin: 0 0 12px 0;
     font-size: 16px;
-    color: #333;
-    border-bottom: 1px solid #eee;
+    color: var(--ink);
+    border-bottom: 1px solid var(--border);
     padding-bottom: 8px;
 }
 
@@ -133,7 +133,7 @@
 #grid-tab {
     padding: 20px 40px;
     overflow-y: auto;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
 }
 
 /* ==================== Column/Grid View ==================== */
@@ -158,12 +158,12 @@
 }
 
 .column-table th {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     padding: 12px 16px;
     text-align: left;
     font-weight: 600;
-    border-bottom: 2px solid #5a6fd6;
+    border-bottom: 2px solid var(--accent-hover);
 }
 
 .column-table th:first-child {
@@ -176,7 +176,7 @@
 
 .column-table td {
     padding: 12px 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
     vertical-align: top;
 }
 
@@ -187,12 +187,12 @@
 .column-table .day-header {
     background: #f0f0ff;
     font-weight: 600;
-    color: #667eea;
+    color: var(--accent);
 }
 
 .column-table .day-header td {
     padding: 10px 16px;
-    border-bottom: 2px solid #667eea;
+    border-bottom: 2px solid var(--accent);
 }
 
 /* ==================== Column Item Styles ==================== */
@@ -237,7 +237,7 @@
 }
 
 .column-item.other {
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     border-left-color: #616161;
 }
 
@@ -252,7 +252,7 @@
     align-items: center;
     gap: 8px;
     font-weight: 500;
-    color: #333;
+    color: var(--ink);
 }
 
 .column-item-icon {
@@ -272,7 +272,7 @@
 .column-item-location {
     display: block;
     font-size: 0.85rem;
-    color: #666;
+    color: var(--ink-muted);
     margin-top: 4px;
 }
 
@@ -282,20 +282,20 @@
 }
 
 .column-item-maps-link:hover {
-    color: #667eea;
+    color: var(--accent);
     text-decoration: underline;
 }
 
 .column-item-website {
     display: block;
     font-size: 0.8rem;
-    color: #666;
+    color: var(--ink-muted);
     margin-top: 2px;
 }
 
 .column-item-notes {
     font-size: 0.8rem;
-    color: #666;
+    color: var(--ink-muted);
     margin-top: 4px;
     font-style: italic;
     line-height: 1.4;

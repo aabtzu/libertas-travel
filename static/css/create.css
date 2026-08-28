@@ -29,18 +29,18 @@
 
 .modal-content h2 {
     margin: 0 0 8px 0;
-    color: #333;
+    color: var(--ink);
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
 .modal-content h2 i {
-    color: #667eea;
+    color: var(--accent);
 }
 
 .modal-subtitle {
-    color: #666;
+    color: var(--ink-muted);
     margin: 0 0 24px 0;
 }
 
@@ -55,12 +55,12 @@
     background: none;
     border: none;
     font-size: 1.5rem;
-    color: #666;
+    color: var(--ink-muted);
     cursor: pointer;
 }
 
 .modal-close:hover {
-    color: #333;
+    color: var(--ink);
 }
 
 /* ==================== Form Styles ==================== */
@@ -72,7 +72,7 @@
     display: block;
     margin-bottom: 6px;
     font-weight: 500;
-    color: #333;
+    color: var(--ink);
 }
 
 .form-group .required {
@@ -80,7 +80,7 @@
 }
 
 .form-group .optional {
-    color: #666;
+    color: var(--ink-muted);
     font-weight: 400;
     font-size: 0.85em;
 }
@@ -103,7 +103,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }
 
@@ -119,12 +119,12 @@
 
 .date-input-group label {
     font-size: 0.85em;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .date-separator {
     padding-bottom: 10px;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .or-divider {
@@ -140,13 +140,13 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: #eee;
+    background: var(--border);
 }
 
 .or-divider span {
     background: white;
     padding: 0 12px;
-    color: #666;
+    color: var(--ink-muted);
     position: relative;
 }
 
@@ -171,7 +171,7 @@
     width: 16px;
     height: 16px;
     cursor: pointer;
-    accent-color: #667eea;
+    accent-color: var(--accent);
 }
 
 .form-actions {
@@ -197,7 +197,7 @@
 }
 
 .btn-primary {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
@@ -207,12 +207,12 @@
 }
 
 .btn-secondary {
-    background: #f5f5f5;
-    color: #333;
+    background: var(--surface-sunken);
+    color: var(--ink);
 }
 
 .btn-secondary:hover {
-    background: #eee;
+    background: var(--border);
 }
 
 .btn-icon {
@@ -225,7 +225,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #667eea;
+    color: var(--accent);
     transition: background 0.2s;
 }
 
@@ -238,7 +238,7 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - 60px);
-    background: #f5f5f5;
+    background: var(--surface-sunken);
 }
 
 /* Grid/calendar/map tabs: let the page scroll naturally instead of boxing
@@ -264,7 +264,7 @@
     justify-content: space-between;
     padding: 12px 24px;
     background: white;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
 }
 
 .header-left {
@@ -284,14 +284,14 @@
 
 .title-input:focus {
     outline: none;
-    border-bottom: 2px solid #667eea;
+    border-bottom: 2px solid var(--accent);
 }
 
 .header-dates {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .date-input-small {
@@ -316,7 +316,7 @@
 }
 
 .save-status.saving {
-    color: #667eea;
+    color: var(--accent);
 }
 
 .save-status.saving i {
@@ -356,14 +356,14 @@
 
 .timeline-header h3 {
     margin: 0;
-    color: #333;
+    color: var(--ink);
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
 .timeline-header h3 i {
-    color: #667eea;
+    color: var(--accent);
 }
 
 /* ==================== Timeline Tabs ==================== */
@@ -372,7 +372,7 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 16px;
-    border-bottom: 2px solid #e0e0e0;
+    border-bottom: 2px solid var(--border-strong);
     padding-bottom: 0;
 }
 
@@ -382,7 +382,7 @@
     border: none;
     font-size: 14px;
     font-weight: 500;
-    color: #666;
+    color: var(--ink-muted);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -392,11 +392,11 @@
 }
 
 .timeline-tab:hover {
-    color: #333;
+    color: var(--ink);
 }
 
 .timeline-tab.active {
-    color: #667eea;
+    color: var(--accent);
 }
 
 .timeline-tab.active::after {
@@ -406,7 +406,7 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: #667eea;
+    background: var(--accent);
 }
 
 .timeline-tab i {
@@ -434,13 +434,13 @@
     gap: 12px;
     margin-bottom: 12px;
     padding: 8px 12px;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     border-radius: 8px;
 }
 
 .map-day-selector label {
     font-size: 14px;
-    color: #666;
+    color: var(--ink-muted);
     font-weight: 500;
 }
 
@@ -478,15 +478,15 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: #f5f5f5;
-    color: #666;
+    background: var(--surface-sunken);
+    color: var(--ink-muted);
     gap: 12px;
     z-index: 10;
 }
 
 .map-loading i {
     font-size: 24px;
-    color: #667eea;
+    color: var(--accent);
 }
 
 .map-loading.hidden {
@@ -499,7 +499,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #666;
+    color: var(--ink-muted);
     text-align: center;
     padding: 40px;
 }
@@ -528,7 +528,7 @@
 
 .marker-popup .marker-day {
     font-size: 11px;
-    color: #667eea;
+    color: var(--accent);
     font-weight: 600;
     margin-bottom: 4px;
     text-transform: uppercase;
@@ -537,13 +537,13 @@
 .marker-popup .marker-title {
     font-weight: 600;
     font-size: 14px;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 6px;
 }
 
 .marker-popup .marker-meta {
     font-size: 12px;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .marker-popup .marker-meta div {
@@ -555,7 +555,7 @@
 
 .marker-popup .marker-meta i {
     width: 12px;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 /* ==================== Days Container ==================== */
@@ -578,7 +578,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
@@ -622,9 +622,9 @@
 .day-items-empty {
     padding: 20px;
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.9rem;
-    border: 2px dashed #eee;
+    border: 2px dashed var(--border);
     border-radius: 8px;
     margin: 8px;
 }
@@ -635,10 +635,10 @@
     align-items: flex-start;
     gap: 12px;
     padding: 12px;
-    background: #f8f9fa;
+    background: var(--surface-raised);
     border-radius: 8px;
     margin-bottom: 8px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid var(--accent);
     cursor: pointer;
     transition: background 0.15s, box-shadow 0.15s;
 }
@@ -679,7 +679,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     flex-shrink: 0;
 }
@@ -699,7 +699,7 @@
 
 .item-title {
     font-weight: 500;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 4px;
 }
 
@@ -708,7 +708,7 @@
     flex-direction: column;
     gap: 3px;
     font-size: 0.85rem;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .item-meta i {
@@ -733,11 +733,11 @@
     height: 24px;
     border-radius: 4px;
     cursor: pointer;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .item-actions button:hover {
-    background: #eee;
-    color: #333;
+    background: var(--border);
+    color: var(--ink);
 }
 

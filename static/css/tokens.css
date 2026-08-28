@@ -1,0 +1,46 @@
+/* Libertas design tokens.
+   Split out of main.css so the palette has one obvious home and main.css
+   stays under the 800-line limit. Linked before every other stylesheet.
+   Category colours are not here: see /app-config.css. */
+
+/* ==================== Design tokens ====================
+
+   One definition per colour, named by the role it plays rather than by what
+   it looks like. Use these instead of writing a hex value: a raw hex in a
+   feature stylesheet is how this codebase ended up with 97 distinct colours
+   and three separate palettes for trip categories (issue #150).
+
+   Naming: --surface-* are backgrounds, --ink-* is text, --border-* is lines,
+   --accent-* is the brand purple, --status-* is success/warning/error.
+
+   Category colours are NOT here. They are owned by Python in
+   agents/common/categories.py and served as custom properties by
+   /app-config.css, so the map, the list and the grid cannot drift apart.
+
+   Contrast, measured against white unless noted:
+     --ink            #333      12.63:1
+     --ink-muted      #666       5.74:1  (also passes on --surface-sunken)
+     --accent         #667eea    3.66:1  large text and non-text only
+     --accent-strong  #4f5fc4    5.58:1  safe behind white body text  */
+:root {
+    /* Surfaces */
+    --surface: #ffffff;
+    --surface-sunken: #f5f5f5;
+    --surface-raised: #f8f9fa;
+    --surface-dark: #1a1a2e;
+
+    /* Text */
+    --ink: #333;
+    --ink-muted: #666;
+    --ink-on-dark: #ffffff;
+
+    /* Lines */
+    --border: #eee;
+    --border-strong: #e0e0e0;
+
+    /* Brand */
+    --accent: #667eea;
+    --accent-hover: #5a6fd6;
+    --accent-strong: #4f5fc4;
+    --highlight: #f0c674;
+}

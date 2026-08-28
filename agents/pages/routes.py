@@ -51,6 +51,31 @@ def app_config_js():
     return Response(js, mimetype="application/javascript")
 
 
+@pages_bp.get("/app-config.css")
+def app_config_css():
+    """Serve the category palette as CSS custom properties.
+
+    The sibling of /app-config.js, for stylesheets rather than scripts.
+    Category colours are owned by agents/common/categories.py; before this
+    existed, CSS had no way to reach them, so feature stylesheets hardcoded
+    their own and the app accumulated four different colour schemes for the
+    same categories (issue #150). Anything needing a category colour in CSS
+    uses var(--cat-<name>) and inherits changes automatically.
+
+    Three properties per category: the colour itself, a pale tint for
+    backgrounds, and a darkened ink that is readable as text on that tint.
+    """
+    from agents.common.categories import CATEGORY_COLORS, CATEGORY_INKS, CATEGORY_TINTS
+
+    lines = [":root {"]
+    for cat, color in sorted(CATEGORY_COLORS.items()):
+        lines.append(f"    --cat-{cat}: {color};")
+        lines.append(f"    --cat-{cat}-tint: {CATEGORY_TINTS[cat]};")
+        lines.append(f"    --cat-{cat}-ink: {CATEGORY_INKS[cat]};")
+    lines.append("}")
+    return Response("\n".join(lines) + "\n", mimetype="text/css")
+
+
 # Status used for "trip exists but is no longer publicly shared." 410 Gone is
 # the right semantic: the resource was here, the owner pulled it. 404 would
 # have implied it never existed.
@@ -87,7 +112,7 @@ def _trip_not_available_response(link: str, reason: str) -> Response:
 <meta charset="UTF-8"><title>{title} - Libertas</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="stylesheet" href="/static/css/main.css?v=16">
+<link rel="stylesheet" href="/static/css/main.css?v=17">
 <style>
 .unavailable {{ max-width: 560px; margin: 80px auto; padding: 40px 32px; background: #fff;
   border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); text-align: center; }}

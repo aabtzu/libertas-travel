@@ -31,7 +31,7 @@
 
 .venue-card-image {
     height: 140px;
-    background: #667eea;
+    background: var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -88,7 +88,7 @@
 .venue-card-name {
     font-size: 1rem;
     font-weight: 600;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
@@ -97,7 +97,7 @@
 
 .venue-card-location {
     font-size: 0.85rem;
-    color: #666;
+    color: var(--ink-muted);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -111,7 +111,7 @@
 
 .venue-card-description {
     font-size: 0.8rem;
-    color: #666;
+    color: var(--ink-muted);
     line-height: 1.4;
     margin-bottom: 8px;
     display: -webkit-box;
@@ -128,8 +128,8 @@
 
 .venue-card-tag {
     font-size: 0.75rem;
-    color: #666;
-    background: #f5f5f5;
+    color: var(--ink-muted);
+    background: var(--surface-sunken);
     padding: 3px 8px;
     border-radius: 8px;
 }
@@ -145,10 +145,10 @@
 .venue-action-btn {
     flex: 1;
     padding: 8px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
     background: white;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.8rem;
     cursor: pointer;
     transition: all 0.2s;
@@ -159,7 +159,7 @@
 }
 
 .venue-action-btn:hover {
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     color: #1976d2;
     border-color: #1976d2;
 }
@@ -175,12 +175,12 @@
 }
 
 .venue-action-btn.add-to-trip {
-    color: #667eea;
-    border-color: #667eea;
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 .venue-action-btn.add-to-trip:hover {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
@@ -211,7 +211,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 14px 18px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
 
@@ -221,10 +221,10 @@
     gap: 8px;
     font-weight: 600;
     font-size: 0.95rem;
-    color: #333;
+    color: var(--ink);
 }
 
-.trip-panel-title i { color: #667eea; }
+.trip-panel-title i { color: var(--accent); }
 
 .trip-panel-actions {
     display: flex;
@@ -235,7 +235,7 @@
 .trip-panel-switch {
     background: none;
     border: none;
-    color: #666;
+    color: var(--ink-muted);
     cursor: pointer;
     font-size: 0.9rem;
     padding: 4px 8px;
@@ -243,7 +243,7 @@
 }
 
 .trip-panel-close:hover,
-.trip-panel-switch:hover { color: #333; background: #f5f5f5; }
+.trip-panel-switch:hover { color: var(--ink); background: var(--surface-sunken); }
 
 .trip-panel-items {
     overflow-y: auto;
@@ -252,7 +252,7 @@
 }
 
 .trip-panel-empty {
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.85rem;
     text-align: center;
     padding: 20px 0;
@@ -263,7 +263,7 @@
 .trip-panel-group-header {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #667eea;
+    color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 6px;
@@ -276,26 +276,26 @@
 
 .trip-panel-item {
     padding: 6px 0;
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 1px solid var(--surface-sunken);
     display: flex;
     flex-direction: column;
 }
 
 .trip-panel-item-name {
     font-size: 0.9rem;
-    color: #333;
+    color: var(--ink);
 }
 
 .trip-panel-item-loc {
     font-size: 0.75rem;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .trip-panel-footer {
     display: flex;
     gap: 8px;
     padding: 12px 18px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border);
     flex-shrink: 0;
 }
 
@@ -316,8 +316,8 @@
 
 .trip-panel-edit-btn {
     background: white;
-    color: #667eea;
-    border: 1px solid #667eea;
+    color: var(--accent);
+    border: 1px solid var(--accent);
 }
 
 .trip-panel-edit-btn:hover {
@@ -325,13 +325,13 @@
 }
 
 .trip-panel-share-btn {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
 }
 
 .trip-panel-share-btn:hover {
-    background: #5a6fd6;
+    background: var(--accent-hover);
 }
 
 .trip-panel-toggle {
@@ -339,7 +339,7 @@
     top: 8px;
     left: 50px;
     background: white;
-    color: #667eea;
+    color: var(--accent);
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 6px 14px;
@@ -354,11 +354,11 @@
 
 .trip-panel-toggle:hover {
     background: #f0f2ff;
-    border-color: #667eea;
+    border-color: var(--accent);
 }
 
 .trip-panel-toggle span {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border-radius: 50%;
     width: 20px;
@@ -396,7 +396,7 @@
 }
 
 .add-note-input:focus {
-    border-color: #667eea;
+    border-color: var(--accent);
 }
 
 .add-note-submit,
@@ -409,18 +409,18 @@
 }
 
 .add-note-submit {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
-.add-note-submit:hover { background: #5a6fd6; }
+.add-note-submit:hover { background: var(--accent-hover); }
 
 .add-note-cancel {
     background: #f0f0f0;
-    color: #666;
+    color: var(--ink-muted);
 }
 
-.add-note-cancel:hover { background: #e0e0e0; color: #666; }
+.add-note-cancel:hover { background: var(--border-strong); color: var(--ink-muted); }
 
 /* Trip picker modal */
 .trip-picker-overlay {
@@ -448,26 +448,26 @@
     align-items: center;
     justify-content: space-between;
     padding: 20px 24px 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
 }
 
 .trip-picker-header h3 {
     margin: 0;
     font-size: 1.1rem;
-    color: #333;
+    color: var(--ink);
 }
 
 .trip-picker-close {
     background: none;
     border: none;
     font-size: 1.1rem;
-    color: #666;
+    color: var(--ink-muted);
     cursor: pointer;
     padding: 4px 8px;
 }
 
 .trip-picker-close:hover {
-    color: #333;
+    color: var(--ink);
 }
 
 .trip-picker-list {
@@ -486,7 +486,7 @@
     background: none;
     border-radius: 10px;
     font-size: 0.95rem;
-    color: #333;
+    color: var(--ink);
     cursor: pointer;
     text-align: left;
     transition: background 0.15s;
@@ -497,14 +497,14 @@
 }
 
 .trip-picker-item i {
-    color: #667eea;
+    color: var(--accent);
     font-size: 1rem;
 }
 
 .trip-picker-new {
-    color: #667eea;
+    color: var(--accent);
     font-weight: 600;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
 }
 
 .trip-picker-name-input {
@@ -517,11 +517,11 @@
 }
 
 .trip-picker-name-input:focus {
-    border-color: #667eea;
+    border-color: var(--accent);
 }
 
 .trip-picker-create-btn {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 6px;
@@ -531,14 +531,14 @@
 }
 
 .trip-picker-create-btn:hover {
-    background: #5a6fd6;
+    background: var(--accent-hover);
 }
 
 /* Empty state */
 .empty-results {
     text-align: center;
     padding: 60px 20px;
-    color: #666;
+    color: var(--ink-muted);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -555,7 +555,7 @@
 
 .empty-results h4 {
     font-size: 1.1rem;
-    color: #666;
+    color: var(--ink-muted);
     margin-bottom: 8px;
 }
 
@@ -593,10 +593,10 @@
     padding: 10px 12px;
     background: #f5f4ff;
     color: #444;
-    border-left: 3px solid #667eea;
+    border-left: 3px solid var(--accent);
     border-radius: 6px;
     font-size: 0.85rem;
     line-height: 1.4;
 }
-.trip-picker-note i { color: #667eea; margin-right: 6px; }
-.trip-picker-note strong { color: #1a1a2e; }
+.trip-picker-note i { color: var(--accent); margin-right: 6px; }
+.trip-picker-note strong { color: var(--surface-dark); }

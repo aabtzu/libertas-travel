@@ -13,7 +13,7 @@
     width: 380px;
     min-width: 380px;
     background: #fff;
-    border-left: 1px solid #e0e0e0;
+    border-left: 1px solid var(--border-strong);
     display: flex;
     flex-direction: column;
     box-shadow: -2px 0 10px rgba(0,0,0,0.05);
@@ -21,7 +21,7 @@
 
 .sidebar-header {
     padding: 20px;
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
 }
 
@@ -78,8 +78,8 @@
 }
 
 .chat-message.assistant .avatar {
-    background: #1a1a2e;
-    color: #f0c674;
+    background: var(--surface-dark);
+    color: var(--highlight);
 }
 
 .chat-message.user .avatar {
@@ -97,7 +97,7 @@
 
 .chat-message.assistant .bubble {
     background: white;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-strong);
     border-radius: 16px 16px 16px 4px;
 }
 
@@ -134,7 +134,7 @@
 .chat-input-container {
     padding: 16px;
     background: white;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--border-strong);
 }
 
 .chat-input-wrapper {
@@ -146,7 +146,7 @@
 .chat-input {
     flex: 1;
     padding: 12px 16px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-strong);
     border-radius: 24px;
     font-size: 0.9rem;
     outline: none;
@@ -167,7 +167,7 @@
     height: 44px;
     border: none;
     border-radius: 50%;
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
     cursor: pointer;
     display: flex;
@@ -204,10 +204,10 @@
 .suggestion-chip {
     padding: 6px 12px;
     background: #f0f0f0;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-strong);
     border-radius: 16px;
     font-size: 0.8rem;
-    color: #666;
+    color: var(--ink-muted);
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -224,7 +224,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
 }
 
 /* Map Container */
@@ -247,7 +247,7 @@
     align-items: center;
     justify-content: center;
     background: #e8f4f8;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .map-placeholder i {
@@ -259,7 +259,7 @@
 
 .map-placeholder p {
     font-size: 1rem;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 /* Results/Cards Area */
@@ -278,14 +278,14 @@
 
 .results-header h3 {
     font-size: 1.1rem;
-    color: #333;
+    color: var(--ink);
     font-weight: 600;
 }
 
 .results-count {
     font-size: 0.85rem;
-    color: #666;
-    background: #e0e0e0;
+    color: var(--ink-muted);
+    background: var(--border-strong);
     padding: 4px 12px;
     border-radius: 12px;
 }
@@ -297,14 +297,14 @@
     padding: 10px 36px 10px 14px;
     background: #f0f1ff;
     border: 1px solid #c7c9f7;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid var(--accent);
     border-radius: 8px;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     font-size: 0.9rem;
     line-height: 1.4;
 }
 .explore-intro i.intro-icon {
-    color: #f0c674;
+    color: var(--highlight);
     margin-right: 6px;
 }
 .explore-intro-close {
@@ -318,4 +318,4 @@
     line-height: 1;
     cursor: pointer;
 }
-.explore-intro-close:hover { color: #1a1a2e; }
+.explore-intro-close:hover { color: var(--surface-dark); }

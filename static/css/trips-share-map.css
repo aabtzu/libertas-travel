@@ -40,7 +40,7 @@
 .modal-header h3 {
     margin: 0;
     font-size: 1.1rem;
-    color: #333;
+    color: var(--ink);
 }
 
 .modal-header h3 i {
@@ -52,14 +52,14 @@
     background: none;
     border: none;
     font-size: 1.5rem;
-    color: #666;
+    color: var(--ink-muted);
     cursor: pointer;
     padding: 0;
     line-height: 1;
 }
 
 .modal-close:hover {
-    color: #333;
+    color: var(--ink);
 }
 
 .modal-body {
@@ -68,12 +68,12 @@
 
 .modal-body p {
     margin: 0 0 16px 0;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 #share-trip-title {
     font-weight: 600;
-    color: #333;
+    color: var(--ink);
 }
 
 .share-options {
@@ -85,7 +85,7 @@
 .share-option-btn {
     width: 100%;
     padding: 14px 20px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 8px;
@@ -106,7 +106,7 @@
 
 .share-divider {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.8rem;
     position: relative;
 }
@@ -118,7 +118,7 @@
     top: 50%;
     width: 30%;
     height: 1px;
-    background: #e0e0e0;
+    background: var(--border-strong);
 }
 
 .share-divider::before {
@@ -132,14 +132,14 @@
 .user-list {
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
 }
 
 .user-list .loading {
     padding: 20px;
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .user-item {
@@ -161,12 +161,12 @@
 }
 
 .user-item i {
-    color: #667eea;
+    color: var(--accent);
 }
 
 .user-item .username {
     font-weight: 500;
-    color: #333;
+    color: var(--ink);
 }
 
 /* ==================== Public Trips Section ==================== */
@@ -205,7 +205,7 @@
 .no-public-trips {
     text-align: center;
     padding: 40px 20px;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .no-public-trips i {
@@ -217,7 +217,7 @@
 /* ==================== Map View ==================== */
 .trips-map-container {
     height: 500px;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     border-radius: 12px;
     overflow: hidden;
     position: relative;
@@ -232,12 +232,12 @@
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .trips-map-container .map-loading i {
     font-size: 2rem;
-    color: #667eea;
+    color: var(--accent);
 }
 
 .trips-map-container .map-loading.hidden {
@@ -247,18 +247,18 @@
 /* Leaflet map popup styling */
 .trip-map-popup h4 {
     margin: 0 0 8px 0;
-    color: #333;
+    color: var(--ink);
     font-size: 1rem;
 }
 
 .trip-map-popup p {
     margin: 0 0 8px 0;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.85rem;
 }
 
 .trip-map-popup a {
-    color: #667eea;
+    color: var(--accent);
     text-decoration: none;
     font-size: 0.85rem;
     font-weight: 500;

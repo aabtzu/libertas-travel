@@ -1,7 +1,7 @@
 /* Libertas - Home Page Styles */
 
 .home-hero {
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
     padding: 40px 40px;
     text-align: center;
@@ -29,7 +29,7 @@
 
 .home-hero .brand-icon {
     font-size: 2.5rem;
-    color: #f0c674;
+    color: var(--highlight);
     margin-bottom: 12px;
 }
 
@@ -67,12 +67,12 @@
 
 .features-heading h2 {
     font-size: 1.4rem;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 8px;
 }
 
 .features-heading p {
-    color: #666;
+    color: var(--ink-muted);
     font-size: 1rem;
 }
 
@@ -105,7 +105,7 @@
 .home-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-    border-color: #667eea;
+    border-color: var(--accent);
 }
 
 .home-card.disabled {
@@ -135,7 +135,7 @@
 }
 
 .home-card-icon.purple {
-    background: #667eea;
+    background: var(--accent);
 }
 
 .home-card-icon.green {
@@ -156,7 +156,7 @@
 
 .home-card-content h3 {
     font-size: 1.3rem;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -164,7 +164,7 @@
 }
 
 .home-card-content p {
-    color: #666;
+    color: var(--ink-muted);
     line-height: 1.6;
     font-size: 0.95rem;
 }
@@ -172,7 +172,7 @@
 .coming-soon-badge {
     font-size: 0.65rem;
     background: #f0f0f0;
-    color: #666;
+    color: var(--ink-muted);
     padding: 3px 8px;
     border-radius: 10px;
     text-transform: uppercase;
@@ -182,7 +182,7 @@
 
 /* Quote section */
 .home-quote {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     padding: 60px 40px;
     text-align: center;
@@ -207,19 +207,19 @@
 .how-it-works {
     margin-top: 60px;
     padding-top: 60px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border);
 }
 
 .how-it-works h2 {
     text-align: center;
     font-size: 2rem;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 10px;
 }
 
 .how-it-works-subtitle {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 1.1rem;
     margin-bottom: 50px;
 }
@@ -241,7 +241,7 @@
 .step-number {
     width: 50px;
     height: 50px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     font-size: 1.5rem;
     font-weight: 600;
@@ -254,12 +254,12 @@
 
 .step-content h3 {
     font-size: 1.1rem;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 10px;
 }
 
 .step-content p {
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.9rem;
     line-height: 1.5;
 }
@@ -286,7 +286,7 @@
 
 /* Sample Preview Section */
 .sample-preview {
-    background: #f8f9fa;
+    background: var(--surface-raised);
     border-radius: 16px;
     padding: 40px;
     margin-bottom: 40px;
@@ -295,7 +295,7 @@
 .sample-preview h3 {
     text-align: center;
     font-size: 1.3rem;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 30px;
 }
 
@@ -333,19 +333,19 @@
 
 .preview-card i {
     font-size: 2rem;
-    color: #667eea;
+    color: var(--accent);
     margin-bottom: 12px;
 }
 
 .preview-card span {
     display: block;
     font-weight: 600;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 8px;
 }
 
 .preview-card p {
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.85rem;
     line-height: 1.4;
 }
@@ -359,7 +359,7 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     padding: 16px 32px;
     border-radius: 30px;

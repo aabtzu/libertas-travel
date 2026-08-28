@@ -1,7 +1,7 @@
 /* Libertas - How It Works Page */
 
 .hiw-hero {
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
     padding: 80px 40px;
     text-align: center;
@@ -43,7 +43,7 @@
 
 .hiw-cta-btn {
     display: inline-block;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     padding: 12px 28px;
     border-radius: 8px;
@@ -54,7 +54,7 @@
 }
 
 .hiw-cta-btn:hover {
-    background: #5a6fd6;
+    background: var(--accent-hover);
     color: white;
     text-decoration: none;
 }
@@ -81,7 +81,7 @@
 .hiw-step-number {
     width: 52px;
     height: 52px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border-radius: 50%;
     display: flex;
@@ -93,7 +93,7 @@
 }
 
 .hiw-step-body h2 {
-    color: #333;
+    color: var(--ink);
     font-size: 1.35rem;
     margin-bottom: 10px;
     display: flex;
@@ -102,7 +102,7 @@
 }
 
 .hiw-step-body h2 i {
-    color: #667eea;
+    color: var(--accent);
     font-size: 1.1rem;
 }
 
@@ -152,7 +152,7 @@
 
 .hiw-pill {
     background: #f0f2ff;
-    color: #667eea;
+    color: var(--accent);
     border: 1px solid #d0d5f5;
     border-radius: 20px;
     padding: 6px 14px;
@@ -164,7 +164,7 @@
 
 /* ==================== Feedback box ==================== */
 .hiw-feedback {
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
     border-radius: 14px;
     padding: 44px 40px;

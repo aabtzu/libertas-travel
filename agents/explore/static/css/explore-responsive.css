@@ -77,7 +77,7 @@
 .map-legend-title {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #333;
+    color: var(--ink);
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -114,4 +114,4 @@
 .map-legend-dot.church { background: #5e35b1; }
 .map-legend-dot.activity { background: #26a69a; }
 .map-legend-dot.attraction { background: #ef5350; }
-.map-legend-dot.other { background: #667eea; }
+.map-legend-dot.other { background: var(--accent); }

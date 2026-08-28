@@ -31,7 +31,7 @@
 
 .ideas-count {
     font-size: 0.85rem;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .ideas-list {
@@ -44,7 +44,7 @@
 
 .ideas-empty {
     text-align: center;
-    color: #666;
+    color: var(--ink-muted);
     padding: 20px;
     font-size: 0.9rem;
 }
@@ -52,7 +52,7 @@
 .ideas-group-header {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #667eea;
+    color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 10px 4px 4px;
@@ -65,7 +65,7 @@
 
 .item-location {
     font-size: 0.75rem;
-    color: #666;
+    color: var(--ink-muted);
 }
 
 .item-location i { font-size: 0.65rem; margin-right: 2px; }
@@ -74,14 +74,14 @@
 .tips-section {
     margin-top: 16px;
     padding: 12px;
-    background: #f8f9fa;
+    background: var(--surface-raised);
     border-radius: 8px;
 }
 
 .tips-section .section-header {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #667eea;
+    color: var(--accent);
     margin-bottom: 8px;
 }
 
@@ -90,7 +90,7 @@
     align-items: flex-start;
     gap: 8px;
     padding: 6px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
 }
 
 .tip-text {
@@ -119,13 +119,13 @@
     font-size: 0.7rem;
 }
 
-.tip-edit:hover { color: #667eea; }
+.tip-edit:hover { color: var(--accent); }
 
 .tip-delete:hover { color: #e74c3c; }
 
 .tip-edit-input {
     flex: 1;
-    border: 1px solid #667eea;
+    border: 1px solid var(--accent);
     border-radius: 6px;
     padding: 6px 10px;
     font-size: 0.85rem;
@@ -151,12 +151,12 @@
     resize: vertical;
 }
 
-.tip-input:focus { border-color: #667eea; }
+.tip-input:focus { border-color: var(--accent); }
 
 .tips-add { align-items: flex-start; }
 
 .btn-add-tip {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 6px;
@@ -164,15 +164,15 @@
     cursor: pointer;
 }
 
-.btn-add-tip:hover { background: #5a6fd6; }
+.btn-add-tip:hover { background: var(--accent-hover); }
 
 .btn-fill-links {
     width: 100%;
     padding: 10px;
     margin-top: 12px;
     background: white;
-    color: #667eea;
-    border: 1px solid #667eea;
+    color: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: 8px;
     font-size: 0.85rem;
     cursor: pointer;
@@ -198,7 +198,7 @@
     align-items: center;
     gap: 6px;
     font-size: 0.8rem;
-    color: #667eea;
+    color: var(--accent);
     cursor: pointer;
     white-space: nowrap;
 }
@@ -208,13 +208,13 @@
 .style-setup {
     margin-top: 8px;
     padding: 12px;
-    background: #f8f9fa;
+    background: var(--surface-raised);
     border-radius: 8px;
 }
 
 .style-setup-label {
     font-size: 0.8rem;
-    color: #666;
+    color: var(--ink-muted);
     margin-bottom: 6px;
 }
 
@@ -229,14 +229,14 @@
     margin-bottom: 8px;
 }
 
-.style-setup textarea:focus { border-color: #667eea; outline: none; }
+.style-setup textarea:focus { border-color: var(--accent); outline: none; }
 
 /* Write-up */
 .btn-writeup {
     width: 100%;
     padding: 12px;
     margin-top: 16px;
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
     border: none;
     border-radius: 8px;
@@ -255,7 +255,7 @@
 .writeup-result {
     margin-top: 12px;
     background: white;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -265,28 +265,28 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 14px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--border-strong);
     font-size: 0.85rem;
     font-weight: 600;
-    color: #667eea;
+    color: var(--accent);
 }
 
 .writeup-copy {
     background: none;
     border: none;
-    color: #667eea;
+    color: var(--accent);
     cursor: pointer;
     font-size: 0.9rem;
     padding: 4px 8px;
 }
 
-.writeup-copy:hover { color: #5a6fd6; }
+.writeup-copy:hover { color: var(--accent-hover); }
 
 .writeup-text {
     padding: 14px;
     font-size: 0.9rem;
-    color: #333;
+    color: var(--ink);
     line-height: 1.7;
     white-space: pre-wrap;
     max-height: 400px;
@@ -297,10 +297,10 @@
     width: 100%;
     padding: 14px;
     font-size: 0.9rem;
-    color: #333;
+    color: var(--ink);
     line-height: 1.7;
     font-family: inherit;
-    border: 1px solid #667eea;
+    border: 1px solid var(--accent);
     border-radius: 0 0 8px 8px;
     outline: none;
     resize: vertical;
@@ -359,10 +359,10 @@
     justify-content: center;
     gap: 8px;
     padding: 12px;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
     border-radius: 8px;
     margin-top: 8px;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 0.9rem;
 }
 
@@ -380,9 +380,9 @@
     padding: 14px 36px 12px 16px;
     background: #f0f1ff;
     border: 1px solid #c7c9f7;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid var(--accent);
     border-radius: 8px;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     font-size: 0.88rem;
     line-height: 1.5;
 }
@@ -390,9 +390,9 @@
     margin: 0 0 6px;
     font-weight: 600;
     font-size: 0.95rem;
-    color: #1a1a2e;
+    color: var(--surface-dark);
 }
-.trip-tools-hint-title i { color: #667eea; margin-right: 6px; }
+.trip-tools-hint-title i { color: var(--accent); margin-right: 6px; }
 .trip-tools-hint-list {
     margin: 0;
     padding-left: 20px;
@@ -412,7 +412,7 @@
     cursor: pointer;
     padding: 4px 8px;
 }
-.trip-tools-hint-close:hover { color: #1a1a2e; }
+.trip-tools-hint-close:hover { color: var(--surface-dark); }
 
 /* Drag-drop discoverability tip, sits above Day 1 in the itinerary view.
    Dismissible (libertas_seen_dragdrop_tip in localStorage). The
@@ -425,16 +425,16 @@
     padding: 10px 36px 10px 14px;
     background: #f0f1ff;
     border: 1px solid #c7c9f7;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid var(--accent);
     border-radius: 8px;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     font-size: 0.88rem;
     line-height: 1.4;
     display: flex;
     align-items: center;
     gap: 8px;
 }
-.dragdrop-tip i { color: #f0c674; }
+.dragdrop-tip i { color: var(--highlight); }
 .dragdrop-tip strong { color: #4a5fd6; }
 .dragdrop-tip-close {
     position: absolute;
@@ -447,4 +447,4 @@
     line-height: 1;
     cursor: pointer;
 }
-.dragdrop-tip-close:hover { color: #1a1a2e; }
+.dragdrop-tip-close:hover { color: var(--surface-dark); }

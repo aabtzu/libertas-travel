@@ -9,8 +9,8 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    background: #f5f5f5;
-    color: #333;
+    background: var(--surface-sunken);
+    color: var(--ink);
     min-height: 100vh;
 }
 
@@ -33,13 +33,13 @@ select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible,
 [tabindex]:focus-visible {
-    outline: 2px solid #667eea;
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
 
 /* ==================== Navigation ==================== */
 .libertas-nav {
-    background: #1a1a2e;
+    background: var(--surface-dark);
     padding: 0 40px;
     display: flex;
     align-items: center;
@@ -57,7 +57,7 @@ summary:focus-visible,
 
 .libertas-nav .brand-icon {
     font-size: 1.5rem;
-    color: #f0c674;
+    color: var(--highlight);
 }
 
 .libertas-nav .brand-name {
@@ -92,11 +92,11 @@ summary:focus-visible,
 }
 
 .libertas-nav .nav-link:hover {
-    color: #f0c674;
+    color: var(--highlight);
 }
 
 .libertas-nav .nav-link.active {
-    color: #f0c674;
+    color: var(--highlight);
 }
 
 .libertas-nav .nav-link i {
@@ -105,7 +105,7 @@ summary:focus-visible,
 
 /* ==================== Trip View ==================== */
 .trip-header {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     padding: 20px 40px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -170,7 +170,7 @@ summary:focus-visible,
 .tabs {
     display: flex;
     background: white;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--border-strong);
     padding: 0 40px;
 }
 
@@ -179,18 +179,18 @@ summary:focus-visible,
     cursor: pointer;
     border-bottom: 3px solid transparent;
     font-weight: 500;
-    color: #666;
+    color: var(--ink-muted);
     transition: all 0.2s ease;
 }
 
 .tab:hover {
-    color: #667eea;
+    color: var(--accent);
     background: #f8f8ff;
 }
 
 .tab.active {
-    color: #667eea;
-    border-bottom-color: #667eea;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
 }
 
 .tab i {
@@ -209,7 +209,7 @@ summary:focus-visible,
 #summary-tab {
     padding: 40px;
     overflow-y: auto;
-    background: #f5f5f5;
+    background: var(--surface-sunken);
 }
 
 /* When column view is active, remove padding so sticky header works */
@@ -235,7 +235,7 @@ summary:focus-visible,
 }
 
 .summary-container h2 {
-    color: #667eea;
+    color: var(--accent);
     margin-bottom: 20px;
     padding-bottom: 10px;
     border-bottom: 2px solid #f0f0f0;
@@ -244,7 +244,7 @@ summary:focus-visible,
 /* ==================== Day Cards ==================== */
 .day-card {
     background: #f8f9ff;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid var(--accent);
     padding: 16px 20px;
     margin: 16px 0;
     border-radius: 0 8px 8px 0;
@@ -252,7 +252,7 @@ summary:focus-visible,
 
 .day-card h3 {
     margin: 0 0 12px 0;
-    color: #667eea;
+    color: var(--accent);
     font-size: 1.1rem;
 }
 
@@ -261,7 +261,7 @@ summary:focus-visible,
     flex-wrap: wrap;
     align-items: baseline;
     padding: 6px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
 }
 
 .activity:last-child {
@@ -292,7 +292,7 @@ summary:focus-visible,
 .activity-category.transport { background: #fff3e0; color: #e65100; }
 .activity-category.meal { background: #fce4ec; color: #c2185b; }
 .activity-category.home { background: #eceff1; color: #546e7a; }
-.activity-category.other { background: #f5f5f5; color: #616161; }
+.activity-category.other { background: var(--surface-sunken); color: #616161; }
 
 .activity-time {
     color: #e65100;
@@ -312,19 +312,19 @@ summary:focus-visible,
 .activity-title {
     display: block;
     font-weight: 600;
-    color: #333;
+    color: var(--ink);
 }
 
 .activity-location {
     display: block;
-    color: #667eea;
+    color: var(--accent);
     font-size: 0.85rem;
     margin-top: 2px;
     text-decoration: none;
 }
 
 a.activity-location:hover {
-    color: #5a6fd6;
+    color: var(--accent-hover);
     text-decoration: underline;
 }
 
@@ -335,7 +335,7 @@ a.activity-location:hover {
 }
 
 .activity-inline-link {
-    color: #667eea;
+    color: var(--accent);
     text-decoration: none;
     font-size: 0.85rem;
     display: flex;
@@ -367,7 +367,7 @@ a.activity-location:hover {
 
 .location-tag {
     background: #e8eaff;
-    color: #667eea;
+    color: var(--accent);
     padding: 4px 12px;
     border-radius: 16px;
     font-size: 0.85rem;
@@ -398,7 +398,7 @@ a.activity-location:hover {
 }
 
 .nav-hamburger:hover {
-    color: #f0c674;
+    color: var(--highlight);
 }
 
 .nav-overlay {
@@ -432,7 +432,7 @@ a.activity-location:hover {
         right: -280px;
         width: 280px;
         height: 100vh;
-        background: #1a1a2e;
+        background: var(--surface-dark);
         flex-direction: column;
         padding: 80px 20px 20px;
         gap: 0;
@@ -532,7 +532,7 @@ a.activity-location:hover {
 
 /* ==================== Site footer (public pages) ==================== */
 .libertas-footer {
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: #cfd2dc;
     padding: 28px 24px;
     margin-top: 48px;
@@ -551,7 +551,7 @@ a.activity-location:hover {
     letter-spacing: 1.5px;
     font-size: 0.95rem;
 }
-.footer-brand i { color: #f0c674; margin-right: 6px; }
+.footer-brand i { color: var(--highlight); margin-right: 6px; }
 .footer-tagline {
     color: #888a96;
     font-weight: 400;
@@ -582,17 +582,17 @@ a.activity-location:hover {
     flex-wrap: wrap;
 }
 .cta-button-primary {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
-.cta-button-primary:hover { background: #5a6fd6; }
+.cta-button-primary:hover { background: var(--accent-hover); }
 .cta-button-secondary {
     background: white;
-    color: #667eea;
-    border: 1px solid #667eea;
+    color: var(--accent);
+    border: 1px solid var(--accent);
 }
 .cta-button-secondary:hover {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 
@@ -614,7 +614,7 @@ a.activity-location:hover {
     top: calc(100% + 6px);
     left: 50%;
     transform: translateX(-50%);
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
     padding: 4px 10px;
     border-radius: 6px;
@@ -641,7 +641,7 @@ a.activity-location:hover {
     left: 50%;
     transform: translateX(-50%);
     z-index: 1500;
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: white;
     padding: 10px 18px;
     border-radius: 10px;
@@ -653,7 +653,7 @@ a.activity-location:hover {
     transition: opacity 0.6s ease;
 }
 .post-explore-banner i { color: #43a047; margin-right: 6px; }
-.post-explore-banner strong { color: #f0c674; }
+.post-explore-banner strong { color: var(--highlight); }
 .post-explore-banner .post-explore-back {
     display: inline-block;
     margin-left: 10px;
@@ -678,7 +678,7 @@ a.activity-location:hover {
 }
 .feedback-popup {
     background: white;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     padding: 28px 24px 24px;
     border-radius: 14px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
@@ -705,11 +705,11 @@ a.activity-location:hover {
     flex: 1;
     font-size: 0.95rem;
     background: transparent;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     word-break: break-all;
 }
 .feedback-popup-copy {
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 6px;
@@ -718,8 +718,8 @@ a.activity-location:hover {
     font-size: 0.85rem;
     white-space: nowrap;
 }
-.feedback-popup-copy:hover { background: #5a6fd6; }
-.feedback-popup-hint { margin: 0 0 8px; color: #666; font-size: 0.85rem; }
+.feedback-popup-copy:hover { background: var(--accent-hover); }
+.feedback-popup-hint { margin: 0 0 8px; color: var(--ink-muted); font-size: 0.85rem; }
 .feedback-popup-links {
     display: flex;
     flex-wrap: wrap;
@@ -728,8 +728,8 @@ a.activity-location:hover {
 .feedback-popup-btn {
     flex: 1 1 auto;
     background: white;
-    color: #667eea;
-    border: 1px solid #667eea;
+    color: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: 8px;
     padding: 8px 12px;
     text-decoration: none;
@@ -738,11 +738,11 @@ a.activity-location:hover {
     min-width: 110px;
 }
 .feedback-popup-btn:hover {
-    background: #667eea;
+    background: var(--accent);
     color: white;
 }
 .feedback-popup-btn-secondary {
-    color: #666;
+    color: var(--ink-muted);
     border-color: #ccc;
 }
 .feedback-popup-btn-secondary:hover {
@@ -756,9 +756,9 @@ a.activity-location:hover {
     right: 12px;
     background: transparent;
     border: none;
-    color: #666;
+    color: var(--ink-muted);
     font-size: 1.5rem;
     cursor: pointer;
     line-height: 1;
 }
-.feedback-popup-close:hover { color: #1a1a2e; }
+.feedback-popup-close:hover { color: var(--surface-dark); }
