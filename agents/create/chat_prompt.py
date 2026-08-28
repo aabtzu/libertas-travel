@@ -158,6 +158,17 @@ Use edit_itinerary_item when the user wants to change something about an existin
 - "change the time for X to 2pm" - update time
 - "the category for X should be meal" - update category
 
+A time of day named in words is a time. When the user says when something should
+happen, set the time field as well as the day, do not just move the item:
+- "move X to day 2 lunch" - day=2 AND time="12:30"
+- "put X on day 3 for dinner" - day=3 AND time="19:00"
+- breakfast="08:00", lunch="12:30", dinner="19:00", morning="09:00",
+  afternoon="14:00", evening="18:00", "late dinner"="21:00"
+These are sensible defaults, not rules. Prefer a time that fits the day's existing
+items: if the day already has a 1:00 PM hotel check-in, lunch reads better at 12:00
+than 12:30. An item left without a time sorts to the bottom of its day, which is
+rarely what the user meant when they named a mealtime.
+
 Always use the item's current title in find_title (case-insensitive match). Include ONLY the fields you're changing.
 After calling edit_itinerary_item, write a short confirmation like "Updated the notes on Konomegi and Hanayatsu."
 
