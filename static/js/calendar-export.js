@@ -32,7 +32,7 @@ async function subscribeTripCalendar() {
             '/api/trips/' + encodeURIComponent(link) + '/calendar-subscribe-url'
         );
         if (!res.ok) {
-            alert('Could not generate subscribe URL. Try again.');
+            LibertasModal.alert('Could not generate subscribe URL. Try again.');
             return;
         }
         const data = await res.json();
@@ -48,7 +48,7 @@ async function subscribeTripCalendar() {
             _showSubscribeModal(url, false);
         }
     } catch (e) {
-        alert('Could not generate subscribe URL: ' + e.message);
+        LibertasModal.alert('Could not generate subscribe URL: ' + e.message);
     }
 }
 
@@ -58,7 +58,7 @@ async function subscribeAllTripsCalendar() {
     try {
         const res = await fetch('/api/calendar/subscribe-url');
         if (!res.ok) {
-            alert('Could not generate calendar URL. Try again.');
+            LibertasModal.alert('Could not generate calendar URL. Try again.');
             return;
         }
         const data = await res.json();
@@ -71,7 +71,7 @@ async function subscribeAllTripsCalendar() {
             _showSubscribeModal(url, false, 'Subscribe to all trips');
         }
     } catch (e) {
-        alert('Could not generate calendar URL: ' + e.message);
+        LibertasModal.alert('Could not generate calendar URL: ' + e.message);
     }
 }
 

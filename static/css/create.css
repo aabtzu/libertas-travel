@@ -55,7 +55,7 @@
     background: none;
     border: none;
     font-size: 1.5rem;
-    color: #999;
+    color: #666;
     cursor: pointer;
 }
 
@@ -80,7 +80,7 @@
 }
 
 .form-group .optional {
-    color: #999;
+    color: #666;
     font-weight: 400;
     font-size: 0.85em;
 }
@@ -124,7 +124,7 @@
 
 .date-separator {
     padding-bottom: 10px;
-    color: #999;
+    color: #666;
 }
 
 .or-divider {
@@ -146,7 +146,7 @@
 .or-divider span {
     background: white;
     padding: 0 12px;
-    color: #999;
+    color: #666;
     position: relative;
 }
 
@@ -499,7 +499,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #888;
+    color: #666;
     text-align: center;
     padding: 40px;
 }
@@ -555,7 +555,7 @@
 
 .marker-popup .marker-meta i {
     width: 12px;
-    color: #999;
+    color: #666;
 }
 
 /* ==================== Days Container ==================== */
@@ -622,7 +622,7 @@
 .day-items-empty {
     padding: 20px;
     text-align: center;
-    color: #999;
+    color: #666;
     font-size: 0.9rem;
     border: 2px dashed #eee;
     border-radius: 8px;
@@ -733,7 +733,7 @@
     height: 24px;
     border-radius: 4px;
     cursor: pointer;
-    color: #999;
+    color: #666;
 }
 
 .item-actions button:hover {

@@ -14,6 +14,29 @@ body {
     min-height: 100vh;
 }
 
+/* ==================== Keyboard focus ====================
+
+   A visible ring on anything interactive, so keyboard and switch users can
+   see where they are. Several pages previously defined no focus styling at
+   all, which left focus completely invisible on them.
+
+   :focus-visible rather than :focus, so clicking a button with a mouse does
+   not leave a ring behind while keyboard navigation always shows one. The
+   accent is the palette purple: at 3.66:1 against white it clears the 3:1
+   that WCAG asks of non-text indicators, and reusing it avoids introducing
+   yet another colour. Individual components may override this, but nothing
+   should set `outline: none` without providing its own visible substitute. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
 /* ==================== Navigation ==================== */
 .libertas-nav {
     background: #1a1a2e;
@@ -733,7 +756,7 @@ a.activity-location:hover {
     right: 12px;
     background: transparent;
     border: none;
-    color: #888;
+    color: #666;
     font-size: 1.5rem;
     cursor: pointer;
     line-height: 1;

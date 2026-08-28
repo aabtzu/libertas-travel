@@ -87,7 +87,7 @@ def _trip_not_available_response(link: str, reason: str) -> Response:
 <meta charset="UTF-8"><title>{title} - Libertas</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="stylesheet" href="/static/css/main.css?v=14">
+<link rel="stylesheet" href="/static/css/main.css?v=16">
 <style>
 .unavailable {{ max-width: 560px; margin: 80px auto; padding: 40px 32px; background: #fff;
   border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); text-align: center; }}

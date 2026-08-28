@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import html
 
+from agents.common.categories import CATEGORY_COLORS
+
 from .geocoder import Geocoder
 from .mapper_geocode import (
     extract_destination_with_llm,
@@ -15,20 +17,41 @@ from .models import Itinerary
 # Maximum number of locations to geocode (to avoid long waits)
 MAX_GEOCODE_LOCATIONS = 50
 
-# Marker colors by category
-MARKER_COLORS = {
-    "hotel": "#4285F4",  # Google blue
-    "lodging": "#4285F4",
-    "restaurant": "#FF9800",  # Orange
-    "meal": "#FF9800",
-    "attraction": "#34A853",  # Google green
-    "activity": "#34A853",
-    "airport": "#EA4335",  # Google red
-    "flight": "#EA4335",
-    "train_station": "#9C27B0",  # Purple
-    "transport": "#757575",  # Gray
-    "other": "#00BCD4",  # Cyan
+# Map markers take their colour from the shared category palette, so a hotel
+# is the same purple on the map as it is in the list and the grid. This used
+# to be a separate Google Maps palette, which meant every category rendered
+# in two unrelated colours depending on which view you were looking at.
+#
+# location_type is a finer-grained field than category ("airport" rather than
+# "flight"), so the few values that have no category of their own are mapped
+# onto the category they belong to.
+_LOCATION_TYPE_TO_CATEGORY = {
+    "airport": "flight",
+    "train_station": "train",
 }
+
+# Fallback for an item whose category is not in the palette.
+_DEFAULT_MARKER_COLOR = CATEGORY_COLORS["other"]
+
+
+def marker_color(category: str | None, location_type: str | None = None) -> str:
+    """Return the palette colour for a map marker.
+
+    Deliberately mirrors the frontend lookup in create-map.js (raw key, then
+    "other") so the generated map and the editor's live map colour an item
+    identically. normalize_category is not used here on purpose: it falls
+    back to "activity" for anything it does not recognise, which would paint
+    unknown items green on this map and grey on the other one, recreating
+    the very mismatch this function exists to remove.
+
+    location_type is finer-grained than category ("airport" rather than
+    "flight") and is tried first, matching the previous behaviour.
+    """
+    if location_type:
+        mapped = _LOCATION_TYPE_TO_CATEGORY.get(location_type, location_type)
+        if mapped in CATEGORY_COLORS:
+            return CATEGORY_COLORS[mapped]
+    return CATEGORY_COLORS.get((category or "").strip().lower(), _DEFAULT_MARKER_COLOR)
 
 
 class ItineraryMapper:
@@ -349,9 +372,7 @@ Examples where destination is "Sweden":
         for idx, (item, location) in enumerate(locations_with_coords, 1):
             # Determine marker color based on category
             category = item.category or "other"
-            color = MARKER_COLORS.get(
-                location.location_type, MARKER_COLORS.get(category, "#00BCD4")
-            )
+            color = marker_color(category, location.location_type)
 
             # Build info window content
             info_html = self._build_info_window(item, idx)

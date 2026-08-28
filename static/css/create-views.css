@@ -15,7 +15,7 @@
     align-items: center;
     justify-content: center;
     padding: 60px 20px;
-    color: #888;
+    color: #666;
     text-align: center;
 }
 
@@ -92,7 +92,7 @@
 
 .grid-item-more {
     font-size: 0.8rem;
-    color: #888;
+    color: #666;
     padding-top: 8px;
 }
 
@@ -295,7 +295,7 @@
 
 .column-item-location {
     font-size: 0.8rem;
-    color: #888;
+    color: #666;
 }
 
 .column-item-notes {
@@ -559,7 +559,7 @@
 }
 
 .calendar-empty p {
-    color: #999;
+    color: #666;
 }
 
 /* Item Detail Popup - shared styles */

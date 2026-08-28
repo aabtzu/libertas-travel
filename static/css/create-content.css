@@ -31,7 +31,7 @@
 
 .ideas-count {
     font-size: 0.85rem;
-    color: #999;
+    color: #666;
 }
 
 .ideas-list {
@@ -44,7 +44,7 @@
 
 .ideas-empty {
     text-align: center;
-    color: #999;
+    color: #666;
     padding: 20px;
     font-size: 0.9rem;
 }
@@ -65,7 +65,7 @@
 
 .item-location {
     font-size: 0.75rem;
-    color: #999;
+    color: #666;
 }
 
 .item-location i { font-size: 0.65rem; margin-right: 2px; }

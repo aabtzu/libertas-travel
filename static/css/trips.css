@@ -205,7 +205,7 @@
     text-transform: none;
 }
 .trips-section[data-section="past"] .trips-section-title {
-    color: #888;
+    color: #666;
 }
 .trips-section[data-section="past"] .trip-card {
     opacity: 0.85;
@@ -462,7 +462,7 @@
 
 .trip-stat-label {
     font-size: 0.75rem;
-    color: #999;
+    color: #666;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
