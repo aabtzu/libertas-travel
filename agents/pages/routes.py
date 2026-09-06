@@ -44,9 +44,7 @@ def manifest():
         "display": "standalone",
         "background_color": "#1a1a2e",
         "theme_color": "#667eea",
-        "icons": [
-            {"src": "/static/favicon.svg", "sizes": "any", "type": "image/svg+xml"}
-        ],
+        "icons": [{"src": "/static/favicon.svg", "sizes": "any", "type": "image/svg+xml"}],
         "share_target": {
             "action": "/import",
             "method": "GET",
