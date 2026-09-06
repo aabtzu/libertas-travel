@@ -31,6 +31,35 @@ def _html(content: str) -> Response:
     return Response(content, mimetype="text/html")
 
 
+@pages_bp.get("/manifest.json")
+def manifest():
+    """PWA manifest - enables Android 'Add to Home Screen' and Web Share Target."""
+    import json
+
+    data = {
+        "name": "Libertas",
+        "short_name": "Libertas",
+        "description": "Trip planner",
+        "start_url": "/trips.html",
+        "display": "standalone",
+        "background_color": "#1a1a2e",
+        "theme_color": "#667eea",
+        "icons": [
+            {"src": "/static/favicon.svg", "sizes": "any", "type": "image/svg+xml"}
+        ],
+        "share_target": {
+            "action": "/import",
+            "method": "GET",
+            "params": {
+                "title": "title",
+                "text": "text",
+                "url": "url",
+            },
+        },
+    }
+    return Response(json.dumps(data), mimetype="application/manifest+json")
+
+
 @pages_bp.get("/app-config.js")
 def app_config_js():
     """Serve shared Python constants as a JS file so the frontend has one source of truth.

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title} - Libertas</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="/static/css/tokens.css?v=1">
@@ -17,6 +18,21 @@
 </head>
 <body>
     {nav_html}
+    <div id="import-banner" style="display:none;background:#f0fff4;border-bottom:1px solid #c3e6cb;color:#1a5c2a;padding:10px 20px;text-align:center;font-size:14px;">
+        <i class="fas fa-check-circle"></i> <span id="import-banner-text"></span>
+        <button onclick="this.parentNode.style.display='none'" style="margin-left:12px;background:none;border:none;color:#1a5c2a;cursor:pointer;font-size:14px;">&times;</button>
+    </div>
+    <script>
+    (function() {{
+        var n = new URLSearchParams(location.search).get('imported');
+        if (n) {{
+            var b = document.getElementById('import-banner');
+            document.getElementById('import-banner-text').textContent = n + ' item' + (n == 1 ? '' : 's') + ' added to ideas.';
+            b.style.display = '';
+            history.replaceState(null, '', location.pathname);
+        }}
+    }})();
+    </script>
 
     <div class="trip-header">
         <div class="trip-header-content">
