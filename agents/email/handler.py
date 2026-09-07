@@ -16,9 +16,40 @@ import anthropic
 import database as db
 from agents.common.categories import get_trip_date_range as _trip_date_range
 from agents.common.llm import HAIKU as _HAIKU_MODEL
+from agents.common.mailer import (
+    send_import_confirmation,
+    send_nothing_extracted,
+    send_unrecognised_sender,
+)
 from agents.create.upload_handlers import upload_plan_handler
 
 logger = logging.getLogger(__name__)
+
+# Rate-limit: map sender -> last time we sent them an unrecognised-sender notice.
+# Prevents turning Libertas into a spam relay when someone forges the From header.
+_unrecognised_notice_sent: dict[str, date] = {}
+_UNRECOGNISED_NOTICE_COOLDOWN_DAYS = 1
+
+
+def _should_send_unrecognised_notice(sender: str, form_data: dict) -> bool:
+    """Return True only when it is safe to notify an unrecognised sender."""
+    # Never auto-reply to auto-replies or bulk mail
+    auto_submitted = form_data.get("Auto-Submitted") or form_data.get("auto-submitted") or ""
+    if auto_submitted and auto_submitted.lower() != "no":
+        return False
+    precedence = form_data.get("Precedence") or form_data.get("precedence") or ""
+    if precedence.lower() in ("bulk", "list", "junk"):
+        return False
+
+    # Rate-limit: one notice per sender per day
+    last = _unrecognised_notice_sent.get(sender)
+    today = date.today()
+    if last and (today - last).days < _UNRECOGNISED_NOTICE_COOLDOWN_DAYS:
+        return False
+
+    _unrecognised_notice_sent[sender] = today
+    return True
+
 
 # Prefixes to strip when deriving a trip title from an email subject
 _SUBJECT_PREFIX_RE = re.compile(r"^\s*(fwd?|re)\s*:\s*", re.IGNORECASE)
@@ -334,6 +365,8 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
     print(f"[email-inbound] user lookup result={user}", flush=True)
     if user is None:
         print(f"[email-inbound] no user for email={sender_email}", flush=True)
+        if _should_send_unrecognised_notice(sender_email, form_data):
+            send_unrecognised_sender(sender_email)
         return {
             "success": False,
             "error": f"No Libertas account found for sender: {sender_email}",
@@ -393,8 +426,26 @@ def process_inbound_email(form_data: dict, files: dict) -> dict[str, Any]:
         if trip_link:
             action = "merged into existing trip" if merged else "saved as new draft"
             print(f"[email-inbound] {action} link={trip_link}", flush=True)
+            # Look up the trip title for the confirmation email
+            trip = db.get_trip_by_link(user_id, trip_link)
+            trip_title = (trip or {}).get("title") or trip_link
+            try:
+                send_import_confirmation(
+                    to=sender_email,
+                    n_items=len(results),
+                    trip_title=trip_title,
+                    trip_link=trip_link,
+                    merged=merged,
+                )
+            except Exception as mail_exc:
+                logger.error("[email-inbound] confirmation mail failed: %s", mail_exc)
         else:
             logger.error("[email-inbound] failed to save items for user_id=%s", user_id)
+    else:
+        try:
+            send_nothing_extracted(to=sender_email, subject=subject)
+        except Exception as mail_exc:
+            logger.error("[email-inbound] empty-result mail failed: %s", mail_exc)
 
     return {
         "success": True,
