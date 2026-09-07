@@ -1,0 +1,205 @@
+/* Import URL page */
+
+.import-body {
+    background: #f8f9fa;
+    min-height: 100vh;
+    padding: 0;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.import-container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+.import-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0 20px;
+}
+
+.import-back {
+    color: #667eea;
+    font-size: 18px;
+    text-decoration: none;
+    padding: 8px;
+}
+
+.import-brand {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.import-brand i {
+    color: #667eea;
+}
+
+.import-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.import-source {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #667eea;
+    font-size: 13px;
+}
+
+.import-url {
+    color: #555;
+    word-break: break-all;
+    flex: 1;
+}
+
+.import-page-title {
+    margin-top: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a2e;
+}
+
+.import-preview {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.import-preview-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.import-items-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.import-item {
+    padding: 5px 0;
+    font-size: 13px;
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.import-item:last-child {
+    border-bottom: none;
+}
+
+.import-cat {
+    font-size: 11px;
+    background: #f0f0f8;
+    color: #667eea;
+    border-radius: 4px;
+    padding: 2px 6px;
+    text-transform: capitalize;
+    flex-shrink: 0;
+}
+
+.import-more {
+    color: #666;
+    font-style: italic;
+}
+
+.import-error {
+    background: #fff0f0;
+    border: 1px solid #ffcccc;
+    border-radius: 8px;
+    color: #cc0000;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.import-success {
+    background: #f0fff4;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    color: #1a5c2a;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.import-form {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.import-field {
+    margin-bottom: 16px;
+}
+
+.import-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 6px;
+}
+
+.import-field select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+    background: white;
+    color: #1a1a2e;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23667eea' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+}
+
+.import-btn {
+    width: 100%;
+    padding: 14px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.import-btn:hover {
+    background: #5a6fd6;
+}
+
+.import-btn:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+}
