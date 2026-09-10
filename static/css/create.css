@@ -257,6 +257,18 @@
     overflow-y: visible;
 }
 
+/* On desktop, keep the sidebar stuck at viewport height so it scrolls
+   internally instead of growing with the page when map/grid/calendar tabs
+   are active (those tabs remove the overflow:hidden that normally clips it). */
+@media (min-width: 769px) {
+    .create-container.timeline-scrolls .editor-sidebar {
+        position: sticky;
+        top: 0;
+        height: calc(100vh - 60px);
+        overflow-y: auto;
+    }
+}
+
 /* ==================== Editor Header ==================== */
 .editor-header {
     display: flex;
