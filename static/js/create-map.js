@@ -420,6 +420,37 @@ function showNoLocationsMessage() {
     }
 }
 
+/**
+ * Trigger map regeneration from the editor, same as the Regen Map button in the saved view.
+ */
+async function regenMapFromEditor() {
+    const link = currentTrip && currentTrip.link;
+    if (!link) {
+        LibertasModal.alert('Save the trip first before regenerating the map.');
+        return;
+    }
+    const btn = document.getElementById('regen-map-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Regenerating...'; }
+    try {
+        const res = await fetch('/api/retry-geocoding', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ link })
+        });
+        const data = await res.json();
+        if (data.success) {
+            LibertasModal.alert('Map regeneration started. Switch to the Map tab in a minute to see the updated pins.');
+        } else {
+            LibertasModal.alert('Failed to start map regen: ' + (data.error || 'Unknown error'));
+        }
+    } catch (e) {
+        LibertasModal.alert('Request failed: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Regen Map'; }
+    }
+}
+
 // Make functions available globally
 window.switchTimelineTab = switchTimelineTab;
 window.updateMapForDay = updateMapForDay;
+window.regenMapFromEditor = regenMapFromEditor;

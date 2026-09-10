@@ -186,6 +186,25 @@
 .btn-fill-links:hover { background: #f0f2ff; }
 .btn-fill-links:disabled { opacity: 0.6; cursor: wait; }
 
+.btn-regen-map {
+    width: 100%;
+    padding: 10px;
+    margin-top: 12px;
+    background: white;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-regen-map:hover { background: #f0f2ff; }
+.btn-regen-map:disabled { opacity: 0.6; cursor: wait; }
+
 .writeup-controls {
     display: flex;
     gap: 8px;

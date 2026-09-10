@@ -208,6 +208,10 @@
                             title="AI fills in missing locations, website URLs, and Google Maps links across all items">
                         <i class="fas fa-link"></i> Fill Missing Links
                     </button>
+                    <button class="btn-regen-map" id="regen-map-btn" onclick="regenMapFromEditor()"
+                            title="Recompute map pins from your current itinerary items">
+                        <i class="fas fa-sync-alt"></i> Regen Map
+                    </button>
                     <button class="btn-writeup" id="generate-writeup-btn"
                             title="Generate an AI-written narrative summary of your trip with links and a map">
                         <i class="fas fa-pen-fancy"></i> Generate Write-up
@@ -379,7 +383,7 @@
     <script src="/static/js/create-chat.js?v=7"></script>
     <script src="/static/js/create-dragdrop.js?v=2"></script>
     <script src="/static/js/create-grid.js?v=6"></script>
-    <script src="/static/js/create-map.js?v=4"></script>
+    <script src="/static/js/create-map.js?v=5"></script>
 
     <!-- Mobile floating chat button - must be direct child of body for position:fixed -->
     <button class="mobile-chat-fab" id="mobile-chat-fab" aria-label="Open chat assistant">
