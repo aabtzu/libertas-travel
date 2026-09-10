@@ -299,6 +299,28 @@ def _extract_body_from_raw_mime(raw_mime: str) -> tuple[str, str]:
     return plain, html
 
 
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _collect_dates(items: list[dict]) -> list[str]:
+    """Walk item dicts at any depth and collect ISO date strings."""
+    dates: list[str] = []
+
+    def _walk(obj: Any) -> None:
+        if isinstance(obj, str) and _DATE_RE.match(obj):
+            dates.append(obj)
+        elif isinstance(obj, dict):
+            for v in obj.values():
+                _walk(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                _walk(v)
+
+    for item in items:
+        _walk(item)
+    return dates
+
+
 def _route_items_to_trip(
     user_id: int,
     subject: str,
@@ -331,8 +353,8 @@ def _route_items_to_trip(
         link = _save_email_items_as_draft(user_id, new_trip_name, items)
         return link, False
 
-    # 2. Date overlap
-    item_dates = [item["date"] for item in items if item.get("date")]
+    # 2. Date overlap - extract any ISO date strings from item dicts
+    item_dates = _collect_dates(items)
     matched = _match_by_dates(item_dates, candidates)
     if matched:
         print(
