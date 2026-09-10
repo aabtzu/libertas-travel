@@ -44,6 +44,40 @@ _SQL_SQLITE_SET_USER_EMAIL = "UPDATE users SET email = ? WHERE username = ?"
 _SQL_PG_DELETE_USER = "DELETE FROM users WHERE username = %s"
 _SQL_SQLITE_DELETE_USER = "DELETE FROM users WHERE username = ?"
 
+_SQL_PG_GET_USER_BY_FORWARDING_EMAIL = """
+    SELECT u.id, u.username, u.email
+    FROM users u
+    JOIN user_forwarding_emails f ON f.user_id = u.id
+    WHERE LOWER(f.email) = LOWER(%s)
+"""
+_SQL_SQLITE_GET_USER_BY_FORWARDING_EMAIL = """
+    SELECT u.id, u.username, u.email
+    FROM users u
+    JOIN user_forwarding_emails f ON f.user_id = u.id
+    WHERE LOWER(f.email) = LOWER(?)
+"""
+
+_SQL_PG_ADD_FORWARDING_EMAIL = (
+    "INSERT INTO user_forwarding_emails (user_id, email) VALUES (%s, %s) ON CONFLICT DO NOTHING"
+)
+_SQL_SQLITE_ADD_FORWARDING_EMAIL = (
+    "INSERT OR IGNORE INTO user_forwarding_emails (user_id, email) VALUES (?, ?)"
+)
+
+_SQL_PG_REMOVE_FORWARDING_EMAIL = (
+    "DELETE FROM user_forwarding_emails WHERE user_id = %s AND LOWER(email) = LOWER(%s)"
+)
+_SQL_SQLITE_REMOVE_FORWARDING_EMAIL = (
+    "DELETE FROM user_forwarding_emails WHERE user_id = ? AND LOWER(email) = LOWER(?)"
+)
+
+_SQL_PG_GET_FORWARDING_EMAILS = (
+    "SELECT email FROM user_forwarding_emails WHERE user_id = %s ORDER BY created_at"
+)
+_SQL_SQLITE_GET_FORWARDING_EMAILS = (
+    "SELECT email FROM user_forwarding_emails WHERE user_id = ? ORDER BY created_at"
+)
+
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
@@ -141,7 +175,7 @@ def email_exists(email: str) -> bool:
 
 
 def get_user_by_email(email: str) -> dict[str, Any] | None:
-    """Look up a user by email address (case-insensitive)."""
+    """Look up a user by primary or forwarding email address (case-insensitive)."""
     with get_db() as conn:
         cursor = conn.cursor()
         if USE_POSTGRES:
@@ -151,7 +185,48 @@ def get_user_by_email(email: str) -> dict[str, Any] | None:
         row = cursor.fetchone()
         if row:
             return {"id": row[0], "username": row[1], "email": row[2]}
+        # Fall back to forwarding addresses
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GET_USER_BY_FORWARDING_EMAIL, (email,))
+        else:
+            cursor.execute(_SQL_SQLITE_GET_USER_BY_FORWARDING_EMAIL, (email,))
+        row = cursor.fetchone()
+        if row:
+            return {"id": row[0], "username": row[1], "email": row[2]}
         return None
+
+
+def get_forwarding_emails(user_id: int) -> list[str]:
+    """Return all secondary forwarding email addresses for a user."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GET_FORWARDING_EMAILS, (user_id,))
+        else:
+            cursor.execute(_SQL_SQLITE_GET_FORWARDING_EMAILS, (user_id,))
+        return [row[0] for row in cursor.fetchall()]
+
+
+def add_forwarding_email(user_id: int, email: str) -> bool:
+    """Add a secondary forwarding email for a user. Returns False if it already exists."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_ADD_FORWARDING_EMAIL, (user_id, email))
+        else:
+            cursor.execute(_SQL_SQLITE_ADD_FORWARDING_EMAIL, (user_id, email))
+        return cursor.rowcount > 0
+
+
+def remove_forwarding_email(user_id: int, email: str) -> bool:
+    """Remove a secondary forwarding email for a user."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_REMOVE_FORWARDING_EMAIL, (user_id, email))
+        else:
+            cursor.execute(_SQL_SQLITE_REMOVE_FORWARDING_EMAIL, (user_id, email))
+        return cursor.rowcount > 0
 
 
 def set_user_email(username: str, email: str) -> bool:

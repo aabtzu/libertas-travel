@@ -589,3 +589,37 @@ def save_user_profile():
     db.set_user_profile(g.user_id, existing_profile)
 
     return json_ok({"success": True})
+
+
+@trips_bp.get("/api/user/forwarding-emails")
+@require_auth
+def list_forwarding_emails():
+    """List the user's secondary forwarding email addresses."""
+    return json_ok({"emails": db.get_forwarding_emails(g.user_id)})
+
+
+@trips_bp.post("/api/user/forwarding-emails")
+@require_auth
+def add_forwarding_email():
+    """Add a secondary forwarding email address."""
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return json_err("Invalid email address", status=400)
+    user = db.get_user_by_id(g.user_id)
+    if user and user.get("email", "").lower() == email:
+        return json_err("That is already your primary email address", status=400)
+    added = db.add_forwarding_email(g.user_id, email)
+    if not added:
+        return json_err("That address is already registered", status=409)
+    return json_ok({"email": email})
+
+
+@trips_bp.delete("/api/user/forwarding-emails/<path:email>")
+@require_auth
+def remove_forwarding_email(email: str):
+    """Remove a secondary forwarding email address."""
+    removed = db.remove_forwarding_email(g.user_id, email)
+    if not removed:
+        return json_err("Address not found", status=404)
+    return json_ok({"removed": email})

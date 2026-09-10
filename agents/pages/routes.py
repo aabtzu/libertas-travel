@@ -235,8 +235,9 @@ def reset_password():
 @require_auth
 def profile():
     profile_data = db.get_user_profile(g.user_id) or {}
+    forwarding_emails = db.get_forwarding_emails(g.user_id)
 
-    return _html(generate_profile_page(profile_data))
+    return _html(generate_profile_page(profile_data, forwarding_emails))
 
 
 @pages_bp.get("/trips")
