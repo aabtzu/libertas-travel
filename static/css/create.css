@@ -467,7 +467,9 @@
 }
 
 .map-container {
-    height: 400px;
+    /* Fill the remaining viewport height. 60px nav + ~52px editor-header
+       + ~54px tabs row + ~48px day-selector row + 40px padding = ~254px above the map. */
+    height: calc(100vh - 254px);
     min-height: 300px;
     border-radius: 12px;
     overflow: hidden;
