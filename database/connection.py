@@ -70,6 +70,26 @@ _DDL_PG_ALTER_TRIPS_ADD_IS_ARCHIVED = (
 
 _DDL_PG_ALTER_USERS_ADD_PROFILE = "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB"
 
+_DDL_PG_CREATE_FORWARDING_EMAILS = """
+    CREATE TABLE IF NOT EXISTS user_forwarding_emails (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        email VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, email)
+    )
+"""
+
+_DDL_SQLITE_CREATE_FORWARDING_EMAILS = """
+    CREATE TABLE IF NOT EXISTS user_forwarding_emails (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, email)
+    )
+"""
+
 _DDL_PG_CREATE_INDEX_TRIPS_USER_ID = (
     "CREATE INDEX IF NOT EXISTS idx_trips_user_id ON trips(user_id)"
 )
@@ -230,6 +250,7 @@ def init_db():
             cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_TRIP_TYPE)
             cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_IS_ARCHIVED)
             cursor.execute(_DDL_PG_ALTER_USERS_ADD_PROFILE)
+            cursor.execute(_DDL_PG_CREATE_FORWARDING_EMAILS)
             cursor.execute(_DDL_PG_CREATE_INDEX_TRIPS_USER_ID)
         else:
             cursor.execute(_DDL_SQLITE_CREATE_USERS)
@@ -260,6 +281,7 @@ def init_db():
             except Exception:
                 pass  # Column already exists
 
+            cursor.execute(_DDL_SQLITE_CREATE_FORWARDING_EMAILS)
             cursor.execute(_DDL_SQLITE_CREATE_INDEX_TRIPS_USER_ID)
 
         # Venues table

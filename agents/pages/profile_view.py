@@ -12,7 +12,9 @@ def _esc(text: str) -> str:
     return html_mod.escape(str(text)) if text else ""
 
 
-def generate_profile_page(profile_data: dict[str, Any]) -> str:
+def generate_profile_page(
+    profile_data: dict[str, Any], forwarding_emails: list[str] | None = None
+) -> str:
     """Build the profile page with editable writing style fields."""
     nav = get_nav_html("")
 
@@ -35,6 +37,19 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
     rules = _esc(style_profile.get("rules", ""))
     user_notes = _esc(profile_data.get("user_notes", ""))
     has_profile = "true" if style_profile else "false"
+    forwarding_emails = forwarding_emails or []
+    forwarding_items_html = "".join(
+        f'<li class="fwd-email-item" data-email="{_esc(e)}">'
+        f"<span>{_esc(e)}</span>"
+        f'<button class="fwd-remove-btn" aria-label="Remove {_esc(e)}">'
+        f'<i class="fas fa-times"></i></button></li>'
+        for e in forwarding_emails
+    )
+    forwarding_list_html = (
+        f'<ul id="fwd-email-list">{forwarding_items_html}</ul>'
+        if forwarding_emails
+        else '<ul id="fwd-email-list"></ul>'
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -149,6 +164,44 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
             padding: 16px;
             margin-bottom: 20px;
         }}
+        #fwd-email-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0 0 16px;
+        }}
+        .fwd-email-item {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border: 1px solid #e8e8f0;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }}
+        .fwd-remove-btn {{
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }}
+        .fwd-remove-btn:hover {{ color: #e74c3c; background: #fff0f0; }}
+        .fwd-add-row {{
+            display: flex;
+            gap: 8px;
+        }}
+        .fwd-add-row input {{
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            outline: none;
+        }}
+        .fwd-add-row input:focus {{ border-color: #667eea; }}
     </style>
 </head>
 <body>
@@ -228,6 +281,22 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                 <textarea id="user-notes" rows="3" placeholder="Anything else the AI should know about your preferences, dietary restrictions, travel style, etc.">{user_notes}</textarea>
                 <div class="field-hint">Free-form notes injected into write-up and recommendation context</div>
             </div>
+        </div>
+
+        <!-- Forwarding Addresses -->
+        <div class="profile-section">
+            <h2><i class="fas fa-envelope"></i> Forwarding Addresses</h2>
+            <p style="color:#666;font-size:0.9rem;margin-bottom:12px">
+                Forward booking emails to Libertas from any of these addresses.
+            </p>
+            {forwarding_list_html}
+            <div class="fwd-add-row">
+                <input type="email" id="fwd-email-input" placeholder="email@example.com">
+                <button class="btn-secondary" id="fwd-add-btn">
+                    <i class="fas fa-plus"></i> Add
+                </button>
+            </div>
+            <span class="status-msg" id="fwd-status"></span>
         </div>
 
         <!-- Change Password -->
@@ -377,6 +446,63 @@ def generate_profile_page(profile_data: dict[str, Any]) -> str:
                 status.className = 'status-msg error';
             }}
             btn.disabled = false;
+        }});
+
+        // Forwarding email add
+        document.getElementById('fwd-add-btn').addEventListener('click', async () => {{
+            const input = document.getElementById('fwd-email-input');
+            const email = input.value.trim().toLowerCase();
+            const status = document.getElementById('fwd-status');
+            if (!email || !email.includes('@')) {{
+                status.textContent = 'Enter a valid email address';
+                status.className = 'status-msg error';
+                return;
+            }}
+            status.textContent = '';
+            try {{
+                const res = await fetch('/api/user/forwarding-emails', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{email}}),
+                }});
+                const data = await res.json();
+                if (data.success) {{
+                    addForwardingItem(data.email);
+                    input.value = '';
+                    status.textContent = 'Address added';
+                    status.className = 'status-msg success';
+                }} else {{
+                    status.textContent = data.error || 'Failed to add';
+                    status.className = 'status-msg error';
+                }}
+            }} catch {{
+                status.textContent = 'Failed to connect';
+                status.className = 'status-msg error';
+            }}
+        }});
+
+        function addForwardingItem(email) {{
+            const li = document.createElement('li');
+            li.className = 'fwd-email-item';
+            li.dataset.email = email;
+            li.innerHTML = '<span>' + escapeHtml(email) + '</span>'
+                + '<button class="fwd-remove-btn" aria-label="Remove ' + escapeHtml(email) + '">'
+                + '<i class="fas fa-times"></i></button>';
+            li.querySelector('.fwd-remove-btn').addEventListener('click', () => removeForwardingItem(li, email));
+            document.getElementById('fwd-email-list').appendChild(li);
+        }}
+
+        function removeForwardingItem(li, email) {{
+            fetch('/api/user/forwarding-emails/' + encodeURIComponent(email), {{method: 'DELETE'}})
+                .then(r => r.json())
+                .then(data => {{
+                    if (data.success) li.remove();
+                }});
+        }}
+
+        document.querySelectorAll('.fwd-remove-btn').forEach(btn => {{
+            const li = btn.closest('.fwd-email-item');
+            btn.addEventListener('click', () => removeForwardingItem(li, li.dataset.email));
         }});
 
     </script>

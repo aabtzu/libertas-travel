@@ -85,12 +85,15 @@ confirmation email rather than a forward of a forward.</p>
 def send_unrecognised_sender(to: str) -> bool:
     """Tell an unrecognised sender that their address isn't linked to an account."""
     subject = "Email not recognised - Libertas"
-    body_html = """
+    body_html = f"""
 <p>Hi,</p>
 <p>We received an email forwarded to Libertas from this address, but we couldn't
 match it to a Libertas account.</p>
-<p>If you have a Libertas account, make sure you're forwarding from the email
-address you used to sign up.</p>
+<p>If you have a Libertas account, add this address under
+<strong>Forwarding Addresses</strong> in your profile.</p>
+<p><a href="{_APP_URL}/profile" style="background:#667eea;color:white;
+padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;
+margin:8px 0;">Go to profile</a></p>
 <p style="color:#666;font-size:13px;">Libertas trip planner</p>
 """
     return send_mail(to, subject, body_html)
