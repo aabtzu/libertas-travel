@@ -165,8 +165,14 @@ def _match_by_instruction(instruction: str, trips: list[dict]) -> tuple[dict | N
     return None, None
 
 
-def _match_by_dates(item_dates: list[str], trips: list[dict]) -> dict | None:
-    """Return the single trip whose date range overlaps the item dates, or None."""
+def _match_by_dates(
+    item_dates: list[str], trips: list[dict], items: list[dict] | None = None
+) -> dict | None:
+    """Return the trip whose date range overlaps the item dates.
+
+    If exactly one trip matches, return it directly. If multiple match,
+    fall back to LLM to disambiguate using item location/title context.
+    """
     if not item_dates:
         return None
     min_date = min(item_dates)
@@ -176,11 +182,69 @@ def _match_by_dates(item_dates: list[str], trips: list[dict]) -> dict | None:
         start, end = _trip_date_range(t["itinerary_data"])
         if not start or not end:
             continue
-        # Overlap: item range intersects trip range
         if start <= max_date and end >= min_date:
             matches.append(t)
     if len(matches) == 1:
         return matches[0]
+    if len(matches) > 1:
+        return _match_by_llm(item_dates, matches, items or [])
+    return None
+
+
+def _match_by_llm(item_dates: list[str], candidates: list[dict], items: list[dict]) -> dict | None:
+    """Use Haiku to pick the best trip when date overlap is ambiguous."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+
+    def _trip_summary(t: dict) -> str:
+        title = t.get("title", "Untitled")
+        data = t.get("itinerary_data") or {}
+        start, end = _trip_date_range(data)
+        dates_str = f"{start} to {end}" if start and end else "no dates"
+        locations = []
+        for day in (data.get("days") or [])[:3]:
+            for itm in (day.get("items") or [])[:2]:
+                loc = itm.get("location") or itm.get("city") or ""
+                if loc and loc not in locations:
+                    locations.append(loc)
+        loc_str = ", ".join(locations[:3]) if locations else "unknown"
+        return f'- "{title}" ({dates_str}, locations: {loc_str})'
+
+    item_summary = "; ".join(
+        f"{i.get('title', '?')} in {i.get('location', '?')}" for i in items[:5]
+    )
+    summaries = "\n".join(_trip_summary(t) for t in candidates)
+    prompt = (
+        f"Booking items: {item_summary}\n"
+        f"Item dates: {min(item_dates)} to {max(item_dates)}\n\n"
+        f"Candidate trips:\n{summaries}\n\n"
+        "Which trip title best matches these booking items based on location and dates? "
+        "Reply with the exact trip title only, or NONE if unclear."
+    )
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model=_HAIKU_MODEL,
+            max_tokens=100,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        chosen = msg.content[0].text.strip().strip('"').strip("'")
+        print(
+            f"[email-inbound] Haiku picked trip={chosen!r} from {len(candidates)} candidates",
+            flush=True,
+        )
+        if chosen.upper() == "NONE" or not chosen:
+            return None
+        for t in candidates:
+            if (t.get("title") or "").strip() == chosen:
+                return t
+        chosen_lower = chosen.lower()
+        for t in candidates:
+            if chosen_lower in (t.get("title") or "").lower():
+                return t
+    except Exception as e:
+        print(f"[email-inbound] Haiku date-disambiguation failed: {e}", flush=True)
     return None
 
 
@@ -355,7 +419,7 @@ def _route_items_to_trip(
 
     # 2. Date overlap - extract any ISO date strings from item dicts
     item_dates = _collect_dates(items)
-    matched = _match_by_dates(item_dates, candidates)
+    matched = _match_by_dates(item_dates, candidates, items)
     if matched:
         print(
             f"[email-inbound] routing by date overlap -> trip={matched['title']!r}",
