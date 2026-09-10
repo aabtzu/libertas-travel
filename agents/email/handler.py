@@ -268,6 +268,24 @@ def _merge_items_into_trip(user_id: int, trip: dict, items: list[dict]) -> bool:
         else:
             ideas.append(item)
 
+    # Expand trip date range if items fall outside it
+    all_dates = [d["date"] for d in days if d.get("date")]
+    if all_dates:
+        itinerary_data["start_date"] = min(all_dates)
+        itinerary_data["end_date"] = max(all_dates)
+
+    # Fill in any gap days within the date range so the grid shows a continuous trip
+    start_str = itinerary_data.get("start_date")
+    end_str = itinerary_data.get("end_date")
+    if start_str and end_str:
+        cursor_date = date.fromisoformat(start_str)
+        end_date_obj = date.fromisoformat(end_str)
+        while cursor_date <= end_date_obj:
+            iso = cursor_date.isoformat()
+            if iso not in days_by_date:
+                days.append({"date": iso, "items": []})
+            cursor_date += timedelta(days=1)
+
     # Re-sort days chronologically and renumber
     days.sort(key=lambda d: d.get("date") or "")
     for idx, day in enumerate(days):
@@ -275,12 +293,6 @@ def _merge_items_into_trip(user_id: int, trip: dict, items: list[dict]) -> bool:
 
     itinerary_data["days"] = days
     itinerary_data["ideas"] = ideas
-
-    # Expand trip date range if items fall outside it
-    all_dates = [d["date"] for d in days if d.get("date")]
-    if all_dates:
-        itinerary_data["start_date"] = min(all_dates)
-        itinerary_data["end_date"] = max(all_dates)
 
     return db.update_trip_itinerary_data(user_id, trip["link"], itinerary_data)
 
@@ -302,9 +314,21 @@ def _save_email_items_as_draft(user_id: int, subject: str, items: list[dict]) ->
     start_date = sorted_dates[0] if sorted_dates else None
     end_date = sorted_dates[-1] if sorted_dates else None
 
+    # Build a day entry for every date in the range, not just dates with items,
+    # so the grid shows a continuous trip matching how the editor behaves.
+    all_dates: list[str] = []
+    if start_date and end_date:
+        cursor = date.fromisoformat(start_date)
+        end_obj = date.fromisoformat(end_date)
+        while cursor <= end_obj:
+            all_dates.append(cursor.isoformat())
+            cursor += timedelta(days=1)
+    else:
+        all_dates = sorted_dates
+
     days = [
-        {"day_number": idx + 1, "date": d, "items": days_dict[d]}
-        for idx, d in enumerate(sorted_dates)
+        {"day_number": idx + 1, "date": d, "items": days_dict.get(d, [])}
+        for idx, d in enumerate(all_dates)
     ]
 
     itinerary_data = {
