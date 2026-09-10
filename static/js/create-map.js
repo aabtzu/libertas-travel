@@ -43,6 +43,9 @@ function updateMapDaySelector() {
         const dateStr = day.date ? ` (${formatDateShort(day.date)})` : '';
         select.innerHTML += `<option value="${index}">Day ${day.day_number}${dateStr}</option>`;
     });
+    if ((currentTrip.ideas || []).some(i => i.location || i.title)) {
+        select.innerHTML += '<option value="ideas">Ideas Pile</option>';
+    }
 
     // Restore selection if still valid
     if (currentValue && select.querySelector(`option[value="${currentValue}"]`)) {
@@ -118,6 +121,13 @@ async function updateMapForDay() {
             (day.items || []).forEach(item => {
                 itemsToShow.push({ ...item, dayIndex, dayNumber: day.day_number });
             });
+        });
+        (currentTrip.ideas || []).forEach(item => {
+            itemsToShow.push({ ...item, dayIndex: null, dayNumber: null, isIdea: true });
+        });
+    } else if (selectedDay === 'ideas') {
+        (currentTrip.ideas || []).forEach(item => {
+            itemsToShow.push({ ...item, dayIndex: null, dayNumber: null, isIdea: true });
         });
     } else {
         const dayIndex = parseInt(selectedDay);
@@ -371,7 +381,7 @@ function createMapMarker(item, coords) {
     // Build popup content
     const timeStr = item.time ? `<div><i class="fas fa-clock"></i> ${formatTime12Hour(item.time)}</div>` : '';
     const locationStr = item.location ? `<div><i class="fas fa-map-marker-alt"></i> ${escapeHtml(item.location)}</div>` : '';
-    const dayStr = item.dayNumber ? `<div class="marker-day">Day ${item.dayNumber}</div>` : '';
+    const dayStr = item.dayNumber ? `<div class="marker-day">Day ${item.dayNumber}</div>` : (item.isIdea ? `<div class="marker-day" style="background:#f0c674;color:#1a1a2e;">Ideas Pile</div>` : '');
 
     const popupContent = `
         <div class="marker-popup">
