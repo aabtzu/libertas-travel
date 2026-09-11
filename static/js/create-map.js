@@ -478,6 +478,11 @@ async function regenMapFromEditor() {
     }
     _setRegenBtnsState(true);
     _showMapRegenOverlay();
+    // Clear geocode cache so re-geocoding uses fresh queries (not stale city-only results)
+    geocodeCache = {};
+    try {
+        localStorage.removeItem('libertas_geocode_cache');
+    } catch (_) {}
     try {
         const res = await fetch('/api/retry-geocoding', {
             method: 'POST',
