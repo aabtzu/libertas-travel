@@ -71,7 +71,9 @@ const CalendarView = (function() {
             html += '<div class="calendar-week">';
 
             for (const dayDate of week) {
-                const isTripDay = dayDate >= tripStart && dayDate <= tripEnd;
+                // Compare by date only (not time) - dayDate is local midnight, tripStart/End are local noon
+                const isTripDay = isSameDay(dayDate, tripStart) || isSameDay(dayDate, tripEnd) ||
+                                  (dayDate > tripStart && dayDate < tripEnd);
                 const isCurrentMonth = dayDate.getMonth() === month;
                 const dateKey = formatDateKey(dayDate);
                 const items = itemsByDate[dateKey] || [];

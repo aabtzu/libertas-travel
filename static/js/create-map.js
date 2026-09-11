@@ -168,14 +168,18 @@ async function updateMapForDay() {
     // Geocode and add markers
     const bounds = [];
 
-    // Build geo queries and geocode in parallel for faster loading
-    const geocodePromises = itemsWithLocation.map(async (item) => {
+    // Geocode sequentially - Nominatim allows only 1 req/sec; cached results skip the delay
+    const results = [];
+    for (const item of itemsWithLocation) {
         const searchQuery = buildGeoQuery(item, tripDestination);
+        const cacheKey = searchQuery.toLowerCase().trim();
+        const wasCached = !!geocodeCache[cacheKey];
         const coords = await geocodeLocation(searchQuery);
-        return { item, coords };
-    });
-
-    const results = await Promise.all(geocodePromises);
+        results.push({ item, coords });
+        if (!wasCached) {
+            await new Promise(r => setTimeout(r, 1100));
+        }
+    }
 
     // Add markers for successful geocodes
     for (const { item, coords } of results) {
