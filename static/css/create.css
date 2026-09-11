@@ -466,6 +466,23 @@
     min-width: 150px;
 }
 
+.map-regen-btn {
+    margin-left: auto;
+    padding: 6px 12px;
+    background: white;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.map-regen-btn:hover { background: #f0f2ff; }
+.map-regen-btn:disabled { opacity: 0.6; cursor: wait; }
+
 .map-container {
     height: 400px;
     min-height: 300px;
