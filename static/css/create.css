@@ -467,14 +467,40 @@
 }
 
 .map-container {
-    /* Fill the remaining viewport height. 60px nav + ~52px editor-header
-       + ~54px tabs row + ~48px day-selector row + 40px padding = ~254px above the map. */
-    height: calc(100vh - 254px);
+    height: 400px;
     min-height: 300px;
     border-radius: 12px;
     overflow: hidden;
     background: #e8e8e8;
     position: relative;
+}
+
+/* When the map tab is active the container gains timeline-scrolls, which
+   makes height:auto bubble up so calc(100vh - X) is unreliable. Instead,
+   pin the whole editor to the viewport and let the map fill via flex. */
+.map-tab-active .create-container {
+    height: calc(100vh - 60px) !important;
+}
+.map-tab-active .editor-main {
+    overflow: hidden !important;
+    height: 100%;
+}
+.map-tab-active .editor-timeline {
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+}
+.map-tab-active #map-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+.map-tab-active .map-container {
+    flex: 1;
+    height: auto;
+    min-height: 0;
 }
 
 #trip-map {

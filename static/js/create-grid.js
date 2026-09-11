@@ -26,6 +26,9 @@ function switchTimelineTab(tabName) {
         container.classList.toggle('timeline-scrolls', tabName !== 'itinerary');
     }
 
+    // Toggle body class so CSS can pin the layout for the map tab specifically
+    document.body.classList.toggle('map-tab-active', tabName === 'map');
+
     // Initialize map when switching to map tab
     if (tabName === 'map') {
         updateMapDaySelector();
