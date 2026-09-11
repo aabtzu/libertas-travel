@@ -423,14 +423,61 @@ function showNoLocationsMessage() {
 /**
  * Trigger map regeneration from the editor, same as the Regen Map button in the saved view.
  */
+function _setRegenBtnsState(spinning) {
+    const label = spinning
+        ? '<i class="fas fa-spinner fa-spin"></i> Regenerating...'
+        : '<i class="fas fa-sync-alt"></i> Regen Map';
+    document.querySelectorAll('#regen-map-btn, .map-regen-btn').forEach(btn => {
+        btn.disabled = spinning;
+        btn.innerHTML = label;
+    });
+}
+
+function _showMapRegenOverlay() {
+    const container = document.getElementById('trip-map');
+    if (!container) return;
+    let overlay = document.getElementById('map-regen-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'map-regen-overlay';
+        overlay.style.cssText = 'position:absolute;inset:0;background:rgba(255,255,255,0.8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:500;border-radius:12px;';
+        overlay.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:32px;color:#667eea;"></i><span style="font-size:14px;font-weight:600;color:#667eea;">Regenerating map pins...</span>';
+        container.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+}
+
+function _hideMapRegenOverlay() {
+    const overlay = document.getElementById('map-regen-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+async function _pollMapStatus(link) {
+    const maxAttempts = 30;
+    for (let i = 0; i < maxAttempts; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        try {
+            const r = await fetch(`/api/map-status?link=${encodeURIComponent(link)}`);
+            const d = await r.json();
+            const status = d.map_status || '';
+            if (status === 'complete' || status === 'error' || status === 'ready') {
+                return status;
+            }
+        } catch (e) {
+            // keep polling
+        }
+    }
+    return 'timeout';
+}
+
 async function regenMapFromEditor() {
     const link = currentTrip && currentTrip.link;
     if (!link) {
         LibertasModal.alert('Save the trip first before regenerating the map.');
         return;
     }
-    const btn = document.getElementById('regen-map-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Regenerating...'; }
+    _setRegenBtnsState(true);
+    _showMapRegenOverlay();
     try {
         const res = await fetch('/api/retry-geocoding', {
             method: 'POST',
@@ -438,15 +485,22 @@ async function regenMapFromEditor() {
             body: JSON.stringify({ link })
         });
         const data = await res.json();
-        if (data.success) {
-            LibertasModal.alert('Map regeneration started. Switch to the Map tab in a minute to see the updated pins.');
-        } else {
+        if (!data.success) {
             LibertasModal.alert('Failed to start map regen: ' + (data.error || 'Unknown error'));
+            return;
+        }
+        // Poll until geocoding finishes, then reload the map
+        const status = await _pollMapStatus(link);
+        if (status === 'complete') {
+            await updateMapForDay();
+        } else if (status === 'error') {
+            LibertasModal.alert('Map regeneration finished with errors. Some pins may be missing.');
         }
     } catch (e) {
         LibertasModal.alert('Request failed: ' + e.message);
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Regen Map'; }
+        _setRegenBtnsState(false);
+        _hideMapRegenOverlay();
     }
 }
 
