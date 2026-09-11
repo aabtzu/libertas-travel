@@ -284,43 +284,39 @@ function buildGeoQuery(item, destination) {
     const location = item.location || '';
     const title = item.title || '';
 
-    // If location has a full address (with comma or long), use it directly
-    if (location && location.includes(',') && location.length > 20) {
-        return location;
+    // A location is a specific street address if it contains digits (house number, postal code, etc.)
+    const isStreetAddress = /\d/.test(location);
+
+    if (location && isStreetAddress) {
+        // Specific address - use as-is, it will geocode precisely
+        return title ? `${title}, ${location}` : location;
     }
 
-    // For items with location, add destination context if not already present
     if (location) {
+        // Generic location like "Toronto, Ontario, Canada" - prefix with title so Nominatim
+        // finds the actual venue, not just the city center
         const locLower = location.toLowerCase();
         const destLower = (destination || '').toLowerCase();
 
-        // Skip adding context if location already has the destination
-        if (destLower && locLower.includes(destLower)) {
-            return location;
+        if (title && !title.toLowerCase().includes('stay') && !title.toLowerCase().includes('flight')) {
+            return `${title}, ${location}`;
         }
 
-        // Skip adding context if location looks like a full address
-        if (location.match(/\d+.*\d{4,}/)) {  // Has numbers like street address + postal code
-            return location;
-        }
-
-        // Add destination context
-        if (destination) {
+        // No useful title - add destination context if not already in location
+        if (destination && !locLower.includes(destLower)) {
             return `${location}, ${destination}`;
         }
         return location;
     }
 
-    // Use title with destination context for items without location
+    // No location at all - use title + destination
     if (title && destination) {
-        // Skip generic titles
         if (title.toLowerCase().includes('stay') || title.toLowerCase().includes('flight')) {
             return destination;
         }
         return `${title}, ${destination}`;
     }
 
-    // Fallback
     return location || title || destination;
 }
 
