@@ -144,6 +144,9 @@
                         <select id="map-day-select" onchange="updateMapForDay()">
                             <option value="all">All Days</option>
                         </select>
+                        <button onclick="regenMapFromEditor()" title="Recompute map pins from your current itinerary items" class="map-regen-btn">
+                            <i class="fas fa-sync-alt"></i> Regen Map
+                        </button>
                     </div>
                     <div class="map-container" id="trip-map">
                         <div class="map-loading" id="map-loading">
