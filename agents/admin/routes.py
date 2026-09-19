@@ -24,6 +24,9 @@ _SQL_LIST_RECENT_TRIPS = (
 _SQL_LIST_RECENT_USERS = (
     "SELECT id, username, email, created_at FROM users ORDER BY created_at DESC LIMIT 10"
 )
+# These use _last_24h_clause() which differs per backend, so built at call time
+_SQL_NEW_USERS_24H = "SELECT COUNT(*) FROM users WHERE created_at > {clause}"
+_SQL_NEW_TRIPS_24H = "SELECT COUNT(*) FROM trips WHERE created_at > {clause}"
 
 
 def _last_24h_clause() -> str:
@@ -87,9 +90,10 @@ def debug():
             debug_info["trips_count"] = cursor.fetchone()[0]
 
             # Usage in the last 24h, quick health check
-            cursor.execute(f"SELECT COUNT(*) FROM users WHERE created_at > {_last_24h_clause()}")
+            clause = _last_24h_clause()
+            cursor.execute(_SQL_NEW_USERS_24H.format(clause=clause))
             debug_info["new_users_24h"] = cursor.fetchone()[0]
-            cursor.execute(f"SELECT COUNT(*) FROM trips WHERE created_at > {_last_24h_clause()}")
+            cursor.execute(_SQL_NEW_TRIPS_24H.format(clause=clause))
             debug_info["new_trips_24h"] = cursor.fetchone()[0]
 
             # Recent trips (with timestamps now)
