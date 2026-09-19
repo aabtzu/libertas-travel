@@ -6,6 +6,7 @@ from typing import Any
 
 import database as db
 from agents.common.llm import SONNET, make_llm
+from agents.create.assets_handler import get_assets_context_for_chat
 from agents.create.chat_prompt import (
     _build_venue_chat_prompt,
     _clean_response_text,
@@ -64,6 +65,17 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
         pass
 
     system_prompt = _build_venue_chat_prompt(trip_context, curated_venues, style_rules=style_rules)
+
+    # Append extracted text from uploaded source files so the assistant can
+    # answer questions about the original documents (e.g. a PDF itinerary).
+    trip_link = trip_context.get("link")
+    if trip_link:
+        try:
+            assets_context = get_assets_context_for_chat(trip_link)
+            if assets_context:
+                system_prompt += "\n\n## Source documents uploaded by the user\n" + assets_context
+        except Exception as _ace:
+            print(f"[chat] Warning: could not load assets context: {_ace}")
 
     messages = []
     for msg in history[-10:]:

@@ -11,6 +11,7 @@ from flask import Blueprint, g, request
 
 import database as db
 from agents.common.flask_utils import json_err, json_ok, require_auth
+from agents.create import assets_handler
 from agents.create import handler as create_handler
 from agents.itinerary import geocoding_worker
 from agents.trips import collaborator_handler
@@ -695,3 +696,38 @@ def remove_forwarding_email(email: str):
     if not removed:
         return json_err("Address not found", status=404)
     return json_ok({"removed": email})
+
+
+@trips_bp.get("/api/trips/<link>/assets")
+@require_auth
+def list_trip_assets(link: str):
+    result, status = assets_handler.list_assets_handler(g.user_id, link)
+    if status == 200:
+        return json_ok(result)
+    return json_err(result.get("error", "Error"), status=status)
+
+
+@trips_bp.delete("/api/trips/<link>/assets/<int:asset_id>")
+@require_auth
+def delete_trip_asset(link: str, asset_id: int):
+    result, status = assets_handler.delete_asset_handler(g.user_id, link, asset_id)
+    if status == 200:
+        return json_ok(result)
+    return json_err(result.get("error", "Error"), status=status)
+
+
+@trips_bp.get("/api/trips/<link>/assets/<int:asset_id>/file")
+@require_auth
+def serve_trip_asset(link: str, asset_id: int):
+    """Serve the raw file for an asset. Auth-gated so only editors can fetch."""
+    from flask import send_file
+
+    if not db.can_user_edit_trip(link, g.user_id):
+        return json_err("Not authorized", status=403)
+    file_path, asset = assets_handler.get_asset_file_path(link, asset_id)
+    if asset is None:
+        return json_err("Asset not found", status=404)
+    if file_path is None:
+        return json_err("File not found on disk", status=404)
+    mime = asset.get("mime_type") or "application/octet-stream"
+    return send_file(file_path, mimetype=mime)

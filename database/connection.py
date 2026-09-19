@@ -335,4 +335,19 @@ def init_db():
             cursor.execute(DDL_SQLITE_INDEX_COLLABORATORS_TRIP)
             cursor.execute(DDL_SQLITE_INDEX_COLLABORATORS_USER)
 
+        # Trip assets table
+        from database.assets import (
+            DDL_PG_CREATE_ASSETS,
+            DDL_PG_INDEX_ASSETS_TRIP,
+            DDL_SQLITE_CREATE_ASSETS,
+            DDL_SQLITE_INDEX_ASSETS_TRIP,
+        )
+
+        if USE_POSTGRES:
+            cursor.execute(DDL_PG_CREATE_ASSETS)
+            cursor.execute(DDL_PG_INDEX_ASSETS_TRIP)
+        else:
+            cursor.execute(DDL_SQLITE_CREATE_ASSETS)
+            cursor.execute(DDL_SQLITE_INDEX_ASSETS_TRIP)
+
         print(f"[DB] Initialized {'PostgreSQL' if USE_POSTGRES else 'SQLite'} database")

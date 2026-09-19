@@ -4,6 +4,13 @@ All callers use `import database as db` or `from database import X`, so this
 __init__.py must expose the full public API that database.py previously provided.
 """
 
+from database.assets import (  # noqa: F401
+    delete_asset,
+    get_asset_by_id,
+    get_assets_for_trip,
+    get_extracted_texts_for_trip,
+    save_asset,
+)
 from database.collaborators import (  # noqa: F401
     accept_invite,
     bind_pending_invites_for_email,

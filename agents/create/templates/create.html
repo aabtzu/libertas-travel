@@ -208,6 +208,15 @@
                     </div>
                     <input type="file" id="plan-file-input" accept=".pdf,.txt,.png,.jpg,.jpeg,.html,.htm,.eml,.ics,.json,.xlsx,.xls,.docx,.csv" style="display: none;">
 
+                    <!-- Source files panel -->
+                    <div class="assets-panel" id="assets-panel">
+                        <div class="assets-panel-header">
+                            <span class="assets-panel-title"><i class="fas fa-paperclip"></i> Source files</span>
+                            <span class="assets-count" id="assets-count"></span>
+                        </div>
+                        <div id="assets-list" class="assets-list"></div>
+                    </div>
+
                     <!-- Tips / General Notes -->
                     <div class="tips-section">
                         <div class="section-header">
@@ -394,17 +403,13 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/app-config.js"></script>
     <script src="/static/js/main.js?v=8"></script>
-<<<<<<< HEAD
-    <script src="/static/js/calendar.js?v=2"></script>
-=======
     <script src="/static/js/calendar.js?v=3"></script>
->>>>>>> fix/calendar-items-and-map-geocoding
     <script>
         // Trip link from URL - check for both 'link' and 'edit' parameters
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=60"></script>
+    <script src="/static/js/create.js?v=61"></script>
     <script src="/static/js/create-render.js?v=4"></script>
     <script src="/static/js/create-items.js?v=4"></script>
     <script src="/static/js/create-upload.js?v=8"></script>
@@ -415,6 +420,7 @@
     <script src="/static/js/create-map.js?v=9"></script>
     <script src="/static/js/create-collab.js?v=1"></script>
     <script src="/static/js/create-heartbeat.js?v=1"></script>
+    <script src="/static/js/create-assets.js?v=1"></script>
 
     <!-- Mobile floating chat button - must be direct child of body for position:fixed -->
     <button class="mobile-chat-fab" id="mobile-chat-fab" aria-label="Open chat assistant">
