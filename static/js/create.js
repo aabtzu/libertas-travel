@@ -616,11 +616,14 @@ async function loadTrip(link) {
             hideCreateDialog();
 
             // Check if the current user is the trip owner (not just a collaborator).
-            // create-collab.js reads window._isOwner to show/hide the Share button.
+            // create-collab.js reads these to control the Share button and Remove buttons.
             fetch(`/api/trip/${encodeURIComponent(link)}/can-edit`)
                 .then(r => r.json())
-                .then(d => { window._isOwner = !!d.isOwner; })
-                .catch(() => { window._isOwner = false; });
+                .then(d => {
+                    window._isOwner = !!d.isOwner;
+                    window._canEdit = !!d.canEdit;
+                })
+                .catch(() => { window._isOwner = false; window._canEdit = false; });
 
             // Start polling for concurrent edits by collaborators.
             initHeartbeat(link);

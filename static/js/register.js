@@ -1,6 +1,26 @@
 // Register form handler
 const _inviteToken = new URLSearchParams(window.location.search).get('invite_token');
 
+// When arriving via a collaboration invite link, fetch the site invite code
+// transparently so the invitee doesn't have to know it.
+async function _prefillInviteCode() {
+    if (!_inviteToken) return;
+    try {
+        const r = await fetch(`/api/auth/collab-invite-code?token=${encodeURIComponent(_inviteToken)}`);
+        const d = await r.json();
+        if (d.invite_code) {
+            const field = document.getElementById('invite-code');
+            if (field) {
+                field.value = d.invite_code;
+                // Hide the field - the invitee doesn't need to see or touch it
+                const group = field.closest('.form-group') || field.parentElement;
+                if (group) group.style.display = 'none';
+            }
+        }
+    } catch { /* best-effort */ }
+}
+_prefillInviteCode();
+
 document.getElementById('register-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -13,7 +33,6 @@ document.getElementById('register-form').addEventListener('submit', async functi
     const successDiv = document.getElementById('register-success');
     const errorMsg = document.getElementById('error-message');
 
-    // Client-side validation
     if (password !== confirmPassword) {
         errorMsg.textContent = 'Passwords do not match';
         errorDiv.classList.add('show');
@@ -23,9 +42,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
     try {
         const response = await fetch('/api/register', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, email, password, invite_code: inviteCode }),
         });
 
