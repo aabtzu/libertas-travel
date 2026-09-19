@@ -1,5 +1,5 @@
 /* Collaborator panel: invite by email, list current collaborators, remove. */
-/* Only shown when the current user is the trip owner (canEdit + isOwner). */
+/* Share button shown to any editor. Remove buttons shown only to the trip owner. */
 
 (function () {
     const collabBtn = document.getElementById('collab-btn');
@@ -55,6 +55,8 @@
                 removeBtn.className = 'collab-remove-btn';
                 removeBtn.style.cssText = 'background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px;';
                 removeBtn.textContent = 'Remove';
+                // Only the trip owner can remove collaborators
+                if (!window._isOwner) removeBtn.style.display = 'none';
 
                 row.appendChild(label);
                 row.appendChild(removeBtn);
@@ -130,15 +132,15 @@
         }
     });
 
-    // Show the button only when the current user is the trip owner.
-    // create-save.js sets window._isOwner after the can-edit check resolves.
+    // Show the Share button to any editor (owner or collaborator).
+    // create.js sets window._canEdit after the can-edit check resolves.
     // We poll briefly because scripts load in parallel.
-    function showIfOwner() {
-        if (typeof window._isOwner !== 'undefined') {
-            collabBtn.style.display = window._isOwner ? '' : 'none';
+    function showIfEditor() {
+        if (typeof window._canEdit !== 'undefined') {
+            collabBtn.style.display = window._canEdit ? '' : 'none';
         } else {
-            setTimeout(showIfOwner, 200);
+            setTimeout(showIfEditor, 200);
         }
     }
-    showIfOwner();
+    showIfEditor();
 }());

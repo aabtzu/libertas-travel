@@ -22,12 +22,12 @@ def _register_url(token: str) -> str:
 def invite_handler(
     trip_link: str, invited_email: str, inviter_user_id: int
 ) -> tuple[dict[str, Any], int]:
-    """Send a collaboration invite. Only the trip owner may invite."""
+    """Send a collaboration invite. Owner or any accepted collaborator may invite."""
     owner_id = db.get_trip_owner(trip_link)
     if owner_id is None:
         return {"error": "Trip not found"}, 404
-    if owner_id != inviter_user_id:
-        return {"error": "Only the trip owner can invite collaborators"}, 403
+    if not db.can_user_edit_trip(trip_link, inviter_user_id):
+        return {"error": "You do not have edit access to this trip"}, 403
 
     inviter = db.get_user_by_id(inviter_user_id)
     if not inviter:
@@ -72,12 +72,12 @@ def accept_invite_handler(token: str, user_id: int) -> tuple[dict[str, Any], int
 def list_collaborators_handler(
     trip_link: str, requester_user_id: int
 ) -> tuple[dict[str, Any], int]:
-    """List collaborators. Only the trip owner can see the full list."""
+    """List collaborators. Any editor (owner or collaborator) can see the list."""
     owner_id = db.get_trip_owner(trip_link)
     if owner_id is None:
         return {"error": "Trip not found"}, 404
-    if owner_id != requester_user_id:
-        return {"error": "Only the trip owner can list collaborators"}, 403
+    if not db.can_user_edit_trip(trip_link, requester_user_id):
+        return {"error": "You do not have edit access to this trip"}, 403
 
     collaborators = db.get_collaborators_for_trip(trip_link)
     result = []
