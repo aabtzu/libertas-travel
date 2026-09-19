@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import ssl
+import urllib.error
 import urllib.request
 
 
@@ -108,7 +109,15 @@ def download_from_url(url: str) -> tuple[bytes, str, str]:
     }
 
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, context=ctx, timeout=60) as response:
+    try:
+        response_ctx = urllib.request.urlopen(req, context=ctx, timeout=60)
+    except urllib.error.HTTPError as e:
+        # Read the error body - it may contain usable text (e.g. an HTML page with content)
+        body = e.read()
+        content_type = e.headers.get("Content-Type", "text/html").lower()
+        return body, filename, content_type
+
+    with response_ctx as response:
         content_type = response.headers.get("Content-Type", "").lower()
         content_disp = response.headers.get("Content-Disposition", "")
         if "filename=" in content_disp:
@@ -128,29 +137,44 @@ def download_from_url(url: str) -> tuple[bytes, str, str]:
 
 
 def fetch_webpage_for_chat(url: str) -> dict:
-    """Fetch a web page and return extracted text for chat handlers."""
+    """Fetch a web page and return extracted text for chat handlers.
+
+    Falls back to raw text extraction for any content type - the caller/LLM
+    decides whether the result is useful rather than failing here.
+    """
     try:
         content, filename, content_type = download_from_url(url)
+    except Exception as e:
+        return {"success": False, "error": str(e), "url": url}
+
+    # Extract text - prefer HTML parser for HTML, plain decode for everything else
+    try:
         if "html" in content_type or filename.endswith(".html"):
             text = extract_text_from_html(content)
+        elif "pdf" in content_type or filename.endswith(".pdf"):
+            # Binary PDF - can't extract text here; signal to caller
+            return {"success": False, "error": "PDF content requires file upload", "url": url}
         else:
             try:
                 text = content.decode("utf-8")
             except UnicodeDecodeError:
-                text = content.decode("latin-1")
-
-        title = None
-        try:
-            html_str = content.decode("utf-8", errors="ignore")
-            title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_str, re.IGNORECASE)
-            if title_match:
-                title = title_match.group(1).strip()
-        except Exception:
-            pass
-
-        if len(text) > 15000:
-            text = text[:15000] + "\n\n[Content truncated...]"
-
-        return {"success": True, "text": text, "title": title or url, "url": url}
+                text = content.decode("latin-1", errors="replace")
     except Exception as e:
-        return {"success": False, "error": str(e), "url": url}
+        return {"success": False, "error": f"Could not extract text: {e}", "url": url}
+
+    if not text.strip():
+        return {"success": False, "error": "Page had no readable text", "url": url}
+
+    title = None
+    try:
+        html_str = content.decode("utf-8", errors="ignore")
+        title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_str, re.IGNORECASE)
+        if title_match:
+            title = title_match.group(1).strip()
+    except Exception:
+        pass
+
+    if len(text) > 15000:
+        text = text[:15000] + "\n\n[Content truncated...]"
+
+    return {"success": True, "text": text, "title": title or url, "url": url}
