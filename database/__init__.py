@@ -4,6 +4,17 @@ All callers use `import database as db` or `from database import X`, so this
 __init__.py must expose the full public API that database.py previously provided.
 """
 
+from database.collaborators import (  # noqa: F401
+    accept_invite,
+    bind_pending_invites_for_email,
+    can_user_edit_trip,
+    get_collaborators_for_trip,
+    get_invite_by_token,
+    get_shared_trips_for_user,
+    invite_collaborator,
+    is_collaborator,
+    remove_collaborator,
+)
 from database.connection import (  # noqa: F401
     DATABASE_URL,
     HAS_POSTGRES,

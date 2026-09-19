@@ -245,8 +245,9 @@ def profile():
 @require_auth
 def trips():
     user_trips = db.get_user_trips(g.user_id)
+    shared_trips = db.get_shared_trips_for_user(g.user_id)
     public_trips = db.get_public_trips(exclude_user_id=g.user_id)
-    return _html(generate_trips_page(user_trips, public_trips))
+    return _html(generate_trips_page(user_trips, public_trips, shared_trips=shared_trips))
 
 
 @pages_bp.get("/create")

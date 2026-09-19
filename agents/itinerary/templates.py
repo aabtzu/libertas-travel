@@ -449,7 +449,9 @@ def generate_public_trip_card(
     )
 
 
-def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> str:
+def generate_trips_page(
+    trips: list[dict], public_trips: list[dict] = None, shared_trips: list[dict] = None
+) -> str:
     """Generate the My Trips page HTML.
 
     Args:
@@ -458,6 +460,8 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
     """
     if public_trips is None:
         public_trips = []
+    if shared_trips is None:
+        shared_trips = []
 
     # Sort trips so the soonest upcoming is at the top, past trips group at
     # the bottom (most-recent past first), no-date trips at the very end.
@@ -604,6 +608,46 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
     # Archived section + toggle are always rendered (starts collapsed). JS
     # flips visibility based on count and on the user clicking the toggle.
     # Markup lives in templates/archived_{section,toggle}.html.
+    # Shared trips section (trips where this user is a collaborator)
+    shared_section = ""
+    if shared_trips:
+        shared_cards_list = []
+        for i, trip in enumerate(shared_trips):
+            try:
+                sh_itinerary_data = trip.get("itinerary_data") or {}
+                if isinstance(sh_itinerary_data, str):
+                    try:
+                        sh_itinerary_data = json.loads(sh_itinerary_data)
+                    except (json.JSONDecodeError, ValueError):
+                        sh_itinerary_data = {}
+                sh_start_date = get_trip_start_date(sh_itinerary_data) or trip.get("start_date")
+                sh_formatted_date = format_trip_date(sh_start_date)
+
+                card = generate_public_trip_card(
+                    title=trip.get("title", "Untitled Trip"),
+                    link=trip.get("link", "#"),
+                    dates=sh_formatted_date,
+                    days=trip.get("days", 0) or 0,
+                    locations=trip.get("locations", 0) or 0,
+                    activities=trip.get("activities", 0) or 0,
+                    owner_username=trip.get("owner_username", ""),
+                    index=i,
+                    itinerary_data=trip.get("itinerary_data"),
+                )
+                shared_cards_list.append(card)
+            except Exception as e:
+                print(f"Warning: Could not generate shared card for trip {trip}: {e}")
+                continue
+        shared_section = (
+            '<div class="public-trips-section">'
+            '<div class="trips-header-row">'
+            '<h2><i class="fas fa-user-friends"></i> Shared With Me</h2>'
+            "</div>"
+            '<div class="trips-grid public-trips-grid">'
+            + "\n".join(shared_cards_list)
+            + "</div></div>"
+        )
+
     archived_section = get_template("archived_section.html").format(archived_cards=archived_cards)
     archived_toggle = get_template("archived_toggle.html").format(
         hidden_attr="" if archived_cards_list else 'hidden=""',
@@ -614,7 +658,7 @@ def generate_trips_page(trips: list[dict], public_trips: list[dict] = None) -> s
     return template.format(
         nav_html=get_nav_html("trips"),
         trip_cards=trip_cards,
-        public_trips_section=public_trips_section,
+        public_trips_section=shared_section + public_trips_section,
         archived_section=archived_section,
         archived_toggle=archived_toggle,
     )
