@@ -11,6 +11,7 @@ from typing import Any
 
 import database as db
 from agents.common.llm import SONNET, make_llm
+from agents.create.assets_handler import save_trip_asset
 from agents.create.file_parsers import (
     SUPPORTED_EXTENSIONS,
     extract_file_content,
@@ -284,6 +285,10 @@ def upload_file_handler(
             }
             db.add_trip(user_id, trip_data, itinerary_data)
             geocoding_worker.queue_geocoding(output_file, itinerary)
+            try:
+                save_trip_asset(output_file, filename, file_data, "application/json")
+            except Exception as _ae:
+                print(f"[assets] Warning: could not save asset: {_ae}")
             return {"success": True, "title": title, "link": output_file}, 200
 
         tmp_path = None
@@ -347,6 +352,14 @@ def upload_file_handler(
             db.add_trip(user_id, trip_data, itinerary_data)
             geocoding_worker.queue_geocoding(output_file, itinerary)
             print(f"[UPLOAD] SUCCESS - Total time: {time.time() - start_time:.1f}s")
+            try:
+                import mimetypes
+
+                mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+                extracted = extracted.get("text") if isinstance(extracted, dict) else None
+                save_trip_asset(output_file, filename, file_data, mime, extracted_text=extracted)
+            except Exception as _ae:
+                print(f"[assets] Warning: could not save asset: {_ae}")
             return {"success": True, "title": itinerary.title, "link": output_file}, 200
 
         finally:
@@ -538,6 +551,21 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
         }
         db.add_trip(user_id, trip_data, itinerary_data)
         geocoding_worker.queue_geocoding(output_file, itinerary)
+        try:
+            from urllib.parse import urlparse
+
+            url_host = urlparse(url).netloc or filename
+            import mimetypes
+
+            mime = mimetypes.guess_type(filename)[0] or content_type or "application/octet-stream"
+            url_text = None
+            if is_html and not is_pdf and not is_xlsx:
+                url_text = html_text
+            elif is_text and not is_pdf and not is_xlsx:
+                url_text = plain_text
+            save_trip_asset(output_file, url_host, file_data, mime, extracted_text=url_text)
+        except Exception as _ae:
+            print(f"[assets] Warning: could not save URL asset: {_ae}")
         return {"success": True, "title": itinerary.title, "link": output_file}, 200
 
     except Exception as e:

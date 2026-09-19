@@ -625,6 +625,9 @@ async function loadTrip(link) {
             // Start polling for concurrent edits by collaborators.
             initHeartbeat(link);
 
+            // Load the source-files panel.
+            if (typeof initAssets === 'function') initAssets(link);
+
             // Button label depends on draft status. New trips are drafts;
             // saving promotes them to the My Trips list. Existing trips
             // already live in the list, so the button just regenerates the

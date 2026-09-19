@@ -604,3 +604,90 @@
     line-height: 1;
 }
 .heartbeat-dismiss-btn:hover { color: #fff; }
+
+/* --- Assets panel --- */
+.assets-panel {
+    margin: 12px 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+}
+.assets-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+}
+.assets-panel-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1a1a2e;
+}
+.assets-count {
+    font-size: 0.78rem;
+    color: #666;
+}
+.assets-list {
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+.assets-list:empty { padding: 0; }
+.asset-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #f8f9fa;
+    transition: opacity 0.2s;
+}
+.asset-thumb {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.asset-icon {
+    font-size: 1.3rem;
+    color: #667eea;
+    width: 36px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.asset-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.asset-name {
+    font-size: 0.8rem;
+    color: #1a1a2e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.asset-size {
+    font-size: 0.72rem;
+    color: #666;
+}
+.asset-delete {
+    background: transparent;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 2px 4px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.asset-delete:hover { color: #c0392b; }
+
