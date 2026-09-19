@@ -54,14 +54,15 @@ def convert_google_drive_url(url: str) -> tuple[str, str]:
     file_id = None
     filename = "downloaded_file"
 
-    if "/file/d/" in url:
-        match = re.search(r"/file/d/([a-zA-Z0-9_-]+)", url)
+    if "/document/d/" in url:
+        # Google Docs - export as plain text for parsing
+        match = re.search(r"/document/d/([a-zA-Z0-9_-]+)", url)
         if match:
             file_id = match.group(1)
-    elif "id=" in url:
-        match = re.search(r"id=([a-zA-Z0-9_-]+)", url)
-        if match:
-            file_id = match.group(1)
+            return (
+                f"https://docs.google.com/document/d/{file_id}/export?format=txt",
+                "document.txt",
+            )
     elif "/spreadsheets/d/" in url:
         match = re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", url)
         if match:
@@ -70,6 +71,14 @@ def convert_google_drive_url(url: str) -> tuple[str, str]:
                 f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx",
                 "spreadsheet.xlsx",
             )
+    elif "/file/d/" in url:
+        match = re.search(r"/file/d/([a-zA-Z0-9_-]+)", url)
+        if match:
+            file_id = match.group(1)
+    elif "id=" in url:
+        match = re.search(r"id=([a-zA-Z0-9_-]+)", url)
+        if match:
+            file_id = match.group(1)
 
     if file_id:
         return f"https://drive.google.com/uc?export=download&id={file_id}", filename
