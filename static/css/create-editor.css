@@ -1,0 +1,566 @@
+/* Create Trip Page - Editor Layout, Timeline, Map, and Item Card Styles (split from create.css) */
+
+/* ==================== Editor Container ==================== */
+.create-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px);
+    background: var(--surface-sunken);
+}
+
+/* Grid/calendar/map tabs: let the page scroll naturally instead of boxing
+   the content in a fixed-height scroll area. The sidebar stays put via its
+   own fixed positioning on mobile and its own overflow-y on desktop. */
+.create-container.timeline-scrolls {
+    height: auto;
+    min-height: calc(100vh - 60px);
+}
+
+.create-container.timeline-scrolls .editor-main {
+    overflow: visible;
+}
+
+.create-container.timeline-scrolls .editor-timeline {
+    overflow-y: visible;
+}
+
+/* On desktop, keep the sidebar stuck at viewport height so it scrolls
+   internally instead of growing with the page when map/grid/calendar tabs
+   are active (those tabs remove the overflow:hidden that normally clips it). */
+@media (min-width: 769px) {
+    .create-container.timeline-scrolls .editor-sidebar {
+        position: sticky;
+        top: 0;
+        height: calc(100vh - 60px);
+        overflow-y: auto;
+    }
+}
+
+/* ==================== Editor Header ==================== */
+.editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: white;
+    border-bottom: 1px solid var(--border);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.title-input {
+    font-size: 1.4rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    padding: 8px 0;
+    min-width: 250px;
+}
+
+.title-input:focus {
+    outline: none;
+    border-bottom: 2px solid var(--accent);
+}
+
+.header-dates {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink-muted);
+}
+
+.date-input-small {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.save-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #27ae60;
+}
+
+.save-status.saving {
+    color: var(--accent);
+}
+
+.save-status.saving i {
+    animation: spin 1s linear infinite;
+}
+
+.save-status.error {
+    color: #e74c3c;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==================== Editor Main Layout ==================== */
+.editor-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ==================== Timeline Section ==================== */
+.editor-timeline {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.timeline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.timeline-header h3 {
+    margin: 0;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.timeline-header h3 i {
+    color: var(--accent);
+}
+
+/* ==================== Timeline Tabs ==================== */
+.timeline-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--border-strong);
+    padding-bottom: 0;
+}
+
+.timeline-tab {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.timeline-tab:hover {
+    color: var(--ink);
+}
+
+.timeline-tab.active {
+    color: var(--accent);
+}
+
+.timeline-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+}
+
+.timeline-tab i {
+    font-size: 14px;
+}
+
+.timeline-tab-actions {
+    margin-left: auto;
+    padding-bottom: 8px;
+}
+
+.timeline-tab-content {
+    display: none;
+}
+
+.timeline-tab-content.active {
+    display: block;
+    margin-bottom: 24px;
+}
+
+/* ==================== Map View ==================== */
+.map-day-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: var(--surface-sunken);
+    border-radius: 8px;
+}
+
+.map-day-selector label {
+    font-size: 14px;
+    color: var(--ink-muted);
+    font-weight: 500;
+}
+
+.map-day-selector select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.map-regen-btn {
+    margin-left: auto;
+    padding: 6px 12px;
+    background: white;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.map-regen-btn:hover { background: #f0f2ff; }
+.map-regen-btn:disabled { opacity: 0.6; cursor: wait; }
+
+.map-container {
+    height: 400px;
+    min-height: 300px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #e8e8e8;
+    position: relative;
+}
+
+/* When the map tab is active the container gains timeline-scrolls, which
+   makes height:auto bubble up so calc(100vh - X) is unreliable. Instead,
+   pin the whole editor to the viewport and let the map fill via flex. */
+.map-tab-active .create-container {
+    height: calc(100vh - 60px) !important;
+}
+.map-tab-active .editor-main {
+    overflow: hidden !important;
+    height: 100%;
+}
+.map-tab-active .editor-timeline {
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+}
+.map-tab-active #map-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+.map-tab-active .map-container {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+}
+
+#trip-map {
+    height: 100%;
+    width: 100%;
+}
+
+.map-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-sunken);
+    color: var(--ink-muted);
+    gap: 12px;
+    z-index: 10;
+}
+
+.map-loading i {
+    font-size: 24px;
+    color: var(--accent);
+}
+
+.map-loading.hidden {
+    display: none;
+}
+
+.map-no-locations {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--ink-muted);
+    text-align: center;
+    padding: 40px;
+}
+
+.map-no-locations i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #ccc;
+}
+
+.map-no-locations p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Leaflet custom marker styles */
+.leaflet-custom-marker {
+    background: none;
+    border: none;
+}
+
+/* Map popup styles */
+.marker-popup {
+    min-width: 150px;
+}
+
+.marker-popup .marker-day {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.marker-popup .marker-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    margin-bottom: 6px;
+}
+
+.marker-popup .marker-meta {
+    font-size: 12px;
+    color: var(--ink-muted);
+}
+
+.marker-popup .marker-meta div {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.marker-popup .marker-meta i {
+    width: 12px;
+    color: var(--ink-muted);
+}
+
+/* ==================== Days Container ==================== */
+.days-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.day-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--accent);
+    color: white;
+}
+
+.day-header h4 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.day-date {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.day-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.day-actions button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-actions button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.day-items {
+    padding: 12px;
+    min-height: 60px;
+}
+
+.day-items-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    margin: 8px;
+}
+
+/* ==================== Item Cards ==================== */
+.item-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: var(--surface-raised);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 4px solid var(--accent);
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.item-card:hover {
+    background: #f0f1f3;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Allow text selection in content area */
+.item-card .item-content {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}
+
+/* Drag handle on the icon */
+.item-card .item-icon {
+    cursor: grab;
+}
+
+.item-card .item-icon:active {
+    cursor: grabbing;
+}
+
+.item-card.flight { border-left-color: #1565c0; }
+.item-card.transport { border-left-color: #e65100; }
+.item-card.travel { border-left-color: #1565c0; }
+.item-card.hotel, .item-card.lodging { border-left-color: #7b1fa2; }
+.item-card.activity, .item-card.attraction { border-left-color: #2e7d32; }
+.item-card.meal { border-left-color: #c2185b; }
+.item-card.other { border-left-color: #616161; }
+
+.item-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: white;
+    flex-shrink: 0;
+}
+
+.item-icon.flight { background: #1565c0; }
+.item-icon.transport { background: #e65100; }
+.item-icon.travel { background: #1565c0; }
+.item-icon.hotel, .item-icon.lodging { background: #7b1fa2; }
+.item-icon.activity, .item-icon.attraction { background: #2e7d32; }
+.item-icon.meal { background: #c2185b; }
+.item-icon.other { background: #616161; }
+
+.item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-title {
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 4px;
+}
+
+.item-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+}
+
+.item-meta i {
+    margin-right: 4px;
+}
+
+.item-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.item-card:hover .item-actions {
+    opacity: 1;
+}
+
+.item-actions button {
+    background: none;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--ink-muted);
+}
+
+.item-actions button:hover {
+    background: var(--border);
+    color: var(--ink);
+}
