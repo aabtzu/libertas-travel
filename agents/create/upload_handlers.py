@@ -471,6 +471,7 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
     is_html = "html" in content_type or file_data[:15].lower().startswith((b"<!doctype", b"<html"))
     is_pdf = file_data[:4] == b"%PDF"
     is_xlsx = file_data[:4] == b"PK\x03\x04"
+    is_text = "text/plain" in content_type or Path(filename).suffix.lower() in (".txt", ".csv")
 
     tmp_path = None
     try:
@@ -483,6 +484,16 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
                 }, 400
             parser = ItineraryParser()
             itinerary = parser.parse_text(html_text, source_url=url)
+        elif is_text and not is_pdf and not is_xlsx:
+            # Plain text (e.g. Google Docs export, .txt files) - parse directly
+            try:
+                plain_text = file_data.decode("utf-8")
+            except UnicodeDecodeError:
+                plain_text = file_data.decode("latin-1", errors="replace")
+            if len(plain_text.strip()) < 50:
+                return {"error": "Page had no readable text content."}, 400
+            parser = ItineraryParser()
+            itinerary = parser.parse_text(plain_text, source_url=url)
         else:
             suffix = Path(filename).suffix.lower()
             if not suffix or suffix not in (".pdf", ".xlsx", ".xls"):
