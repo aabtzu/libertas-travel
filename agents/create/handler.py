@@ -111,9 +111,29 @@ def create_trip_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
         return {"error": "Failed to create trip"}, 500
 
 
+def _resolve_owner_id(user_id: int, link: str) -> int | None:
+    """Return the trip owner's user_id for a given link.
+
+    If user_id is the owner, returns user_id directly.
+    If user_id is an accepted collaborator, returns the actual owner's id.
+    Returns None if the user has no edit access.
+    """
+    owner_id = db.get_trip_owner(link)
+    if owner_id is None:
+        return None
+    if owner_id == user_id:
+        return user_id
+    if db.can_user_edit_trip(link, user_id):
+        return owner_id
+    return None
+
+
 def get_trip_data_handler(user_id: int, link: str) -> dict[str, Any]:
     """Get trip data for editing."""
-    trip = db.get_trip_by_link(user_id, link)
+    owner_id = _resolve_owner_id(user_id, link)
+    if owner_id is None:
+        return {"error": "Trip not found"}, 404
+    trip = db.get_trip_by_link(owner_id, link)
     if trip:
         return {"success": True, "trip": trip}, 200
     else:
@@ -122,6 +142,10 @@ def get_trip_data_handler(user_id: int, link: str) -> dict[str, Any]:
 
 def save_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str, Any]:
     """Auto-save trip itinerary data and title."""
+    owner_id = _resolve_owner_id(user_id, link)
+    if owner_id is None:
+        return {"error": "Trip not found or no edit access"}, 404
+
     itinerary_data = data.get("itinerary_data")
     if itinerary_data is None:
         return {"error": "No itinerary data provided"}, 400
@@ -130,7 +154,7 @@ def save_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str
     needs_existing = "map_data" not in itinerary_data or "writeup" not in itinerary_data
     existing_data: dict = {}
     if needs_existing:
-        existing_trip = db.get_trip_by_link(user_id, link)
+        existing_trip = db.get_trip_by_link(owner_id, link)
         if existing_trip:
             existing_data = existing_trip.get("itinerary_data") or {}
 
@@ -150,19 +174,19 @@ def save_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str
     title = data.get("title")
     print(f"[SAVE] link={link}, title={title}")
     if title:
-        db.update_trip(user_id, link, {"title": title})
+        db.update_trip(owner_id, link, {"title": title})
         itinerary_data["title"] = title
         print(f"[SAVE] Updated title to: {title}")
 
-    success = db.update_trip_itinerary_data(user_id, link, itinerary_data)
+    success = db.update_trip_itinerary_data(owner_id, link, itinerary_data)
 
     if success:
-        trip = db.get_trip_by_link(user_id, link)
+        trip = db.get_trip_by_link(owner_id, link)
         if trip and not trip.get("is_draft", True):
             _generate_trip_html(trip, link)
 
         if needs_map_regen:
-            _trigger_map_regen(user_id, link, itinerary_data)
+            _trigger_map_regen(owner_id, link, itinerary_data)
 
         return {
             "success": True,
@@ -211,7 +235,11 @@ def _auto_import_trip_venues(user_id: int, itinerary_data: dict) -> int:
 
 def publish_trip_handler(user_id: int, link: str) -> dict[str, Any]:
     """Publish a draft trip (set is_draft=False) and generate HTML."""
-    trip = db.get_trip_by_link(user_id, link)
+    owner_id = _resolve_owner_id(user_id, link)
+    if owner_id is None:
+        return {"error": "Trip not found or no edit access"}, 404
+
+    trip = db.get_trip_by_link(owner_id, link)
     if not trip:
         return {"error": "Trip not found"}, 404
 
@@ -221,10 +249,10 @@ def publish_trip_handler(user_id: int, link: str) -> dict[str, Any]:
 
     _generate_trip_html(trip, link)
 
-    success = db.publish_draft(user_id, link)
+    success = db.publish_draft(owner_id, link)
 
     if success:
-        venues_saved = _auto_import_trip_venues(user_id, itinerary_data)
+        venues_saved = _auto_import_trip_venues(owner_id, itinerary_data)
         if venues_saved:
             print(f"[PUBLISH] auto-imported {venues_saved} venues from trip {link}", flush=True)
         return {"success": True, "venues_imported": venues_saved}, 200
@@ -234,8 +262,11 @@ def publish_trip_handler(user_id: int, link: str) -> dict[str, Any]:
 
 def export_trip_handler(user_id: int, link: str) -> dict[str, Any]:
     """Export trip data as downloadable JSON."""
-    trip = db.get_trip_by_link(user_id, link)
+    owner_id = _resolve_owner_id(user_id, link)
+    if owner_id is None:
+        return {"error": "Trip not found or no edit access"}, 404
 
+    trip = db.get_trip_by_link(owner_id, link)
     if not trip:
         return {"error": "Trip not found"}, 404
 
@@ -256,6 +287,10 @@ def export_trip_handler(user_id: int, link: str) -> dict[str, Any]:
 
 def add_item_to_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str, Any]:
     """Add an item to trip's ideas pile."""
+    owner_id = _resolve_owner_id(user_id, link)
+    if owner_id is None:
+        return {"error": "Trip not found or no edit access"}, 404
+
     item = data.get("item")
     if not item:
         return {"error": "No item provided"}, 400
@@ -263,7 +298,7 @@ def add_item_to_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> d
     if "title" not in item:
         return {"error": "Item must have a title"}, 400
 
-    success = db.add_item_to_trip(user_id, link, item)
+    success = db.add_item_to_trip(owner_id, link, item)
 
     if success:
         return {"success": True}, 200

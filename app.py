@@ -45,9 +45,19 @@ def create_app() -> Flask:
 
     @app.before_request
     def load_user():
+        from flask import g, session
+
         from agents.common.flask_utils import load_current_user
 
         load_current_user()
+
+        # Auto-accept any pending collaboration invites for this user's email.
+        # Runs once per session by checking a flag we set after the first bind.
+        if g.get("user_id") and not session.get("invites_bound"):
+            user = db.get_user_by_id(g.user_id)
+            if user and user.get("email"):
+                db.bind_pending_invites_for_email(g.user_id, user["email"])
+            session["invites_bound"] = True
 
     @app.after_request
     def no_store_dynamic_responses(response):

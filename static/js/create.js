@@ -615,6 +615,13 @@ async function loadTrip(link) {
             updateEditorUI();
             hideCreateDialog();
 
+            // Check if the current user is the trip owner (not just a collaborator).
+            // create-collab.js reads window._isOwner to show/hide the Share button.
+            fetch(`/api/trip/${encodeURIComponent(link)}/can-edit`)
+                .then(r => r.json())
+                .then(d => { window._isOwner = !!d.isOwner; })
+                .catch(() => { window._isOwner = false; });
+
             // Button label depends on draft status. New trips are drafts;
             // saving promotes them to the My Trips list. Existing trips
             // already live in the list, so the button just regenerates the

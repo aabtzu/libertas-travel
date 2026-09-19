@@ -82,6 +82,34 @@ confirmation email rather than a forward of a forward.</p>
     return send_mail(to, email_subject, body_html)
 
 
+def send_collaboration_invite(
+    to: str,
+    inviter_name: str,
+    trip_title: str,
+    accept_url: str,
+    register_url: str,
+    already_registered: bool,
+) -> bool:
+    """Send a trip collaboration invite email."""
+    subject = f"{inviter_name} invited you to edit a trip on Libertas"
+    cta_url = accept_url if already_registered else register_url
+    cta_label = "Accept invite" if already_registered else "Create account and accept"
+    body_html = f"""
+<p>Hi,</p>
+<p><strong>{inviter_name}</strong> invited you to collaborate on
+<strong>{trip_title}</strong> on Libertas.</p>
+<p>As a collaborator you can view and edit the trip just like the owner.</p>
+<p><a href="{cta_url}" style="background:#667eea;color:white;padding:10px 20px;
+border-radius:6px;text-decoration:none;display:inline-block;margin:8px 0;">
+{cta_label}</a></p>
+<p style="color:#666;font-size:13px;">
+If you didn't expect this invite, you can ignore this email.
+</p>
+<p style="color:#666;font-size:13px;">Libertas trip planner</p>
+"""
+    return send_mail(to, subject, body_html)
+
+
 def send_unrecognised_sender(to: str) -> bool:
     """Tell an unrecognised sender that their address isn't linked to an account."""
     subject = "Email not recognised - Libertas"

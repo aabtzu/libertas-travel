@@ -13,6 +13,7 @@ import database as db
 from agents.common.flask_utils import json_err, json_ok, require_auth
 from agents.create import handler as create_handler
 from agents.itinerary import geocoding_worker
+from agents.trips import collaborator_handler
 from agents.trips.ics import (
     calendar_subscribe_token,
     generate_ics,
@@ -30,20 +31,29 @@ OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", Path(__file__).parent.parent.pare
 @trips_bp.get("/api/trips/list")
 @require_auth
 def list_trips():
-    """Return lightweight list of user's trips (for dropdowns)."""
-    trips = db.get_user_trips(g.user_id)
-    return json_ok(
-        {
-            "trips": [
-                {
-                    "link": t["link"],
-                    "title": t["title"],
-                    "trip_type": t.get("trip_type", "itinerary"),
-                }
-                for t in trips
-            ]
-        }
-    )
+    """Return lightweight list of user's own trips plus trips shared with them."""
+    own = db.get_user_trips(g.user_id)
+    shared = db.get_shared_trips_for_user(g.user_id)
+    result = []
+    for t in own:
+        result.append(
+            {
+                "link": t["link"],
+                "title": t["title"],
+                "trip_type": t.get("trip_type", "itinerary"),
+                "shared_by": None,
+            }
+        )
+    for t in shared:
+        result.append(
+            {
+                "link": t["link"],
+                "title": t["title"],
+                "trip_type": t.get("trip_type", "itinerary"),
+                "shared_by": t.get("owner_username"),
+            }
+        )
+    return json_ok({"trips": result})
 
 
 @trips_bp.get("/api/trips/<link>/data")
@@ -196,7 +206,9 @@ def can_edit_trip(link: str):
     owner_id = db.get_trip_owner(link)
     if owner_id is None:
         return json_err("Trip not found", status=404)
-    return json_ok({"canEdit": owner_id == g.user_id})
+    is_owner = owner_id == g.user_id
+    can_edit = is_owner or db.can_user_edit_trip(link, g.user_id)
+    return json_ok({"canEdit": can_edit, "isOwner": is_owner})
 
 
 @trips_bp.get("/api/map-status")
@@ -596,6 +608,55 @@ def save_user_profile():
 def list_forwarding_emails():
     """List the user's secondary forwarding email addresses."""
     return json_ok({"emails": db.get_forwarding_emails(g.user_id)})
+
+
+# --- Collaboration routes ---
+
+
+@trips_bp.post("/api/trips/<link>/invite")
+@require_auth
+def invite_collaborator(link: str):
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return json_err("email is required")
+    result, status = collaborator_handler.invite_handler(link, email, g.user_id)
+    if status == 200:
+        return json_ok(result)
+    return json_err(result.get("error", "Error"), status=status)
+
+
+@trips_bp.get("/api/trips/invite/accept")
+@require_auth
+def accept_trip_invite():
+    from flask import redirect
+
+    token = request.args.get("token", "").strip()
+    if not token:
+        return json_err("Missing token", status=400)
+    result, status = collaborator_handler.accept_invite_handler(token, g.user_id)
+    if status == 200:
+        trip_link = result.get("link", "")
+        return redirect(f"/create?link={trip_link}")
+    return json_err(result.get("error", "Error"), status=status)
+
+
+@trips_bp.get("/api/trips/<link>/collaborators")
+@require_auth
+def list_collaborators(link: str):
+    result, status = collaborator_handler.list_collaborators_handler(link, g.user_id)
+    if status == 200:
+        return json_ok(result)
+    return json_err(result.get("error", "Error"), status=status)
+
+
+@trips_bp.delete("/api/trips/<link>/collaborators/<int:collab_id>")
+@require_auth
+def remove_collaborator(link: str, collab_id: int):
+    result, status = collaborator_handler.remove_collaborator_handler(link, collab_id, g.user_id)
+    if status == 200:
+        return json_ok(result)
+    return json_err(result.get("error", "Error"), status=status)
 
 
 @trips_bp.post("/api/user/forwarding-emails")

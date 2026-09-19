@@ -296,4 +296,23 @@ def init_db():
             cursor.execute(_DDL_SQLITE_CREATE_INDEX_VENUES_COUNTRY)
             cursor.execute(_DDL_SQLITE_CREATE_INDEX_VENUES_TYPE)
 
+        # Collaborators table
+        from database.collaborators import (
+            DDL_PG_CREATE_COLLABORATORS,
+            DDL_PG_INDEX_COLLABORATORS_TRIP,
+            DDL_PG_INDEX_COLLABORATORS_USER,
+            DDL_SQLITE_CREATE_COLLABORATORS,
+            DDL_SQLITE_INDEX_COLLABORATORS_TRIP,
+            DDL_SQLITE_INDEX_COLLABORATORS_USER,
+        )
+
+        if USE_POSTGRES:
+            cursor.execute(DDL_PG_CREATE_COLLABORATORS)
+            cursor.execute(DDL_PG_INDEX_COLLABORATORS_TRIP)
+            cursor.execute(DDL_PG_INDEX_COLLABORATORS_USER)
+        else:
+            cursor.execute(DDL_SQLITE_CREATE_COLLABORATORS)
+            cursor.execute(DDL_SQLITE_INDEX_COLLABORATORS_TRIP)
+            cursor.execute(DDL_SQLITE_INDEX_COLLABORATORS_USER)
+
         print(f"[DB] Initialized {'PostgreSQL' if USE_POSTGRES else 'SQLite'} database")

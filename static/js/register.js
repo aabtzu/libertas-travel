@@ -1,4 +1,6 @@
 // Register form handler
+const _inviteToken = new URLSearchParams(window.location.search).get('invite_token');
+
 document.getElementById('register-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -32,8 +34,12 @@ document.getElementById('register-form').addEventListener('submit', async functi
         if (data.success) {
             errorDiv.classList.remove('show');
             successDiv.style.display = 'block';
+            // Carry invite_token to login so we redirect to the trip after login
+            const loginUrl = _inviteToken
+                ? `/login.html?invite_token=${encodeURIComponent(_inviteToken)}`
+                : '/login.html';
             setTimeout(function() {
-                window.location.href = '/login.html';
+                window.location.href = loginUrl;
             }, 2000);
         } else {
             errorMsg.textContent = data.error || 'Registration failed';

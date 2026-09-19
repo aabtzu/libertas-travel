@@ -33,11 +33,18 @@ document.getElementById('login-form').addEventListener('submit', async function(
                     console.log('Password credential storage skipped:', credErr);
                 }
             }
+            // If an invite token was carried from the register page, accept it
+            const params = new URLSearchParams(window.location.search);
+            const inviteToken = params.get('invite_token');
+            if (inviteToken) {
+                window.location.href = `/api/trips/invite/accept?token=${encodeURIComponent(inviteToken)}`;
+                return;
+            }
             // Redirect to the original page or home, but only if the
             // redirect param is a same-origin path. An attacker linking to
             // /login?redirect=https://evil.com would otherwise send the
             // user offsite right after they entered their password.
-            const raw = new URLSearchParams(window.location.search).get('redirect') || '/';
+            const raw = params.get('redirect') || '/';
             const safe = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
             window.location.href = safe;
         } else {
