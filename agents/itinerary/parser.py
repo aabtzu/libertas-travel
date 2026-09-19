@@ -113,6 +113,7 @@ Important:
 - For BUSES (coach, intercity bus): set category to "bus".
 - Use "transport" only for car rentals, taxis, and transfers that are not trains or buses.
 - For MEALS/RESERVATIONS: start_time is reservation time, end_time can be estimated end (e.g. +2 hours for dinner)
+- For RESTAURANT IDEAS/LISTS: When a day has a "Restaurants:", "Restaurant ideas:", or similar list of restaurant names, create a SEPARATE meal item for EACH restaurant in the list. Use the restaurant name as the title, set category to "meal", set the same date and day_number as the containing day, and set notes to "Restaurant idea". Do NOT skip these or merge them into one item.
 - If information is not available, use null
 - Ensure the JSON is valid
 
