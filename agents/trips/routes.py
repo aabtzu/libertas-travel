@@ -211,6 +211,17 @@ def can_edit_trip(link: str):
     return json_ok({"canEdit": can_edit, "isOwner": is_owner})
 
 
+@trips_bp.get("/api/trips/<link>/heartbeat")
+@require_auth
+def trip_heartbeat(link: str):
+    if not db.can_user_edit_trip(link, g.user_id):
+        return json_err("Not authorized", status=403)
+    data = db.get_trip_heartbeat(link)
+    if data is None:
+        return json_err("Trip not found", status=404)
+    return json_ok(data)
+
+
 @trips_bp.get("/api/map-status")
 @require_auth
 def map_status():

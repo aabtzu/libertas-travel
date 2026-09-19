@@ -564,3 +564,43 @@
     background: var(--border);
     color: var(--ink);
 }
+
+/* Concurrent-edit notification banner */
+.heartbeat-banner {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1600;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    max-width: 480px;
+}
+.heartbeat-reload-btn {
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.heartbeat-reload-btn:hover { background: #5a6fd6; }
+.heartbeat-dismiss-btn {
+    background: transparent;
+    color: #aaa;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+.heartbeat-dismiss-btn:hover { color: #fff; }

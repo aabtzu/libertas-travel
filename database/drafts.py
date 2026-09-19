@@ -37,11 +37,13 @@ _SQL_SQLITE_GET_DRAFT_TRIPS = """
 """
 
 _SQL_PG_UPDATE_TRIP_ITINERARY_DATA = """
-    UPDATE trips SET itinerary_data = %s, locations = %s, activities = %s
+    UPDATE trips SET itinerary_data = %s, locations = %s, activities = %s,
+        last_saved_at = NOW(), last_saved_by = %s
     WHERE user_id = %s AND link = %s
 """
 _SQL_SQLITE_UPDATE_TRIP_ITINERARY_DATA = """
-    UPDATE trips SET itinerary_data = ?, locations = ?, activities = ?
+    UPDATE trips SET itinerary_data = ?, locations = ?, activities = ?,
+        last_saved_at = CURRENT_TIMESTAMP, last_saved_by = ?
     WHERE user_id = ? AND link = ?
 """
 
@@ -167,8 +169,14 @@ def get_draft_trips(user_id: int) -> list[dict[str, Any]]:
             return [dict(row) for row in cursor.fetchall()]
 
 
-def update_trip_itinerary_data(user_id: int, link: str, itinerary_data: dict) -> bool:
-    """Update a trip's itinerary_data (for auto-save)."""
+def update_trip_itinerary_data(
+    user_id: int, link: str, itinerary_data: dict, saved_by: int | None = None
+) -> bool:
+    """Update a trip's itinerary_data (for auto-save).
+
+    saved_by is the actual actor's user_id (may differ from user_id when a
+    collaborator saves; used to stamp last_saved_by for the heartbeat feature).
+    """
     # Keep start_date/end_date in sync with the days array
     day_dates = [d["date"] for d in itinerary_data.get("days", []) if d.get("date")]
     if day_dates:
@@ -191,15 +199,16 @@ def update_trip_itinerary_data(user_id: int, link: str, itinerary_data: dict) ->
             )
             activities = len(items)
 
+            actor = saved_by if saved_by is not None else user_id
             if USE_POSTGRES:
                 cursor.execute(
                     _SQL_PG_UPDATE_TRIP_ITINERARY_DATA,
-                    (itinerary_json, locations, activities, user_id, link),
+                    (itinerary_json, locations, activities, actor, user_id, link),
                 )
             else:
                 cursor.execute(
                     _SQL_SQLITE_UPDATE_TRIP_ITINERARY_DATA,
-                    (itinerary_json, locations, activities, user_id, link),
+                    (itinerary_json, locations, activities, actor, user_id, link),
                 )
             return cursor.rowcount > 0
         except Exception as e:

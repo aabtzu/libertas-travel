@@ -101,6 +101,19 @@ _SQL_SQLITE_DELETE_TRIP = "DELETE FROM trips WHERE user_id = ? AND link = ?"
 _SQL_PG_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = %s"
 _SQL_SQLITE_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = ?"
 
+_SQL_PG_GET_TRIP_HEARTBEAT = """
+    SELECT t.last_saved_at, t.last_saved_by, u.username
+    FROM trips t
+    LEFT JOIN users u ON t.last_saved_by = u.id
+    WHERE t.link = %s
+"""
+_SQL_SQLITE_GET_TRIP_HEARTBEAT = """
+    SELECT t.last_saved_at, t.last_saved_by, u.username
+    FROM trips t
+    LEFT JOIN users u ON t.last_saved_by = u.id
+    WHERE t.link = ?
+"""
+
 _SQL_PG_SET_TRIP_ARCHIVED = """
     UPDATE trips SET is_archived = %s
     WHERE user_id = %s AND link = %s
@@ -300,6 +313,33 @@ def delete_trip(user_id: int, link: str) -> bool:
         else:
             cursor.execute(_SQL_SQLITE_DELETE_TRIP, (user_id, link))
         return cursor.rowcount > 0
+
+
+def get_trip_heartbeat(link: str) -> dict[str, Any] | None:
+    """Return last_saved_at and last_saved_by username for the heartbeat endpoint."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GET_TRIP_HEARTBEAT, (link,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            last_saved_at, last_saved_by, username = row
+            return {
+                "last_saved_at": last_saved_at.isoformat() if last_saved_at else None,
+                "last_saved_by": last_saved_by,
+                "username": username,
+            }
+        else:
+            cursor.execute(_SQL_SQLITE_GET_TRIP_HEARTBEAT, (link,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "last_saved_at": row["last_saved_at"],
+                "last_saved_by": row["last_saved_by"],
+                "username": row["username"],
+            }
 
 
 def get_trip_owner(link: str) -> int | None:

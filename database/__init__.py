@@ -44,6 +44,7 @@ from database.trips import (  # noqa: F401
     get_pending_geocoding_trips,
     get_published_trips_with_dates,
     get_trip_by_link,
+    get_trip_heartbeat,
     get_trip_owner,
     get_user_trips,
     set_trip_archived,
