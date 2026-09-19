@@ -622,6 +622,9 @@ async function loadTrip(link) {
                 .then(d => { window._isOwner = !!d.isOwner; })
                 .catch(() => { window._isOwner = false; });
 
+            // Start polling for concurrent edits by collaborators.
+            initHeartbeat(link);
+
             // Button label depends on draft status. New trips are drafts;
             // saving promotes them to the My Trips list. Existing trips
             // already live in the list, so the button just regenerates the

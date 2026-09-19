@@ -178,7 +178,7 @@ def save_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str
         itinerary_data["title"] = title
         print(f"[SAVE] Updated title to: {title}")
 
-    success = db.update_trip_itinerary_data(owner_id, link, itinerary_data)
+    success = db.update_trip_itinerary_data(owner_id, link, itinerary_data, saved_by=user_id)
 
     if success:
         trip = db.get_trip_by_link(owner_id, link)

@@ -68,6 +68,11 @@ _DDL_PG_ALTER_TRIPS_ADD_IS_ARCHIVED = (
     "ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE"
 )
 
+_DDL_PG_ALTER_TRIPS_ADD_LAST_SAVED_AT = (
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS last_saved_at TIMESTAMP"
+)
+_DDL_PG_ALTER_TRIPS_ADD_LAST_SAVED_BY = "ALTER TABLE trips ADD COLUMN IF NOT EXISTS last_saved_by INTEGER REFERENCES users(id) ON DELETE SET NULL"
+
 _DDL_PG_ALTER_USERS_ADD_PROFILE = "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB"
 
 _DDL_PG_CREATE_FORWARDING_EMAILS = """
@@ -131,6 +136,9 @@ _DDL_SQLITE_ALTER_TRIPS_ADD_TRIP_TYPE = (
 _DDL_SQLITE_ALTER_TRIPS_ADD_IS_ARCHIVED = (
     "ALTER TABLE trips ADD COLUMN is_archived INTEGER DEFAULT 0"
 )
+_DDL_SQLITE_ALTER_TRIPS_ADD_LAST_SAVED_AT = "ALTER TABLE trips ADD COLUMN last_saved_at TIMESTAMP"
+_DDL_SQLITE_ALTER_TRIPS_ADD_LAST_SAVED_BY = "ALTER TABLE trips ADD COLUMN last_saved_by INTEGER"
+
 _DDL_SQLITE_ALTER_USERS_ADD_PROFILE = "ALTER TABLE users ADD COLUMN profile TEXT"
 
 _DDL_SQLITE_CREATE_INDEX_TRIPS_USER_ID = (
@@ -249,6 +257,8 @@ def init_db():
             cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_IS_DRAFT)
             cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_TRIP_TYPE)
             cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_IS_ARCHIVED)
+            cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_LAST_SAVED_AT)
+            cursor.execute(_DDL_PG_ALTER_TRIPS_ADD_LAST_SAVED_BY)
             cursor.execute(_DDL_PG_ALTER_USERS_ADD_PROFILE)
             cursor.execute(_DDL_PG_CREATE_FORWARDING_EMAILS)
             cursor.execute(_DDL_PG_CREATE_INDEX_TRIPS_USER_ID)
@@ -273,6 +283,16 @@ def init_db():
 
             try:
                 cursor.execute(_DDL_SQLITE_ALTER_TRIPS_ADD_IS_ARCHIVED)
+            except Exception:
+                pass  # Column already exists
+
+            try:
+                cursor.execute(_DDL_SQLITE_ALTER_TRIPS_ADD_LAST_SAVED_AT)
+            except Exception:
+                pass  # Column already exists
+
+            try:
+                cursor.execute(_DDL_SQLITE_ALTER_TRIPS_ADD_LAST_SAVED_BY)
             except Exception:
                 pass  # Column already exists
 
