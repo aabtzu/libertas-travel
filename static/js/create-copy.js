@@ -26,7 +26,7 @@
 
         const card = document.createElement('div');
         card.style.cssText = [
-            'background:#fff',
+            'background:var(--surface)',
             'border-radius:12px',
             'padding:24px',
             'width:400px',
@@ -38,10 +38,10 @@
 
         const heading = document.createElement('h3');
         heading.id = 'copy-trip-heading';
-        heading.style.cssText = 'margin:0 0 4px;font-size:16px;color:#1a1a2e;';
+        heading.style.cssText = 'margin:0 0 4px;font-size:16px;color:var(--surface-dark);';
 
         const subheading = document.createElement('p');
-        subheading.style.cssText = 'margin:0 0 16px;font-size:13px;color:#888;';
+        subheading.style.cssText = 'margin:0 0 16px;font-size:13px;color:var(--ink-muted);';
         subheading.textContent = 'Select a trip to copy or move this item to:';
 
         _tripList = document.createElement('div');
@@ -55,9 +55,9 @@
         cancelBtn.style.cssText = [
             'margin-top:12px',
             'padding:8px 16px',
-            'border:1px solid #ddd',
+            'border:1px solid var(--border-strong)',
             'border-radius:6px',
-            'background:#fff',
+            'background:var(--surface)',
             'cursor:pointer',
             'font-size:13px',
         ].join(';');
@@ -120,11 +120,11 @@
                 row.style.cssText = 'display:flex;gap:8px;align-items:center;';
 
                 const label = document.createElement('span');
-                label.style.cssText = 'flex:1;font-size:14px;color:#1a1a2e;padding:10px 0;';
+                label.style.cssText = 'flex:1;font-size:14px;color:var(--surface-dark);padding:10px 0;';
                 label.textContent = t.title || t.link;
 
-                const copyBtn = _actionButton('Copy', '#667eea');
-                const moveBtn = _actionButton('Move', '#e74c3c');
+                const copyBtn = _actionButton('Copy', 'copy');
+                const moveBtn = _actionButton('Move', 'move');
 
                 copyBtn.addEventListener('click', () => _doAction('copy', t.link, copyBtn, moveBtn));
                 moveBtn.addEventListener('click', () => _doAction('move', t.link, copyBtn, moveBtn));
@@ -134,9 +134,9 @@
                 row.appendChild(moveBtn);
 
                 const wrapper = document.createElement('div');
-                wrapper.style.cssText = 'border:1px solid #e0e0e0;border-radius:8px;padding:4px 12px;background:#f8f9fa;transition:border-color 0.15s;';
-                wrapper.addEventListener('mouseenter', () => { wrapper.style.borderColor = '#667eea'; });
-                wrapper.addEventListener('mouseleave', () => { wrapper.style.borderColor = '#e0e0e0'; });
+                wrapper.style.cssText = 'border:1px solid var(--border-strong);border-radius:8px;padding:4px 12px;background:var(--surface-raised);transition:border-color 0.15s;';
+                wrapper.addEventListener('mouseenter', () => { wrapper.style.borderColor = 'var(--accent)'; });
+                wrapper.addEventListener('mouseleave', () => { wrapper.style.borderColor = 'var(--border-strong)'; });
                 wrapper.appendChild(row);
                 _tripList.appendChild(wrapper);
             });
@@ -145,23 +145,26 @@
         }
     }
 
-    const _HOVER_DARKEN = { '#667eea': '#5a6fd6', '#e74c3c': '#c0392b' };
+    const _BTN_COLORS = {
+        copy: { base: 'var(--accent)', hover: 'var(--accent-hover)' },
+        move: { base: '#c0392b', hover: '#a93226' },
+    };
 
-    function _actionButton(label, color) {
+    function _actionButton(label, type) {
         const btn = document.createElement('button');
         btn.textContent = label;
+        const { base, hover } = _BTN_COLORS[type];
         btn.style.cssText = [
-            `background:${color}`,
-            'color:#fff',
+            `background:${base}`,
+            'color:var(--ink-on-dark)',
             'border:none',
             'border-radius:6px',
             'padding:6px 14px',
             'font-size:13px',
             'cursor:pointer',
         ].join(';');
-        const hoverColor = _HOVER_DARKEN[color] || color;
-        btn.addEventListener('mouseenter', () => { btn.style.background = hoverColor; });
-        btn.addEventListener('mouseleave', () => { btn.style.background = color; });
+        btn.addEventListener('mouseenter', () => { btn.style.background = hover; });
+        btn.addEventListener('mouseleave', () => { btn.style.background = base; });
         return btn;
     }
 
@@ -169,7 +172,7 @@
         if (!_pendingItem) return;
         copyBtn.disabled = true;
         moveBtn.disabled = true;
-        _statusMsg.style.color = '#888';
+        _statusMsg.style.color = 'var(--ink-muted)';
         _statusMsg.textContent = action === 'copy' ? 'Copying...' : 'Moving...';
 
         const stem = targetLink.replace(/\.html$/, '');
