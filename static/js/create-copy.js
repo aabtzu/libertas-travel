@@ -134,7 +134,9 @@
                 row.appendChild(moveBtn);
 
                 const wrapper = document.createElement('div');
-                wrapper.style.cssText = 'border:1px solid #e0e0e0;border-radius:8px;padding:4px 12px;background:#f8f9fa;';
+                wrapper.style.cssText = 'border:1px solid #e0e0e0;border-radius:8px;padding:4px 12px;background:#f8f9fa;transition:border-color 0.15s;';
+                wrapper.addEventListener('mouseenter', () => { wrapper.style.borderColor = '#667eea'; });
+                wrapper.addEventListener('mouseleave', () => { wrapper.style.borderColor = '#e0e0e0'; });
                 wrapper.appendChild(row);
                 _tripList.appendChild(wrapper);
             });
@@ -142,6 +144,8 @@
             _tripList.textContent = 'Error loading trips.';
         }
     }
+
+    const _HOVER_DARKEN = { '#667eea': '#5a6fd6', '#e74c3c': '#c0392b' };
 
     function _actionButton(label, color) {
         const btn = document.createElement('button');
@@ -155,6 +159,9 @@
             'font-size:13px',
             'cursor:pointer',
         ].join(';');
+        const hoverColor = _HOVER_DARKEN[color] || color;
+        btn.addEventListener('mouseenter', () => { btn.style.background = hoverColor; });
+        btn.addEventListener('mouseleave', () => { btn.style.background = color; });
         return btn;
     }
 
