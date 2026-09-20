@@ -310,6 +310,9 @@ function renderDayItems(items, dayIndex) {
                     </div>
                 </div>
                 <div class="item-actions">
+                    <button onclick="copyOrMoveItem(currentTrip.days[${dayIndex}].items[${index}], {type:'item',dayIndex:${dayIndex},itemIndex:${index}})" title="Copy or move to another trip">
+                        <i class="fas fa-copy"></i>
+                    </button>
                     <button onclick="editItem(${dayIndex}, ${index})" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -441,6 +444,9 @@ function renderIdeas() {
                         ${item.notes ? `<div class="item-meta">${escapeHtml(item.notes.substring(0, 200))}</div>` : ''}
                     </div>
                     <div class="item-actions">
+                        <button onclick="copyOrMoveItem(currentTrip.ideas[${index}], {type:'idea',ideaIndex:${index}})" title="Copy or move to another trip">
+                            <i class="fas fa-copy"></i>
+                        </button>
                         <button onclick="editIdea(${index})" title="Edit">
                             <i class="fas fa-edit"></i>
                         </button>
