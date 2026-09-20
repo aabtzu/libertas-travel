@@ -497,15 +497,17 @@ function initRecommendationMap(containerId, markers) {
     const map = L.map(containerId);
     L.tileLayer(LibertasMap.tileUrl, LibertasMap.tileOptions).addTo(map);
 
+    const _css = getComputedStyle(document.documentElement);
+    const _accent = _css.getPropertyValue('--accent').trim();
     const colors = {
         meal: '#FF9800', activity: '#34A853', attraction: '#34A853',
-        hotel: '#4285F4', other: '#667eea'
+        hotel: '#4285F4', other: _accent
     };
     const bounds = [];
     markers.forEach(m => {
-        const color = colors[m.category] || '#667eea';
+        const color = colors[m.category] || _accent;
         L.circleMarker([m.lat, m.lng], {
-            radius: 8, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9
+            radius: 8, fillColor: color, color: '#ffffff', weight: 2, fillOpacity: 0.9  /* leaflet-stroke */
         }).addTo(map).bindPopup(m.title);
         bounds.push([m.lat, m.lng]);
     });
@@ -570,9 +572,9 @@ async function showSaveToTripModal(sourceLink, title, btn) {
         '<h3 style="margin:0;font-size:1.1rem;color:#333">Save to trip</h3>' +
         '<button id="save-modal-close" style="background:none;border:none;font-size:1.1rem;color:#999;cursor:pointer;padding:4px 8px"><i class="fas fa-times"></i></button></div>' +
         '<div style="overflow-y:auto;max-height:50vh;padding:8px">' +
-        '<button class="save-pick" data-action="new" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:#667eea;cursor:pointer;text-align:left;font-weight:600;border-bottom:1px solid #eee"><i class="fas fa-plus-circle"></i> New trip</button>' +
+        '<button class="save-pick" data-action="new" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:var(--accent);cursor:pointer;text-align:left;font-weight:600;border-bottom:1px solid #eee"><i class="fas fa-plus-circle"></i> New trip</button>' +
         trips.map(t =>
-            '<button class="save-pick" data-link="' + t.link + '" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:#333;cursor:pointer;text-align:left"><i class="fas fa-suitcase" style="color:#667eea"></i> ' + escapeHtml(t.title) + '</button>'
+            '<button class="save-pick" data-link="' + t.link + '" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:none;border-radius:10px;font-size:0.95rem;color:var(--ink);cursor:pointer;text-align:left"><i class="fas fa-suitcase" style="color:var(--accent)"></i> ' + escapeHtml(t.title) + '</button>'
         ).join('') +
         '</div></div>';
 

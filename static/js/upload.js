@@ -196,7 +196,7 @@ function promptForTripName(suggestedName, link) {
     overlay.innerHTML = `
         <div class="modal-dialog">
             <div class="modal-header">
-                <i class="fas fa-check-circle" style="color: #27ae60; font-size: 2rem;"></i>
+                <i class="fas fa-check-circle" style="color: var(--status-success); font-size: 2rem;"></i>
                 <h3>Trip Imported Successfully!</h3>
             </div>
             <div class="modal-body">

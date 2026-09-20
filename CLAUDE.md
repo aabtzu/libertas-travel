@@ -211,6 +211,12 @@ Dataclasses for parsing live in `agents/itinerary/models.py`: `Location`,
 - Color palette: `#1a1a2e` (dark navy, hero/dark sections), `#667eea` (purple accent,
   buttons, icons), `#f0c674` (gold highlight), white cards on `#f8f9fa` backgrounds
 - Hover states: darken the solid color (e.g. `#667eea` to `#5a6fd6`), never add a gradient on hover
+- **Use design tokens, not raw hex.** All palette colors have named tokens in
+  `static/css/tokens.css` (e.g. `var(--accent)`, `var(--status-error)`). Use them
+  in CSS files and in JS inline-style strings. Raw hex is only acceptable for map
+  API calls (Leaflet) where `var()` cannot be used - mark those lines `/* leaflet-stroke */`.
+- **Enforced by CI**: `scripts/check_hardcoded_colors.py`. To run locally:
+  `.venv/bin/python3 scripts/check_hardcoded_colors.py`
 
 ## Project Structure
 - `agents/` feature modules (auth, create, explore, itinerary, trips, pages, admin, email, common)
@@ -488,6 +494,7 @@ ruff check . && ruff format --check .
 .venv/bin/python3 scripts/check_file_size.py
 .venv/bin/python3 scripts/check_no_em_dashes.py
 .venv/bin/python3 scripts/check_marketing_copy.py
+.venv/bin/python3 scripts/check_hardcoded_colors.py
 .venv/bin/python3 -m pytest tests/ -m "not integration" -q
 ```
 

@@ -187,7 +187,7 @@ function showAddedToast(venueName, tripTitle, tripLink) {
         toast.id = 'explore-added-toast';
         toast.style.cssText = (
             'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
-            'background:#1a1a2e;color:#fff;padding:12px 18px;border-radius:10px;' +
+            'background:var(--surface-dark);color:var(--ink-on-dark);padding:12px 18px;border-radius:10px;' +
             'box-shadow:0 4px 20px rgba(0,0,0,0.25);z-index:9999;font-size:0.95rem;' +
             'display:flex;align-items:center;gap:14px;max-width:90vw;'
         );

@@ -86,7 +86,7 @@ function _showSubscribeModal(url, copied, title) {
     overlay.innerHTML = `
         <div class="modal-dialog" style="max-width: 560px;">
             <div class="modal-header">
-                <i class="fas fa-rss" style="color: #f0c674; font-size: 1.6rem;"></i>
+                <i class="fas fa-rss" style="color: var(--highlight); font-size: 1.6rem;"></i>
                 <h3>${title || 'Subscribe to this trip'}</h3>
             </div>
             <div class="modal-body">

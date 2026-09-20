@@ -147,7 +147,7 @@
 
     const _BTN_COLORS = {
         copy: { base: 'var(--accent)', hover: 'var(--accent-hover)' },
-        move: { base: '#c0392b', hover: '#a93226' },
+        move: { base: 'var(--status-error)', hover: 'var(--status-error-hover)' },
     };
 
     function _actionButton(label, type) {
@@ -185,7 +185,7 @@
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
-                _statusMsg.style.color = '#e74c3c';
+                _statusMsg.style.color = 'var(--status-error)';
                 _statusMsg.textContent = data.error || 'Failed.';
                 copyBtn.disabled = false;
                 moveBtn.disabled = false;
@@ -196,13 +196,13 @@
                 _deleteSource();
             }
 
-            _statusMsg.style.color = '#27ae60';
+            _statusMsg.style.color = 'var(--status-success)';
             _statusMsg.textContent = action === 'copy'
                 ? 'Item copied to ideas pile.'
                 : 'Item moved to ideas pile.';
             setTimeout(_closeModal, 1200);
         } catch {
-            _statusMsg.style.color = '#e74c3c';
+            _statusMsg.style.color = 'var(--status-error)';
             _statusMsg.textContent = 'Connection error.';
             copyBtn.disabled = false;
             moveBtn.disabled = false;

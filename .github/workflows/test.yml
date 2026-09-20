@@ -34,6 +34,9 @@ jobs:
       - name: No marketing-copy tells (CLAUDE.md UX Copy Style)
         run: python scripts/check_marketing_copy.py
 
+      - name: No hardcoded palette colors in JS (use design tokens)
+        run: python scripts/check_hardcoded_colors.py
+
       - name: Run unit tests
         env:
           ANTHROPIC_API_KEY: ci-placeholder

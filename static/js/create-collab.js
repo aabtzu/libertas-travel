@@ -15,7 +15,7 @@
 
     function _msg(text, ok) {
         collabMsg.textContent = text;
-        collabMsg.style.color = ok ? '#27ae60' : '#e74c3c';
+        collabMsg.style.color = ok ? 'var(--status-success)' : 'var(--status-error)';
     }
 
     async function loadCollaborators() {
@@ -53,7 +53,7 @@
                 const removeBtn = document.createElement('button');
                 removeBtn.dataset.id = c.id;
                 removeBtn.className = 'collab-remove-btn';
-                removeBtn.style.cssText = 'background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px;';
+                removeBtn.style.cssText = 'background:none;border:none;color:var(--status-error);cursor:pointer;font-size:12px;';
                 removeBtn.textContent = 'Remove';
                 // Only the trip owner can remove collaborators
                 if (!window._isOwner) removeBtn.style.display = 'none';
@@ -80,7 +80,7 @@
                 });
             });
         } catch {
-            collabList.innerHTML = '<span style="color:#e74c3c;">Error loading collaborators.</span>';
+            collabList.innerHTML = '<span style="color:var(--status-error);">Error loading collaborators.</span>';
         }
     }
 

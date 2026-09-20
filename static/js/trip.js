@@ -165,7 +165,7 @@ function regenerateMap() {
         if (data.success) {
             // Start fast polling - page will auto-refresh when complete
             var badge = document.getElementById('map-status-badge');
-            if (badge) badge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#667eea;margin-left:5px;"></i>';
+            if (badge) badge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--accent);margin-left:5px;"></i>';
             if (typeof mapPolling !== 'undefined') {
                 mapPolling.startFastPolling();
             }
@@ -459,7 +459,7 @@ var mapPolling = (function() {
                             }
                             if (mapBadge) {
                                 mapBadge.innerHTML =
-                                    '<i class="fas fa-exclamation-circle" style="color:#e74c3c;margin-left:5px;"></i>';
+                                    '<i class="fas fa-exclamation-circle" style="color:var(--status-error);margin-left:5px;"></i>';
                             }
                         } else {
                             sessionStorage.setItem(reloadFlag, '1');
@@ -479,12 +479,12 @@ var mapPolling = (function() {
                             '<div class="map-loading-text map-status-error">Map generation failed</div>' +
                             '<div class="map-loading-subtext">' + (data.map_error || 'Unknown error') + '</div>';
                     }
-                    if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-exclamation-circle" style="color:#e74c3c;margin-left:5px;"></i>';
+                    if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-exclamation-circle" style="color:var(--status-error);margin-left:5px;"></i>';
                     if (pollInterval) clearInterval(pollInterval);
                 } else if (data.map_status === 'pending' || data.map_status === 'processing') {
                     wasNotReady = true;
                     if (mapLoading) mapLoading.classList.remove('hidden');
-                    if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#667eea;margin-left:5px;"></i>';
+                    if (mapBadge) mapBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--accent);margin-left:5px;"></i>';
                 }
             })
             .catch(function(err) {

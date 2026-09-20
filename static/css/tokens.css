@@ -43,4 +43,9 @@
     --accent-hover: #5a6fd6;
     --accent-strong: #4f5fc4;
     --highlight: #f0c674;
+
+    /* Status */
+    --status-success: #27ae60;
+    --status-error: #e74c3c;
+    --status-error-hover: #c0392b;
 }
