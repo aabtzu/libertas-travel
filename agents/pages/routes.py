@@ -172,6 +172,10 @@ def _trip_not_available_response(link: str, reason: str) -> Response:
 @pages_bp.get("/")
 @pages_bp.get("/index.html")
 def home():
+    # Logged-in users go straight to their trips; the landing page is for visitors.
+    # Skip the redirect in AUTH_DISABLED (dev) mode so the marketing page stays reachable.
+    if g.user_id and not g.auth_disabled:
+        return redirect("/trips.html")
     return _html(generate_home_page())
 
 

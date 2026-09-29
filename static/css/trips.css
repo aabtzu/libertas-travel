@@ -533,3 +533,26 @@
     cursor: pointer;
 }
 .trips-intro-close:hover { color: var(--surface-dark); }
+
+/* On mobile, make the "Traveling Now" section the first thing you see and give
+   it extra visual weight so it reads as a banner, not just another section. */
+@media (max-width: 768px) {
+    .trips-section[data-section="current"] {
+        padding: 20px 16px 14px;
+        margin-bottom: 16px;
+        border-width: 2px;
+        border-radius: 14px;
+    }
+
+    .trips-section[data-section="current"] .trips-section-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-bottom: 14px;
+    }
+
+    /* On mobile the grid collapses to one column, so the current-trip card
+       is already full-width. Give it extra height so the image region shows. */
+    .trips-section[data-section="current"] .trip-card {
+        min-height: 180px;
+    }
+}
