@@ -37,3 +37,6 @@ database.sqlite
 
 # pytest scratch directory
 test-results/
+
+# GSD planning files (session artifacts)
+.planning/
