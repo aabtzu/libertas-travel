@@ -7,28 +7,21 @@ STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
+def read_asset_file(path: Path) -> str:
+    """Read a file by absolute path, returning empty string if not found."""
+    return path.read_text() if path.exists() else ""
+
+
 def get_static_css(filename: str) -> str:
-    """Read a CSS file from the common static directory."""
-    css_path = STATIC_DIR / "css" / filename
-    if css_path.exists():
-        return css_path.read_text()
-    return ""
+    return read_asset_file(STATIC_DIR / "css" / filename)
 
 
 def get_static_js(filename: str) -> str:
-    """Read a JS file from the common static directory."""
-    js_path = STATIC_DIR / "js" / filename
-    if js_path.exists():
-        return js_path.read_text()
-    return ""
+    return read_asset_file(STATIC_DIR / "js" / filename)
 
 
 def get_template(filename: str) -> str:
-    """Read an HTML template file."""
-    template_path = TEMPLATES_DIR / filename
-    if template_path.exists():
-        return template_path.read_text()
-    return ""
+    return read_asset_file(TEMPLATES_DIR / filename)
 
 
 def get_nav_html(active_page: str = "") -> str:
