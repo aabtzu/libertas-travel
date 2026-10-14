@@ -572,7 +572,7 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 1600;
-    background: #1a1a2e;
+    background: var(--surface-dark);
     color: #fff;
     padding: 12px 20px;
     border-radius: 10px;
@@ -584,7 +584,7 @@
     max-width: 480px;
 }
 .heartbeat-reload-btn {
-    background: #667eea;
+    background: var(--accent);
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -593,7 +593,7 @@
     cursor: pointer;
     white-space: nowrap;
 }
-.heartbeat-reload-btn:hover { background: #5a6fd6; }
+.heartbeat-reload-btn:hover { background: var(--accent-hover); }
 .heartbeat-dismiss-btn {
     background: transparent;
     color: #aaa;
@@ -624,7 +624,7 @@
 .assets-panel-title {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--surface-dark);
 }
 .assets-count {
     font-size: 0.78rem;
@@ -657,7 +657,7 @@
 }
 .asset-icon {
     font-size: 1.3rem;
-    color: #667eea;
+    color: var(--accent);
     width: 36px;
     text-align: center;
     flex-shrink: 0;
@@ -671,7 +671,7 @@
 }
 .asset-name {
     font-size: 0.8rem;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

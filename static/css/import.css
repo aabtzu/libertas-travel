@@ -22,7 +22,7 @@
 }
 
 .import-back {
-    color: #667eea;
+    color: var(--accent);
     font-size: 18px;
     text-decoration: none;
     padding: 8px;
@@ -31,14 +31,14 @@
 .import-brand {
     font-size: 18px;
     font-weight: 700;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
 .import-brand i {
-    color: #667eea;
+    color: var(--accent);
 }
 
 .import-card {
@@ -53,7 +53,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #667eea;
+    color: var(--accent);
     font-size: 13px;
 }
 
@@ -67,7 +67,7 @@
     margin-top: 8px;
     font-size: 15px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--surface-dark);
 }
 
 .import-preview {
@@ -81,7 +81,7 @@
 .import-preview-label {
     font-size: 13px;
     font-weight: 600;
-    color: #667eea;
+    color: var(--accent);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -113,7 +113,7 @@
 .import-cat {
     font-size: 11px;
     background: #f0f0f8;
-    color: #667eea;
+    color: var(--accent);
     border-radius: 4px;
     padding: 2px 6px;
     text-transform: capitalize;
@@ -171,7 +171,7 @@
     border-radius: 8px;
     font-size: 15px;
     background: white;
-    color: #1a1a2e;
+    color: var(--surface-dark);
     -webkit-appearance: none;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23667eea' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
@@ -182,7 +182,7 @@
 .import-btn {
     width: 100%;
     padding: 14px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 8px;
@@ -196,7 +196,7 @@
 }
 
 .import-btn:hover {
-    background: #5a6fd6;
+    background: var(--accent-hover);
 }
 
 .import-btn:disabled {
