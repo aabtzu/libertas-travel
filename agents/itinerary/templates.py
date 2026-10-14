@@ -8,7 +8,7 @@ from agents.common.categories import (
     CATEGORY_ICONS,  # noqa: F401 – re-exported for callers
     get_trip_start_date,  # noqa: F401 – re-exported for callers
 )
-from agents.common.templates import get_nav_html
+from agents.common.templates import get_nav_html, read_asset_file
 from agents.common.templates import get_static_css as common_get_static_css
 from agents.common.templates import get_static_js as common_get_static_js
 
@@ -104,29 +104,17 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
 def get_static_css(filename: str) -> str:
-    """Read a CSS file from itinerary static directory, falling back to common."""
-    css_path = STATIC_DIR / "css" / filename
-    if css_path.exists():
-        return css_path.read_text()
-    # Fall back to common static directory
-    return common_get_static_css(filename)
+    local = read_asset_file(STATIC_DIR / "css" / filename)
+    return local if local else common_get_static_css(filename)
 
 
 def get_static_js(filename: str) -> str:
-    """Read a JS file from itinerary static directory, falling back to common."""
-    js_path = STATIC_DIR / "js" / filename
-    if js_path.exists():
-        return js_path.read_text()
-    # Fall back to common static directory
-    return common_get_static_js(filename)
+    local = read_asset_file(STATIC_DIR / "js" / filename)
+    return local if local else common_get_static_js(filename)
 
 
 def get_template(filename: str) -> str:
-    """Read an HTML template file from itinerary templates directory."""
-    template_path = TEMPLATES_DIR / filename
-    if template_path.exists():
-        return template_path.read_text()
-    return ""
+    return read_asset_file(TEMPLATES_DIR / filename)
 
 
 def _get_trip_card_template() -> str:
