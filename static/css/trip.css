@@ -320,3 +320,21 @@
     font-style: italic;
 }
 
+
+#import-banner {
+    display: none;
+    background: #f0fff4;
+    border-bottom: 1px solid #c3e6cb;
+    color: #1a5c2a;
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 14px;
+}
+.import-banner-close {
+    margin-left: 12px;
+    background: none;
+    border: none;
+    color: #1a5c2a;
+    cursor: pointer;
+    font-size: 14px;
+}

@@ -136,3 +136,5 @@
     outline: none;
 }
 .fwd-add-row input:focus { border-color: var(--accent); }
+
+.profile-section-hint { color: #666; font-size: 0.9rem; margin-bottom: 16px; }

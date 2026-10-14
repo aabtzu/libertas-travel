@@ -15,7 +15,7 @@
 
     function _msg(text, ok) {
         collabMsg.textContent = text;
-        collabMsg.style.color = ok ? '#27ae60' : '#e74c3c';
+        collabMsg.className = ok ? 'collab-msg-ok' : 'collab-msg-error';
     }
 
     async function loadCollaborators() {
@@ -29,31 +29,30 @@
             const data = await res.json();
             const collabs = data.collaborators || [];
             if (!collabs.length) {
-                collabList.innerHTML = '<span style="color:#888;">No collaborators yet.</span>';
+                collabList.innerHTML = '<span class="collab-empty">No collaborators yet.</span>';
                 return;
             }
             collabList.innerHTML = '';
             collabs.forEach(c => {
                 const row = document.createElement('div');
-                row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;';
+                row.className = 'collab-row';
 
                 const label = document.createElement('span');
-                label.style.fontSize = '13px';
+                label.className = 'collab-row-label';
                 if (c.username) {
                     label.textContent = c.username + ' ';
                     const sub = document.createElement('span');
-                    sub.style.color = '#888';
+                    sub.className = 'collab-row-sub';
                     sub.textContent = `(${c.email})`;
                     label.appendChild(sub);
                 } else {
-                    label.style.color = '#888';
+                    label.classList.add('collab-row-pending');
                     label.textContent = `${c.email} - pending`;
                 }
 
                 const removeBtn = document.createElement('button');
                 removeBtn.dataset.id = c.id;
                 removeBtn.className = 'collab-remove-btn';
-                removeBtn.style.cssText = 'background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px;';
                 removeBtn.textContent = 'Remove';
                 // Only the trip owner can remove collaborators
                 if (!window._isOwner) removeBtn.style.display = 'none';
@@ -80,7 +79,7 @@
                 });
             });
         } catch {
-            collabList.innerHTML = '<span style="color:#e74c3c;">Error loading collaborators.</span>';
+            collabList.innerHTML = '<span class="collab-load-error">Error loading collaborators.</span>';
         }
     }
 
