@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from datetime import date
 
-from flask import Blueprint, Response, g, redirect
+from flask import Blueprint, Response, g, redirect, render_template
 
 import database as db
 from agents.common.flask_utils import require_auth
@@ -22,10 +22,9 @@ from agents.common.templates import (
 from agents.explore.templates import generate_explore_page
 from agents.itinerary import geocoding_worker
 from agents.itinerary.templates import generate_trips_page
-from agents.pages.profile_view import generate_profile_page
 from agents.pages.recommendation_view import generate_recommendation_page
 
-pages_bp = Blueprint("pages", __name__)
+pages_bp = Blueprint("pages", __name__, template_folder="templates")
 
 
 def _html(content: str) -> Response:
@@ -255,8 +254,23 @@ def reset_password():
 def profile():
     profile_data = db.get_user_profile(g.user_id) or {}
     forwarding_emails = db.get_forwarding_emails(g.user_id)
-
-    return _html(generate_profile_page(profile_data, forwarding_emails))
+    style_profile = profile_data.get("style_profile", {})
+    quirks = style_profile.get("quirks", "")
+    return render_template(
+        "profile.html",
+        nav=get_nav_html(""),
+        samples_text=profile_data.get("writing_samples", "") or profile_data.get("samples_preview", ""),
+        tone=style_profile.get("tone", ""),
+        sentence_style=style_profile.get("sentence_style", ""),
+        vocabulary=", ".join(style_profile.get("vocabulary", [])),
+        emphasis=style_profile.get("emphasis", ""),
+        perspective=style_profile.get("perspective", ""),
+        quirks=", ".join(quirks) if isinstance(quirks, list) else quirks,
+        rules=style_profile.get("rules", ""),
+        user_notes=profile_data.get("user_notes", ""),
+        has_profile=bool(style_profile),
+        forwarding_emails=forwarding_emails or [],
+    )
 
 
 @pages_bp.get("/trips")
