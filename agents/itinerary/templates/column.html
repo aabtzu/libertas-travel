@@ -1,0 +1,69 @@
+{% macro render_item(item) %}
+<div class="column-item {{ item.category }}"
+     data-title="{{ item.full_title }}"
+     data-time="{{ item.time_str }}"
+     data-location="{{ item.loc_name }}"
+     data-category="{{ item.category }}"
+     data-website="{{ item.website }}"
+     data-notes="{{ item.notes }}">
+  <div class="column-item-title">
+    <i class="fas {{ item.icon }} column-item-icon"></i> {{ item.display_title }}
+  </div>
+  {% if item.time_str %}
+  <div class="column-item-time"><i class="fas fa-clock"></i> {{ item.time_str }}</div>
+  {% endif %}
+  {% if item.show_location %}
+  <div class="column-item-location">
+    <a href="{{ item.maps_url }}" target="_blank" rel="noopener" class="column-item-maps-link">
+      <i class="fas fa-map-marker-alt"></i> {{ item.short_location }}
+    </a>
+  </div>
+  {% endif %}
+  {% if item.website %}
+  <div class="column-item-website">
+    <a href="{{ item.website }}" target="_blank" rel="noopener" class="column-item-maps-link">
+      <i class="fas fa-external-link-alt"></i> Website
+    </a>
+  </div>
+  {% endif %}
+  {% if item.notes %}
+  <div class="column-item-notes">{{ item.notes }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+<div class="column-table-wrapper">
+<table class="column-table">
+<thead><tr>
+  <th>Day</th>
+  <th>Travel</th>
+  <th>Activity</th>
+  <th>Night Stay</th>
+  <th>Notes</th>
+</tr></thead>
+<tbody>
+{% for day in days %}
+<tr>
+  <td style="font-weight:600;white-space:nowrap;">
+    Day {{ day.day_num }}{% if day.date_str %}<br><small>{{ day.date_str }}</small>{% endif %}
+  </td>
+  <td>{% for item in day.travel_items %}{{ render_item(item) }}{% endfor %}</td>
+  <td>{% for item in day.activity_items %}{{ render_item(item) }}{% endfor %}</td>
+  <td>
+    {% if day.night_stay %}
+    {% set ns = day.night_stay %}
+    <div class="night-stay{% if ns.is_carried %} night-stay-carried{% endif %}"
+         data-title="{{ ns.title }}"
+         data-time="{{ ns.time_str }}"
+         data-location="{{ ns.loc_name }}"
+         data-category="hotel"
+         data-website="{{ ns.website }}"
+         data-notes="{{ ns.notes }}">
+      <i class="fas fa-bed"></i>{{ ns.text }}
+    </div>
+    {% endif %}
+  </td>
+  <td>{% for item in day.notes_items %}{{ render_item(item) }}{% endfor %}</td>
+</tr>
+{% endfor %}
+</tbody></table>
+</div>
