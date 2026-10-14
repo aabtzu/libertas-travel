@@ -1,19 +1,20 @@
-            <div class="trip-card-wrapper public-trip" data-link="{link}">
-                <a href="{link}" class="trip-card">
-                    <div class="trip-card-image" style="background: {color};">
-                        <i class="fas fa-{icon}"></i>
+            <div class="trip-card-wrapper public-trip" data-link="{{ link | e }}">
+                <a href="{{ link | e }}" class="trip-card">
+                    <div class="trip-card-image" style="background: {{ color }};">
+                        <i class="fas fa-{{ icon | e }}"></i>
                     </div>
                     <div class="trip-card-content">
-                        <div class="trip-card-title">{title}</div>
+                        <div class="trip-card-title">{{ title | e }}</div>
                         <div class="trip-card-meta">
-                            <span><i class="fas fa-calendar"></i> {dates}</span>
-                            <span class="trip-owner"><i class="fas fa-user"></i> {owner_username}</span>
+                            <span><i class="fas fa-calendar"></i> {{ dates | e }}</span>
+                            <span class="trip-owner"><i class="fas fa-user"></i> {{ owner_username | e }}</span>
                         </div>
                         <div class="trip-stats-icons">
                             <span class="category-stat cat-days" title="Days">
-                                <i class="fas fa-calendar-alt"></i> {days}
+                                <i class="fas fa-calendar-alt"></i> {{ days }}
                             </span>
-                            {category_stats}
+                            {% for stat in category_stats %}<span class="category-stat cat-{{ stat.cat }}" title="{{ stat.tooltip | e }}"><i class="fas {{ stat.icon }}"></i> {{ stat.count }}</span>
+                            {% endfor %}
                         </div>
                     </div>
                 </a>

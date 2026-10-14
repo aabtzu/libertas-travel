@@ -4,6 +4,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
+
 from agents.common.categories import (
     CATEGORY_ICONS,  # noqa: F401 – re-exported for callers
     get_trip_start_date,  # noqa: F401 – re-exported for callers
@@ -102,6 +104,8 @@ def _bucket_trip_by_date(trip: dict, today_iso: str) -> str:
 STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
+_jinja_env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=True)
+
 
 def get_static_css(filename: str) -> str:
     local = read_asset_file(STATIC_DIR / "css" / filename)
@@ -115,16 +119,6 @@ def get_static_js(filename: str) -> str:
 
 def get_template(filename: str) -> str:
     return read_asset_file(TEMPLATES_DIR / filename)
-
-
-def _get_trip_card_template() -> str:
-    """Get the trip card template from external file."""
-    return get_template("trip_card.html")
-
-
-def _get_public_trip_card_template() -> str:
-    """Get the public trip card template from external file."""
-    return get_template("public_trip_card.html")
 
 
 # Destination-specific background images (using Unsplash for free images)
@@ -220,67 +214,92 @@ def extract_category_counts(itinerary_data: str | dict | None) -> dict:
     return counts
 
 
+_CATEGORY_DISPLAY_ORDER = [
+    "attraction",
+    "activity",
+    "meal",
+    "hotel",
+    "flight",
+    "train",
+    "bus",
+    "transport",
+    "other",
+]
+
+_CATEGORY_TOOLTIPS = {
+    "meal": "Meals",
+    "hotel": "Hotels",
+    "lodging": "Lodging",
+    "flight": "Flights",
+    "train": "Trains",
+    "bus": "Buses",
+    "transport": "Transport",
+    "activity": "Activities",
+    "attraction": "Attractions",
+    "other": "Other",
+}
+
+
+def _build_category_stats(
+    category_counts: dict, locations: int = 0, activities: int = 0
+) -> list[dict]:
+    """Build a list of category stat dicts for template rendering.
+
+    If category_counts is empty, falls back to locations/activities numbers.
+    Each dict has keys: cat, icon, tooltip, count.
+    """
+    if category_counts:
+        stats = []
+        for cat in _CATEGORY_DISPLAY_ORDER:
+            count = category_counts.get(cat, 0)
+            if count > 0:
+                stats.append(
+                    {
+                        "cat": cat,
+                        "icon": CATEGORY_ICONS.get(cat, "fa-calendar-day"),
+                        "tooltip": _CATEGORY_TOOLTIPS.get(cat, cat.title()),
+                        "count": count,
+                    }
+                )
+        return stats
+    else:
+        stats = []
+        if locations > 0:
+            stats.append(
+                {
+                    "cat": "locations",
+                    "icon": "fa-map-marker-alt",
+                    "tooltip": "Locations",
+                    "count": locations,
+                }
+            )
+        if activities > 0:
+            stats.append(
+                {
+                    "cat": "activity",
+                    "icon": "fa-star",
+                    "tooltip": "Activities",
+                    "count": activities,
+                }
+            )
+        return stats
+
+
 def generate_category_stats_html(
     category_counts: dict, locations: int = 0, activities: int = 0
 ) -> str:
     """Generate HTML for category stats icons.
 
-    If category_counts is empty, falls back to locations/activities numbers.
+    Kept for backward compatibility. New code should use _build_category_stats.
     """
-    # Category display order
-    DISPLAY_ORDER = [
-        "attraction",
-        "activity",
-        "meal",
-        "hotel",
-        "flight",
-        "train",
-        "bus",
-        "transport",
-        "other",
-    ]
-
-    # Category tooltips
-    TOOLTIPS = {
-        "meal": "Meals",
-        "hotel": "Hotels",
-        "lodging": "Lodging",
-        "flight": "Flights",
-        "train": "Trains",
-        "bus": "Buses",
-        "transport": "Transport",
-        "activity": "Activities",
-        "attraction": "Attractions",
-        "other": "Other",
-    }
-
-    if category_counts:
-        # Use category breakdown
-        html_parts = []
-        for cat in DISPLAY_ORDER:
-            count = category_counts.get(cat, 0)
-            if count > 0:
-                icon = CATEGORY_ICONS.get(cat, "fa-calendar-day")
-                tooltip = TOOLTIPS.get(cat, cat.title())
-                html_parts.append(
-                    f'<span class="category-stat cat-{cat}" title="{tooltip}">'
-                    f'<i class="fas {icon}"></i> {count}</span>'
-                )
-        return "\n                            ".join(html_parts)
-    else:
-        # Fallback to locations/activities
-        html_parts = []
-        if locations > 0:
-            html_parts.append(
-                f'<span class="category-stat cat-locations" title="Locations">'
-                f'<i class="fas fa-map-marker-alt"></i> {locations}</span>'
-            )
-        if activities > 0:
-            html_parts.append(
-                f'<span class="category-stat cat-activity" title="Activities">'
-                f'<i class="fas fa-star"></i> {activities}</span>'
-            )
-        return "\n                            ".join(html_parts)
+    stats = _build_category_stats(category_counts, locations, activities)
+    parts = []
+    for s in stats:
+        parts.append(
+            f'<span class="category-stat cat-{s["cat"]}" title="{s["tooltip"]}">'
+            f'<i class="fas {s["icon"]}"></i> {s["count"]}</span>'
+        )
+    return "\n                            ".join(parts)
 
 
 def _extract_map_location(itinerary_data) -> str:
@@ -340,9 +359,6 @@ def generate_trip_card(
     icon = get_region_icon(itinerary_data)
 
     # Public visibility settings
-    public_badge = (
-        '<span class="public-badge"><i class="fas fa-globe"></i></span>' if is_public else ""
-    )
     public_class = "active" if is_public else ""
     public_icon = "globe" if is_public else "lock"
     public_title = (
@@ -350,32 +366,22 @@ def generate_trip_card(
     )
 
     # Draft settings - drafts link to create/edit page
-    draft_badge = (
-        '<span class="draft-badge"><i class="fas fa-pencil-alt"></i> Draft</span>'
-        if is_draft
-        else ""
-    )
     draft_class = " is-draft" if is_draft else ""
     card_link = f"/create.html?edit={link}" if is_draft else link
 
     # Archive settings, archived trips are hidden from main grid by default
-    archived_badge = (
-        '<span class="archived-badge"><i class="fas fa-box-archive"></i> Archived</span>'
-        if is_archived
-        else ""
-    )
     archived_class = " is-archived" if is_archived else ""
     archived_btn_class = "active" if is_archived else ""
     archived_title = "Unarchive trip" if is_archived else "Archive trip"
 
     # Generate category stats (icons with counts)
     category_counts = extract_category_counts(itinerary_data)
-    category_stats = generate_category_stats_html(category_counts, locations, activities)
+    category_stats = _build_category_stats(category_counts, locations, activities)
 
     # Extract a representative location for the trips map
     map_location = _extract_map_location(itinerary_data)
 
-    return _get_trip_card_template().format(
+    return _jinja_env.get_template("trip_card.html").render(
         link=link,
         card_link=card_link,
         color=color,
@@ -386,15 +392,14 @@ def generate_trip_card(
         locations=locations,
         activities=activities,
         category_stats=category_stats,
-        public_badge=public_badge,
         public_class=public_class,
         public_icon=public_icon,
         public_title=public_title,
         is_public="true" if is_public else "false",
-        draft_badge=draft_badge,
+        show_draft_badge=is_draft,
         draft_class=draft_class,
         is_draft="true" if is_draft else "false",
-        archived_badge=archived_badge,
+        show_archived_badge=is_archived,
         archived_class=archived_class,
         archived_btn_class=archived_btn_class,
         archived_title=archived_title,
@@ -421,9 +426,9 @@ def generate_public_trip_card(
 
     # Generate category stats (icons with counts)
     category_counts = extract_category_counts(itinerary_data)
-    category_stats = generate_category_stats_html(category_counts, locations, activities)
+    category_stats = _build_category_stats(category_counts, locations, activities)
 
-    return _get_public_trip_card_template().format(
+    return _jinja_env.get_template("public_trip_card.html").render(
         link=link,
         color=color,
         icon=icon,
@@ -636,9 +641,11 @@ def generate_trips_page(
             + "</div></div>"
         )
 
-    archived_section = get_template("archived_section.html").format(archived_cards=archived_cards)
-    archived_toggle = get_template("archived_toggle.html").format(
-        hidden_attr="" if archived_cards_list else 'hidden=""',
+    archived_section = _jinja_env.get_template("archived_section.html").render(
+        archived_cards=archived_cards
+    )
+    archived_toggle = _jinja_env.get_template("archived_toggle.html").render(
+        has_archived=bool(archived_cards_list),
         count=len(archived_cards_list),
     )
 

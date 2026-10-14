@@ -7,6 +7,8 @@ import json
 import os
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
+
 from agents.common.categories import CATEGORY_ICONS, TRAVEL_CATEGORIES
 
 from .mapper import ItineraryMapper
@@ -14,6 +16,9 @@ from .models import Itinerary, ItineraryItem
 from .summarizer import ItinerarySummarizer
 from .templates import get_nav_html
 from .web_view_columns import build_calendar_html, build_column_html
+
+_TEMPLATE_DIR = Path(__file__).parent / "templates"
+_jinja_env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
 
 
 def _build_viewer_buttons_html(is_owner: bool, is_authenticated: bool, trip_link: str) -> str:
@@ -24,27 +29,11 @@ def _build_viewer_buttons_html(is_owner: bool, is_authenticated: bool, trip_link
     - Logged-in non-owner: Copy to My Trips
     - Anonymous: Sign in to edit CTA
     """
-    if is_owner:
-        return (
-            '<button class="export-btn" onclick="editTrip()" title="Edit this trip">'
-            '<i class="fas fa-edit"></i> Edit</button>'
-            '<button class="export-btn" onclick="regenerateMap()" title="Regenerate map">'
-            '<i class="fas fa-sync-alt"></i> Regen Map</button>'
-            '<button class="export-btn" onclick="exportTrip()" title="Download trip data">'
-            '<i class="fas fa-download"></i> Export</button>'
-            '<button class="export-btn" onclick="copyShareLink()" title="Copy shareable link">'
-            '<i class="fas fa-link"></i> Copy Link</button>'
-        )
-    if is_authenticated:
-        return (
-            '<button class="export-btn" onclick="copyTripToMyTrips()" title="Add a copy to your trips">'
-            '<i class="fas fa-copy"></i> Copy to My Trips</button>'
-        )
-    # Anonymous viewer
-    redirect = html_module.escape(f"/trip/{trip_link}" if trip_link else "/trips")
-    return (
-        f'<a class="export-btn" href="/login?redirect={redirect}" style="text-decoration:none;">'
-        '<i class="fas fa-sign-in-alt"></i> Sign in to edit</a>'
+    redirect_url = f"/trip/{trip_link}" if trip_link else "/trips"
+    return _jinja_env.get_template("viewer_buttons.html").render(
+        is_owner=is_owner,
+        is_authenticated=is_authenticated,
+        redirect_url=redirect_url,
     )
 
 
@@ -175,9 +164,7 @@ class ItineraryWebView:
         return output_path, map_data
 
     def _build_summary_html(self, itinerary: Itinerary) -> str:
-        """Build a compact HTML summary directly from itinerary data."""
-        lines = [f"<h2>{html_module.escape(itinerary.title)}</h2>"]
-
+        """Build a compact HTML summary from itinerary data via Jinja2 template."""
         # Group items by day
         items_by_day: dict[int, list[ItineraryItem]] = {}
         items_without_day: list[ItineraryItem] = []
@@ -187,146 +174,62 @@ class ItineraryWebView:
                 if item.day_number not in items_by_day:
                     items_by_day[item.day_number] = []
                 items_by_day[item.day_number].append(item)
-            elif item.date:
-                items_without_day.append(item)
             else:
                 items_without_day.append(item)
 
-        # Render days in order
+        days = []
         for day_num in sorted(items_by_day.keys()):
             items = items_by_day[day_num]
-            lines.append('<div class="day-card">')
-
-            # Get date if available
             date_str = ""
             if items and items[0].date:
-                date_str = f" - {items[0].date.strftime('%B %d')}"
-            lines.append(f"<h3>Day {day_num}{date_str}</h3>")
+                date_str = items[0].date.strftime("%B %d")
+            days.append(
+                {
+                    "day_num": day_num,
+                    "date_str": date_str,
+                    "activities": [self._build_activity_dict(it) for it in items],
+                }
+            )
 
-            for item in items:
-                lines.extend(self._render_summary_item(item))
+        undated_activities = [self._build_activity_dict(it) for it in items_without_day]
 
-            lines.append("</div>")
+        location_names = [loc.name or "Unknown" for loc in itinerary.locations if loc.name]
 
-        # Render items without days
-        if items_without_day:
-            lines.append('<div class="day-card">')
-            lines.append("<h3>Other Activities</h3>")
-            for item in items_without_day:
-                lines.extend(self._render_summary_item(item))
-            lines.append("</div>")
+        return _jinja_env.get_template("summary.html").render(
+            title=itinerary.title,
+            days=days,
+            undated_activities=undated_activities,
+            locations=location_names,
+        )
 
-        # Key locations section
-        locations = itinerary.locations
-        if locations:
-            lines.append('<div class="locations-section">')
-            lines.append("<h3>Key Locations</h3>")
-            lines.append('<div class="location-list">')
-            for loc in locations:
-                loc_name = loc.name or "Unknown"
-                lines.append(f'<span class="location-tag">{html_module.escape(loc_name)}</span>')
-            lines.append("</div>")
-            lines.append("</div>")
-
-        return "\n".join(lines)
-
-    def _render_summary_item(self, item: ItineraryItem) -> list[str]:
-        """Render a single activity row for the summary view."""
+    def _build_activity_dict(self, item: ItineraryItem) -> dict:
+        """Build a context dict for a single activity for the summary template."""
         time_str = ""
         if item.start_time:
             time_str = item.start_time.strftime("%I:%M %p").lstrip("0")
             if item.end_time:
                 end_time_str = item.end_time.strftime("%I:%M %p").lstrip("0")
-                # For flights/transport, use arrow; for others use dash
                 if item.category in TRAVEL_CATEGORIES:
-                    time_str = f"{time_str} → {end_time_str}"
+                    time_str = f"{time_str} -> {end_time_str}"
                 else:
                     time_str = f"{time_str} - {end_time_str}"
 
         category = item.category or "other"
-        category_icon = self._get_category_html(category)
-
-        # Build data attributes for popup
         title = item.title or "Untitled"
         location = (item.location.name if item.location and item.location.name else "") or ""
-        website = html_module.escape(item.website_url) if item.website_url else ""
-        notes = (
-            html_module.escape(item.notes or item.description or "")[:200]
-            if (item.notes or item.description)
-            else ""
-        )
+        website = item.website_url or ""
+        notes = (item.notes or item.description or "")[:200]
 
-        lines = []
-        lines.append(
-            f'<div class="activity" '
-            f'data-title="{html_module.escape(title)}" '
-            f'data-time="{time_str}" '
-            f'data-location="{html_module.escape(location)}" '
-            f'data-category="{category}" '
-            f'data-website="{website}" '
-            f'data-notes="{notes}">'
-        )
-        lines.append(f'<span class="activity-category {category}">{category_icon}</span>')
-        if time_str:
-            lines.append(f'<span class="activity-time">{time_str}</span>')
-        else:
-            lines.append('<span class="activity-time"></span>')
-
-        lines.append('<div class="activity-info">')
-        lines.append(f'<span class="activity-title">{html_module.escape(title)}</span>')
-        if location:
-            maps_url = html_module.escape(item.maps_url)
-            lines.append(
-                f'<a class="activity-location" href="{maps_url}" target="_blank" rel="noopener">'
-                f'<i class="fas fa-map-marker-alt" style="font-size:0.75rem;margin-right:3px;"></i>'
-                f"{html_module.escape(location)}</a>"
-            )
-        else:
-            lines.append('<span class="activity-location"></span>')
-        # Inline Website + Map links, same as the recommendation view
-        item_links = ""
-        if item.website_url:
-            item_links += (
-                f'<a class="activity-inline-link" href="{html_module.escape(item.website_url)}"'
-                f' target="_blank" rel="noopener"><i class="fas fa-globe"></i> Website</a>'
-            )
-        item_links += (
-            f'<a class="activity-inline-link" href="{html_module.escape(item.maps_url)}"'
-            f' target="_blank" rel="noopener"><i class="fas fa-map"></i> Map</a>'
-        )
-        lines.append(f'<div class="activity-links">{item_links}</div>')
-        lines.append("</div>")
-        lines.append("</div>")
-        return lines
-
-    def _get_category_label(self, category: str) -> str:
-        """Get display label for a category."""
-        labels = {
-            "flight": "Flight",
-            "train": "Train",
-            "bus": "Bus",
-            "transport": "Transport",
-            "hotel": "Lodging",
-            "lodging": "Lodging",
-            "activity": "Activity",
-            "meal": "Meal",
-            "home": "Home",
-            "other": "Other",
+        return {
+            "title": title,
+            "time_str": time_str,
+            "location": location,
+            "category": category,
+            "icon": CATEGORY_ICONS.get(category.lower(), "fa-calendar-day"),
+            "website": website,
+            "notes": notes,
+            "maps_url": item.maps_url,
         }
-        return labels.get(category.lower(), category.title())
-
-    def _get_category_icon(self, category: str) -> str:
-        """Get Font Awesome icon class for a category.
-
-        Uses the canonical mapping from agents.common.categories, do not
-        add a local copy here.
-        """
-        return CATEGORY_ICONS.get(category.lower(), "fa-calendar-day")
-
-    def _get_category_html(self, category: str) -> str:
-        """Get icon-based HTML for a category badge."""
-        icon = self._get_category_icon(category)
-        return f'<i class="fas {icon}"></i>'
 
     # The following methods are delegated to web_view_columns.py.
     # They remain as thin wrappers so any code that calls them on an instance

@@ -1,0 +1,55 @@
+<h2>{{ title | e }}</h2>
+{% for day in days %}
+<div class="day-card">
+  <h3>Day {{ day.day_num }}{% if day.date_str %} - {{ day.date_str }}{% endif %}</h3>
+  {% for item in day.activities %}
+  <div class="activity" data-title="{{ item.title | e }}" data-time="{{ item.time_str | e }}" data-location="{{ item.location | e }}" data-category="{{ item.category }}" data-website="{{ item.website | e }}" data-notes="{{ item.notes | e }}">
+    <span class="activity-category {{ item.category }}"><i class="fas {{ item.icon }}"></i></span>
+    {% if item.time_str %}<span class="activity-time">{{ item.time_str }}</span>{% else %}<span class="activity-time"></span>{% endif %}
+    <div class="activity-info">
+      <span class="activity-title">{{ item.title | e }}</span>
+      {% if item.location %}
+      <a class="activity-location" href="{{ item.maps_url }}" target="_blank" rel="noopener"><i class="fas fa-map-marker-alt" style="font-size:0.75rem;margin-right:3px;"></i>{{ item.location | e }}</a>
+      {% else %}
+      <span class="activity-location"></span>
+      {% endif %}
+      <div class="activity-links">
+        {% if item.website %}<a class="activity-inline-link" href="{{ item.website }}" target="_blank" rel="noopener"><i class="fas fa-globe"></i> Website</a>{% endif %}
+        <a class="activity-inline-link" href="{{ item.maps_url }}" target="_blank" rel="noopener"><i class="fas fa-map"></i> Map</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% if undated_activities %}
+<div class="day-card">
+  <h3>Other Activities</h3>
+  {% for item in undated_activities %}
+  <div class="activity" data-title="{{ item.title | e }}" data-time="{{ item.time_str | e }}" data-location="{{ item.location | e }}" data-category="{{ item.category }}" data-website="{{ item.website | e }}" data-notes="{{ item.notes | e }}">
+    <span class="activity-category {{ item.category }}"><i class="fas {{ item.icon }}"></i></span>
+    {% if item.time_str %}<span class="activity-time">{{ item.time_str }}</span>{% else %}<span class="activity-time"></span>{% endif %}
+    <div class="activity-info">
+      <span class="activity-title">{{ item.title | e }}</span>
+      {% if item.location %}
+      <a class="activity-location" href="{{ item.maps_url }}" target="_blank" rel="noopener"><i class="fas fa-map-marker-alt" style="font-size:0.75rem;margin-right:3px;"></i>{{ item.location | e }}</a>
+      {% else %}
+      <span class="activity-location"></span>
+      {% endif %}
+      <div class="activity-links">
+        {% if item.website %}<a class="activity-inline-link" href="{{ item.website }}" target="_blank" rel="noopener"><i class="fas fa-globe"></i> Website</a>{% endif %}
+        <a class="activity-inline-link" href="{{ item.maps_url }}" target="_blank" rel="noopener"><i class="fas fa-map"></i> Map</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% if locations %}
+<div class="locations-section">
+  <h3>Key Locations</h3>
+  <div class="location-list">
+    {% for loc in locations %}<span class="location-tag">{{ loc | e }}</span>{% endfor %}
+  </div>
+</div>
+{% endif %}

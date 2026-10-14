@@ -1,0 +1,10 @@
+{% if is_owner %}
+<button class="export-btn" onclick="editTrip()" title="Edit this trip"><i class="fas fa-edit"></i> Edit</button>
+<button class="export-btn" onclick="regenerateMap()" title="Regenerate map"><i class="fas fa-sync-alt"></i> Regen Map</button>
+<button class="export-btn" onclick="exportTrip()" title="Download trip data"><i class="fas fa-download"></i> Export</button>
+<button class="export-btn" onclick="copyShareLink()" title="Copy shareable link"><i class="fas fa-link"></i> Copy Link</button>
+{% elif is_authenticated %}
+<button class="export-btn" onclick="copyTripToMyTrips()" title="Add a copy to your trips"><i class="fas fa-copy"></i> Copy to My Trips</button>
+{% else %}
+<a class="export-btn" href="/login?redirect={{ redirect_url | e }}" style="text-decoration:none;"><i class="fas fa-sign-in-alt"></i> Sign in to edit</a>
+{% endif %}

@@ -1,36 +1,37 @@
-            <div class="trip-card-wrapper{draft_class}{archived_class}" data-link="{link}" data-is-draft="{is_draft}" data-is-archived="{is_archived}" data-trip-type="{trip_type}" data-map-location="{map_location}">
-                {public_badge}{draft_badge}{archived_badge}
-                <a href="{card_link}" class="trip-card">
-                    <div class="trip-card-image" style="background: {color};">
-                        <i class="fas fa-{icon}"></i>
+            <div class="trip-card-wrapper{{ draft_class }}{{ archived_class }}" data-link="{{ link | e }}" data-is-draft="{{ is_draft }}" data-is-archived="{{ is_archived }}" data-trip-type="{{ trip_type | e }}" data-map-location="{{ map_location | e }}">
+                {% if is_public %}<span class="public-badge"><i class="fas fa-globe"></i></span>{% endif %}{% if show_draft_badge %}<span class="draft-badge"><i class="fas fa-pencil-alt"></i> Draft</span>{% endif %}{% if show_archived_badge %}<span class="archived-badge"><i class="fas fa-box-archive"></i> Archived</span>{% endif %}
+                <a href="{{ card_link | e }}" class="trip-card">
+                    <div class="trip-card-image" style="background: {{ color }};">
+                        <i class="fas fa-{{ icon | e }}"></i>
                     </div>
                     <div class="trip-card-content">
-                        <div class="trip-card-title">{title}</div>
+                        <div class="trip-card-title">{{ title | e }}</div>
                         <div class="trip-card-meta">
-                            <span><i class="fas fa-calendar"></i> {dates}</span>
+                            <span><i class="fas fa-calendar"></i> {{ dates | e }}</span>
                         </div>
                         <div class="trip-stats-icons">
                             <span class="category-stat cat-days" title="Days">
-                                <i class="fas fa-calendar-alt"></i> {days}
+                                <i class="fas fa-calendar-alt"></i> {{ days }}
                             </span>
-                            {category_stats}
+                            {% for stat in category_stats %}<span class="category-stat cat-{{ stat.cat }}" title="{{ stat.tooltip | e }}"><i class="fas {{ stat.icon }}"></i> {{ stat.count }}</span>
+                            {% endfor %}
                         </div>
                     </div>
                 </a>
                 <div class="trip-card-actions">
-                    <button class="trip-action-btn share-btn" title="Share trip" data-link="{link}" data-title="{title}">
+                    <button class="trip-action-btn share-btn" title="Share trip" data-link="{{ link | e }}" data-title="{{ title | e }}">
                         <i class="fas fa-share-alt"></i>
                     </button>
-                    <button class="trip-action-btn public-btn {public_class}" title="{public_title}" data-link="{link}" data-public="{is_public}">
-                        <i class="fas fa-{public_icon}"></i>
+                    <button class="trip-action-btn public-btn {{ public_class }}" title="{{ public_title | e }}" data-link="{{ link | e }}" data-public="{{ is_public }}">
+                        <i class="fas fa-{{ public_icon }}"></i>
                     </button>
-                    <button class="trip-action-btn archive-btn {archived_btn_class}" title="{archived_title}" data-link="{link}" data-archived="{is_archived}">
+                    <button class="trip-action-btn archive-btn {{ archived_btn_class }}" title="{{ archived_title | e }}" data-link="{{ link | e }}" data-archived="{{ is_archived }}">
                         <i class="fas fa-box-archive"></i>
                     </button>
-                    <button class="trip-action-btn edit-btn" title="Edit trip" data-link="{link}" data-title="{title}" data-dates="{dates}" data-days="{days}" data-locations="{locations}" data-activities="{activities}">
+                    <button class="trip-action-btn edit-btn" title="Edit trip" data-link="{{ link | e }}" data-title="{{ title | e }}" data-dates="{{ dates | e }}" data-days="{{ days }}" data-locations="{{ locations }}" data-activities="{{ activities }}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="trip-action-btn delete-btn" title="Delete trip" data-link="{link}">
+                    <button class="trip-action-btn delete-btn" title="Delete trip" data-link="{{ link | e }}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
