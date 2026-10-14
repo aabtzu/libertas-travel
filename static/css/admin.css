@@ -1,0 +1,120 @@
+.admin-hero {
+    background: var(--surface-dark);
+    color: white;
+    padding: 40px;
+    text-align: center;
+}
+.admin-hero h1 { font-size: 1.8rem; font-weight: 300; letter-spacing: 1px; margin: 0; }
+.admin-content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px;
+}
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    text-align: center;
+}
+.stat-card .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+.stat-card .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--surface-dark);
+}
+.stat-card .value.accent { color: var(--accent); }
+.section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+.section h2 {
+    font-size: 1rem;
+    color: var(--accent);
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+th {
+    text-align: left;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    color: #666;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+td {
+    padding: 10px 12px;
+    border-top: 1px solid #f0f0f0;
+    color: #333;
+}
+tr:hover td { background: #fafafa; }
+.mono { font-family: monospace; font-size: 0.82rem; color: #555; }
+.auth-gate {
+    max-width: 420px;
+    margin: 80px auto;
+    background: white;
+    border-radius: 14px;
+    padding: 36px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    text-align: center;
+}
+.auth-gate i { font-size: 2.5rem; color: var(--accent); margin-bottom: 16px; }
+.auth-gate h2 { color: var(--surface-dark); margin: 0 0 8px; }
+.auth-gate p { color: #666; font-size: 0.9rem; margin: 0 0 20px; }
+.auth-gate input {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+}
+.auth-gate button {
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.auth-gate button:hover { background: var(--accent-hover); }
+.auth-error { color: #e74c3c; font-size: 0.85rem; margin-top: 8px; }
+#dashboard { display: none; }
+.badge {
+    display: inline-block;
+    background: #f0f2ff;
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}

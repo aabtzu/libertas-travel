@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Libertas</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/tokens.css?v=1">
+    <link rel="stylesheet" href="/app-config.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
+    <link rel="stylesheet" href="/static/css/about.css?v=1">
+</head>
+<body>
+    {{ nav | safe }}
+
+    <div class="about-hero">
+        <h1>LIBERTAS</h1>
+        <p class="subtitle">A travel planner named after the Roman goddess of liberty.</p>
+    </div>
+
+    <div class="about-content">
+        <div class="about-section">
+            <h2><i class="fas fa-scroll"></i> The Inspiration</h2>
+            <p>
+                In ancient Rome, travelers would invoke the protection of <span class="latin">Abeona</span> and
+                <span class="latin">Adeona</span>, twin goddesses who watched over journeys. Abeona
+                (from <span class="latin">abeo</span>, "I depart") guarded those setting out, while Adeona
+                (from <span class="latin">adeo</span>, "I return") ensured their safe homecoming.
+            </p>
+            <p>
+                According to the Roman author Varro, statues of these goddesses stood alongside
+                <span class="latin">Libertas</span>, the goddess of freedom, on the Aventine Hill, signifying
+                that true liberty includes the freedom to journey forth and return as one wishes.
+            </p>
+
+            <div class="deity-cards">
+                <div class="deity-card abeona">
+                    <div class="icon"><i class="fas fa-plane-departure"></i></div>
+                    <h3>Abeona</h3>
+                    <div class="latin-name">"She who goes forth"</div>
+                    <p>Goddess of outward journeys.</p>
+                </div>
+                <div class="deity-card adeona">
+                    <div class="icon"><i class="fas fa-plane-arrival"></i></div>
+                    <h3>Adeona</h3>
+                    <div class="latin-name">"She who returns"</div>
+                    <p>Goddess of safe returns.</p>
+                </div>
+                <div class="deity-card libertas">
+                    <div class="icon"><i class="fas fa-feather-alt"></i></div>
+                    <h3>Libertas</h3>
+                    <div class="latin-name">"Freedom"</div>
+                    <p>Goddess of liberty.</p>
+                </div>
+                <div class="libertas-coin-card">
+                    <img src="/static/images/libertas.png" alt="Roman Aureus coin showing Libertas, circa 108-110 AD">
+                    <div class="coin-caption">Aureus of Trajan (c. 108-110 AD)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="about-section">
+            <h2><i class="fas fa-robot"></i> What is Libertas?</h2>
+            <p>
+                Libertas is a trip planner. Drop in a confirmation, paste a Google Maps link, or chat your way
+                through a new itinerary; it builds the day-by-day, plots the map, and lets you share it. The
+                LLM sits behind the seams (parsing, classifying, geocoding) rather than as a chatbot wrapper.
+            </p>
+
+            <div class="features-grid">
+                <div class="feature">
+                    <i class="fas fa-comments"></i>
+                    <div class="feature-text">
+                        <h4>Create via chat</h4>
+                        <p>Describe a trip and it builds the day-by-day for you.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-file-import"></i>
+                    <div class="feature-text">
+                        <h4>Import bookings</h4>
+                        <p>Parse PDFs, .ics files, booking emails, and TripIt or Google Flights links.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-compass"></i>
+                    <div class="feature-text">
+                        <h4>Explore venues</h4>
+                        <p>Search restaurants, hotels, and attractions by city and add them straight to a trip.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <div class="feature-text">
+                        <h4>Interactive maps</h4>
+                        <p>Every stop gets geocoded and plotted on a Leaflet map.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-edit"></i>
+                    <div class="feature-text">
+                        <h4>Edit in chat</h4>
+                        <p>Add stops, move days, swap hotels, all from the sidebar.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-share-alt"></i>
+                    <div class="feature-text">
+                        <h4>Share three ways</h4>
+                        <p>Full itinerary, recommendation list, or written narrative.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-pen-fancy"></i>
+                    <div class="feature-text">
+                        <h4>Write-ups</h4>
+                        <p>One-click readable narrative with links and a map, good for sharing with friends.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {{ footer | safe }}
+
+    <script src="/app-config.js"></script>
+    <script src="/static/js/main.js?v=8"></script>
+</body>
+</html>

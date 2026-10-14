@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Libertas - Travel Freely</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/tokens.css?v=1">
+    <link rel="stylesheet" href="/app-config.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
+    <link rel="stylesheet" href="/static/css/home.css?v=2">
+</head>
+<body>
+    {{ nav | safe }}
+
+    <div class="home-hero">
+        <div class="home-hero-content">
+            <i class="fas fa-feather-alt brand-icon"></i>
+            <h1>LIBERTAS</h1>
+            <p class="tagline">Travel Freely</p>
+            <p class="subtitle">Stop juggling confirmation emails and spreadsheets, plan, organize, and share your trips in one place.</p>
+            <div class="home-hero-cta">
+                <a href="/register" class="cta-button cta-button-primary"><i class="fas fa-user-plus"></i> Sign up</a>
+                <a href="/how-it-works" class="cta-button cta-button-secondary"><i class="fas fa-circle-info"></i> How it works</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="home-content">
+        <div class="features-heading">
+            <h2>What you can do</h2>
+            <p>Three workflows. Pick whichever matches what you're trying to plan.</p>
+        </div>
+
+        <div class="home-grid">
+            <a href="/trips.html" class="home-card">
+                <div class="home-card-icon purple">
+                    <i class="fas fa-route"></i>
+                </div>
+                <div class="home-card-content">
+                    <h3>My Trips</h3>
+                    <p>Your itineraries with maps, day-by-day summaries, and shareable links.</p>
+                </div>
+            </a>
+
+            <a href="/explore.html" class="home-card">
+                <div class="home-card-icon green">
+                    <i class="fas fa-compass"></i>
+                </div>
+                <div class="home-card-content">
+                    <h3>Explore</h3>
+                    <p>Find restaurants, hotels, and activities along your route via chat.</p>
+                </div>
+            </a>
+
+            <a href="/create.html" class="home-card">
+                <div class="home-card-icon orange">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <div class="home-card-content">
+                    <h3>Create Trip</h3>
+                    <p>Build a new itinerary from scratch by chatting with the planner.</p>
+                </div>
+            </a>
+
+            <a href="/about.html" class="home-card">
+                <div class="home-card-icon blue">
+                    <i class="fas fa-scroll"></i>
+                </div>
+                <div class="home-card-content">
+                    <h3>About</h3>
+                    <p>Why "Libertas." A short note on the Roman name behind the project.</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Short walk-through with a deeper link to /how-it-works. The
+             previous version duplicated the entire how-it-works page here. -->
+        <div class="how-it-works">
+            <h2>The short version</h2>
+            <p class="how-it-works-subtitle">Drop in a confirmation, paste a Google Maps link, or chat from scratch. Libertas builds the day-by-day, plots the map, and lets you share it.</p>
+
+            <div class="cta-section">
+                <a href="/how-it-works" class="cta-button cta-button-secondary">
+                    <i class="fas fa-circle-info"></i> See the full walkthrough
+                </a>
+                <a href="/create.html" class="cta-button">
+                    <i class="fas fa-plus"></i> Create a trip
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{ footer | safe }}
+
+    <script src="/app-config.js"></script>
+    <script src="/static/js/main.js?v=8"></script>
+</body>
+</html>
