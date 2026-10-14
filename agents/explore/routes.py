@@ -8,7 +8,13 @@ from agents.common.flask_utils import json_err, json_ok
 from agents.common.venue_capture import save_venue_to_curated
 from agents.explore.handler import explore_chat_handler, load_venues
 
-explore_bp = Blueprint("explore", __name__)
+explore_bp = Blueprint(
+    "explore",
+    __name__,
+    template_folder="templates",
+    static_folder="static",
+    static_url_path="/explore/static",
+)
 
 
 @explore_bp.get("/api/explore/venues")

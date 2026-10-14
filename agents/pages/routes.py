@@ -5,27 +5,16 @@ from __future__ import annotations
 import os
 from datetime import date
 
-from flask import Blueprint, Response, g, redirect
+from flask import Blueprint, Response, g, redirect, render_template
 
 import database as db
 from agents.common.flask_utils import require_auth
-from agents.common.templates import (
-    generate_about_page,
-    generate_forgot_password_page,
-    generate_home_page,
-    generate_how_it_works_page,
-    generate_login_page,
-    generate_register_page,
-    generate_reset_password_page,
-    get_nav_html,
-)
-from agents.explore.templates import generate_explore_page
+from agents.common.templates import get_footer_html, get_nav_html
 from agents.itinerary import geocoding_worker
 from agents.itinerary.templates import generate_trips_page
-from agents.pages.profile_view import generate_profile_page
-from agents.pages.recommendation_view import generate_recommendation_page
+from agents.pages.recommendation_view import build_recommendation_context, build_writeup_context
 
-pages_bp = Blueprint("pages", __name__)
+pages_bp = Blueprint("pages", __name__, template_folder="templates")
 
 
 def _html(content: str) -> Response:
@@ -134,39 +123,15 @@ def _trip_not_available_response(link: str, reason: str) -> Response:
         if is_private
         else "The link may be mistyped, or the trip may have been deleted."
     )
-    nav = get_nav_html(active_page="")
-    body = f"""<!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8"><title>{title} - Libertas</title>
-<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="stylesheet" href="/static/css/main.css?v=17">
-<style>
-.unavailable {{ max-width: 560px; margin: 80px auto; padding: 40px 32px; background: #fff;
-  border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); text-align: center; }}
-.unavailable i {{ font-size: 3rem; color: #667eea; margin-bottom: 16px; }}
-.unavailable h1 {{ font-size: 1.4rem; color: #1a1a2e; margin: 0 0 12px; }}
-.unavailable p {{ color: #555; line-height: 1.5; margin: 0 0 14px; }}
-.unavailable .actions {{ margin-top: 24px; display: flex; gap: 12px; justify-content: center; }}
-.unavailable .btn {{ display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px;
-  background: #667eea; color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.95rem; }}
-.unavailable .btn.secondary {{ background: #f0f1ff; color: #4a5fd6; }}
-.unavailable .btn:hover {{ filter: brightness(0.95); }}
-.unavailable .link-tag {{ font-family: monospace; font-size: 0.85rem; color: #888;
-  background: #f5f5f5; padding: 4px 8px; border-radius: 4px; word-break: break-all; }}
-</style></head><body>
-{nav}
-<div class="unavailable">
-<i class="fas fa-{"lock" if is_private else "compass"}"></i>
-<h1>{headline}</h1>
-<p>{detail}</p>
-<p><span class="link-tag">{link}</span></p>
-<div class="actions">
-<a href="/" class="btn">Home</a>
-<a href="/trips.html" class="btn secondary">My trips</a>
-</div>
-</div>
-</body></html>"""
+    body = render_template(
+        "trip-not-available.html",
+        nav=get_nav_html(""),
+        title=title,
+        headline=headline,
+        detail=detail,
+        link=link,
+        is_private=is_private,
+    )
     return Response(body, mimetype="text/html", status=_PRIVATE_TRIP_STATUS if is_private else 404)
 
 
@@ -191,25 +156,29 @@ def home():
     # When not traveling, keep the home page - it has useful links to Create and Explore.
     if g.user_id and not g.auth_disabled and _has_current_trip(g.user_id):
         return redirect("/trips.html")
-    return _html(generate_home_page())
+    return render_template("home.html", nav=get_nav_html("home"), footer=get_footer_html())
 
 
 @pages_bp.get("/how-it-works")
 def how_it_works():
-    return _html(generate_how_it_works_page())
+    return render_template(
+        "how-it-works.html", nav=get_nav_html("how-it-works"), footer=get_footer_html()
+    )
 
 
 @pages_bp.get("/about")
 @pages_bp.get("/about.html")
 def about():
-    return _html(generate_about_page())
+    return render_template("about.html", nav=get_nav_html("about"), footer=get_footer_html())
 
 
 @pages_bp.get("/explore")
 @pages_bp.get("/explore.html")
 def explore():
     google_maps_api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
-    return _html(generate_explore_page(google_maps_api_key))
+    return render_template(
+        "explore.html", nav=get_nav_html("explore"), google_maps_api_key=google_maps_api_key
+    )
 
 
 @pages_bp.get("/login")
@@ -220,7 +189,7 @@ def login():
     # unreachable for previewing.
     if g.user_id and not g.auth_disabled:
         return redirect("/")
-    return _html(generate_login_page())
+    return render_template("login.html")
 
 
 @pages_bp.get("/register")
@@ -228,26 +197,24 @@ def login():
 def register():
     if g.user_id and not g.auth_disabled:
         return redirect("/")
-    return _html(generate_register_page())
+    return render_template("register.html")
 
 
 @pages_bp.get("/admin")
 def admin_dashboard():
-    from agents.admin.dashboard import generate_admin_dashboard_page
-
-    return _html(generate_admin_dashboard_page())
+    return render_template("admin.html", nav=get_nav_html(""))
 
 
 @pages_bp.get("/forgot-password")
 @pages_bp.get("/forgot-password.html")
 def forgot_password():
-    return _html(generate_forgot_password_page())
+    return render_template("forgot-password.html")
 
 
 @pages_bp.get("/reset-password")
 @pages_bp.get("/reset-password.html")
 def reset_password():
-    return _html(generate_reset_password_page())
+    return render_template("reset-password.html")
 
 
 @pages_bp.get("/profile")
@@ -255,8 +222,24 @@ def reset_password():
 def profile():
     profile_data = db.get_user_profile(g.user_id) or {}
     forwarding_emails = db.get_forwarding_emails(g.user_id)
-
-    return _html(generate_profile_page(profile_data, forwarding_emails))
+    style_profile = profile_data.get("style_profile", {})
+    quirks = style_profile.get("quirks", "")
+    return render_template(
+        "profile.html",
+        nav=get_nav_html(""),
+        samples_text=profile_data.get("writing_samples", "")
+        or profile_data.get("samples_preview", ""),
+        tone=style_profile.get("tone", ""),
+        sentence_style=style_profile.get("sentence_style", ""),
+        vocabulary=", ".join(style_profile.get("vocabulary", [])),
+        emphasis=style_profile.get("emphasis", ""),
+        perspective=style_profile.get("perspective", ""),
+        quirks=", ".join(quirks) if isinstance(quirks, list) else quirks,
+        rules=style_profile.get("rules", ""),
+        user_notes=profile_data.get("user_notes", ""),
+        has_profile=bool(style_profile),
+        forwarding_emails=forwarding_emails or [],
+    )
 
 
 @pages_bp.get("/trips")
@@ -333,11 +316,10 @@ def trip_html(trip_name: str):
     # Recommendation trips (ideas-only, no days) render via the recommendation view.
     # The day-by-day view can't show them and its map-status polling would infinite-loop.
     if trip.get("trip_type") == "recommendation":
-        return _html(
-            generate_recommendation_page(
-                trip.get("title", "Recommendations"), itinerary_data, trip_link=link
-            )
+        ctx = build_recommendation_context(
+            trip.get("title", "Recommendations"), itinerary_data, trip_link=link
         )
+        return render_template("recommendation.html", **ctx)
 
     from agents.itinerary.geocoding_worker import (
         _convert_itinerary_data_to_worker_format,
@@ -408,10 +390,10 @@ def recommendation_view(rec_name: str):
 
         itinerary_data = json.loads(itinerary_data)
 
-    html = generate_recommendation_page(
+    ctx = build_recommendation_context(
         trip.get("title", "Recommendations"), itinerary_data, trip_link=link
     )
-    return _html(html)
+    return render_template("recommendation.html", **ctx)
 
 
 @pages_bp.get("/w/<path:rec_name>.html")
@@ -472,12 +454,10 @@ def writeup_view(rec_name: str):
             traceback.print_exc()
             writeup_text = f"Write-up generation failed: {e}"
 
-    from agents.pages.recommendation_view import render_writeup_page
-
-    html = render_writeup_page(
+    ctx = build_writeup_context(
         trip.get("title", "Recommendations"),
         writeup_text,
         itinerary_data=itinerary_data,
         trip_link=link,
     )
-    return _html(html)
+    return render_template("writeup.html", **ctx)

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title | e }} - Libertas</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="/static/css/tokens.css?v=1">
+    <link rel="stylesheet" href="/app-config.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
+    <link rel="stylesheet" href="/static/css/recommendation.css?v=1">
+</head>
+<body>
+    {{ nav | safe }}
+
+    <div class="writeup-hero">
+        <h1>{{ title | e }}</h1>
+        {% if trip_link %}
+        <button class="rec-save-btn" id="rec-save-btn" data-source="{{ trip_link | e }}">
+            <i class="fas fa-plus"></i> Save to my trips
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="writeup-body">
+        <div class="writeup-map" id="writeup-map"></div>
+        <div class="writeup-content">{{ content | safe }}</div>
+
+        {% if venues_with_links %}
+        <div class="writeup-venues">
+            <h3>Quick Links</h3>
+            {% for item in venues_with_links %}
+            {% set has_website = item.website and 'google.com/search' not in item.website %}
+            {% if has_website or item.google_maps_link %}
+            <div class="writeup-venue-item">
+                <strong>{{ item.title | e }}</strong>
+                {% if has_website %}
+                <a href="{{ item.website | e }}" target="_blank">
+                    <i class="fas fa-globe"></i> Website
+                </a>
+                {% endif %}
+                {% if item.google_maps_link %}
+                <a href="{{ item.google_maps_link | e }}" target="_blank">
+                    <i class="fas fa-map"></i> Map
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/app-config.js"></script>
+    <script src="/static/js/main.js?v=7"></script>
+    <script>
+        initRecommendationMap('writeup-map', {{ markers | tojson }});
+        {% if trip_link %}
+        document.getElementById('rec-save-btn')?.addEventListener('click', function() {
+            showSaveToTripModal(this.dataset.source, {{ title | tojson }}, this);
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How It Works - Libertas</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/tokens.css?v=1">
+    <link rel="stylesheet" href="/app-config.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
+    <link rel="stylesheet" href="/static/css/how-it-works.css?v=3">
+</head>
+<body>
+    {{ nav | safe }}
+
+    <div class="hiw-hero">
+        <h1>HOW IT WORKS</h1>
+        <p class="subtitle">Stop juggling confirmation emails, notes apps, and browser tabs.
+        Libertas pulls your whole trip into one place, automatically.</p>
+    </div>
+
+    <div class="hiw-cta-strip">
+        <p>Ready to try it?</p>
+        <a href="/register" class="hiw-cta-btn">Create a free account</a>
+    </div>
+
+    <div class="hiw-content">
+
+        <!-- Step 1 -->
+        <div class="hiw-step">
+            <div class="hiw-step-number">1</div>
+            <div class="hiw-step-body">
+                <h2><i class="fas fa-file-import"></i> Import your bookings</h2>
+                <p>
+                    Upload a confirmation PDF, paste the text from
+                    a booking email, drop in a Google Flights link, or just describe the trip in chat.
+                </p>
+                <div class="hiw-pills">
+                    <span class="hiw-pill"><i class="fas fa-file-pdf"></i> PDF confirmations</span>
+                    <span class="hiw-pill"><i class="fas fa-envelope"></i> Booking emails</span>
+                    <span class="hiw-pill"><i class="fas fa-link"></i> Google Flights / TripIt links</span>
+                    <span class="hiw-pill"><i class="fas fa-comments"></i> Plain text or chat</span>
+                    <span class="hiw-pill"><i class="fas fa-file-excel"></i> Spreadsheets</span>
+                </div>
+                <div class="hiw-screenshot">
+                    <img src="/static/images/hiw-import.png" alt="Flight booking confirmation ready to import" loading="lazy">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="hiw-step">
+            <div class="hiw-step-number">2</div>
+            <div class="hiw-step-body">
+                <h2><i class="fas fa-list-alt"></i> Your itinerary takes shape</h2>
+                <p>
+                    Everything organizes itself into a clean day-by-day timeline.
+                </p>
+                <div class="hiw-screenshot">
+                    <img src="/static/images/hiw-timeline.png" alt="Day-by-day itinerary timeline with flights, hotels, and activities" loading="lazy">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="hiw-step">
+            <div class="hiw-step-number">3</div>
+            <div class="hiw-step-body">
+                <h2><i class="fas fa-comments"></i> Chat to adjust</h2>
+                <p>
+                    Use the built-in chat to tweak your trip.
+                </p>
+                <div class="hiw-screenshot">
+                    <img src="/static/images/hiw-chat.png" alt="Chat sidebar for editing your itinerary with AI assistance" loading="lazy">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="hiw-step">
+            <div class="hiw-step-number">4</div>
+            <div class="hiw-step-body">
+                <h2><i class="fas fa-map-marked-alt"></i> See it on a map</h2>
+                <p>
+                    Every location in your itinerary gets plotted automatically.
+                </p>
+                <div class="hiw-screenshot">
+                    <img src="/static/images/hiw-map.png" alt="Interactive map showing trip locations across Paris and Provence" loading="lazy">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="hiw-step">
+            <div class="hiw-step-number">5</div>
+            <div class="hiw-step-body">
+                <h2><i class="fas fa-compass"></i> Discover what's nearby</h2>
+                <p>
+                    The Explore tab searches restaurants, hotels, and attractions by city.
+                    The chat sidebar can suggest more, you add them to a trip with one click.
+                </p>
+                <div class="hiw-screenshot">
+                    <img src="/static/images/hiw-explore.png" alt="Explore chat showing curated restaurant recommendations in Paris" loading="lazy">
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="hiw-step">
+            <div class="hiw-step-number">6</div>
+            <div class="hiw-step-body">
+                <h2><i class="fas fa-share-alt"></i> Share and recommend</h2>
+                <p>
+                    Share your itinerary, send a curated recommendation, or generate
+                    an AI write-up with links and a map.
+                </p>
+                <div class="hiw-screenshot hiw-screenshot-mobile">
+                    <img src="/static/images/hiw-mobile.png" alt="Shared trip view on mobile phone" loading="lazy">
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo trip -->
+        <div class="hiw-demo">
+            <h2>SEE A REAL TRIP</h2>
+            <p>
+                Here's a sample itinerary, Paris &amp; Provence.
+            </p>
+            <a href="/paris_provence_adventure.html" class="hiw-cta-btn" target="_blank">
+                <i class="fas fa-map-marked-alt"></i> View sample trip
+            </a>
+        </div>
+
+        <!-- Feedback / CTA -->
+        <div class="hiw-feedback">
+            <h2>GIVE IT A TRY</h2>
+            <p>
+                Libertas is actively being built. Feedback is genuinely useful.
+            </p>
+            <a href="/register" class="hiw-cta-btn">Create a free account</a>
+            <a href="/about" class="hiw-cta-btn secondary">About Libertas</a>
+        </div>
+
+    </div>
+
+    {{ footer | safe }}
+
+    <script src="/app-config.js"></script>
+    <script src="/static/js/main.js?v=8"></script>
+</body>
+</html>

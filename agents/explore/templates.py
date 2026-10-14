@@ -3,7 +3,7 @@
 from pathlib import Path
 
 # Import shared components from common
-from agents.common.templates import get_nav_html, read_asset_file
+from agents.common.templates import read_asset_file
 
 _STATIC_DIR = Path(__file__).parent / "static"
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -19,20 +19,3 @@ def get_static_js(filename: str) -> str:
 
 def get_template(filename: str) -> str:
     return read_asset_file(_TEMPLATES_DIR / filename)
-
-
-def generate_explore_page(google_maps_api_key: str = "") -> str:
-    """Generate the Explore page HTML."""
-    template = get_template("explore.html")
-    # Concatenate the split CSS files into the inline <style> block
-    css_files = ("explore.css", "explore-cards-panel.css", "explore-responsive.css")
-    explore_css = "\n".join(get_static_css(name) for name in css_files)
-    js_files = ("explore.js", "explore-map.js", "explore-trip.js")
-    explore_js = "\n".join(get_static_js(name) for name in js_files)
-    return template.format(
-        explore_css=explore_css,
-        nav_html=get_nav_html("explore"),
-        explore_js=explore_js,
-        explore_trip_panel_js=get_static_js("explore-trip-panel.js"),
-        google_maps_api_key=google_maps_api_key,
-    )
