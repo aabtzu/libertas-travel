@@ -14,53 +14,26 @@
 
         _modal = document.createElement('div');
         _modal.id = 'copy-trip-modal';
-        _modal.style.cssText = [
-            'display:none',
-            'position:fixed',
-            'inset:0',
-            'z-index:2000',
-            'background:rgba(0,0,0,0.5)',
-            'align-items:center',
-            'justify-content:center',
-        ].join(';');
 
         const card = document.createElement('div');
-        card.style.cssText = [
-            'background:#fff',
-            'border-radius:12px',
-            'padding:24px',
-            'width:400px',
-            'max-width:90vw',
-            'max-height:80vh',
-            'overflow-y:auto',
-            'box-shadow:0 8px 32px rgba(0,0,0,0.18)',
-        ].join(';');
+        card.className = 'copy-trip-card';
 
         const heading = document.createElement('h3');
         heading.id = 'copy-trip-heading';
-        heading.style.cssText = 'margin:0 0 4px;font-size:16px;color:#1a1a2e;';
 
         const subheading = document.createElement('p');
-        subheading.style.cssText = 'margin:0 0 16px;font-size:13px;color:#888;';
+        subheading.className = 'copy-trip-subheading';
         subheading.textContent = 'Select a trip to copy or move this item to:';
 
         _tripList = document.createElement('div');
-        _tripList.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:12px;';
+        _tripList.className = 'copy-trip-list';
 
         _statusMsg = document.createElement('div');
-        _statusMsg.style.cssText = 'font-size:13px;min-height:18px;';
+        _statusMsg.className = 'copy-trip-status';
 
         const cancelBtn = document.createElement('button');
         cancelBtn.textContent = 'Cancel';
-        cancelBtn.style.cssText = [
-            'margin-top:12px',
-            'padding:8px 16px',
-            'border:1px solid #ddd',
-            'border-radius:6px',
-            'background:#fff',
-            'cursor:pointer',
-            'font-size:13px',
-        ].join(';');
+        cancelBtn.className = 'copy-trip-cancel';
         cancelBtn.addEventListener('click', _closeModal);
 
         card.appendChild(heading);
@@ -88,13 +61,14 @@
         if (heading) heading.textContent = item.title || 'Item';
 
         _statusMsg.textContent = '';
+        _statusMsg.className = 'copy-trip-status';
         _tripList.textContent = 'Loading trips...';
-        _modal.style.display = 'flex';
+        _modal.classList.add('is-open');
         _loadTrips();
     }
 
     function _closeModal() {
-        if (_modal) _modal.style.display = 'none';
+        if (_modal) _modal.classList.remove('is-open');
         _pendingItem = null;
         _pendingSource = null;
     }
@@ -117,14 +91,14 @@
 
             trips.forEach(t => {
                 const row = document.createElement('div');
-                row.style.cssText = 'display:flex;gap:8px;align-items:center;';
+                row.className = 'copy-trip-row';
 
                 const label = document.createElement('span');
-                label.style.cssText = 'flex:1;font-size:14px;color:#1a1a2e;padding:10px 0;';
+                label.className = 'copy-trip-label';
                 label.textContent = t.title || t.link;
 
-                const copyBtn = _actionButton('Copy', '#667eea');
-                const moveBtn = _actionButton('Move', '#e74c3c');
+                const copyBtn = _actionButton('Copy', 'copy');
+                const moveBtn = _actionButton('Move', 'move');
 
                 copyBtn.addEventListener('click', () => _doAction('copy', t.link, copyBtn, moveBtn));
                 moveBtn.addEventListener('click', () => _doAction('move', t.link, copyBtn, moveBtn));
@@ -134,7 +108,7 @@
                 row.appendChild(moveBtn);
 
                 const wrapper = document.createElement('div');
-                wrapper.style.cssText = 'border:1px solid #e0e0e0;border-radius:8px;padding:4px 12px;background:#f8f9fa;';
+                wrapper.className = 'copy-trip-wrapper';
                 wrapper.appendChild(row);
                 _tripList.appendChild(wrapper);
             });
@@ -143,27 +117,23 @@
         }
     }
 
-    function _actionButton(label, color) {
+    function _actionButton(label, variant) {
         const btn = document.createElement('button');
         btn.textContent = label;
-        btn.style.cssText = [
-            `background:${color}`,
-            'color:#fff',
-            'border:none',
-            'border-radius:6px',
-            'padding:6px 14px',
-            'font-size:13px',
-            'cursor:pointer',
-        ].join(';');
+        btn.className = `copy-trip-btn copy-trip-btn--${variant}`;
         return btn;
+    }
+
+    function _setStatus(text, state) {
+        _statusMsg.textContent = text;
+        _statusMsg.className = `copy-trip-status${state ? ' is-' + state : ''}`;
     }
 
     async function _doAction(action, targetLink, copyBtn, moveBtn) {
         if (!_pendingItem) return;
         copyBtn.disabled = true;
         moveBtn.disabled = true;
-        _statusMsg.style.color = '#888';
-        _statusMsg.textContent = action === 'copy' ? 'Copying...' : 'Moving...';
+        _setStatus(action === 'copy' ? 'Copying...' : 'Moving...', 'pending');
 
         const stem = targetLink.replace(/\.html$/, '');
 
@@ -175,8 +145,7 @@
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
-                _statusMsg.style.color = '#e74c3c';
-                _statusMsg.textContent = data.error || 'Failed.';
+                _setStatus(data.error || 'Failed.', 'error');
                 copyBtn.disabled = false;
                 moveBtn.disabled = false;
                 return;
@@ -186,14 +155,13 @@
                 _deleteSource();
             }
 
-            _statusMsg.style.color = '#27ae60';
-            _statusMsg.textContent = action === 'copy'
-                ? 'Item copied to ideas pile.'
-                : 'Item moved to ideas pile.';
+            _setStatus(
+                action === 'copy' ? 'Item copied to ideas pile.' : 'Item moved to ideas pile.',
+                'ok'
+            );
             setTimeout(_closeModal, 1200);
         } catch {
-            _statusMsg.style.color = '#e74c3c';
-            _statusMsg.textContent = 'Connection error.';
+            _setStatus('Connection error.', 'error');
             copyBtn.disabled = false;
             moveBtn.disabled = false;
         }

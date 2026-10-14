@@ -84,15 +84,15 @@ function _showSubscribeModal(url, copied, title) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
-        <div class="modal-dialog" style="max-width: 560px;">
+        <div class="modal-dialog subscribe-dialog">
             <div class="modal-header">
-                <i class="fas fa-rss" style="color: #f0c674; font-size: 1.6rem;"></i>
+                <i class="fas fa-rss"></i>
                 <h3>${title || 'Subscribe to this trip'}</h3>
             </div>
             <div class="modal-body">
-                <p style="margin-top:0">${copied ? '<i class="fas fa-check" style="color:#43a047"></i> Copied to clipboard.' : 'Copy this URL:'}</p>
+                <p class="subscribe-body-intro">${copied ? '<i class="fas fa-check subscribe-copied-icon"></i> Copied to clipboard.' : 'Copy this URL:'}</p>
                 <input type="text" class="modal-input" id="subscribe-url-input" readonly>
-                <ul class="subscribe-instructions" style="margin-top:18px;">
+                <ul class="subscribe-instructions">
                     <li>
                         <strong>Apple Calendar</strong>
                         <span>File &rarr; New Calendar Subscription &rarr; paste above</span>
@@ -106,10 +106,8 @@ function _showSubscribeModal(url, copied, title) {
                         <span>Add Calendar &rarr; Subscribe from web &rarr; paste above</span>
                     </li>
                 </ul>
-                <input type="text" class="modal-input" id="subscribe-url-https" readonly style="margin-top:8px; font-size:0.8rem;">
-                <p style="font-size:0.75rem; color:#888; margin-top:6px; margin-bottom:0;">
-                    Google Calendar URL (https://)
-                </p>
+                <input type="text" class="modal-input subscribe-url-https" id="subscribe-url-https" readonly>
+                <p class="subscribe-url-note">Google Calendar URL (https://)</p>
             </div>
             <div class="modal-footer">
                 <a id="subscribe-url-open" class="modal-btn modal-btn-secondary">Open in calendar</a>

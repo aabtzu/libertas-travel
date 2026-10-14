@@ -1,0 +1,174 @@
+/* Styles for dynamically-created panels in the trip editor:
+   the copy/move modal (create-copy.js) and the collaborator panel (create-collab.js).
+   These elements are built with createElement, so their styles live here instead of
+   inline in the JS. */
+
+/* ---- Copy/Move modal ---- */
+#copy-trip-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+#copy-trip-modal.is-open { display: flex; }
+
+.copy-trip-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    width: 400px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.copy-trip-card h3 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    color: #1a1a2e;
+}
+
+.copy-trip-subheading {
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: #666;
+}
+
+.copy-trip-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.copy-trip-status {
+    font-size: 13px;
+    min-height: 18px;
+}
+.copy-trip-status.is-ok    { color: #27ae60; }
+.copy-trip-status.is-error { color: #c0392b; }
+.copy-trip-status.is-pending { color: #666; }
+
+.copy-trip-cancel {
+    margin-top: 12px;
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.copy-trip-wrapper {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 4px 12px;
+    background: #f8f9fa;
+}
+
+.copy-trip-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.copy-trip-label {
+    flex: 1;
+    font-size: 14px;
+    color: #1a1a2e;
+    padding: 10px 0;
+}
+
+.copy-trip-btn {
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #fff;
+}
+.copy-trip-btn--copy { background: #667eea; }
+.copy-trip-btn--move { background: #c0392b; }
+
+/* ---- Collaborator panel (rows built by create-collab.js) ---- */
+.collab-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.collab-row-label {
+    font-size: 13px;
+}
+
+.collab-row-sub {
+    color: #666;
+}
+
+.collab-row-pending {
+    color: #666;
+}
+
+.collab-msg-ok    { color: #27ae60; }
+.collab-msg-error { color: #c0392b; }
+
+.collab-empty { color: #666; }
+.collab-load-error { color: #c0392b; }
+
+/* ---- Collaborator panel (HTML in create.html) ---- */
+.collab-panel {
+    display: none;
+    position: absolute;
+    top: 60px;
+    right: 16px;
+    z-index: 200;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 20px;
+    width: 320px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.collab-panel-heading {
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.collab-panel-icon { color: var(--accent); }
+
+.collab-panel-list {
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.collab-panel-invite-row {
+    display: flex;
+    gap: 8px;
+}
+
+.collab-panel-input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.collab-panel-btn {
+    padding: 8px 14px;
+    font-size: 14px;
+}
+
+.collab-panel-msg {
+    margin-top: 8px;
+    font-size: 13px;
+}

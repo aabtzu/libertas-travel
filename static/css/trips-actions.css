@@ -530,3 +530,12 @@
 .subscribe-instructions li:last-child { border-bottom: none; }
 .subscribe-instructions li strong { color: var(--surface-dark); }
 .subscribe-instructions li span { color: var(--ink-muted); font-size: 0.82rem; text-align: right; }
+
+/* Calendar subscribe dialog extras (built in calendar-export.js) */
+.modal-dialog.subscribe-dialog { max-width: 560px; }
+.subscribe-dialog .modal-header i.fa-rss { color: var(--gold); font-size: 1.6rem; }
+.subscribe-url-note { font-size: 0.75rem; color: #666; margin-top: 6px; margin-bottom: 0; }
+.subscribe-url-https { margin-top: 8px; font-size: 0.8rem; }
+.subscribe-body-intro { margin-top: 0; }
+.subscribe-instructions { margin-top: 18px; }
+.subscribe-copied-icon { color: #27ae60; }

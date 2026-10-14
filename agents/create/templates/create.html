@@ -10,13 +10,15 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/static/css/tokens.css?v=1">
     <link rel="stylesheet" href="/app-config.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main.css?v=19">
+    <link rel="stylesheet" href="/static/css/main-extras.css?v=1">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
     <link rel="stylesheet" href="/static/css/categories.css?v=1">
     <link rel="stylesheet" href="/static/css/create-form.css?v=1">
     <link rel="stylesheet" href="/static/css/create-editor.css?v=1">
     <link rel="stylesheet" href="/static/css/create-content.css?v=8">
     <link rel="stylesheet" href="/static/css/create-chat.css?v=6">
+    <link rel="stylesheet" href="/static/css/create-panels.css?v=1">
     <link rel="stylesheet" href="/static/css/create-views.css?v=5">
 </head>
 <body>
@@ -93,21 +95,19 @@
             </div>
 
             <!-- Collaborator panel (owner only) -->
-            <div id="collab-panel" style="display:none;position:absolute;top:60px;right:16px;z-index:200;
-                 background:white;border:1px solid #ddd;border-radius:12px;padding:20px;
-                 width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.12);">
-                <h4 style="margin:0 0 12px;display:flex;align-items:center;gap:8px;">
-                    <i class="fas fa-users" style="color:#667eea;"></i> Collaborators
+            <div id="collab-panel" class="collab-panel">
+                <h4 class="collab-panel-heading">
+                    <i class="fas fa-users collab-panel-icon"></i> Collaborators
                 </h4>
-                <div id="collab-list" style="margin-bottom:12px;font-size:14px;"></div>
-                <div style="display:flex;gap:8px;">
+                <div id="collab-list" class="collab-panel-list"></div>
+                <div class="collab-panel-invite-row">
                     <input type="email" id="collab-email-input" placeholder="Email address"
-                           style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
-                    <button id="collab-invite-btn" class="btn btn-primary" style="padding:8px 14px;font-size:14px;">
+                           class="collab-panel-input">
+                    <button id="collab-invite-btn" class="btn btn-primary collab-panel-btn">
                         Invite
                     </button>
                 </div>
-                <div id="collab-msg" style="margin-top:8px;font-size:13px;"></div>
+                <div id="collab-msg" class="collab-panel-msg"></div>
             </div>
         </div>
 
