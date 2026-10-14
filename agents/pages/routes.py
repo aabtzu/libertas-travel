@@ -249,20 +249,15 @@ def trips():
     user_trips = db.get_user_trips(g.user_id)
     shared_trips = db.get_shared_trips_for_user(g.user_id)
     public_trips = db.get_public_trips(exclude_user_id=g.user_id)
-    return _html(generate_trips_page(user_trips, public_trips, shared_trips=shared_trips))
+    ctx = generate_trips_page(user_trips, public_trips, shared_trips=shared_trips)
+    return render_template("trips.html", **ctx)
 
 
 @pages_bp.get("/create")
 @pages_bp.get("/create.html")
 @require_auth
 def create():
-    from pathlib import Path
-
-    template_path = Path(__file__).parent.parent / "create" / "templates" / "create.html"
-    if not template_path.exists():
-        return "Create page template not found", 404
-    html = template_path.read_text().format(nav_html=get_nav_html(""))
-    return _html(html)
+    return render_template("create.html", nav=get_nav_html(""))
 
 
 @pages_bp.get("/<path:trip_name>.html")
@@ -353,7 +348,7 @@ def trip_html(trip_name: str):
     # fall back to "plane" if it hasn't been computed yet.
     card_icon = itinerary_data.get("card_icon") or "plane"
     web_view = ItineraryWebView()
-    html = web_view.render_html(
+    ctx = web_view.build_context(
         itinerary,
         map_data,
         is_owner=is_owner,
@@ -361,7 +356,7 @@ def trip_html(trip_name: str):
         trip_link=link,
         card_icon=card_icon,
     )
-    return _html(html)
+    return render_template("trip.html", **ctx)
 
 
 @pages_bp.get("/r/<path:rec_name>.html")

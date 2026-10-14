@@ -642,11 +642,10 @@ def generate_trips_page(
         count=len(archived_cards_list),
     )
 
-    template = get_template("trips.html")
-    return template.format(
-        nav_html=get_nav_html("trips"),
-        trip_cards=trip_cards,
-        public_trips_section=shared_section + public_trips_section,
-        archived_section=archived_section,
-        archived_toggle=archived_toggle,
-    )
+    return {
+        "nav": get_nav_html("trips"),
+        "trip_cards": trip_cards,
+        "public_trips_section": shared_section + public_trips_section,
+        "archived_section": archived_section,
+        "archived_toggle": archived_toggle,
+    }

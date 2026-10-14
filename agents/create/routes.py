@@ -7,7 +7,7 @@ from flask import Blueprint, g, request
 from agents.common.flask_utils import json_err, json_ok, require_auth
 from agents.create import handler as create_handler
 
-create_bp = Blueprint("create", __name__)
+create_bp = Blueprint("create", __name__, template_folder="templates")
 
 
 @create_bp.post("/api/create/chat")
