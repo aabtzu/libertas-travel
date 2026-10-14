@@ -22,7 +22,7 @@ from agents.common.templates import (
 from agents.explore.templates import generate_explore_page
 from agents.itinerary import geocoding_worker
 from agents.itinerary.templates import generate_trips_page
-from agents.pages.recommendation_view import generate_recommendation_page
+from agents.pages.recommendation_view import build_recommendation_context, build_writeup_context
 
 pages_bp = Blueprint("pages", __name__, template_folder="templates")
 
@@ -347,11 +347,10 @@ def trip_html(trip_name: str):
     # Recommendation trips (ideas-only, no days) render via the recommendation view.
     # The day-by-day view can't show them and its map-status polling would infinite-loop.
     if trip.get("trip_type") == "recommendation":
-        return _html(
-            generate_recommendation_page(
-                trip.get("title", "Recommendations"), itinerary_data, trip_link=link
-            )
+        ctx = build_recommendation_context(
+            trip.get("title", "Recommendations"), itinerary_data, trip_link=link
         )
+        return render_template("recommendation.html", **ctx)
 
     from agents.itinerary.geocoding_worker import (
         _convert_itinerary_data_to_worker_format,
@@ -422,10 +421,10 @@ def recommendation_view(rec_name: str):
 
         itinerary_data = json.loads(itinerary_data)
 
-    html = generate_recommendation_page(
+    ctx = build_recommendation_context(
         trip.get("title", "Recommendations"), itinerary_data, trip_link=link
     )
-    return _html(html)
+    return render_template("recommendation.html", **ctx)
 
 
 @pages_bp.get("/w/<path:rec_name>.html")
@@ -486,12 +485,10 @@ def writeup_view(rec_name: str):
             traceback.print_exc()
             writeup_text = f"Write-up generation failed: {e}"
 
-    from agents.pages.recommendation_view import render_writeup_page
-
-    html = render_writeup_page(
+    ctx = build_writeup_context(
         trip.get("title", "Recommendations"),
         writeup_text,
         itinerary_data=itinerary_data,
         trip_link=link,
     )
-    return _html(html)
+    return render_template("writeup.html", **ctx)

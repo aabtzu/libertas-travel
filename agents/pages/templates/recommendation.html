@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title | e }} - Libertas</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="/static/css/tokens.css?v=1">
+    <link rel="stylesheet" href="/app-config.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
+    <link rel="stylesheet" href="/static/css/recommendation.css?v=1">
+</head>
+<body>
+    {{ nav | safe }}
+
+    <div class="rec-hero">
+        <h1>{{ title | e }}</h1>
+        <p>{{ item_count }} recommendations</p>
+        <button class="rec-save-btn" id="rec-save-btn" data-source="{{ trip_link | e }}">
+            <i class="fas fa-plus"></i> Save to my trips
+        </button>
+    </div>
+
+    <div class="rec-content">
+        <div class="rec-map" id="rec-map"></div>
+
+        {% for loc in location_groups %}
+        <div class="rec-location">
+            <h2 class="rec-location-header">
+                <i class="fas fa-map-marker-alt"></i> {{ loc.name | e }}
+            </h2>
+            {% for cat in loc.categories %}
+            <div class="rec-group">
+                <h3 class="rec-group-header">
+                    <i class="fas {{ cat.icon }}"></i> {{ cat.label | e }}
+                </h3>
+                {% for item in cat.venues %}
+                <div class="rec-item">
+                    <h3 class="rec-item-name">{{ item.title | e }}</h3>
+                    {% if item.notes %}
+                    <p class="rec-item-notes">{{ item.notes | e }}</p>
+                    {% endif %}
+                    <div class="rec-item-links">
+                        {% if item.website %}
+                        <a href="{{ item.website | e }}" target="_blank" rel="noopener">
+                            <i class="fas fa-globe"></i> Website
+                        </a>
+                        {% endif %}
+                        {% if item.google_maps_link %}
+                        <a href="{{ item.google_maps_link | e }}" target="_blank" rel="noopener">
+                            <i class="fas fa-map"></i> Map
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        {% if tips %}
+        <div class="rec-tips">
+            <h2><i class="fas fa-lightbulb"></i> Tips</h2>
+            <ul>
+                {% for tip in tips %}
+                <li>{{ tip | e }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/app-config.js"></script>
+    <script src="/static/js/main.js?v=7"></script>
+    <script>
+        initRecommendationMap('rec-map', {{ markers | tojson }});
+        document.getElementById('rec-save-btn')?.addEventListener('click', function() {
+            showSaveToTripModal(this.dataset.source, {{ title | tojson }}, this);
+        });
+    </script>
+</body>
+</html>
