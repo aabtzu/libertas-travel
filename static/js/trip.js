@@ -1,6 +1,18 @@
 /* Trip Page JavaScript - Libertas */
 /* This file can be edited directly - no need to regenerate HTML */
 
+// Show import-success banner if ?imported=N is in the URL, then clean the URL.
+(function () {
+    var n = new URLSearchParams(location.search).get('imported');
+    if (n) {
+        var b = document.getElementById('import-banner');
+        document.getElementById('import-banner-text').textContent =
+            n + ' item' + (n == 1 ? '' : 's') + ' added to ideas.';
+        b.style.display = '';
+        history.replaceState(null, '', location.pathname);
+    }
+})();
+
 // Export trip - show format selection popup
 function exportTrip() {
     showExportPopup();

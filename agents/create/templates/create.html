@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/static/css/tokens.css?v=1">
     <link rel="stylesheet" href="/app-config.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main.css?v=18">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
     <link rel="stylesheet" href="/static/css/categories.css?v=1">
     <link rel="stylesheet" href="/static/css/create-form.css?v=1">
@@ -250,25 +250,6 @@
                             title="Generate an AI-written narrative summary of your trip with links and a map">
                         <i class="fas fa-pen-fancy"></i> Generate Write-up
                     </button>
-                    <script>
-                        // Persistently hide the AI-helpers hint once the user
-                        // has dismissed it. localStorage so the preference
-                        // survives page reloads + new tabs.
-                        (function () {
-                            var hint = document.getElementById('trip-tools-hint');
-                            var btn = document.getElementById('trip-tools-hint-close');
-                            if (!hint || !btn) return;
-                            try {
-                                if (localStorage.getItem('libertas_hide_tools_hint') === '1') {
-                                    hint.style.display = 'none';
-                                }
-                            } catch (e) { /* private mode etc. */ }
-                            btn.addEventListener('click', function () {
-                                hint.style.display = 'none';
-                                try { localStorage.setItem('libertas_hide_tools_hint', '1'); } catch (e) {}
-                            });
-                        })();
-                    </script>
                     <div class="writeup-result" id="writeup-result" style="display:none">
                         <div class="writeup-header">
                             <span><i class="fas fa-pen-fancy"></i> Write-up</span>
@@ -404,12 +385,7 @@
     <script src="/app-config.js"></script>
     <script src="/static/js/main.js?v=8"></script>
     <script src="/static/js/calendar.js?v=3"></script>
-    <script>
-        // Trip link from URL - check for both 'link' and 'edit' parameters
-        var params = new URLSearchParams(window.location.search);
-        var tripLink = params.get('link') || params.get('edit');
-    </script>
-    <script src="/static/js/create.js?v=61"></script>
+    <script src="/static/js/create.js?v=62"></script>
     <script src="/static/js/create-render.js?v=5"></script>
     <script src="/static/js/create-items.js?v=4"></script>
     <script src="/static/js/create-upload.js?v=8"></script>

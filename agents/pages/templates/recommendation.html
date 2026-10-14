@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/static/css/tokens.css?v=1">
     <link rel="stylesheet" href="/app-config.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main.css?v=18">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
     <link rel="stylesheet" href="/static/css/recommendation.css?v=1">
 </head>
@@ -25,7 +25,7 @@
     </div>
 
     <div class="rec-content">
-        <div class="rec-map" id="rec-map"></div>
+        <div class="rec-map" id="rec-map" data-markers="{{ markers | tojson | e }}" data-title="{{ title | e }}"></div>
 
         {% for loc in location_groups %}
         <div class="rec-location">
@@ -77,11 +77,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/app-config.js"></script>
     <script src="/static/js/main.js?v=7"></script>
-    <script>
-        initRecommendationMap('rec-map', {{ markers | tojson }});
-        document.getElementById('rec-save-btn')?.addEventListener('click', function() {
-            showSaveToTripModal(this.dataset.source, {{ title | tojson }}, this);
-        });
-    </script>
+    <script src="/static/js/recommendation.js?v=1"></script>
 </body>
 </html>

@@ -2,6 +2,10 @@
  * Libertas Create Trip - Visual trip editor with LLM chat
  */
 
+// Trip link from URL - supports both ?link= and ?edit= parameters
+var params = new URLSearchParams(window.location.search);
+var tripLink = params.get('link') || params.get('edit');
+
 // Global state
 let currentTrip = {
     link: null,
@@ -94,6 +98,21 @@ function getCategoryIcon(category) {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Create page initialized, tripLink:', tripLink);
+
+    // Persistently hide the tools hint once dismissed (survives reloads via localStorage).
+    (function () {
+        var hint = document.getElementById('trip-tools-hint');
+        var btn = document.getElementById('trip-tools-hint-close');
+        if (!hint || !btn) return;
+        try {
+            if (localStorage.getItem('libertas_hide_tools_hint') === '1') hint.style.display = 'none';
+        } catch (e) {}
+        btn.addEventListener('click', function () {
+            hint.style.display = 'none';
+            try { localStorage.setItem('libertas_hide_tools_hint', '1'); } catch (e) {}
+        });
+    })();
+
     if (tripLink) {
         // Load existing trip
         loadTrip(tripLink);
