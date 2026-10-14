@@ -12,7 +12,7 @@ from agents.common.categories import CATEGORY_ICONS, TRAVEL_CATEGORIES
 from .mapper import ItineraryMapper
 from .models import Itinerary, ItineraryItem
 from .summarizer import ItinerarySummarizer
-from .templates import get_nav_html, get_template
+from .templates import get_nav_html
 from .web_view_columns import build_calendar_html, build_column_html
 
 
@@ -56,7 +56,7 @@ class ItineraryWebView:
         self.mapper = ItineraryMapper(api_key=self.api_key)
         self.summarizer = ItinerarySummarizer(api_key=api_key)
 
-    def render_html(
+    def build_context(
         self,
         itinerary: Itinerary,
         map_data: dict | None = None,
@@ -64,24 +64,21 @@ class ItineraryWebView:
         is_authenticated: bool = False,
         trip_link: str = "",
         card_icon: str = "plane",
-    ) -> str:
-        """Render trip HTML without writing to file.
+    ) -> dict:
+        """Build template context dict for the trip page.
 
         Args:
             itinerary: The Itinerary object to render
             map_data: Pre-computed map data (markers, center, zoom). If None, uses placeholder.
 
         Returns:
-            HTML string for the trip page
+            Context dict for render_template("trip.html", ...)
         """
-        # Use provided map_data or placeholder
         if map_data is None:
             map_data = {"center": {"lat": 20, "lng": 0}, "zoom": 2, "markers": [], "pending": True}
 
-        # Generate the summary HTML directly from itinerary data
         summary_html = self._build_summary_html(itinerary)
 
-        # Build meta info
         meta_parts = []
         if itinerary.start_date and itinerary.end_date:
             meta_parts.append(
@@ -94,28 +91,38 @@ class ItineraryWebView:
             meta_parts.append(f"{len(itinerary.travelers)} travelers")
         meta_parts.append(f"{len(itinerary.items)} activities")
 
-        meta_info = " • ".join(meta_parts)
+        return {
+            "nav": get_nav_html("trips"),
+            "title": html_module.escape(itinerary.title),
+            "trip_icon": html_module.escape(card_icon or "plane"),
+            "meta_info": html_module.escape(" • ".join(meta_parts)),
+            "summary_html": summary_html,
+            "column_html": build_column_html(itinerary),
+            "calendar_html": build_calendar_html(itinerary),
+            "map_data_json": json.dumps(map_data),
+            "viewer_buttons_html": _build_viewer_buttons_html(
+                is_owner, is_authenticated, trip_link
+            ),
+            "is_owner_json": "true" if is_owner else "false",
+            "is_authenticated_json": "true" if is_authenticated else "false",
+        }
 
-        # Generate column view HTML (defined in web_view_columns.py)
-        column_html = build_column_html(itinerary)
+    def render_html(
+        self,
+        itinerary: Itinerary,
+        map_data: dict | None = None,
+        is_owner: bool = False,
+        is_authenticated: bool = False,
+        trip_link: str = "",
+        card_icon: str = "plane",
+    ) -> str:
+        """Render trip HTML string (used for static file generation)."""
+        from flask import render_template
 
-        # Generate calendar view HTML (defined in web_view_columns.py)
-        calendar_html = build_calendar_html(itinerary)
-
-        # Build the full HTML
-        return get_template("trip.html").format(
-            nav_html=get_nav_html("trips"),
-            title=html_module.escape(itinerary.title),
-            trip_icon=html_module.escape(card_icon or "plane"),
-            meta_info=html_module.escape(meta_info),
-            summary_html=summary_html,
-            column_html=column_html,
-            calendar_html=calendar_html,
-            map_data_json=json.dumps(map_data),
-            viewer_buttons_html=_build_viewer_buttons_html(is_owner, is_authenticated, trip_link),
-            is_owner_json="true" if is_owner else "false",
-            is_authenticated_json="true" if is_authenticated else "false",
+        ctx = self.build_context(
+            itinerary, map_data, is_owner, is_authenticated, trip_link, card_icon
         )
+        return render_template("trip.html", **ctx)
 
     def generate(
         self,

@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/static/css/create-views.css?v=5">
 </head>
 <body>
-    {nav_html}
+    {{ nav | safe }}
 
     <!-- Initial Dialog Modal (hidden by default, shown only for new trips) -->
     <div class="modal-overlay hidden" id="create-dialog">
@@ -254,20 +254,20 @@
                         // Persistently hide the AI-helpers hint once the user
                         // has dismissed it. localStorage so the preference
                         // survives page reloads + new tabs.
-                        (function () {{
+                        (function () {
                             var hint = document.getElementById('trip-tools-hint');
                             var btn = document.getElementById('trip-tools-hint-close');
                             if (!hint || !btn) return;
-                            try {{
-                                if (localStorage.getItem('libertas_hide_tools_hint') === '1') {{
+                            try {
+                                if (localStorage.getItem('libertas_hide_tools_hint') === '1') {
                                     hint.style.display = 'none';
-                                }}
-                            }} catch (e) {{ /* private mode etc. */ }}
-                            btn.addEventListener('click', function () {{
+                                }
+                            } catch (e) { /* private mode etc. */ }
+                            btn.addEventListener('click', function () {
                                 hint.style.display = 'none';
-                                try {{ localStorage.setItem('libertas_hide_tools_hint', '1'); }} catch (e) {{}}
-                            }});
-                        }})();
+                                try { localStorage.setItem('libertas_hide_tools_hint', '1'); } catch (e) {}
+                            });
+                        })();
                     </script>
                     <div class="writeup-result" id="writeup-result" style="display:none">
                         <div class="writeup-header">

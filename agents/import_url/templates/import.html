@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import - Libertas</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/tokens.css?v=1">
+    <link rel="stylesheet" href="/app-config.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=14">
+    <link rel="stylesheet" href="/static/css/import.css?v=1">
+</head>
+<body class="import-body">
+    <div class="import-container">
+        <div class="import-header">
+            <a href="/trips.html" class="import-back"><i class="fas fa-arrow-left"></i></a>
+            <div class="import-brand">
+                <i class="fas fa-feather-alt"></i>
+                <span>Import</span>
+            </div>
+        </div>
+
+        <div class="import-card">
+            <div class="import-source">
+                <i class="fas fa-link"></i>
+                <span class="import-url" title="{{ url | e }}">{{ url_display | e }}</span>
+            </div>
+            {% if title and title != url %}
+            <div class="import-page-title">{{ title | e }}</div>
+            {% endif %}
+        </div>
+
+        {% if error %}
+        <div class="import-error">{{ error | e }}</div>
+        {% endif %}
+        {% if success_msg %}
+        <div class="import-success">{{ success_msg | e }}</div>
+        {% endif %}
+
+        {% if items %}
+        <div class="import-preview">
+            <div class="import-preview-label">
+                <i class="fas fa-list"></i> {{ items | length }} item{{ 's' if items | length != 1 else '' }} found
+            </div>
+            <ul class="import-items-list">
+                {% for item in items[:20] %}
+                <li class="import-item">
+                    <span class="import-cat">{{ (item.category or 'other') | e }}</span> {{ (item.title or '(untitled)') | e }}
+                </li>
+                {% endfor %}
+                {% if items | length > 20 %}
+                <li class="import-item import-more">...and {{ items | length - 20 }} more</li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form class="import-form" method="POST" action="/import">
+            <input type="hidden" name="url" value="{{ url | e }}">
+            <input type="hidden" name="page_title" value="{{ title | e }}">
+
+            <div class="import-field">
+                <label for="trip_link">Add to trip</label>
+                <select name="trip_link" id="trip_link" required>
+                    <option value="">-- choose a trip --</option>
+                    <option value="__new__">+ New draft trip</option>
+                    {% for trip in trips %}
+                    <option value="{{ trip.link | e }}">{{ trip.title | e }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="import-btn">
+                <i class="fas fa-plus"></i>
+                Add to trip
+            </button>
+        </form>
+    </div>
+</body>
+</html>

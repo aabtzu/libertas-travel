@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title | e }} - Libertas</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="/static/css/tokens.css?v=1">
+    <link rel="stylesheet" href="/app-config.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=17">
+    <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
+    <link rel="stylesheet" href="/static/css/trip.css?v=12">
+    <link rel="stylesheet" href="/static/css/trip-calendar.css?v=3">
+    <link rel="stylesheet" href="/static/css/trip-responsive.css?v=2">
+</head>
+<body>
+    {{ nav | safe }}
+    <div id="import-banner" style="display:none;background:#f0fff4;border-bottom:1px solid #c3e6cb;color:#1a5c2a;padding:10px 20px;text-align:center;font-size:14px;">
+        <i class="fas fa-check-circle"></i> <span id="import-banner-text"></span>
+        <button onclick="this.parentNode.style.display='none'" style="margin-left:12px;background:none;border:none;color:#1a5c2a;cursor:pointer;font-size:14px;">&times;</button>
+    </div>
+    <script>
+    (function() {
+        var n = new URLSearchParams(location.search).get('imported');
+        if (n) {
+            var b = document.getElementById('import-banner');
+            document.getElementById('import-banner-text').textContent = n + ' item' + (n == 1 ? '' : 's') + ' added to ideas.';
+            b.style.display = '';
+            history.replaceState(null, '', location.pathname);
+        }
+    })();
+    </script>
+
+    <div class="trip-header">
+        <div class="trip-header-content">
+            <div>
+                <h1><i class="fas fa-{{ trip_icon | e }}"></i> {{ title | e }}</h1>
+                <div class="meta">{{ meta_info | e }}</div>
+            </div>
+            <div class="header-actions">
+                {{ viewer_buttons_html | safe }}
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('list')">
+            <i class="fas fa-list"></i> List
+        </div>
+        <div class="tab" onclick="switchTab('grid')">
+            <i class="fas fa-th"></i> Grid
+        </div>
+        <div class="tab" onclick="switchTab('map')" id="map-tab-btn">
+            <i class="fas fa-map-marked-alt"></i> Map <span id="map-status-badge"></span>
+        </div>
+        <div class="tab" onclick="switchTab('calendar')">
+            <i class="fas fa-calendar-alt"></i> Calendar
+        </div>
+    </div>
+
+    <div id="list-tab" class="tab-content active">
+        <div class="summary-container">
+            {{ summary_html | safe }}
+        </div>
+    </div>
+
+    <div id="grid-tab" class="tab-content">
+        <div class="summary-container">
+            {{ column_html | safe }}
+        </div>
+    </div>
+
+    <div id="calendar-tab" class="tab-content">
+        <div class="calendar-container">
+            {{ calendar_html | safe }}
+        </div>
+    </div>
+
+    <div id="map-tab" class="tab-content">
+        <div class="map-loading-overlay" id="map-loading">
+            <div class="map-loading-spinner"></div>
+            <div class="map-loading-text">Generating map...</div>
+            <div class="map-loading-subtext">Geocoding locations, this may take a minute</div>
+        </div>
+        <div id="leaflet-map"></div>
+        <div class="map-legend" id="map-legend">
+            <h4>Legend</h4>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#EA4335;"><i class="fas fa-plane"></i></div>
+                <span class="legend-label">Flight</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#4285F4;"><i class="fas fa-bed"></i></div>
+                <span class="legend-label">Hotel</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#34A853;"><i class="fas fa-star"></i></div>
+                <span class="legend-label">Activity</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#FF9800;"><i class="fas fa-utensils"></i></div>
+                <span class="legend-label">Meal</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#757575;"><i class="fas fa-car"></i></div>
+                <span class="legend-label">Transport</span>
+            </div>
+        </div>
+    </div>
+
+    <script>var mapData = {{ map_data_json | safe }};</script>
+    <script>var tripViewerContext = { isOwner: {{ is_owner_json | safe }}, isAuthenticated: {{ is_authenticated_json | safe }} };</script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="/app-config.js"></script>
+    <script src="/static/js/main.js?v=8"></script>
+    <script src="/static/js/calendar.js?v=3"></script>
+    <script src="/static/js/item-detail.js?v=1"></script>
+    <script src="/static/js/trip.js?v=12"></script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, Response, g, redirect, request
+from flask import Blueprint, Response, g, redirect, render_template, request
 
 import database as db
 from agents.common.flask_utils import require_auth
@@ -12,7 +12,7 @@ from agents.import_url.handler import (
     get_user_trips_for_picker,
 )
 
-import_url_bp = Blueprint("import_url", __name__)
+import_url_bp = Blueprint("import_url", __name__, template_folder="templates")
 
 
 def _render_import_page(
@@ -23,87 +23,17 @@ def _render_import_page(
     success_msg: str | None = None,
     items: list[dict] | None = None,
 ) -> str:
-    trips_options = "\n".join(f'<option value="{t["link"]}">{t["title"]}</option>' for t in trips)
-    items_preview = ""
-    if items:
-        rows = ""
-        for item in items[:20]:
-            cat = item.get("category") or "other"
-            item_title = item.get("title") or "(untitled)"
-            rows += (
-                f'<li class="import-item"><span class="import-cat">{cat}</span> {item_title}</li>\n'
-            )
-        if len(items) > 20:
-            rows += f'<li class="import-item import-more">...and {len(items) - 20} more</li>'
-        items_preview = f'<ul class="import-items-list">{rows}</ul>'
-
-    error_block = f'<div class="import-error">{error}</div>' if error else ""
-    success_block = f'<div class="import-success">{success_msg}</div>' if success_msg else ""
-
     url_display = url[:80] + "..." if len(url) > 80 else url
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Import - Libertas</title>
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/css/main.css?v=14">
-    <link rel="stylesheet" href="/static/css/import.css?v=1">
-</head>
-<body class="import-body">
-    <div class="import-container">
-        <div class="import-header">
-            <a href="/trips.html" class="import-back"><i class="fas fa-arrow-left"></i></a>
-            <div class="import-brand">
-                <i class="fas fa-feather-alt"></i>
-                <span>Import</span>
-            </div>
-        </div>
-
-        <div class="import-card">
-            <div class="import-source">
-                <i class="fas fa-link"></i>
-                <span class="import-url" title="{url}">{url_display}</span>
-            </div>
-            {f'<div class="import-page-title">{title}</div>' if title and title != url else ""}
-        </div>
-
-        {error_block}
-        {success_block}
-
-        {
-        f'''<div class="import-preview">
-            <div class="import-preview-label"><i class="fas fa-list"></i> {len(items)} item{"s" if len(items) != 1 else ""} found</div>
-            {items_preview}
-        </div>'''
-        if items
-        else ""
-    }
-
-        <form class="import-form" method="POST" action="/import">
-            <input type="hidden" name="url" value="{url}">
-            <input type="hidden" name="page_title" value="{title}">
-
-            <div class="import-field">
-                <label for="trip_link">Add to trip</label>
-                <select name="trip_link" id="trip_link" required>
-                    <option value="">-- choose a trip --</option>
-                    <option value="__new__">+ New draft trip</option>
-                    {trips_options}
-                </select>
-            </div>
-
-            <button type="submit" class="import-btn">
-                <i class="fas fa-plus"></i>
-                Add to trip
-            </button>
-        </form>
-    </div>
-</body>
-</html>"""
+    return render_template(
+        "import.html",
+        url=url,
+        url_display=url_display,
+        title=title,
+        trips=trips,
+        error=error,
+        success_msg=success_msg,
+        items=items or [],
+    )
 
 
 @import_url_bp.get("/import")
