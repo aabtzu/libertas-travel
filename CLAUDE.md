@@ -488,6 +488,7 @@ ruff check . && ruff format --check .
 .venv/bin/python3 scripts/check_file_size.py
 .venv/bin/python3 scripts/check_no_em_dashes.py
 .venv/bin/python3 scripts/check_marketing_copy.py
+.venv/bin/python3 scripts/check_inline_scripts.py
 .venv/bin/python3 -m pytest tests/ -m "not integration" -q
 ```
 
