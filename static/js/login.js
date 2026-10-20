@@ -1,3 +1,22 @@
+// Show error if Google OAuth callback redirected back with ?error=
+(function () {
+    const _GOOGLE_ERRORS = {
+        google_denied: 'Google sign-in was cancelled.',
+        google_state: 'Sign-in session expired. Please try again.',
+        google_token: 'Could not complete Google sign-in. Please try again.',
+        google_userinfo: 'Could not retrieve your Google account info. Please try again.',
+        google_no_email: 'Your Google account does not have a verified email address.',
+        google_db: 'Account setup failed. Please try again.',
+    };
+    const err = new URLSearchParams(window.location.search).get('error');
+    if (err && _GOOGLE_ERRORS[err]) {
+        const errorDiv = document.getElementById('login-error');
+        document.getElementById('error-message').textContent = _GOOGLE_ERRORS[err];
+        if (errorDiv) errorDiv.classList.add('show');
+        history.replaceState(null, '', location.pathname);
+    }
+}());
+
 // Login form handler
 document.getElementById('login-form').addEventListener('submit', async function(e) {
     e.preventDefault();
