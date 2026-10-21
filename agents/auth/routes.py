@@ -33,6 +33,7 @@ auth_bp = make_auth_blueprint(
     app_name="Libertas",
     google_client_id=os.environ.get("GOOGLE_CLIENT_ID", ""),
     google_client_secret=os.environ.get("GOOGLE_CLIENT_SECRET", ""),
+    admin_email=os.environ.get("ADMIN_EMAIL", ""),
 )
 
 
