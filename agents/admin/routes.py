@@ -465,3 +465,32 @@ def regenerate_all_trips():
             "errors": results["errors"],
         }
     )
+
+
+@admin_bp.post("/api/admin/grant-edit")
+def admin_grant_edit():
+    """Directly grant edit access on a trip to a user by email, bypassing the invite flow.
+
+    Use this to restore lost collaborator access.
+
+    Protected by SECRET_KEY (X-Admin-Key header).
+
+    Body JSON: {"trip_link": "<trip.html>", "email": "<user@example.com>"}
+    """
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    trip_link = data.get("trip_link", "").strip()
+    email = data.get("email", "").strip()
+    if not trip_link or not email:
+        return json_err("Both 'trip_link' and 'email' are required")
+
+    from database.collaborators import grant_edit_access
+
+    result = grant_edit_access(trip_link, email, granted_by=1)
+    if "error" in result:
+        return json_err(result["error"], status=404)
+    return json_ok(result)

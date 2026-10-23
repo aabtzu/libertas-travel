@@ -18,6 +18,7 @@ from database.collaborators import (  # noqa: F401
     get_collaborators_for_trip,
     get_invite_by_token,
     get_shared_trips_for_user,
+    grant_edit_access,
     invite_collaborator,
     is_collaborator,
     remove_collaborator,
