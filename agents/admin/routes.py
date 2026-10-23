@@ -543,11 +543,19 @@ def admin_transfer_trip():
     if not trip_link or not new_owner_email:
         return json_err("Both 'trip_link' and 'new_owner_email' are required")
 
-    new_owner = db.get_user_by_email(new_owner_email)
+    try:
+        new_owner = db.get_user_by_email(new_owner_email)
+    except Exception as exc:
+        return json_err(f"DB error looking up user: {exc}", status=500)
+
     if not new_owner:
         return json_err(f"No user found with email '{new_owner_email}'", status=404)
 
-    transferred = db.transfer_trip_ownership(trip_link, new_owner["id"])
+    try:
+        transferred = db.transfer_trip_ownership(trip_link, new_owner["id"])
+    except Exception as exc:
+        return json_err(f"DB error transferring ownership: {exc}", status=500)
+
     if not transferred:
         return json_err(f"No trip found with link '{trip_link}'", status=404)
 
