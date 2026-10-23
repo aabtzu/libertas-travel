@@ -496,7 +496,7 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
                     "The page might require login or have restricted access."
                 }, 400
             parser = ItineraryParser()
-            itinerary = parser.parse_text(html_text, source_url=url)
+            itinerary = parser.parse_text(html_text[:100_000], source_url=url)
         elif is_text and not is_pdf and not is_xlsx:
             # Plain text (e.g. Google Docs export, .txt files) - parse directly
             try:
@@ -506,7 +506,7 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
             if len(plain_text.strip()) < 50:
                 return {"error": "Page had no readable text content."}, 400
             parser = ItineraryParser()
-            itinerary = parser.parse_text(plain_text, source_url=url)
+            itinerary = parser.parse_text(plain_text[:100_000], source_url=url)
         else:
             suffix = Path(filename).suffix.lower()
             if not suffix or suffix not in (".pdf", ".xlsx", ".xls"):
