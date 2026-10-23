@@ -11,7 +11,8 @@
 
     if (!collabBtn) return;
 
-    const link = new URLSearchParams(window.location.search).get('link') || '';
+    const _p = new URLSearchParams(window.location.search);
+    const link = _p.get('link') || _p.get('edit') || '';
 
     function _msg(text, ok) {
         collabMsg.textContent = text;
