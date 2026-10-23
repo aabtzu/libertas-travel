@@ -691,3 +691,13 @@
 }
 .asset-delete:hover { color: #c0392b; }
 
+.no-access-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    font-size: 1.1rem;
+    color: var(--ink-muted);
+    gap: 10px;
+}
+

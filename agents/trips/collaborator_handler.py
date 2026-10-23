@@ -33,14 +33,20 @@ def invite_handler(
     if not inviter:
         return {"error": "Inviter not found"}, 404
 
+    existing_user = db.get_user_by_email(invited_email)
+
     token = db.invite_collaborator(trip_link, invited_email, inviter_user_id)
     if token is None:
         return {"error": "This email has already been invited to this trip"}, 409
 
+    # Auto-accept immediately for users who already have an account - no email
+    # click needed when the invitee is already in the app.
+    if existing_user:
+        db.accept_invite(token, existing_user["id"])
+
     trip = db.get_trip_by_link(owner_id, trip_link)
     trip_title = trip["title"] if trip else trip_link
 
-    existing_user = db.get_user_by_email(invited_email)
     send_collaboration_invite(
         to=invited_email,
         inviter_name=inviter.get("username", "Someone"),

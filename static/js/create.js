@@ -580,7 +580,17 @@ async function loadTrip(link) {
         if (!response.ok) {
             console.error('Failed to load trip:', response.status, response.statusText);
             tripLink = null;
-            showCreateDialog();
+            if (response.status === 403) {
+                const err = await response.json().catch(() => ({}));
+                document.getElementById('editor-container').style.display = 'none';
+                document.getElementById('create-dialog').classList.add('hidden');
+                const msg = document.createElement('div');
+                msg.className = 'no-access-msg';
+                msg.textContent = err.error || 'You do not have edit access to this trip.';
+                document.body.appendChild(msg);
+            } else {
+                showCreateDialog();
+            }
             return;
         }
 

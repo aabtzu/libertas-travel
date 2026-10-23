@@ -132,6 +132,11 @@ def get_trip_data_handler(user_id: int, link: str) -> dict[str, Any]:
     """Get trip data for editing."""
     owner_id = _resolve_owner_id(user_id, link)
     if owner_id is None:
+        # Distinguish "trip doesn't exist" from "trip exists but user can't edit"
+        # so the editor can show a useful message instead of "Create New Trip".
+        real_owner = db.get_trip_owner(link)
+        if real_owner is not None:
+            return {"error": "You do not have edit access to this trip"}, 403
         return {"error": "Trip not found"}, 404
     trip = db.get_trip_by_link(owner_id, link)
     if trip:
