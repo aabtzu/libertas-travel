@@ -55,8 +55,8 @@ from database.trips import (  # noqa: F401
     get_trip_heartbeat,
     get_trip_owner,
     get_user_trips,
-    transfer_trip_ownership,
     set_trip_archived,
+    transfer_trip_ownership,
     update_trip,
     update_trip_map_status,
 )

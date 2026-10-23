@@ -517,12 +517,14 @@ def admin_trip_owner():
         return json_err(f"No trip found with link '{trip_link}'", status=404)
 
     owner = db.get_user_by_id(owner_id)
-    return json_ok({
-        "trip_link": trip_link,
-        "owner_id": owner_id,
-        "owner_username": owner.get("username") if owner else None,
-        "owner_email": owner.get("email") if owner else None,
-    })
+    return json_ok(
+        {
+            "trip_link": trip_link,
+            "owner_id": owner_id,
+            "owner_username": owner.get("username") if owner else None,
+            "owner_email": owner.get("email") if owner else None,
+        }
+    )
 
 
 @admin_bp.post("/api/admin/transfer-trip")
@@ -559,4 +561,6 @@ def admin_transfer_trip():
     if not transferred:
         return json_err(f"No trip found with link '{trip_link}'", status=404)
 
-    return json_ok({"success": True, "new_owner_username": new_owner.get("username"), "trip_link": trip_link})
+    return json_ok(
+        {"success": True, "new_owner_username": new_owner.get("username"), "trip_link": trip_link}
+    )
