@@ -494,3 +494,63 @@ def admin_grant_edit():
     if "error" in result:
         return json_err(result["error"], status=404)
     return json_ok(result)
+
+
+@admin_bp.get("/api/admin/trip-owner")
+def admin_trip_owner():
+    """Look up who owns a trip and list all registered users.
+
+    Protected by SECRET_KEY (X-Admin-Key header).
+    Query param: ?trip_link=<trip.html>
+    """
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    trip_link = request.args.get("trip_link", "").strip()
+    if not trip_link:
+        return json_err("'trip_link' query param is required")
+
+    owner_id = db.get_trip_owner(trip_link)
+    if not owner_id:
+        return json_err(f"No trip found with link '{trip_link}'", status=404)
+
+    owner = db.get_user_by_id(owner_id)
+    return json_ok({
+        "trip_link": trip_link,
+        "owner_id": owner_id,
+        "owner_username": owner.get("username") if owner else None,
+        "owner_email": owner.get("email") if owner else None,
+    })
+
+
+@admin_bp.post("/api/admin/transfer-trip")
+def admin_transfer_trip():
+    """Transfer trip ownership to a different user by email.
+
+    Use when an account was recreated and the trip is stuck under the old user_id.
+
+    Protected by SECRET_KEY (X-Admin-Key header).
+    Body JSON: {"trip_link": "<trip.html>", "new_owner_email": "<email>"}
+    """
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    trip_link = data.get("trip_link", "").strip()
+    new_owner_email = data.get("new_owner_email", "").strip()
+    if not trip_link or not new_owner_email:
+        return json_err("Both 'trip_link' and 'new_owner_email' are required")
+
+    new_owner = db.get_user_by_email(new_owner_email)
+    if not new_owner:
+        return json_err(f"No user found with email '{new_owner_email}'", status=404)
+
+    transferred = db.transfer_trip_ownership(trip_link, new_owner["id"])
+    if not transferred:
+        return json_err(f"No trip found with link '{trip_link}'", status=404)
+
+    return json_ok({"success": True, "new_owner_username": new_owner.get("username"), "trip_link": trip_link})
