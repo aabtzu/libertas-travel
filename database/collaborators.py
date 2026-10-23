@@ -159,6 +159,19 @@ _SQL_SQLITE_BIND_PENDING_INVITES = """
 _SQL_PG_GET_TRIP_ID_BY_LINK = "SELECT id FROM trips WHERE link = %s"
 _SQL_SQLITE_GET_TRIP_ID_BY_LINK = "SELECT id FROM trips WHERE link = ?"
 
+_SQL_PG_GET_USER_BY_EMAIL = "SELECT id, username FROM users WHERE email = %s"
+_SQL_SQLITE_GET_USER_BY_EMAIL = "SELECT id, username FROM users WHERE email = ?"
+
+_SQL_PG_GRANT_EDIT = """
+    INSERT INTO trip_collaborators (trip_id, user_id, invited_email, role, invited_by, token, accepted_at)
+    VALUES (%s, %s, %s, 'editor', %s, %s, NOW())
+    ON CONFLICT (token) DO NOTHING
+"""
+_SQL_SQLITE_GRANT_EDIT = """
+    INSERT OR IGNORE INTO trip_collaborators (trip_id, user_id, invited_email, role, invited_by, token, accepted_at)
+    VALUES (?, ?, ?, 'editor', ?, ?, CURRENT_TIMESTAMP)
+"""
+
 _SQL_PG_GET_EXISTING_INVITE = """
     SELECT id FROM trip_collaborators WHERE trip_id = %s AND invited_email = %s
 """
@@ -349,6 +362,39 @@ def can_user_edit_trip(trip_link: str, user_id: int) -> bool:
         else:
             cursor.execute(_SQL_SQLITE_IS_COLLABORATOR, (trip_id, user_id))
         return cursor.fetchone() is not None
+
+
+def grant_edit_access(trip_link: str, email: str, granted_by: int) -> dict[str, Any]:
+    """Directly grant edit access to a user by email, bypassing the invite/accept flow.
+
+    Used by the admin endpoint to restore lost collaborator access.
+    Returns {"success": True, "created": True/False} or {"error": ...}.
+    """
+    with get_db() as conn:
+        cursor = conn.cursor()
+        trip_id = _trip_id_for_link(cursor, trip_link)
+        if not trip_id:
+            return {"error": "Trip not found"}
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GET_USER_BY_EMAIL, (email,))
+        else:
+            cursor.execute(_SQL_SQLITE_GET_USER_BY_EMAIL, (email,))
+        row = cursor.fetchone()
+        if not row:
+            return {"error": f"No user found with email {email}"}
+        user_id, username = row[0], row[1]
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_IS_COLLABORATOR, (trip_id, user_id))
+        else:
+            cursor.execute(_SQL_SQLITE_IS_COLLABORATOR, (trip_id, user_id))
+        if cursor.fetchone():
+            return {"success": True, "created": False, "username": username}
+        token = secrets.token_hex(32)
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GRANT_EDIT, (trip_id, user_id, email, granted_by, token))
+        else:
+            cursor.execute(_SQL_SQLITE_GRANT_EDIT, (trip_id, user_id, email, granted_by, token))
+        return {"success": True, "created": True, "username": username}
 
 
 def get_shared_trips_for_user(user_id: int) -> list[dict[str, Any]]:
