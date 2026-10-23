@@ -1,7 +1,8 @@
 /* Copy or move an itinerary item / idea to another trip. */
 
 (function () {
-    const _currentLink = new URLSearchParams(window.location.search).get('link') || '';
+    const _cp = new URLSearchParams(window.location.search);
+    const _currentLink = _cp.get('link') || _cp.get('edit') || '';
 
     let _modal = null;
     let _tripList = null;
