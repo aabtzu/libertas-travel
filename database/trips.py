@@ -101,6 +101,9 @@ _SQL_SQLITE_DELETE_TRIP = "DELETE FROM trips WHERE user_id = ? AND link = ?"
 _SQL_PG_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = %s"
 _SQL_SQLITE_GET_TRIP_OWNER = "SELECT user_id FROM trips WHERE link = ?"
 
+_SQL_PG_TRANSFER_TRIP = "UPDATE trips SET user_id = %s WHERE link = %s"
+_SQL_SQLITE_TRANSFER_TRIP = "UPDATE trips SET user_id = ? WHERE link = ?"
+
 _SQL_PG_GET_TRIP_HEARTBEAT = """
     SELECT t.last_saved_at, t.last_saved_by, u.username
     FROM trips t
@@ -352,6 +355,17 @@ def get_trip_owner(link: str) -> int | None:
             cursor.execute(_SQL_SQLITE_GET_TRIP_OWNER, (link,))
         row = cursor.fetchone()
         return row[0] if row else None
+
+
+def transfer_trip_ownership(link: str, new_owner_id: int) -> bool:
+    """Change the owner of a trip. Returns True if the trip was found and updated."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_TRANSFER_TRIP, (new_owner_id, link))
+        else:
+            cursor.execute(_SQL_SQLITE_TRANSFER_TRIP, (new_owner_id, link))
+        return cursor.rowcount > 0
 
 
 def set_trip_archived(user_id: int, link: str, is_archived: bool) -> bool:
