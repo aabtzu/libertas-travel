@@ -289,6 +289,13 @@ def trip_html(trip_name: str):
 
     if not trip:
         owner_id = db.get_trip_owner(link)
+        # Let collaborators view their shared trips even when not public
+        if owner_id and user_id and db.can_user_edit_trip(link, user_id):
+            trip = db.get_trip_by_link(owner_id, link)
+
+    if not trip:
+        if not owner_id:
+            owner_id = db.get_trip_owner(link)
         if owner_id and db.is_trip_public(link):
             trip = db.get_trip_by_link(owner_id, link)
 
