@@ -133,7 +133,10 @@ class TestMatchByDates:
             self._trip("Trip A", "2026-09-01", "2026-09-30"),
             self._trip("Trip B", "2026-09-15", "2026-10-05"),
         ]
-        result = _match_by_dates(["2026-09-20"], trips)
+        # When multiple trips overlap and LLM returns NONE (no item context),
+        # the result should be None. Patch LLM so test doesn't make real API calls.
+        with patch("agents.email.handler._match_by_llm", return_value=None):
+            result = _match_by_dates(["2026-09-20"], trips)
         assert result is None
 
     def test_returns_none_when_no_match(self):
