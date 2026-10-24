@@ -337,29 +337,25 @@ function closeShareModal() {
 }
 
 /**
- * Share with a specific user
+ * Invite a user as a collaborator (gives edit access, not a copy).
  */
 function shareWithUser(userId, username) {
-    fetch('/api/share-trip', {
+    fetch(`/api/trips/${currentShareLink}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            link: currentShareLink,
-            targetUserId: userId
-        })
+        body: JSON.stringify({ userId: userId })
     })
     .then(response => response.json())
     .then(data => {
-        closeShareModal();
         if (data.success) {
-            showStatus('success', `Trip shared with ${username}`);
+            closeShareModal();
+            showStatus('success', `${username} added as collaborator`);
         } else {
-            showStatus('error', data.error || 'Failed to share trip');
+            showStatus('error', data.error || 'Failed to add collaborator');
         }
     })
     .catch(() => {
-        closeShareModal();
-        showStatus('error', 'Failed to share trip');
+        showStatus('error', 'Failed to add collaborator');
     });
 }
 

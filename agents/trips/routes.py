@@ -656,8 +656,17 @@ def list_forwarding_emails():
 def invite_collaborator(link: str):
     data = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
+
+    # Allow inviting by userId (from the user-picker in the share modal).
+    # Look up the email server-side so we never expose addresses in the UI.
+    if not email and data.get("userId"):
+        user = db.get_user_by_id(int(data["userId"]))
+        if not user:
+            return json_err("User not found", status=404)
+        email = user["email"]
+
     if not email:
-        return json_err("email is required")
+        return json_err("email or userId is required")
     result, status = collaborator_handler.invite_handler(link, email, g.user_id)
     if status == 200:
         return json_ok(result)
