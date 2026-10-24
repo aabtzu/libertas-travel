@@ -310,6 +310,7 @@ def trip_html(trip_name: str):
     is_authenticated = user_id is not None
     trip_owner_id = owner_id or db.get_trip_owner(link)
     is_owner = is_authenticated and (user_id == trip_owner_id)
+    can_edit = is_owner or (is_authenticated and db.can_user_edit_trip(link, user_id))
 
     itinerary_data = trip.get("itinerary_data")
     if not itinerary_data:
@@ -362,6 +363,7 @@ def trip_html(trip_name: str):
         is_authenticated=is_authenticated,
         trip_link=link,
         card_icon=card_icon,
+        can_edit=can_edit,
     )
     return render_template("trip.html", **ctx)
 

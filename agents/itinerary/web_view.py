@@ -16,12 +16,15 @@ from .templates import get_nav_html
 from .web_view_columns import build_calendar_html, build_column_html
 
 
-def _build_viewer_buttons_html(is_owner: bool, is_authenticated: bool, trip_link: str) -> str:
+def _build_viewer_buttons_html(
+    is_owner: bool, is_authenticated: bool, trip_link: str, can_edit: bool = False
+) -> str:
     """Single source of truth for the header action buttons on the trip view page.
 
     Returns different buttons depending on who is viewing:
     - Owner: full controls + Copy Link
-    - Logged-in non-owner: Copy to My Trips
+    - Collaborator (can_edit but not owner): Edit + Export
+    - Logged-in non-editor: Copy to My Trips
     - Anonymous: Sign in to edit CTA
     """
     if is_owner:
@@ -34,6 +37,13 @@ def _build_viewer_buttons_html(is_owner: bool, is_authenticated: bool, trip_link
             '<i class="fas fa-download"></i> Export</button>'
             '<button class="export-btn" onclick="copyShareLink()" title="Copy shareable link">'
             '<i class="fas fa-link"></i> Copy Link</button>'
+        )
+    if can_edit:
+        return (
+            '<button class="export-btn" onclick="editTrip()" title="Edit this trip">'
+            '<i class="fas fa-edit"></i> Edit</button>'
+            '<button class="export-btn" onclick="exportTrip()" title="Download trip data">'
+            '<i class="fas fa-download"></i> Export</button>'
         )
     if is_authenticated:
         return (
@@ -64,6 +74,7 @@ class ItineraryWebView:
         is_authenticated: bool = False,
         trip_link: str = "",
         card_icon: str = "plane",
+        can_edit: bool = False,
     ) -> dict:
         """Build template context dict for the trip page.
 
@@ -101,7 +112,7 @@ class ItineraryWebView:
             "calendar_html": build_calendar_html(itinerary),
             "map_data_json": json.dumps(map_data),
             "viewer_buttons_html": _build_viewer_buttons_html(
-                is_owner, is_authenticated, trip_link
+                is_owner, is_authenticated, trip_link, can_edit=can_edit
             ),
             "is_owner_json": "true" if is_owner else "false",
             "is_authenticated_json": "true" if is_authenticated else "false",
