@@ -231,16 +231,50 @@ function openShareModal(link, title) {
     const modal = document.getElementById('share-modal');
     const titleSpan = document.getElementById('share-trip-title');
     const userList = document.getElementById('user-list');
+    const collabList = document.getElementById('collab-list');
 
     if (!modal) return;
 
     titleSpan.textContent = title;
     userList.innerHTML = '<div class="loading">Loading users...</div>';
+    if (collabList) collabList.innerHTML = '';
 
     modal.classList.add('show');
 
-    // Load users, build via DOM (no innerHTML interpolation) so a
-    // username with quotes / `<script>` can't break out and inject code.
+    // Load current collaborators
+    if (collabList) {
+        fetch(`/api/trips/${link}/collaborators`)
+            .then(r => r.json())
+            .then(data => {
+                collabList.innerHTML = '';
+                const collabs = (data.success && data.collaborators) ? data.collaborators : [];
+                if (collabs.length > 0) {
+                    const label = document.createElement('div');
+                    label.className = 'collab-section-label';
+                    label.textContent = 'Current collaborators:';
+                    collabList.appendChild(label);
+                    collabs.forEach(c => {
+                        const row = document.createElement('div');
+                        row.className = 'collab-item';
+                        row.dataset.collabId = c.id;
+                        const name = document.createElement('span');
+                        name.textContent = c.username || c.invited_email;
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'collab-remove-btn';
+                        removeBtn.title = 'Remove collaborator';
+                        removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                        removeBtn.addEventListener('click', () => removeCollaborator(link, c.id, row));
+                        row.appendChild(name);
+                        row.appendChild(removeBtn);
+                        collabList.appendChild(row);
+                    });
+                }
+            })
+            .catch(() => {});
+    }
+
+    // Load users to invite, build via DOM (no innerHTML interpolation) so a
+    // username with quotes / <script> can't break out and inject code.
     fetch('/api/users', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
@@ -274,6 +308,23 @@ function openShareModal(link, title) {
 }
 
 /**
+ * Remove a collaborator from the current trip (owner action).
+ */
+function removeCollaborator(link, collabId, rowElement) {
+    fetch(`/api/trips/${link}/collaborators/${collabId}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                rowElement.remove();
+                showStatus('success', 'Collaborator removed');
+            } else {
+                showStatus('error', data.error || 'Failed to remove collaborator');
+            }
+        })
+        .catch(() => showStatus('error', 'Failed to remove collaborator'));
+}
+
+/**
  * Close the share modal
  */
 function closeShareModal() {
@@ -302,33 +353,6 @@ function shareWithUser(userId, username) {
         closeShareModal();
         if (data.success) {
             showStatus('success', `Trip shared with ${username}`);
-        } else {
-            showStatus('error', data.error || 'Failed to share trip');
-        }
-    })
-    .catch(() => {
-        closeShareModal();
-        showStatus('error', 'Failed to share trip');
-    });
-}
-
-/**
- * Share with all users
- */
-function shareWithAll() {
-    fetch('/api/share-trip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            link: currentShareLink,
-            shareWithAll: true
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        closeShareModal();
-        if (data.success) {
-            showStatus('success', data.message || 'Trip shared with all users');
         } else {
             showStatus('error', data.error || 'Failed to share trip');
         }
