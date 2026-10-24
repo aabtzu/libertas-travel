@@ -169,6 +169,27 @@
     color: var(--ink);
 }
 
+/* Already-added collaborator rows in the user picker */
+.user-item--added {
+    cursor: default;
+    opacity: 0.6;
+}
+.user-item--added:hover {
+    background: transparent;
+}
+.user-item--added i {
+    color: #27ae60;
+}
+.user-item-added-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: #27ae60;
+    font-weight: 600;
+    background: #eafaf1;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
 /* ==================== Public Trips Section ==================== */
 .public-trips-section {
     margin-top: 48px;

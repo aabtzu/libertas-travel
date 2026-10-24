@@ -241,70 +241,73 @@ function openShareModal(link, title) {
 
     modal.classList.add('show');
 
-    // Load current collaborators
-    if (collabList) {
-        fetch(`/api/trips/${link}/collaborators`)
-            .then(r => r.json())
-            .then(data => {
-                collabList.innerHTML = '';
-                const collabs = (data.success && data.collaborators) ? data.collaborators : [];
-                if (collabs.length > 0) {
-                    const label = document.createElement('div');
-                    label.className = 'collab-section-label';
-                    label.textContent = 'Current collaborators:';
-                    collabList.appendChild(label);
-                    collabs.forEach(c => {
-                        const row = document.createElement('div');
-                        row.className = 'collab-item';
-                        row.dataset.collabId = c.id;
-                        const name = document.createElement('span');
-                        name.textContent = c.username || c.invited_email;
-                        const removeBtn = document.createElement('button');
-                        removeBtn.className = 'collab-remove-btn';
-                        removeBtn.title = 'Remove collaborator';
-                        removeBtn.innerHTML = '<i class="fas fa-times"></i>';
-                        removeBtn.addEventListener('click', () => removeCollaborator(link, c.id, row));
-                        row.appendChild(name);
-                        row.appendChild(removeBtn);
-                        collabList.appendChild(row);
-                    });
-                }
-            })
-            .catch(() => {});
-    }
+    // Fetch collaborators and user list in parallel, then render both together
+    // so the user list can mark already-added collaborators.
+    Promise.all([
+        fetch(`/api/trips/${link}/collaborators`).then(r => r.json()).catch(() => ({})),
+        fetch('/api/users', { method: 'POST' }).then(r => r.json()).catch(() => ({})),
+    ]).then(([collabData, userData]) => {
+        const collabs = (collabData.success && collabData.collaborators) ? collabData.collaborators : [];
+        const collabUsernames = new Set(collabs.map(c => c.username).filter(Boolean));
 
-    // Load users to invite, build via DOM (no innerHTML interpolation) so a
-    // username with quotes / <script> can't break out and inject code.
-    fetch('/api/users', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            userList.innerHTML = '';
-            if (data.success && data.users.length > 0) {
-                data.users.forEach(user => {
-                    const item = document.createElement('div');
-                    item.className = 'user-item';
-                    item.dataset.userId = user.id;
-                    item.dataset.username = user.username;
-                    item.addEventListener('click', () => {
-                        shareWithUser(user.id, user.username);
-                    });
-                    const icon = document.createElement('i');
-                    icon.className = 'fas fa-user';
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'username';
-                    nameSpan.textContent = user.username;  // safe
-                    item.appendChild(icon);
-                    item.appendChild(document.createTextNode(' '));
-                    item.appendChild(nameSpan);
-                    userList.appendChild(item);
-                });
-            } else {
-                userList.innerHTML = '<div class="loading">No other users available</div>';
-            }
-        })
-        .catch(() => {
-            userList.innerHTML = '<div class="loading">Failed to load users</div>';
-        });
+        // Render current collaborators list
+        if (collabList) {
+            collabList.innerHTML = '';
+            const label = document.createElement('div');
+            label.className = 'collab-section-label';
+            label.textContent = collabs.length > 0 ? 'Current collaborators:' : 'No collaborators yet.';
+            collabList.appendChild(label);
+            collabs.forEach(c => {
+                const row = document.createElement('div');
+                row.className = 'collab-item';
+                row.dataset.collabId = c.id;
+                const name = document.createElement('span');
+                name.textContent = c.username || c.invited_email;
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'collab-remove-btn';
+                removeBtn.title = 'Remove collaborator';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.addEventListener('click', () => removeCollaborator(link, c.id, row));
+                row.appendChild(name);
+                row.appendChild(removeBtn);
+                collabList.appendChild(row);
+            });
+        }
+
+        // Render user list, marking already-added users
+        userList.innerHTML = '';
+        const users = (userData.success && userData.users) ? userData.users : [];
+        if (users.length > 0) {
+            users.forEach(user => {
+                const isCollab = collabUsernames.has(user.username);
+                const item = document.createElement('div');
+                item.className = 'user-item' + (isCollab ? ' user-item--added' : '');
+                item.dataset.userId = user.id;
+                item.dataset.username = user.username;
+                if (!isCollab) {
+                    item.addEventListener('click', () => shareWithUser(user.id, user.username));
+                }
+                const icon = document.createElement('i');
+                icon.className = isCollab ? 'fas fa-check' : 'fas fa-user';
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'username';
+                nameSpan.textContent = user.username;
+                const badge = isCollab ? (() => {
+                    const b = document.createElement('span');
+                    b.className = 'user-item-added-badge';
+                    b.textContent = 'collaborator';
+                    return b;
+                })() : null;
+                item.appendChild(icon);
+                item.appendChild(document.createTextNode(' '));
+                item.appendChild(nameSpan);
+                if (badge) item.appendChild(badge);
+                userList.appendChild(item);
+            });
+        } else {
+            userList.innerHTML = '<div class="loading">No other users available</div>';
+        }
+    });
 }
 
 /**
