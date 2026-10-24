@@ -247,7 +247,7 @@ function openShareModal(link, title) {
         fetch(`/api/trips/${link}/collaborators`).then(r => r.json()).catch(() => ({})),
         fetch('/api/users', { method: 'POST' }).then(r => r.json()).catch(() => ({})),
     ]).then(([collabData, userData]) => {
-        const collabs = (collabData.success && collabData.collaborators) ? collabData.collaborators : [];
+        const collabs = Array.isArray(collabData.collaborators) ? collabData.collaborators : [];
         const collabUsernames = new Set(collabs.map(c => c.username).filter(Boolean));
 
         // Render current collaborators list
