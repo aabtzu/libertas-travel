@@ -39,6 +39,14 @@ function _fetchHeartbeat(link, isBaseline) {
         .catch(() => {}); // network errors are silent; heartbeat is best-effort
 }
 
+/**
+ * Advance the heartbeat baseline to now after the current user saves.
+ * Prevents the user who just saved from seeing their own change as a notification.
+ */
+function heartbeatAdvanceBaseline() {
+    _heartbeatBaselineAt = new Date().toISOString();
+}
+
 function _showReloadBanner(username) {
     if (document.getElementById('heartbeat-banner')) return; // already shown
 

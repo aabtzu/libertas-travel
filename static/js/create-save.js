@@ -35,6 +35,9 @@ async function performAutoSave() {
 
         const data = await response.json();
         updateSaveStatus(data.success ? 'saved' : 'error');
+        if (data.success && typeof heartbeatAdvanceBaseline === 'function') {
+            heartbeatAdvanceBaseline();
+        }
     } catch (error) {
         console.error('Auto-save error:', error);
         updateSaveStatus('error');
