@@ -91,6 +91,7 @@ def list_collaborators_handler(
         result.append(
             {
                 "id": c["id"],
+                "user_id": c.get("user_id"),
                 "email": c["invited_email"],
                 "username": c.get("username"),
                 "role": c["role"],

@@ -58,7 +58,16 @@
                 // Only the trip owner can remove collaborators
                 if (!window._isOwner) removeBtn.style.display = 'none';
 
+                const makeOwnerBtn = document.createElement('button');
+                makeOwnerBtn.dataset.userId = c.user_id || '';
+                makeOwnerBtn.dataset.username = c.username || c.email;
+                makeOwnerBtn.className = 'collab-make-owner-btn';
+                makeOwnerBtn.textContent = 'Make owner';
+                // Only show for accepted collaborators when current user is owner
+                if (!window._isOwner || !c.accepted) makeOwnerBtn.style.display = 'none';
+
                 row.appendChild(label);
+                row.appendChild(makeOwnerBtn);
                 row.appendChild(removeBtn);
                 collabList.appendChild(row);
             });
@@ -75,6 +84,36 @@
                         loadCollaborators();
                     } else {
                         _msg('Failed to remove', false);
+                        btn.disabled = false;
+                    }
+                });
+            });
+
+            collabList.querySelectorAll('.collab-make-owner-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const userId = btn.dataset.userId;
+                    const name = btn.dataset.username;
+                    if (!userId) { _msg('Cannot transfer - user not yet accepted', false); return; }
+                    btn.disabled = true;
+                    const confirmed = await LibertasModal.confirm(
+                        `Transfer ownership to ${name}? You will become a collaborator and they will become the owner.`,
+                        { danger: true }
+                    );
+                    if (!confirmed) { btn.disabled = false; return; }
+                    const r = await fetch(
+                        `/api/trips/${encodeURIComponent(link)}/transfer-ownership`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ new_owner_user_id: parseInt(userId) }),
+                        }
+                    );
+                    const data = await r.json();
+                    if (r.ok && data.success) {
+                        _msg('Ownership transferred. Reloading...', true);
+                        setTimeout(() => window.location.reload(), 1200);
+                    } else {
+                        _msg(data.error || 'Transfer failed', false);
                         btn.disabled = false;
                     }
                 });

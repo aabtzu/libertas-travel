@@ -688,6 +688,28 @@ def accept_trip_invite():
     return json_err(result.get("error", "Error"), status=status)
 
 
+@trips_bp.post("/api/trips/<link>/transfer-ownership")
+@require_auth
+def transfer_ownership(link: str):
+    """Transfer trip ownership to a collaborator. Old owner stays as a collaborator."""
+    owner_id = db.get_trip_owner(link)
+    if owner_id != g.user_id:
+        return json_err("Only the trip owner can transfer ownership", status=403)
+    data = request.get_json(silent=True) or {}
+    new_owner_user_id = data.get("new_owner_user_id")
+    if not new_owner_user_id:
+        return json_err("new_owner_user_id is required")
+    new_owner_user_id = int(new_owner_user_id)
+    if new_owner_user_id == g.user_id:
+        return json_err("You are already the owner")
+    if not db.can_user_edit_trip(link, new_owner_user_id):
+        return json_err("New owner must be an accepted collaborator on this trip", status=400)
+    transferred = db.transfer_trip_ownership(link, new_owner_user_id)
+    if not transferred:
+        return json_err("Transfer failed", status=500)
+    return json_ok({"success": True, "message": "Ownership transferred"})
+
+
 @trips_bp.get("/api/trips/<link>/collaborators")
 @require_auth
 def list_collaborators(link: str):

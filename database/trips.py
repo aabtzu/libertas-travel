@@ -358,14 +358,40 @@ def get_trip_owner(link: str) -> int | None:
 
 
 def transfer_trip_ownership(link: str, new_owner_id: int) -> bool:
-    """Change the owner of a trip. Returns True if the trip was found and updated."""
+    """Change the owner of a trip. Returns True if the trip was found and updated.
+
+    The old owner is automatically added as an accepted collaborator so they
+    retain edit access without needing a new invite. Existing collaborators
+    (including the new owner if already a collaborator) are not touched.
+    """
+    from database.collaborators import grant_edit_access
+
     with get_db() as conn:
         cursor = conn.cursor()
+        # Capture old owner before overwriting
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_GET_TRIP_OWNER, (link,))
+        else:
+            cursor.execute(_SQL_SQLITE_GET_TRIP_OWNER, (link,))
+        row = cursor.fetchone()
+        old_owner_id = row[0] if row else None
+
         if USE_POSTGRES:
             cursor.execute(_SQL_PG_TRANSFER_TRIP, (new_owner_id, link))
         else:
             cursor.execute(_SQL_SQLITE_TRANSFER_TRIP, (new_owner_id, link))
-        return cursor.rowcount > 0
+        if cursor.rowcount == 0:
+            return False
+
+    # Add old owner as accepted collaborator so they keep edit access.
+    # grant_edit_access is idempotent (ON CONFLICT DO NOTHING) so calling it
+    # when they already have a collaborator row is safe.
+    if old_owner_id and old_owner_id != new_owner_id:
+        from database.users import get_user_by_id
+        old_owner = get_user_by_id(old_owner_id)
+        if old_owner and old_owner.get("email"):
+            grant_edit_access(link, old_owner["email"], granted_by=new_owner_id)
+    return True
 
 
 def set_trip_archived(user_id: int, link: str, is_archived: bool) -> bool:
