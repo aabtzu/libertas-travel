@@ -477,6 +477,46 @@
     z-index: 5;
 }
 
+/* Shared badge - shown on collaborator trip cards in "Shared With Me" section */
+.shared-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #667eea;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 4;
+}
+.shared-badge i { font-size: 0.7rem; color: white; }
+.trips-list .shared-badge {
+    top: 8px;
+    left: 8px;
+    padding: 2px 6px;
+    font-size: 0.65rem;
+    z-index: 5;
+}
+
+/* Leave button - shown on collaborator cards, replaces delete */
+.trip-action-btn.leave-btn { color: #e74c3c; }
+.trip-action-btn.leave-btn:hover { background: #e74c3c; color: white; }
+
+/* Shared trip cards show actions on hover like owned cards */
+.public-trip.is-shared .trip-card-actions {
+    display: flex;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+.public-trip.is-shared:hover .trip-card-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 /* Archive button active state mirrors public-btn active */
 .trip-action-btn.archive-btn.active {
     background: #757575;

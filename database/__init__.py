@@ -21,6 +21,7 @@ from database.collaborators import (  # noqa: F401
     grant_edit_access,
     invite_collaborator,
     is_collaborator,
+    leave_trip,
     remove_collaborator,
 )
 from database.connection import (  # noqa: F401

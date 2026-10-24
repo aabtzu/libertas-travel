@@ -26,11 +26,23 @@ function initTripActions() {
             const link = deleteBtn.dataset.link;
             const wrapper = deleteBtn.closest('.trip-card-wrapper');
             const title = wrapper.querySelector('.trip-card-title')?.textContent || 'this trip';
+            confirmAndDeleteTrip(link, title, wrapper);
+            return;
+        }
+
+        // Leave (collaborator)
+        const leaveBtn = e.target.closest('.leave-btn');
+        if (leaveBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const link = leaveBtn.dataset.link;
+            const title = leaveBtn.dataset.title || 'this trip';
+            const wrapper = leaveBtn.closest('.trip-card-wrapper');
             LibertasModal.confirm(
-                `Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`,
+                `Leave "${title}"?\n\nYou will lose edit access. The owner can re-invite you.`,
                 { danger: true }
             ).then(function(confirmed) {
-                if (confirmed) deleteTrip(link, wrapper);
+                if (confirmed) leaveTrip(link, wrapper);
             });
             return;
         }
@@ -55,25 +67,46 @@ function editTrip(btn) {
 }
 
 /**
- * Delete a trip
+ * Show a confirm dialog for delete, warning if the trip has collaborators.
  */
-function deleteTrip(link, cardElement) {
+function confirmAndDeleteTrip(link, title, cardElement) {
+    fetch(`/api/trips/${link}/collaborators`)
+        .then(r => r.json())
+        .then(data => {
+            const collabs = (data.success && data.collaborators) ? data.collaborators : [];
+            let msg = `Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`;
+            if (collabs.length > 0) {
+                msg = `Are you sure you want to delete "${title}"?\n\n${collabs.length} collaborator(s) will lose access. This action cannot be undone.`;
+            }
+            LibertasModal.confirm(msg, { danger: true }).then(function(confirmed) {
+                if (confirmed) deleteTrip(link, cardElement, collabs.length > 0);
+            });
+        })
+        .catch(() => {
+            // Fall back to simple confirm if collaborator fetch fails
+            LibertasModal.confirm(
+                `Are you sure you want to delete "${title}"?\n\nThis action cannot be undone.`,
+                { danger: true }
+            ).then(function(confirmed) {
+                if (confirmed) deleteTrip(link, cardElement, false);
+            });
+        });
+}
+
+/**
+ * Delete a trip (owner action).
+ */
+function deleteTrip(link, cardElement, hasCollabs) {
     fetch('/api/delete-trip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ link: link })
+        body: JSON.stringify({ link: link, confirmed_with_collabs: hasCollabs })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Animate removal
-            cardElement.style.transition = 'opacity 0.3s, transform 0.3s';
-            cardElement.style.opacity = '0';
-            cardElement.style.transform = 'scale(0.9)';
-            setTimeout(() => {
-                cardElement.remove();
-                showStatus('success', 'Trip deleted successfully');
-            }, 300);
+            _animateRemoveCard(cardElement);
+            showStatus('success', 'Trip deleted successfully');
         } else {
             showStatus('error', data.error || 'Failed to delete trip');
         }
@@ -82,6 +115,37 @@ function deleteTrip(link, cardElement) {
         console.error('Delete error:', error);
         showStatus('error', 'Failed to delete trip');
     });
+}
+
+/**
+ * Leave a trip (collaborator action - removes self from collaborators).
+ */
+function leaveTrip(link, cardElement) {
+    fetch('/api/leave-trip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: link })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            _animateRemoveCard(cardElement);
+            showStatus('success', 'You have left the trip');
+        } else {
+            showStatus('error', data.error || 'Failed to leave trip');
+        }
+    })
+    .catch(error => {
+        console.error('Leave error:', error);
+        showStatus('error', 'Failed to leave trip');
+    });
+}
+
+function _animateRemoveCard(cardElement) {
+    cardElement.style.transition = 'opacity 0.3s, transform 0.3s';
+    cardElement.style.opacity = '0';
+    cardElement.style.transform = 'scale(0.9)';
+    setTimeout(() => cardElement.remove(), 300);
 }
 
 /**

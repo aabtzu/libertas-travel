@@ -414,14 +414,34 @@ def generate_public_trip_card(
     owner_username: str,
     index: int = 0,
     itinerary_data: str | dict | None = None,
+    is_shared: bool = False,
 ) -> str:
-    """Generate HTML for a public trip card (from another user)."""
+    """Generate HTML for a public trip card (from another user).
+
+    is_shared=True adds a "Shared" badge and a "Leave trip" button - used for
+    collaborator trips in the "Shared With Me" section, not public-browse trips.
+    """
     color = TRIP_COLORS[index % len(TRIP_COLORS)]
     icon = get_region_icon(itinerary_data)
 
     # Generate category stats (icons with counts)
     category_counts = extract_category_counts(itinerary_data)
     category_stats = generate_category_stats_html(category_counts, locations, activities)
+
+    shared_class = " is-shared" if is_shared else ""
+    shared_badge = (
+        '<span class="shared-badge"><i class="fas fa-user-friends"></i> Shared</span>'
+        if is_shared
+        else ""
+    )
+    leave_btn = (
+        '<div class="trip-card-actions">'
+        f'<button class="trip-action-btn leave-btn" title="Leave trip" data-link="{link}" data-title="{title}">'
+        '<i class="fas fa-sign-out-alt"></i>'
+        "</button></div>"
+        if is_shared
+        else ""
+    )
 
     return _get_public_trip_card_template().format(
         link=link,
@@ -434,6 +454,9 @@ def generate_public_trip_card(
         activities=activities,
         owner_username=owner_username,
         category_stats=category_stats,
+        shared_class=shared_class,
+        shared_badge=shared_badge,
+        leave_btn=leave_btn,
     )
 
 
@@ -621,6 +644,7 @@ def generate_trips_page(
                     owner_username=trip.get("owner_username", ""),
                     index=i,
                     itinerary_data=trip.get("itinerary_data"),
+                    is_shared=True,
                 )
                 shared_cards_list.append(card)
             except Exception as e:

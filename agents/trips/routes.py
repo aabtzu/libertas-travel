@@ -308,6 +308,17 @@ def delete_trip():
     if not link:
         return json_err("No trip link provided")
 
+    # Warn if collaborators exist (client should have confirmed, but check server-side too)
+    collaborators = db.get_collaborators_for_trip(link)
+    if isinstance(collaborators, list) and collaborators:
+        # Only block if the caller explicitly skips the warning acknowledgement
+        if not data.get("confirmed_with_collabs"):
+            return json_err(
+                f"This trip has {len(collaborators)} collaborator(s). "
+                "Delete anyway? Send confirmed_with_collabs=true to confirm.",
+                status=409,
+            )
+
     deleted = db.delete_trip(g.user_id, link)
     if not deleted:
         return json_err("Trip not found")
@@ -317,6 +328,21 @@ def delete_trip():
         os.unlink(html_file)
 
     return json_ok({"success": True, "message": "Trip deleted successfully"})
+
+
+@trips_bp.post("/api/leave-trip")
+@require_auth
+def leave_trip():
+    data = request.get_json(silent=True) or {}
+    link = data.get("link", "").strip()
+    if not link:
+        return json_err("No trip link provided")
+
+    left = db.leave_trip(link, g.user_id)
+    if not left:
+        return json_err("You are not a collaborator on this trip")
+
+    return json_ok({"success": True, "message": "You have left the trip"})
 
 
 @trips_bp.post("/api/copy-trip")
