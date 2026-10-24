@@ -388,6 +388,7 @@ def transfer_trip_ownership(link: str, new_owner_id: int) -> bool:
     # when they already have a collaborator row is safe.
     if old_owner_id and old_owner_id != new_owner_id:
         from database.users import get_user_by_id
+
         old_owner = get_user_by_id(old_owner_id)
         if old_owner and old_owner.get("email"):
             grant_edit_access(link, old_owner["email"], granted_by=new_owner_id)
