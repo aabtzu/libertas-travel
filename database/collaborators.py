@@ -145,6 +145,13 @@ _SQL_SQLITE_REMOVE_COLLABORATOR = """
     DELETE FROM trip_collaborators WHERE id = ? AND trip_id = ?
 """
 
+_SQL_PG_LEAVE_TRIP = """
+    DELETE FROM trip_collaborators WHERE user_id = %s AND trip_id = %s
+"""
+_SQL_SQLITE_LEAVE_TRIP = """
+    DELETE FROM trip_collaborators WHERE user_id = ? AND trip_id = ?
+"""
+
 _SQL_PG_BIND_PENDING_INVITES = """
     UPDATE trip_collaborators
     SET user_id = %s, accepted_at = NOW()
@@ -340,6 +347,20 @@ def remove_collaborator(trip_link: str, collaborator_id: int) -> bool:
             cursor.execute(_SQL_PG_REMOVE_COLLABORATOR, (collaborator_id, trip_id))
         else:
             cursor.execute(_SQL_SQLITE_REMOVE_COLLABORATOR, (collaborator_id, trip_id))
+        return cursor.rowcount > 0
+
+
+def leave_trip(trip_link: str, user_id: int) -> bool:
+    """Remove user_id from the collaborators of trip_link. Returns True if deleted."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        trip_id = _trip_id_for_link(cursor, trip_link)
+        if not trip_id:
+            return False
+        if USE_POSTGRES:
+            cursor.execute(_SQL_PG_LEAVE_TRIP, (user_id, trip_id))
+        else:
+            cursor.execute(_SQL_SQLITE_LEAVE_TRIP, (user_id, trip_id))
         return cursor.rowcount > 0
 
 
