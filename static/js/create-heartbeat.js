@@ -43,8 +43,10 @@ function _fetchHeartbeat(link, isBaseline) {
  * Advance the heartbeat baseline to now after the current user saves.
  * Prevents the user who just saved from seeing their own change as a notification.
  */
-function heartbeatAdvanceBaseline() {
-    _heartbeatBaselineAt = new Date().toISOString();
+function heartbeatAdvanceBaseline(serverTimestamp) {
+    // Use the server's own timestamp so clock skew between client and server
+    // doesn't make the next poll think someone else saved.
+    _heartbeatBaselineAt = serverTimestamp || new Date().toISOString();
 }
 
 function _showReloadBanner(username) {

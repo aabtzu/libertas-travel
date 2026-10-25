@@ -136,11 +136,12 @@ def _trip_not_available_response(link: str, reason: str) -> Response:
 
 
 def _has_current_trip(user_id: int) -> bool:
-    """Return True if the user has a non-archived trip whose date range includes today."""
+    """Return True if the user has a non-archived trip (owned or collab) happening today."""
     from agents.itinerary.templates import _bucket_trip_by_date
 
     today = date.today().isoformat()
-    for trip in db.get_user_trips(user_id):
+    all_trips = list(db.get_user_trips(user_id)) + list(db.get_shared_trips_for_user(user_id))
+    for trip in all_trips:
         if trip.get("is_archived"):
             continue
         if _bucket_trip_by_date(trip, today) == "current":
