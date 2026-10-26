@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from datetime import date
 
 from flask import Blueprint, Response, g, redirect, render_template
 
@@ -135,27 +134,10 @@ def _trip_not_available_response(link: str, reason: str) -> Response:
     return Response(body, mimetype="text/html", status=_PRIVATE_TRIP_STATUS if is_private else 404)
 
 
-def _has_current_trip(user_id: int) -> bool:
-    """Return True if the user has a non-archived trip (owned or collab) happening today."""
-    from agents.itinerary.templates import _bucket_trip_by_date
-
-    today = date.today().isoformat()
-    all_trips = list(db.get_user_trips(user_id)) + list(db.get_shared_trips_for_user(user_id))
-    for trip in all_trips:
-        if trip.get("is_archived"):
-            continue
-        if _bucket_trip_by_date(trip, today) == "current":
-            return True
-    return False
-
-
 @pages_bp.get("/")
 @pages_bp.get("/index.html")
 def home():
-    # When actively traveling, send logged-in users straight to their trips page
-    # so the "Traveling Now" section is the first thing they see.
-    # When not traveling, keep the home page - it has useful links to Create and Explore.
-    if g.user_id and not g.auth_disabled and _has_current_trip(g.user_id):
+    if g.user_id and not g.auth_disabled:
         return redirect("/trips.html")
     return render_template("home.html", nav=get_nav_html("home"), footer=get_footer_html())
 
