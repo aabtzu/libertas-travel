@@ -251,6 +251,20 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
             },
         },
         {
+            "name": "generate_writeup",
+            "description": "Generate a narrative write-up for this trip in the user's writing style. Use when the user asks to 'write a narrative', 'generate a write-up', 'write it up', 'create a 36 hours style article', etc. Optionally filtered by a directive.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "directive": {
+                        "type": "string",
+                        "description": "Optional filter: 'Lima only', 'food only', 'hiking activities'. Leave empty to include everything.",
+                    }
+                },
+                "required": [],
+            },
+        },
+        {
             "name": "create_personalized_rec",
             "description": "Create a shareable personalized recommendation page filtered from this trip. Use when the user wants to share a subset of the trip with someone, e.g. 'make a rec for just Lima', 'create a restaurant-only rec', 'share only the hiking activities with Sarah'. Returns a shareable link.",
             "input_schema": {
@@ -314,6 +328,21 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
                                 print(
                                     f"[CREATE CHAT] Tool add_items: title='{item.get('title')}', category='{item.get('category')}', location='{item.get('location')}'"
                                 )
+                    elif block.name == "generate_writeup":
+                        directive = block.input.get("directive", "")
+                        link_val = trip_context.get("link", "")
+                        if link_val:
+                            from agents.trips.handler import generate_writeup_for_trip
+
+                            wu_result, wu_status = generate_writeup_for_trip(
+                                user_id, link_val, directive=directive
+                            )
+                            if wu_status == 200:
+                                response_text = "Write-up generated. Switch to the Write-up tab to see and copy it."
+                            else:
+                                response_text = f"Could not generate write-up: {wu_result.get('error', 'unknown error')}"
+                        else:
+                            response_text = "Save the trip first, then I can generate a write-up."
                     elif block.name == "create_personalized_rec":
                         directive = block.input.get("directive", "")
                         print(

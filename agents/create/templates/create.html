@@ -413,7 +413,7 @@
     <script src="/static/js/create-render.js?v=5"></script>
     <script src="/static/js/create-items.js?v=4"></script>
     <script src="/static/js/create-upload.js?v=8"></script>
-    <script src="/static/js/create-save.js?v=6"></script>
+    <script src="/static/js/create-save.js?v=7"></script>
     <script src="/static/js/create-chat.js?v=7"></script>
     <script src="/static/js/create-dragdrop.js?v=2"></script>
     <script src="/static/js/create-grid.js?v=7"></script>
@@ -422,6 +422,19 @@
     <script src="/static/js/create-heartbeat.js?v=3"></script>
     <script src="/static/js/create-assets.js?v=1"></script>
     <script src="/static/js/create-copy.js?v=1"></script>
+
+    <!-- Write-up directive modal -->
+    <div id="writeup-directive-modal" class="modal-overlay hidden">
+        <div class="modal-content modal-small">
+            <h3 style="margin:0 0 8px;">Generate Write-up</h3>
+            <p style="margin:0 0 12px;color:#666;font-size:14px;">Optionally focus on a specific area, cuisine, or activity type. Leave blank to include everything.</p>
+            <input type="text" id="writeup-directive-input" placeholder="e.g. Lima only, food only, hiking activities" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+                <button class="btn btn-secondary" id="writeup-directive-cancel">Cancel</button>
+                <button class="btn btn-primary" id="writeup-directive-confirm"><i class="fas fa-pen-fancy"></i> Generate</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Mobile floating chat button - must be direct child of body for position:fixed -->
     <button class="mobile-chat-fab" id="mobile-chat-fab" aria-label="Open chat assistant">

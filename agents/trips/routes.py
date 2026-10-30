@@ -570,7 +570,9 @@ def generate_trip_writeup(link: str):
     """Generate an AI narrative write-up from trip ideas and tips."""
     from agents.trips.handler import generate_writeup_for_trip
 
-    result, status = generate_writeup_for_trip(g.user_id, link)
+    data = request.get_json(silent=True) or {}
+    directive = (data.get("directive") or "").strip()
+    result, status = generate_writeup_for_trip(g.user_id, link, directive=directive)
     if status == 200:
         return json_ok({"success": True, **result})
     return json_err(result.get("error", "Unknown error"), status=status)

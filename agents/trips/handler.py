@@ -61,7 +61,7 @@ def _load_trip_with_itinerary(user_id: int, link: str) -> tuple[dict | None, dic
     return trip, itinerary_data
 
 
-def generate_writeup_for_trip(user_id: int, link: str) -> tuple[dict, int]:
+def generate_writeup_for_trip(user_id: int, link: str, directive: str = "") -> tuple[dict, int]:
     """Generate an AI narrative write-up for a trip, using the user's style
     profile + writing samples if present."""
     trip, itinerary_data = _load_trip_with_itinerary(user_id, link)
@@ -83,6 +83,7 @@ def generate_writeup_for_trip(user_id: int, link: str) -> tuple[dict, int]:
             itinerary_data,
             style_profile=style_profile,
             writing_samples=writing_samples,
+            directive=directive,
         )
     except Exception as e:
         return {"error": f"Write-up generation failed: {e}"}, 500
