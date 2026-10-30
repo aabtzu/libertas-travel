@@ -18,6 +18,7 @@ Group by area/city. Do NOT use a day-by-day format unless dates are present.
 Include website links as markdown: [venue name](url).
 Skip Google search fallback links, only include real URLs.
 Use the notes as context to write your own prose - do not copy them verbatim.
+IMPORTANT: Only write about the exact places listed. Do not add, invent, or mention any hotels, restaurants, activities, flights, or destinations not explicitly in the list.
 Write in markdown."""
 
 
@@ -92,19 +93,22 @@ def generate_writeup(
 
     items_text = _build_items_text(all_items)
 
+    # When a directive narrows the scope, tips are global and would introduce
+    # out-of-scope content (flights, other cities). Drop them.
     tips_text = ""
-    if tips:
+    if tips and not directive:
         tips_text = "\nGeneral tips:\n" + "\n".join(f"- {t}" for t in tips)
 
     data_text = f"Trip: {title}\n\nPlaces:\n{items_text}\n{tips_text}"
 
     effective_profile = dict(style_profile) if style_profile else {}
     user_rules = effective_profile.get("rules", "")
-    effective_profile["rules"] = (
-        user_rules + "\nDo not add any vibe summary or editorial sign-off after the description."
-        if user_rules
-        else "Do not add any vibe summary or editorial sign-off after the description."
+    no_signoff = (
+        "Do not add any closing paragraph, vibe summary, editorial sign-off, "
+        "or 'anything else?' / 'let me know' style invitation at the end. "
+        "End after the last venue description."
     )
+    effective_profile["rules"] = (user_rules + "\n" + no_signoff) if user_rules else no_signoff
 
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
     return writer.generate(
