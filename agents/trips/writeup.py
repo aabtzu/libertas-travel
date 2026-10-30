@@ -18,6 +18,7 @@ Group by area/city. Do NOT use a day-by-day format unless dates are present.
 Include website links as markdown: [venue name](url).
 Skip Google search fallback links, only include real URLs.
 Use the notes as context to write your own prose - do not copy them verbatim.
+IMPORTANT: Only write about the exact places listed. Do not add, invent, or mention any hotels, restaurants, activities, flights, or destinations not explicitly in the list.
 Write in markdown."""
 
 
@@ -61,11 +62,13 @@ def generate_writeup(
 
     Returns the write-up text, or raises on error.
     """
-    # Collect all items
-    all_items = list(itinerary_data.get("ideas", []))
+    # Collect all items, skipping logistical categories that don't belong in a narrative.
+    _SKIP = {"flight", "transport", "home"}
+    all_items = [i for i in itinerary_data.get("ideas", []) if i.get("category") not in _SKIP]
     for day in itinerary_data.get("days", []):
         for item in day.get("items", []):
-            all_items.append(item)
+            if item.get("category") not in _SKIP:
+                all_items.append(item)
 
     tips = itinerary_data.get("tips", [])
 
@@ -92,19 +95,23 @@ def generate_writeup(
 
     items_text = _build_items_text(all_items)
 
+    # When a directive narrows the scope, tips are global and would introduce
+    # out-of-scope content (flights, other cities). Drop them.
     tips_text = ""
-    if tips:
+    if tips and not directive:
         tips_text = "\nGeneral tips:\n" + "\n".join(f"- {t}" for t in tips)
 
     data_text = f"Trip: {title}\n\nPlaces:\n{items_text}\n{tips_text}"
 
     effective_profile = dict(style_profile) if style_profile else {}
     user_rules = effective_profile.get("rules", "")
-    effective_profile["rules"] = (
-        user_rules + "\nDo not add any vibe summary or editorial sign-off after the description."
-        if user_rules
-        else "Do not add any vibe summary or editorial sign-off after the description."
+    no_signoff = (
+        "Do not add a final closing paragraph after all venue sections. "
+        "No document-level sign-offs, wrap-ups, or open-ended invitations at the very end "
+        "(e.g. 'any questions?', 'happy to help', 'let me know', 'anything else?'). "
+        "The document ends after the last venue or section. No trailing paragraph of any kind."
     )
+    effective_profile["rules"] = (user_rules + "\n" + no_signoff) if user_rules else no_signoff
 
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
     return writer.generate(

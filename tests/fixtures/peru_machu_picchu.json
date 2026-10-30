@@ -1,0 +1,95 @@
+{
+  "title": "Backroads Machu Picchu - Aug 2026",
+  "startDate": "2026-08-21",
+  "endDate": "2026-09-01",
+  "items": [
+    {
+      "title": "DL 6063 JFK to LIM",
+      "category": "flight",
+      "date": "2026-08-21",
+      "location": "LIM",
+      "notes": "Delta 6063 operated by LATAM Airlines. Departs NYC-Kennedy (JFK), arrives Lima (LIM) Fri 21 Aug. Plus (T) fare class."
+    },
+    {
+      "title": "Crowne Plaza Lima by IHG",
+      "category": "hotel",
+      "date": "2026-08-30",
+      "location": "Miraflores, Lima, Peru",
+      "notes": "Confirmation: 85460134. 2 nights, 3 guests. 3 Double Premium City View rooms with double beds. $630.33 total. Free cancellation until Aug 29, 2026 12:00 am local time."
+    },
+    {
+      "title": "Central Restaurant",
+      "category": "meal",
+      "date": "2026-08-30",
+      "location": "Barranco, Lima, Peru",
+      "notes": "Chef Virgilio Martinez's flagship. Consistently ranked among the world's best. Tasting menu built around Peru's ecosystems and altitudes. Book reservations far in advance. Closed Sundays.",
+      "website": "https://centralrestaurante.com.pe"
+    },
+    {
+      "title": "Maido",
+      "category": "meal",
+      "date": "2026-08-31",
+      "location": "Miraflores, Lima, Peru",
+      "notes": "Chef Mitsuharu Tsumura's nikkei restaurant. Japanese-Peruvian fusion. World's 50 Best regular. Closed Sundays. Reservation for 2. Confirmation ID: F922-4B40-BC14-E49B. Cancel at least 2 hours ahead.",
+      "website": "https://maido.pe"
+    },
+    {
+      "title": "Tomo Cocina Nikkei",
+      "category": "meal",
+      "date": "2026-08-30",
+      "location": "Miraflores, Lima, Peru",
+      "notes": "Nikkei spot, good option for a lower-key night or backup if Central doesn't work out on the 30th.",
+      "website": "https://tomococina.pe"
+    },
+    {
+      "title": "Inkaterra La Casona",
+      "category": "hotel",
+      "date": "2026-08-24",
+      "location": "Cusco, Peru",
+      "notes": "Boutique hotel in a restored colonial mansion in the Plaza Nazarenas. Confirmation: ITC-88421. 3 nights.",
+      "website": "https://inkaterra.com/inkaterra-la-casona"
+    },
+    {
+      "title": "San Blas neighborhood",
+      "category": "attraction",
+      "date": "2026-08-24",
+      "location": "Cusco, Peru",
+      "notes": "Bohemian quarter with artisan workshops, narrow cobblestone streets. Good for an afternoon wander."
+    },
+    {
+      "title": "Mercado San Pedro",
+      "category": "attraction",
+      "date": "2026-08-25",
+      "location": "Cusco, Peru",
+      "notes": "Central market. Best in the morning. Good spot for breakfast and local produce."
+    },
+    {
+      "title": "Backroads Lodge-to-Lodge Trek",
+      "category": "activity",
+      "date": "2026-08-25",
+      "location": "Cusco Region, Peru",
+      "notes": "5-day guided trek from Cusco to Machu Picchu via Salkantay pass. Includes all lodging, meals, and porter support. Gear list provided."
+    },
+    {
+      "title": "Machu Picchu",
+      "category": "attraction",
+      "date": "2026-08-29",
+      "location": "Machu Picchu, Cusco Region, Peru",
+      "notes": "Entry tickets for 8am slot. Huayna Picchu tickets sold separately - book 6 months in advance."
+    },
+    {
+      "title": "LA 2233 CUZ to LIM",
+      "category": "flight",
+      "date": "2026-08-30",
+      "location": "LIM",
+      "notes": "LATAM 2233. Cusco to Lima."
+    },
+    {
+      "title": "DL 6066 LIM to JFK",
+      "category": "flight",
+      "date": "2026-09-01",
+      "location": "JFK",
+      "notes": "Delta 6066. Lima to JFK. Departs 11:59pm."
+    }
+  ]
+}

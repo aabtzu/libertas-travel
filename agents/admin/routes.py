@@ -564,3 +564,36 @@ def admin_transfer_trip():
     return json_ok(
         {"success": True, "new_owner_username": new_owner.get("username"), "trip_link": trip_link}
     )
+
+
+@admin_bp.post("/api/admin/test-writeup")
+def admin_test_writeup():
+    """Generate a write-up for any trip without auth, for testing.
+
+    Protected by SECRET_KEY (X-Admin-Key header).
+    Body JSON: {"trip_link": "<trip.html>", "directive": "optional filter"}
+    Returns the raw write-up text so it can be inspected without the editor UI.
+    """
+    import os
+
+    secret_key = os.environ.get("SECRET_KEY", "")
+    provided = request.headers.get("X-Admin-Key", "")
+    if not secret_key or provided != secret_key:
+        return json_err("Unauthorized", status=401)
+
+    data = request.get_json(silent=True) or {}
+    trip_link = (data.get("trip_link") or "").strip()
+    directive = (data.get("directive") or "").strip()
+    if not trip_link:
+        return json_err("'trip_link' is required")
+
+    owner_id = db.get_trip_owner(trip_link)
+    if not owner_id:
+        return json_err(f"Trip not found: {trip_link}", status=404)
+
+    from agents.trips.handler import generate_writeup_for_trip
+
+    result, status = generate_writeup_for_trip(owner_id, trip_link, directive=directive)
+    if status != 200:
+        return json_err(result.get("error", "Unknown error"), status=status)
+    return json_ok(result)
