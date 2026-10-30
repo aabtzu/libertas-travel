@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html as html_mod
+import json
 import re
 from typing import Any
 
@@ -22,35 +23,45 @@ _CATEGORY_LABELS = {
 # Categories that are logistical, not planning-relevant for a rec page.
 _SKIP_CATEGORIES = {"flight", "transport", "home", "train"}
 
-# Sentence-level patterns that indicate booking/logistical details.
-# We strip any sentence matching these from rec notes.
-_BOOKING_PATTERNS = [
-    re.compile(r"phone[\s:]+[\+\d\-\(\)\s]+", re.IGNORECASE),
-    re.compile(r"\+\d[\d\-\(\)\s]{6,}"),  # phone numbers
-    re.compile(r"check[- ](in|out)\b", re.IGNORECASE),
-    re.compile(r"\bconfirm(ation)?\b.*(number|code|#)", re.IGNORECASE),
-    re.compile(r"included in (trip |the )?price", re.IGNORECASE),
-    re.compile(r"fare class\b", re.IGNORECASE),
-    re.compile(r"\boperated by\b", re.IGNORECASE),
-    re.compile(r"departs?\s+\w+[- ]\w+", re.IGNORECASE),  # "departs NYC-Kennedy"
-    re.compile(r"arrives?\s+\w+[- ]\w+", re.IGNORECASE),
-    re.compile(r"luggage (left|stored|drop)", re.IGNORECASE),
-    re.compile(r"passport (information|required)", re.IGNORECASE),
-    re.compile(r"booked?\s+(at|via|through|using)\b", re.IGNORECASE),
-    re.compile(r"(total )?duration:\s*\d", re.IGNORECASE),
-    re.compile(r"shuttle duration\b", re.IGNORECASE),
-    re.compile(r"ticket(s)? secured\b", re.IGNORECASE),
-    re.compile(r"\bDay \d\b"),  # "Day 1", "Day 3"
-]
+_NOTES_CLEAN_SYSTEM = """You clean up travel notes for a recommendation page that helps someone plan a trip.
+
+Remove ALL booking/logistical details: confirmation numbers, reservation IDs, prices, number of nights/guests/rooms, check-in/out dates, cancellation policies, phone numbers, fare classes, luggage instructions, passport requirements, day numbers (e.g. "Day 1"), and anything a traveler planning ahead would not need to know.
+
+Keep only planning-relevant content: what makes a place special, what to expect, tips for visiting, cuisine or activity description.
+
+You receive a JSON array of {title, notes} objects. Return a JSON object mapping each title to its cleaned notes string. If nothing useful remains, map the title to an empty string "".
+
+Return ONLY the JSON object, no commentary."""
 
 
-def _clean_rec_notes(notes: str) -> str:
-    """Strip booking/logistical sentences from notes for planning-oriented rec pages."""
-    if not notes:
-        return ""
-    sentences = re.split(r"(?<=[.!?])\s+", notes.strip())
-    clean = [s for s in sentences if not any(p.search(s) for p in _BOOKING_PATTERNS)]
-    return " ".join(clean).strip()
+def _batch_clean_notes(items: list[dict]) -> dict[str, str]:
+    """Use HAIKU to strip booking details from notes in one batched call.
+
+    Falls back to raw notes if the API call fails, so the page still renders.
+    """
+    items_with_notes = [i for i in items if i.get("notes", "").strip()]
+    if not items_with_notes:
+        return {}
+
+    payload = [{"title": i.get("title", ""), "notes": i.get("notes", "")} for i in items_with_notes]
+
+    try:
+        from agents.common.llm import HAIKU, make_llm
+
+        llm = make_llm(model=HAIKU, max_tokens=2048)
+        raw = llm.call_api(
+            system_prompt=_NOTES_CLEAN_SYSTEM,
+            messages=[{"role": "user", "content": json.dumps(payload)}],
+        )
+        text = raw if isinstance(raw, str) else (raw.content[0].text if raw.content else "")
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+    except Exception as e:
+        print(f"[rec] notes cleaning error: {e}")
+
+    # Fail open: return raw notes so the page still renders
+    return {i.get("title", ""): i.get("notes", "") for i in items_with_notes}
 
 
 def _md_to_html(text: str) -> str:
@@ -66,6 +77,7 @@ def _md_to_html(text: str) -> str:
     )
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
+    text.replace("\n\n", "</p><p>")
     text = text.replace("\n\n", "</p><p>")
     text = text.replace("\n", "<br>")
     return f"<p>{text}</p>"
@@ -134,19 +146,26 @@ def build_recommendation_context(
     # Deduplicate items by title within each location group so items that
     # appear in both ideas and days don't show twice.
     seen: set[tuple[str, str]] = set()
-    location_map: dict[str, dict] = {}
+    filtered: list[dict] = []
     for item in all_items:
         cat = item.get("category", "other")
         if cat in _SKIP_CATEGORIES:
             continue
         title_key = item.get("title", "").strip().lower()
-        loc_raw = item.get("location", "")
-        loc_key = _extract_city(loc_raw)
+        loc_key = _extract_city(item.get("location", ""))
         dedup_key = (title_key, loc_key)
         if dedup_key in seen:
             continue
         seen.add(dedup_key)
+        filtered.append(item)
 
+    # Clean booking details from notes in one batched LLM call.
+    cleaned_notes = _batch_clean_notes(filtered)
+
+    location_map: dict[str, dict] = {}
+    for item in filtered:
+        cat = item.get("category", "other")
+        loc_key = _extract_city(item.get("location", ""))
         if loc_key not in location_map:
             location_map[loc_key] = {}
         if cat not in location_map[loc_key]:
@@ -163,7 +182,7 @@ def build_recommendation_context(
                     "venues": [
                         {
                             "title": i.get("title", ""),
-                            "notes": _clean_rec_notes(i.get("notes", "")),
+                            "notes": cleaned_notes.get(i.get("title", ""), i.get("notes", "")),
                             "website": i.get("website", ""),
                             "google_maps_link": i.get("google_maps_link", ""),
                         }
