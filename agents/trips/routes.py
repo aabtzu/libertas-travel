@@ -220,6 +220,9 @@ def trip_heartbeat(link: str):
     data = db.get_trip_heartbeat(link)
     if data is None:
         return json_err("Trip not found", status=404)
+    # Tell the client whether the last save was by themselves so they can
+    # suppress false-positive notifications from their own saves.
+    data["is_self_save"] = data.get("last_saved_by") == g.user_id
     return json_ok(data)
 
 
