@@ -109,16 +109,24 @@ def generate_writeup(
         "Do not add a final closing paragraph after all venue sections. "
         "No document-level sign-offs, wrap-ups, or open-ended invitations at the very end "
         "(e.g. 'any questions?', 'happy to help', 'let me know', 'anything else?'). "
-        "The document ends after the last venue or section. No trailing paragraph of any kind."
+        "The document ends after the last venue or section. No trailing paragraph of any kind.\n"
+        "Use hyphens (-) only. Never use em dashes or en dashes.\n"
+        "Avoid AI-sounding superlatives and generic travel-writing phrases: "
+        "do not write 'dialed-in', 'vibrant', 'bustling', 'culinary scene', 'world-class' "
+        "(unless quoting a specific ranking), 'hidden gem', 'must-visit', 'iconic', "
+        "'lively', 'charming', 'chic', 'sophisticated', 'stunning', or 'elevated'."
     )
     effective_profile["rules"] = (user_rules + "\n" + no_signoff) if user_rules else no_signoff
 
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
-    return writer.generate(
+    output = writer.generate(
         data=data_text,
         context=_TRAVEL_INSTRUCTIONS,
         style_profile=effective_profile,
     )
+    # Strip en/em dashes that the LLM occasionally produces despite instructions.
+    output = output.replace(chr(0x2014), "-").replace(chr(0x2013), "-")
+    return output
 
 
 def extract_style_profile(writing_samples: str) -> dict:
