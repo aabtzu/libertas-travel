@@ -187,21 +187,12 @@ async function fillMissingLinks() {
 
 let _writeupAbortController = null;
 
-async function generateWriteup() {
+async function _doGenerateWriteup(directive) {
     if (!currentTrip.link) return;
 
     const btn = document.getElementById('generate-writeup-btn');
     const resultDiv = document.getElementById('writeup-result');
     const textDiv = document.getElementById('writeup-text');
-
-    // If already generating, cancel it
-    if (_writeupAbortController) {
-        _writeupAbortController.abort();
-        _writeupAbortController = null;
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
-        return;
-    }
 
     btn.innerHTML = '<i class="fas fa-times"></i> Cancel';
 
@@ -212,6 +203,7 @@ async function generateWriteup() {
         const res = await fetch(`/api/trips/${currentTrip.link}/writeup`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({directive: directive || ''}),
             signal: _writeupAbortController.signal,
         });
         _writeupAbortController = null;
@@ -231,12 +223,60 @@ async function generateWriteup() {
     } catch (e) {
         _writeupAbortController = null;
         if (e.name === 'AbortError') {
-            // User cancelled, already handled above
             return;
         }
         console.error('Write-up error:', e);
         btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
     }
+}
+
+function generateWriteup() {
+    if (!currentTrip.link) return;
+
+    // If already generating, cancel it
+    if (_writeupAbortController) {
+        _writeupAbortController.abort();
+        _writeupAbortController = null;
+        const btn = document.getElementById('generate-writeup-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-pen-fancy"></i> Generate Write-up';
+        }
+        return;
+    }
+
+    // Open modal to optionally enter a directive
+    const modal = document.getElementById('writeup-directive-modal');
+    const input = document.getElementById('writeup-directive-input');
+    const cancelBtn = document.getElementById('writeup-directive-cancel');
+    const confirmBtn = document.getElementById('writeup-directive-confirm');
+    if (!modal) {
+        _doGenerateWriteup('');
+        return;
+    }
+    input.value = '';
+    modal.classList.remove('hidden');
+    input.focus();
+
+    function close() {
+        modal.classList.add('hidden');
+        cancelBtn.removeEventListener('click', onCancel);
+        confirmBtn.removeEventListener('click', onConfirm);
+        input.removeEventListener('keydown', onKey);
+    }
+    function onCancel() { close(); }
+    function onConfirm() {
+        const directive = input.value.trim();
+        close();
+        _doGenerateWriteup(directive);
+    }
+    function onKey(e) {
+        if (e.key === 'Enter') onConfirm();
+        if (e.key === 'Escape') onCancel();
+    }
+    cancelBtn.addEventListener('click', onCancel);
+    confirmBtn.addEventListener('click', onConfirm);
+    input.addEventListener('keydown', onKey);
 }
 
 function copyWriteup() {

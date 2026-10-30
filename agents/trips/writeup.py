@@ -13,20 +13,16 @@ from fiat_lux_agents import StyleWriterBot
 from agents.common.llm import SONNET
 
 # Travel-specific instructions appended to all write-ups
-_TRAVEL_INSTRUCTIONS = """Write a recommendation for the places provided.
+_TRAVEL_INSTRUCTIONS = """Write a recommendation narrative for the places provided.
 Group by area/city. Do NOT use a day-by-day format unless dates are present.
 Include website links as markdown: [venue name](url).
 Skip Google search fallback links, only include real URLs.
+Use the notes as context to write your own prose - do not copy them verbatim.
 Write in markdown."""
 
 
 def _build_items_text(all_items: list[dict]) -> str:
-    """Format trip items as structured text for the LLM.
-
-    Items with notes are marked with VERBATIM_NOTES so the LLM knows to
-    copy them exactly. This is a last-resort signal; the real guarantee is
-    that we do a post-pass substitution in generate_writeup().
-    """
+    """Format trip items as structured text for the LLM."""
     lines = []
     for item in all_items:
         cat = item.get("category", "other")
@@ -42,61 +38,9 @@ def _build_items_text(all_items: list[dict]) -> str:
         if maps_link:
             line += f"\n  Map: {maps_link}"
         if notes:
-            line += f"\n  VERBATIM_NOTES (copy this text exactly, word for word): {notes}"
+            line += f"\n  Notes: {notes}"
         lines.append(line)
     return "\n".join(lines)
-
-
-def _enforce_verbatim_notes(text: str, all_items: list[dict]) -> str:
-    """Post-processing pass: find each venue title in the output and replace
-    whatever the LLM wrote as the description with the original notes.
-
-    This is the only reliable way to guarantee verbatim notes - prompting
-    alone is not sufficient when the style template actively rewrites content.
-    """
-    import re
-
-    for item in all_items:
-        notes = (item.get("notes") or "").strip()
-        title = (item.get("title") or "").strip()
-        if not notes or not title:
-            continue
-
-        # Find the venue link or heading in the output. Matches:
-        # [title](url), **title**, or bare title followed by a dash/newline.
-        title_pattern = re.compile(
-            r"(\[" + re.escape(title) + r"\]\([^)]*\)|"
-            r"\*\*" + re.escape(title) + r"\*\*|"
-            r"(?<!\w)" + re.escape(title) + r"(?!\w))",
-            re.IGNORECASE,
-        )
-
-        match = title_pattern.search(text)
-        if not match:
-            continue
-
-        # The bare-title alternation can match inside **title** stopping before
-        # the closing **. Skip past any trailing ** so it doesn't get swallowed
-        # into the replacement range.
-        end_pos = match.end()
-        if text[end_pos : end_pos + 2] == "**":
-            end_pos += 2
-
-        # Find where the description starts (after the title and any separator)
-        after_title = text[end_pos:]
-        # Skip separator characters (em dash, hyphen, space, newline)
-        sep_match = re.match(r"[\s\-—–]*", after_title)
-        desc_start = end_pos + (sep_match.end() if sep_match else 0)
-
-        # Find where the description ends (next blank line or next venue entry)
-        rest = text[desc_start:]
-        end_match = re.search(r"\n\n|\n\[|\n\*\*", rest)
-        desc_end = desc_start + (end_match.start() if end_match else len(rest))
-
-        # Replace only the description portion with the original notes
-        text = text[:desc_start] + notes + text[desc_end:]
-
-    return text
 
 
 def generate_writeup(
@@ -104,6 +48,7 @@ def generate_writeup(
     itinerary_data: dict[str, Any],
     style_profile: dict | None = None,
     writing_samples: str = "",
+    directive: str = "",
 ) -> str:
     """Turn structured trip ideas + tips into a readable narrative.
 
@@ -111,6 +56,8 @@ def generate_writeup(
         title: Trip title
         itinerary_data: Trip data with ideas, days, tips
         style_profile: Optional user writing style profile for personalization
+        writing_samples: Optional raw writing samples for style extraction
+        directive: Optional filter like 'Lima only' or 'food only'
 
     Returns the write-up text, or raises on error.
     """
@@ -124,6 +71,24 @@ def generate_writeup(
 
     if not all_items and not tips:
         return "No recommendations to write about yet."
+
+    # Filter by directive if provided (same LLM filter as personalized rec)
+    if directive:
+        from agents.trips.personalized_rec_handler import _filter_items_with_llm
+
+        all_items = _filter_items_with_llm(all_items, directive)
+        if not all_items:
+            return "No items matched the directive."
+
+    # Strip booking details before passing to the narrative LLM
+    from agents.pages.recommendation_view import _batch_clean_notes
+
+    cleaned = _batch_clean_notes(all_items)
+    if cleaned:
+        all_items = [
+            {**item, "notes": cleaned.get(item.get("title", ""), item.get("notes", ""))}
+            for item in all_items
+        ]
 
     items_text = _build_items_text(all_items)
 
@@ -142,16 +107,11 @@ def generate_writeup(
     )
 
     writer = StyleWriterBot(model=SONNET, max_tokens=2048)
-    output = writer.generate(
+    return writer.generate(
         data=data_text,
         context=_TRAVEL_INSTRUCTIONS,
         style_profile=effective_profile,
-        instructions="Use VERBATIM_NOTES text word for word. Do not paraphrase.",
     )
-
-    # Guarantee: replace LLM-generated descriptions with original notes.
-    # Prompting cannot guarantee this - post-processing can.
-    return _enforce_verbatim_notes(output, all_items)
 
 
 def extract_style_profile(writing_samples: str) -> dict:

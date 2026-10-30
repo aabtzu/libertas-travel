@@ -11,4 +11,4 @@
 # trips/routes.py crossed 800 lines when the /personalized-rec route was added.
 # Split plan: move calendar routes (lines 86-200) to calendar_routes.py and
 # user/profile routes (591-640) to user_routes.py. Tracked as follow-up work.
-"agents/trips/routes.py" = 806
+"agents/trips/routes.py" = 808
