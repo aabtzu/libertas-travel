@@ -250,6 +250,20 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
                 "required": ["url"],
             },
         },
+        {
+            "name": "create_personalized_rec",
+            "description": "Create a shareable personalized recommendation page filtered from this trip. Use when the user wants to share a subset of the trip with someone, e.g. 'make a rec for just Lima', 'create a restaurant-only rec', 'share only the hiking activities with Sarah'. Returns a shareable link.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "directive": {
+                        "type": "string",
+                        "description": "Plain English description of what to include. Examples: 'Lima restaurants and hotels', 'outdoor activities only', 'just the Cusco section'.",
+                    }
+                },
+                "required": ["directive"],
+            },
+        },
     ]
 
     try:
@@ -300,6 +314,31 @@ def create_chat_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
                                 print(
                                     f"[CREATE CHAT] Tool add_items: title='{item.get('title')}', category='{item.get('category')}', location='{item.get('location')}'"
                                 )
+                    elif block.name == "create_personalized_rec":
+                        directive = block.input.get("directive", "")
+                        print(
+                            f"[CREATE CHAT] Tool create_personalized_rec: directive='{directive}'"
+                        )
+                        from agents.trips.personalized_rec_handler import (
+                            create_personalized_rec_handler,
+                        )
+
+                        link_val = trip_context.get("link", "")
+                        if link_val:
+                            rec_result, rec_status = create_personalized_rec_handler(
+                                user_id, link_val, directive
+                            )
+                            if rec_status == 200:
+                                rec_url = rec_result.get("url", "")
+                                count = rec_result.get("count", 0)
+                                response_text = (
+                                    f"Done! I created a personalized rec with {count} items. "
+                                    f"Share this link: [{rec_url}]({rec_url})"
+                                )
+                            else:
+                                response_text = f"Could not create rec: {rec_result.get('error', 'unknown error')}"
+                        else:
+                            response_text = "Save the trip first, then I can create a rec."
                     elif block.name == "fetch_web_page":
                         tool_use_block = block
 

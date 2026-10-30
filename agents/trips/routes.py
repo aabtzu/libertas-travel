@@ -710,6 +710,22 @@ def transfer_ownership(link: str):
     return json_ok({"success": True, "message": "Ownership transferred"})
 
 
+@trips_bp.post("/api/trips/<link>/personalized-rec")
+@require_auth
+def create_personalized_rec(link: str):
+    """Create a filtered recommendation trip from an existing trip via a free-form directive."""
+    from agents.trips.personalized_rec_handler import create_personalized_rec_handler
+
+    data = request.get_json(silent=True) or {}
+    directive = (data.get("directive") or "").strip()
+    if not directive:
+        return json_err("directive is required")
+    result, status = create_personalized_rec_handler(g.user_id, link, directive)
+    if status == 200:
+        return json_ok(result)
+    return json_err(result.get("error", "Error"), status=status)
+
+
 @trips_bp.get("/api/trips/<link>/collaborators")
 @require_auth
 def list_collaborators(link: str):
