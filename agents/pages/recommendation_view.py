@@ -39,7 +39,7 @@ def _batch_clean_notes(items: list[dict]) -> dict[str, str]:
 
     Falls back to raw notes if the API call fails, so the page still renders.
     """
-    items_with_notes = [i for i in items if i.get("notes", "").strip()]
+    items_with_notes = [i for i in items if (i.get("notes") or "").strip()]
     if not items_with_notes:
         return {}
 
