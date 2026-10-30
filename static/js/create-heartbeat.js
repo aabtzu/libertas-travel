@@ -30,6 +30,9 @@ function _fetchHeartbeat(link, isBaseline) {
                 _heartbeatBaselineAt = data.last_saved_at;
                 return;
             }
+            // is_self_save: server confirmed the last save was by the current user.
+            // Skip the banner even if timestamps suggest a change - it's our own save.
+            if (data.is_self_save) return;
             if (_heartbeatBaselineAt && data.last_saved_at > _heartbeatBaselineAt) {
                 _showReloadBanner(data.username || 'Someone');
                 // Stop polling once we show the banner; no point re-alerting

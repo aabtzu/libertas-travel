@@ -294,7 +294,7 @@ function copyWriteup() {
 async function saveWriteup(text) {
     if (!currentTrip.link) return;
     // Save write-up into itinerary_data
-    await fetch(`/api/trips/${currentTrip.link}/save`, {
+    const res = await fetch(`/api/trips/${currentTrip.link}/save`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -308,6 +308,10 @@ async function saveWriteup(text) {
             }
         })
     });
+    const data = await res.json().catch(() => ({}));
+    if (data.saved_at && typeof heartbeatAdvanceBaseline === 'function') {
+        heartbeatAdvanceBaseline(data.saved_at);
+    }
 }
 
 function editWriteup() {
