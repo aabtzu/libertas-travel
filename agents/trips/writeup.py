@@ -62,11 +62,13 @@ def generate_writeup(
 
     Returns the write-up text, or raises on error.
     """
-    # Collect all items
-    all_items = list(itinerary_data.get("ideas", []))
+    # Collect all items, skipping logistical categories that don't belong in a narrative.
+    _SKIP = {"flight", "transport", "home"}
+    all_items = [i for i in itinerary_data.get("ideas", []) if i.get("category") not in _SKIP]
     for day in itinerary_data.get("days", []):
         for item in day.get("items", []):
-            all_items.append(item)
+            if item.get("category") not in _SKIP:
+                all_items.append(item)
 
     tips = itinerary_data.get("tips", [])
 
