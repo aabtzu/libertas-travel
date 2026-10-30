@@ -104,9 +104,11 @@ def generate_writeup(
     effective_profile = dict(style_profile) if style_profile else {}
     user_rules = effective_profile.get("rules", "")
     no_signoff = (
-        "Do not add any closing paragraph, vibe summary, editorial sign-off, "
-        "or 'anything else?' / 'let me know' style invitation at the end. "
-        "End after the last venue description."
+        "Do not add a final closing paragraph after all venue sections. "
+        "No document-level sign-offs like 'anything you want more detail on, just ask' "
+        "or 'let me know if you have questions' at the very end. "
+        "Per-section follow-up invitations that are part of the writing style are fine. "
+        "End after the last venue or section."
     )
     effective_profile["rules"] = (user_rules + "\n" + no_signoff) if user_rules else no_signoff
 
