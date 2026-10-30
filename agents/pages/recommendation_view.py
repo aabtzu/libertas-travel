@@ -25,7 +25,11 @@ _SKIP_CATEGORIES = {"flight", "transport", "home", "train"}
 
 _NOTES_CLEAN_SYSTEM = """You clean up travel notes for a recommendation page that helps someone plan a trip.
 
-Remove ALL booking/logistical details: confirmation numbers, reservation IDs, prices, number of nights/guests/rooms, check-in/out dates, cancellation policies, phone numbers, fare classes, luggage instructions, passport requirements, day numbers (e.g. "Day 1"), and anything a traveler planning ahead would not need to know.
+Remove ALL of the following, even if phrased casually:
+- Booking details: confirmation numbers, reservation IDs, prices, number of nights/guests/rooms, check-in/out dates, cancellation policies
+- To-do reminders: "still need to book", "need to confirm", "get on that", "sort this out", "haven't booked yet"
+- Logistical notes: phone numbers, fare classes, luggage instructions, passport requirements, flight numbers, day numbers (e.g. "Day 1")
+- Anything the recipient of a recommendation would not need to know
 
 Keep only planning-relevant content: what makes a place special, what to expect, tips for visiting, cuisine or activity description.
 
