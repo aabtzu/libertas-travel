@@ -218,7 +218,8 @@ def build_writeup_context(
     trip_link: str = "",
 ) -> dict:
     """Return template context for the write-up page."""
-    all_items = _collect_all_items(itinerary_data) if itinerary_data else []
+    raw_items = _collect_all_items(itinerary_data) if itinerary_data else []
+    all_items = [i for i in raw_items if i.get("category") not in _SKIP_CATEGORIES]
     venues_with_links = [i for i in all_items if i.get("website") or i.get("google_maps_link")]
 
     return {
