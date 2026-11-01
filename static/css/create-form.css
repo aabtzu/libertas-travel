@@ -234,3 +234,40 @@
 .btn-icon:hover {
     background: rgba(102, 126, 234, 0.1);
 }
+
+/* Trip type toggle in create modal */
+.trip-type-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.trip-type-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.trip-type-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(102, 126, 234, 0.06);
+}
+
+.trip-type-btn:hover:not(.active) {
+    border-color: #aab;
+    color: var(--text);
+}
+
+.trip-type-hint {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0;
+}

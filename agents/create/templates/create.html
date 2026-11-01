@@ -14,9 +14,9 @@
     <link rel="stylesheet" href="/static/css/main-extras.css?v=1">
     <link rel="stylesheet" href="/static/css/main-mobile-modal.css?v=2">
     <link rel="stylesheet" href="/static/css/categories.css?v=1">
-    <link rel="stylesheet" href="/static/css/create-form.css?v=1">
+    <link rel="stylesheet" href="/static/css/create-form.css?v=2">
     <link rel="stylesheet" href="/static/css/create-editor.css?v=2">
-    <link rel="stylesheet" href="/static/css/create-content.css?v=8">
+    <link rel="stylesheet" href="/static/css/create-content.css?v=9">
     <link rel="stylesheet" href="/static/css/create-chat.css?v=6">
     <link rel="stylesheet" href="/static/css/create-panels.css?v=1">
     <link rel="stylesheet" href="/static/css/create-views.css?v=5">
@@ -37,6 +37,20 @@
                 </div>
 
                 <div class="form-group">
+                    <label>Type</label>
+                    <div class="trip-type-toggle">
+                        <button type="button" class="trip-type-btn active" data-type="itinerary" id="type-btn-itinerary">
+                            <i class="fas fa-calendar-alt"></i> Itinerary
+                        </button>
+                        <button type="button" class="trip-type-btn" data-type="notes" id="type-btn-notes">
+                            <i class="fas fa-map-pin"></i> Notes
+                        </button>
+                    </div>
+                    <p class="trip-type-hint" id="trip-type-hint">A trip with dates and a day-by-day plan.</p>
+                    <input type="hidden" id="trip-type-value" value="itinerary">
+                </div>
+
+                <div class="form-group" id="create-dates-group">
                     <label>Dates <span class="optional">(optional, skip if you don't know yet)</span></label>
                     <div class="date-inputs">
                         <div class="date-input-group">
@@ -72,7 +86,7 @@
         <div class="editor-header">
             <div class="header-left">
                 <input type="text" id="editor-title" class="title-input" placeholder="Trip Name">
-                <div class="header-dates">
+                <div class="header-dates" id="editor-dates-row">
                     <input type="date" id="editor-start-date" class="date-input-small">
                     <span>-</span>
                     <input type="date" id="editor-end-date" class="date-input-small">
@@ -409,8 +423,8 @@
         var params = new URLSearchParams(window.location.search);
         var tripLink = params.get('link') || params.get('edit');
     </script>
-    <script src="/static/js/create.js?v=62"></script>
-    <script src="/static/js/create-render.js?v=5"></script>
+    <script src="/static/js/create.js?v=63"></script>
+    <script src="/static/js/create-render.js?v=6"></script>
     <script src="/static/js/create-items.js?v=4"></script>
     <script src="/static/js/create-upload.js?v=8"></script>
     <script src="/static/js/create-save.js?v=8"></script>

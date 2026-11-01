@@ -61,6 +61,42 @@ class TestTripCRUD:
         resp = client.post("/api/delete-trip", json={"link": "nonexistent.html"})
         assert resp.status_code in (200, 400, 404)
 
+    def test_create_notes_trip(self, client):
+        import database as db
+
+        resp = client.post(
+            "/api/trips/create",
+            json={"title": "Lima Notes", "trip_type": "notes"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        trip = data.get("trip", {})
+        link = trip.get("link") or data.get("link")
+        assert link
+        assert trip.get("trip_type") == "notes"
+        # Verify persisted in DB
+        saved = db.get_trip_by_link(1, link)
+        assert saved is not None
+        assert saved.get("trip_type") == "notes"
+        db.delete_trip(1, link)
+
+    def test_create_notes_trip_no_dates_required(self, client):
+        import database as db
+
+        resp = client.post(
+            "/api/trips/create",
+            json={"title": "Paris Notes", "trip_type": "notes"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        trip = data.get("trip", {})
+        link = trip.get("link") or data.get("link")
+        assert link
+        # Notes trips should have no dates
+        assert not trip.get("start_date")
+        assert not trip.get("end_date")
+        db.delete_trip(1, link)
+
 
 # ---------------------------------------------------------------------------
 # Add idea to trip

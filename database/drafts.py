@@ -18,13 +18,13 @@ _SQL_SQLITE_COUNT_TRIPS_BY_USER_AND_LINK = (
 )
 
 _SQL_PG_CREATE_DRAFT_TRIP = """
-    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft, trip_type)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, %s)
     RETURNING id
 """
 _SQL_SQLITE_CREATE_DRAFT_TRIP = """
-    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    INSERT INTO trips (user_id, title, link, dates, days, locations, activities, map_status, itinerary_data, is_draft, trip_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
 """
 
 _SQL_PG_GET_DRAFT_TRIPS = """
@@ -63,6 +63,7 @@ def create_draft_trip(
     start_date: str | None = None,
     end_date: str | None = None,
     num_days: int | None = None,
+    trip_type: str = "itinerary",
 ) -> dict[str, Any] | None:
     """Create a new draft trip. Returns the trip data with link or None if failed."""
     # Generate link from title
@@ -119,13 +120,35 @@ def create_draft_trip(
             if USE_POSTGRES:
                 cursor.execute(
                     _SQL_PG_CREATE_DRAFT_TRIP,
-                    (user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json),
+                    (
+                        user_id,
+                        title,
+                        link,
+                        dates,
+                        num_days,
+                        0,
+                        0,
+                        "pending",
+                        itinerary_json,
+                        trip_type,
+                    ),
                 )
                 trip_id = cursor.fetchone()[0]
             else:
                 cursor.execute(
                     _SQL_SQLITE_CREATE_DRAFT_TRIP,
-                    (user_id, title, link, dates, num_days, 0, 0, "pending", itinerary_json),
+                    (
+                        user_id,
+                        title,
+                        link,
+                        dates,
+                        num_days,
+                        0,
+                        0,
+                        "pending",
+                        itinerary_json,
+                        trip_type,
+                    ),
                 )
                 trip_id = cursor.lastrowid
 
@@ -138,6 +161,7 @@ def create_draft_trip(
                 "start_date": start_date,
                 "end_date": end_date,
                 "is_draft": True,
+                "trip_type": trip_type,
                 "itinerary_data": itinerary_data,
             }
         except Exception as e:

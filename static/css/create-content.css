@@ -467,3 +467,36 @@
     cursor: pointer;
 }
 .dragdrop-tip-close:hover { color: var(--surface-dark); }
+
+/* Notes mode section headers */
+.notes-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f0f1fa;
+    border-bottom: 1px solid var(--border);
+}
+
+.section-name-input {
+    flex: 1;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    border: none;
+    background: transparent;
+    outline: none;
+    padding: 2px 4px;
+    border-radius: 4px;
+    min-width: 0;
+}
+
+.section-name-input:focus {
+    background: white;
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.section-name-input::placeholder {
+    color: #bbb;
+    font-weight: 400;
+}
