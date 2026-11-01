@@ -78,7 +78,7 @@ def generate_writeup_for_trip(user_id: int, link: str, directive: str = "") -> t
         writing_samples = profile.get("writing_samples", "")
 
     try:
-        text = generate_writeup(
+        text, included_titles = generate_writeup(
             trip.get("title", "Trip"),
             itinerary_data,
             style_profile=style_profile,
@@ -89,7 +89,9 @@ def generate_writeup_for_trip(user_id: int, link: str, directive: str = "") -> t
         return {"error": f"Write-up generation failed: {e}"}, 500
 
     # Persist so the /w/ public page uses this version without regenerating.
+    # writeup_titles lets Quick Links show only the items in this write-up.
     itinerary_data["writeup"] = text
+    itinerary_data["writeup_titles"] = included_titles
     try:
         db.update_trip_itinerary_data(user_id, link, itinerary_data)
     except Exception as e:

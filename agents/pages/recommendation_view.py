@@ -220,6 +220,11 @@ def build_writeup_context(
     """Return template context for the write-up page."""
     raw_items = _collect_all_items(itinerary_data) if itinerary_data else []
     all_items = [i for i in raw_items if i.get("category") not in _SKIP_CATEGORIES]
+    # If the write-up was generated with a directive, restrict Quick Links to
+    # only the items that were included in that filtered write-up.
+    included_titles = set(itinerary_data.get("writeup_titles") or []) if itinerary_data else set()
+    if included_titles:
+        all_items = [i for i in all_items if i.get("title", "") in included_titles]
     venues_with_links = [i for i in all_items if i.get("website") or i.get("google_maps_link")]
 
     return {
