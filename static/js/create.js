@@ -8,6 +8,7 @@ let currentTrip = {
     title: '',
     start_date: null,
     end_date: null,
+    trip_type: 'itinerary',
     days: [],
     ideas: [],
     tips: [],
@@ -332,6 +333,25 @@ function initEventListeners() {
         });
     }
 
+    // Trip type toggle buttons in create modal
+    document.querySelectorAll('.trip-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.trip-type-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const type = btn.dataset.type;
+            document.getElementById('trip-type-value').value = type;
+            const datesGroup = document.getElementById('create-dates-group');
+            const hint = document.getElementById('trip-type-hint');
+            if (type === 'notes') {
+                datesGroup.style.display = 'none';
+                hint.textContent = 'A place to collect recommendations with no fixed dates or day structure.';
+            } else {
+                datesGroup.style.display = '';
+                hint.textContent = 'A trip with dates and a day-by-day plan.';
+            }
+        });
+    });
+
     // Date field interactions (clear num_days when dates are set)
     document.getElementById('start-date')?.addEventListener('change', (e) => {
         document.getElementById('num-days').value = '';
@@ -499,6 +519,7 @@ async function handleCreateTrip(e) {
     const startDate = document.getElementById('start-date').value || null;
     const endDate = document.getElementById('end-date').value || null;
     const numDays = document.getElementById('num-days').value || null;
+    const tripType = document.getElementById('trip-type-value')?.value || 'itinerary';
 
     if (!title) {
         LibertasModal.alert('Please enter a trip name');
@@ -511,9 +532,10 @@ async function handleCreateTrip(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 title: title,
-                start_date: startDate,
-                end_date: endDate,
-                num_days: numDays ? parseInt(numDays) : null
+                start_date: tripType === 'notes' ? null : startDate,
+                end_date: tripType === 'notes' ? null : endDate,
+                num_days: (tripType === 'notes' || !numDays) ? null : parseInt(numDays),
+                trip_type: tripType,
             })
         });
 
@@ -528,6 +550,7 @@ async function handleCreateTrip(e) {
             currentTrip = {
                 link: data.trip.link,
                 title: data.trip.title,
+                trip_type: data.trip.trip_type || 'itinerary',
                 start_date: data.trip.start_date,
                 end_date: data.trip.end_date,
                 days: [],
@@ -612,6 +635,7 @@ async function loadTrip(link) {
             currentTrip = {
                 link: trip.link,
                 title: trip.title,
+                trip_type: trip.trip_type || 'itinerary',
                 start_date: trip.start_date,
                 end_date: trip.end_date,
                 is_draft: trip.is_draft,

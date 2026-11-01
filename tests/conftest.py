@@ -25,6 +25,8 @@ _TEST_TRIP_TITLES = (
     "Archive Test Trip",
     "Cached Test",
     "Compute Test",
+    "Lima Notes",
+    "Paris Notes",
 )
 
 

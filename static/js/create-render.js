@@ -167,12 +167,24 @@ function syncDatesFromDays() {
  */
 function updateEditorUI() {
     document.getElementById('editor-title').value = currentTrip.title;
-    document.getElementById('editor-start-date').value = currentTrip.start_date || '';
-    document.getElementById('editor-end-date').value = currentTrip.end_date || '';
 
-    // Auto-detect dates from days if not already set
-    if (!currentTrip.start_date || !currentTrip.end_date) {
-        syncDatesFromDays();
+    const isNotes = currentTrip.trip_type === 'notes';
+    const datesRow = document.getElementById('editor-dates-row');
+    const addDayBtn = document.getElementById('add-day-btn');
+
+    if (isNotes) {
+        // Notes trips have no dates - hide date controls, relabel add button
+        if (datesRow) datesRow.style.display = 'none';
+        if (addDayBtn) addDayBtn.title = 'Add Section';
+    } else {
+        if (datesRow) datesRow.style.display = '';
+        if (addDayBtn) addDayBtn.title = 'Add Day';
+        document.getElementById('editor-start-date').value = currentTrip.start_date || '';
+        document.getElementById('editor-end-date').value = currentTrip.end_date || '';
+        // Auto-detect dates from days if not already set
+        if (!currentTrip.start_date || !currentTrip.end_date) {
+            syncDatesFromDays();
+        }
     }
 
     renderDays();
@@ -201,11 +213,16 @@ function renderDays() {
     const container = document.getElementById('days-container');
     container.innerHTML = '';
 
+    const isNotes = currentTrip.trip_type === 'notes';
+
     if (currentTrip.days.length === 0) {
+        const emptyMsg = isNotes
+            ? 'No sections yet. Click + to add a section (e.g. "Miraflores", "Le Marais").'
+            : 'No days yet. Add dates above or click + to add a day.';
         container.innerHTML = `
             <div class="day-items-empty">
-                <i class="fas fa-calendar-plus" style="font-size: 2rem; color: #ddd; margin-bottom: 10px;"></i>
-                <p>No days yet. Add dates above or click + to add a day.</p>
+                <i class="fas fa-${isNotes ? 'map-pin' : 'calendar-plus'}" style="font-size: 2rem; color: #ddd; margin-bottom: 10px;"></i>
+                <p>${emptyMsg}</p>
             </div>
         `;
         return;
@@ -216,23 +233,45 @@ function renderDays() {
         dayCard.className = 'day-card';
         dayCard.dataset.dayIndex = index;
 
-        const dateStr = day.date ? formatDate(day.date) : 'Date TBD';
+        let headerHtml;
+        if (isNotes) {
+            const sectionName = day.title || `Section ${day.day_number}`;
+            headerHtml = `
+                <div class="day-header notes-section-header">
+                    <input class="section-name-input" value="${escapeHtml(sectionName)}"
+                        placeholder="Section name (e.g. Miraflores)"
+                        onchange="updateSectionName(${index}, this.value)"
+                        onclick="event.stopPropagation()">
+                    <div class="day-actions">
+                        <button onclick="showAddItemModal(${index})" title="Add item">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button onclick="deleteDay(${index})" title="Delete section">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+        } else {
+            const dateStr = day.date ? formatDate(day.date) : 'Date TBD';
+            headerHtml = `
+                <div class="day-header">
+                    <div>
+                        <h4>Day ${day.day_number}</h4>
+                        <span class="day-date">${dateStr}</span>
+                    </div>
+                    <div class="day-actions">
+                        <button onclick="showAddItemModal(${index})" title="Add item">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button onclick="deleteDay(${index})" title="Delete day">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+        }
 
         dayCard.innerHTML = `
-            <div class="day-header">
-                <div>
-                    <h4>Day ${day.day_number}</h4>
-                    <span class="day-date">${dateStr}</span>
-                </div>
-                <div class="day-actions">
-                    <button onclick="showAddItemModal(${index})" title="Add item">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <button onclick="deleteDay(${index})" title="Delete day">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
+            ${headerHtml}
             <div class="day-items" data-day-index="${index}">
                 ${renderDayItems(day.items, index)}
             </div>
@@ -470,6 +509,22 @@ function renderIdeas() {
  * Add a new day
  */
 function addDay() {
+    if (currentTrip.trip_type === 'notes') {
+        // Notes mode: add a nameless section, no date logic
+        currentTrip.days.push({
+            day_number: currentTrip.days.length + 1,
+            date: null,
+            title: '',
+            items: []
+        });
+        renderDays();
+        triggerAutoSave();
+        // Focus the section name input so the user can name it immediately
+        const inputs = document.querySelectorAll('.section-name-input');
+        if (inputs.length) inputs[inputs.length - 1].focus();
+        return;
+    }
+
     const lastDay = currentTrip.days[currentTrip.days.length - 1];
     let newDate = null;
 
@@ -494,6 +549,16 @@ function addDay() {
 
     renderDays();
     triggerAutoSave();
+}
+
+/**
+ * Update a section name (notes mode only)
+ */
+function updateSectionName(index, name) {
+    if (currentTrip.days[index] !== undefined) {
+        currentTrip.days[index].title = name;
+        triggerAutoSave();
+    }
 }
 
 /**

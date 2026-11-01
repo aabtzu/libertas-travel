@@ -92,6 +92,9 @@ def create_trip_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
     start_date = data.get("start_date")
     end_date = data.get("end_date")
     num_days = data.get("num_days")
+    trip_type = data.get("trip_type", "itinerary")
+    if trip_type not in ("itinerary", "notes"):
+        trip_type = "itinerary"
 
     if num_days is not None:
         try:
@@ -102,7 +105,12 @@ def create_trip_handler(user_id: int, data: dict[str, Any]) -> dict[str, Any]:
             return {"error": "Invalid number of days"}, 400
 
     trip = db.create_draft_trip(
-        user_id=user_id, title=title, start_date=start_date, end_date=end_date, num_days=num_days
+        user_id=user_id,
+        title=title,
+        start_date=start_date,
+        end_date=end_date,
+        num_days=num_days,
+        trip_type=trip_type,
     )
 
     if trip:
