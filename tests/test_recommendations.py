@@ -252,7 +252,7 @@ class TestWriteupPersistence:
         try:
             with mock.patch(
                 "agents.trips.writeup.generate_writeup",
-                return_value="Mocked write-up text",
+                return_value=("Mocked write-up text", ["Central Restaurant"]),
             ):
                 gen_resp = client.post(f"/api/trips/{link}/writeup")
 

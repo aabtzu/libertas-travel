@@ -50,7 +50,7 @@ def generate_writeup(
     style_profile: dict | None = None,
     writing_samples: str = "",
     directive: str = "",
-) -> str:
+) -> tuple[str, list[str]]:
     """Turn structured trip ideas + tips into a readable narrative.
 
     Args:
@@ -60,7 +60,8 @@ def generate_writeup(
         writing_samples: Optional raw writing samples for style extraction
         directive: Optional filter like 'Lima only' or 'food only'
 
-    Returns the write-up text, or raises on error.
+    Returns (writeup_text, included_titles) so callers can persist which items
+    were included, enabling Quick Links to match the filtered set.
     """
     # Collect all items, skipping logistical categories that don't belong in a narrative.
     _SKIP = {"flight", "transport", "home"}
@@ -73,7 +74,7 @@ def generate_writeup(
     tips = itinerary_data.get("tips", [])
 
     if not all_items and not tips:
-        return "No recommendations to write about yet."
+        return "No recommendations to write about yet.", []
 
     # Filter by directive if provided (same LLM filter as personalized rec)
     if directive:
@@ -81,7 +82,7 @@ def generate_writeup(
 
         all_items = _filter_items_with_llm(all_items, directive)
         if not all_items:
-            return "No items matched the directive."
+            return "No items matched the directive.", []
 
     # Strip booking details before passing to the narrative LLM
     from agents.pages.recommendation_view import _batch_clean_notes
@@ -126,7 +127,8 @@ def generate_writeup(
     )
     # Strip en/em dashes that the LLM occasionally produces despite instructions.
     output = output.replace(chr(0x2014), "-").replace(chr(0x2013), "-")
-    return output
+    included_titles = [i.get("title", "") for i in all_items]
+    return output, included_titles
 
 
 def extract_style_profile(writing_samples: str) -> dict:

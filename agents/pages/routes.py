@@ -422,7 +422,7 @@ def writeup_view(rec_name: str):
                 style_profile = owner_profile.get("style_profile")
                 writing_samples = owner_profile.get("writing_samples", "")
 
-            writeup_text = generate_writeup(
+            writeup_text, included_titles = generate_writeup(
                 trip.get("title", "Recommendations"),
                 itinerary_data,
                 style_profile=style_profile,
@@ -430,6 +430,7 @@ def writeup_view(rec_name: str):
             )
             # Cache so future visits don't regenerate.
             itinerary_data["writeup"] = writeup_text
+            itinerary_data["writeup_titles"] = included_titles
             try:
                 db.update_trip_itinerary_data(owner_id, link, itinerary_data)
             except Exception as save_err:
