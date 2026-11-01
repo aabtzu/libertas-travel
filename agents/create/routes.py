@@ -62,12 +62,14 @@ def upload_file():
 def import_url():
     data = request.get_json(silent=True) or {}
     url = data.get("url", "").strip()
+    page_text = data.get("page_text", "").strip()
     if not url:
         return json_err("No URL provided")
 
     result, status = create_handler.url_import_handler(
         user_id=g.user_id,
         url=url,
+        page_text=page_text or None,
     )
     if status == 200:
         return json_ok(result)
