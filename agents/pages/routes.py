@@ -203,6 +203,7 @@ def reset_password():
 @pages_bp.get("/profile")
 @require_auth
 def profile():
+    user = db.get_user_by_id(g.user_id) or {}
     profile_data = db.get_user_profile(g.user_id) or {}
     forwarding_emails = db.get_forwarding_emails(g.user_id)
     style_profile = profile_data.get("style_profile", {})
@@ -222,6 +223,8 @@ def profile():
         user_notes=profile_data.get("user_notes", ""),
         has_profile=bool(style_profile),
         forwarding_emails=forwarding_emails or [],
+        username=user.get("username", ""),
+        account_email=user.get("email", ""),
     )
 
 
