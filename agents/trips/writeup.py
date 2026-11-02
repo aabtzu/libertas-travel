@@ -136,6 +136,12 @@ def generate_writeup(
     )
     # Strip en/em dashes that the LLM occasionally produces despite instructions.
     output = output.replace(chr(0x2014), "-").replace(chr(0x2013), "-")
+    # Google Maps URLs contain %20City,%20Country) where the trailing ) matches
+    # markdown's link-close syntax, leaving "%20City,%20Country)" as visible text.
+    # Strip those leaked fragments.
+    import re
+
+    output = re.sub(r"(\]\([^)]+\))(%20[^)\s][^)]*\))", r"\1", output)
     included_titles = [i.get("title", "") for i in all_items]
     return output, included_titles
 
