@@ -136,6 +136,7 @@ async function updateDays() {
  * Auto-detect start/end dates from days that have dates
  */
 function syncDatesFromDays() {
+    if (currentTrip.trip_type === 'notes') return;
     if (!currentTrip.days || currentTrip.days.length === 0) return;
 
     // Extract all dates from days
@@ -236,6 +237,8 @@ function renderDays() {
         let headerHtml;
         if (isNotes) {
             const sectionName = day.title || `Section ${day.day_number}`;
+            const isFirst = index === 0;
+            const isLast = index === currentTrip.days.length - 1;
             headerHtml = `
                 <div class="day-header notes-section-header">
                     <input class="section-name-input" value="${escapeHtml(sectionName)}"
@@ -243,6 +246,12 @@ function renderDays() {
                         onchange="updateSectionName(${index}, this.value)"
                         onclick="event.stopPropagation()">
                     <div class="day-actions">
+                        <button onclick="moveSectionUp(${index})" title="Move section up" ${isFirst ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                        <button onclick="moveSectionDown(${index})" title="Move section down" ${isLast ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
                         <button onclick="showAddItemModal(${index})" title="Add item">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -559,6 +568,22 @@ function updateSectionName(index, name) {
         currentTrip.days[index].title = name;
         triggerAutoSave();
     }
+}
+
+function moveSectionUp(index) {
+    if (index <= 0) return;
+    [currentTrip.days[index - 1], currentTrip.days[index]] =
+        [currentTrip.days[index], currentTrip.days[index - 1]];
+    renderDays();
+    triggerAutoSave();
+}
+
+function moveSectionDown(index) {
+    if (index >= currentTrip.days.length - 1) return;
+    [currentTrip.days[index], currentTrip.days[index + 1]] =
+        [currentTrip.days[index + 1], currentTrip.days[index]];
+    renderDays();
+    triggerAutoSave();
 }
 
 /**

@@ -65,6 +65,7 @@ async function handleChatMessage(message, abortController) {
                 history: currentTrip.chatHistory.slice(-10),
                 trip_context: {
                     destination: currentTrip.title,
+                    trip_type: currentTrip.trip_type || 'itinerary',
                     dates: currentTrip.start_date && currentTrip.end_date
                         ? `${currentTrip.start_date} to ${currentTrip.end_date}`
                         : '',
@@ -119,10 +120,19 @@ async function handleChatMessage(message, abortController) {
                 responseText = `Updated ${changes.join(', ')}.`;
             }
             if (!responseText && data.add_items && data.add_items.length > 0) {
+                const isNotes = currentTrip.trip_type === 'notes';
                 const descriptions = data.add_items.map(it => {
-                    const dayLabel = it.day ? ` (Day ${it.day})` : '';
+                    let locationLabel = '';
+                    if (it.day && it.day > 0) {
+                        if (isNotes) {
+                            const sec = currentTrip.days.find(d => d.day_number === it.day);
+                            locationLabel = sec ? ` to ${sec.title || 'Section ' + it.day}` : '';
+                        } else {
+                            locationLabel = ` to Day ${it.day}`;
+                        }
+                    }
                     const timeLabel = it.time ? ` at ${it.time}` : '';
-                    return `**${it.title}**${dayLabel}${timeLabel}`;
+                    return `**${it.title}**${locationLabel}${timeLabel}`;
                 });
                 responseText = `Added ${descriptions.join(', ')} to your trip.`;
             }
@@ -261,7 +271,9 @@ function processEditItems(edits) {
             if (!targetDay || targetDay <= 0) {
                 currentTrip.ideas.push(foundItem);
             } else {
-                const dayIndex = targetDay - 1;
+                // Resolve by day_number so reordered sections work correctly
+                let dayIndex = currentTrip.days.findIndex(d => d.day_number === targetDay);
+                if (dayIndex < 0) dayIndex = targetDay - 1; // fallback: positional
                 while (currentTrip.days.length <= dayIndex) {
                     const newDayNum = currentTrip.days.length + 1;
                     currentTrip.days.push({ day_number: newDayNum, date: null, items: [] });
@@ -333,14 +345,22 @@ function processAddItems(items) {
 
     let addedCount = 0;
     items.forEach(item => {
-        // Only block duplicates on the exact same day - same event on different
-        // days (e.g. Mariners Game on Jun 16, 17, 18) is intentional and fine.
-        const targetDayIndex = item.day ? item.day - 1 : -1;
+        // Resolve section by day_number for notes trips (sections can be reordered,
+        // so array index != day_number after a reorder). For regular trips day_number
+        // is always index+1, so both lookups are equivalent.
+        const _resolveDayIndex = (dayNum) => {
+            if (!dayNum || dayNum <= 0) return -1;
+            const byNum = currentTrip.days.findIndex(d => d.day_number === dayNum);
+            return byNum >= 0 ? byNum : dayNum - 1; // fall back to positional
+        };
+
+        // Only block duplicates on the exact same day/section.
+        const targetDayIndex = item.day ? _resolveDayIndex(item.day) : -1;
         if (targetDayIndex >= 0 && targetDayIndex < currentTrip.days.length) {
             const dayItems = currentTrip.days[targetDayIndex].items || [];
             const titleLower = (item.title || '').toLowerCase().trim();
             if (dayItems.some(ex => (ex.title || '').toLowerCase().trim() === titleLower)) {
-                addChatMessage('assistant', `**${item.title}** is already on that day.`);
+                addChatMessage('assistant', `**${item.title}** is already in that section.`);
                 return;
             }
         }
@@ -355,11 +375,11 @@ function processAddItems(items) {
             end_time: item.end_time || null
         };
 
-        // Check if day is specified
+        // Check if day/section is specified
         if (item.day !== undefined && item.day !== null && item.day > 0) {
-            const dayIndex = item.day - 1; // Convert 1-indexed to 0-indexed
+            let dayIndex = _resolveDayIndex(item.day);
 
-            // Auto-create days if they don't exist yet
+            // Auto-create days/sections if they don't exist yet
             while (currentTrip.days.length <= dayIndex) {
                 const newDayNum = currentTrip.days.length + 1;
                 currentTrip.days.push({
@@ -533,8 +553,11 @@ function addChatMessage(role, content, suggestedItems = [], saveToHistory = true
             // Add to Itinerary button (with day picker)
             const btnItinerary = document.createElement('button');
             btnItinerary.className = 'btn-add-to-itinerary';
-            btnItinerary.innerHTML = '<i class="fas fa-calendar-plus"></i> Add to Day';
-            btnItinerary.title = 'Add to a specific day';
+            const isNotes = currentTrip.trip_type === 'notes';
+            btnItinerary.innerHTML = isNotes
+                ? '<i class="fas fa-folder-plus"></i> Add to Section'
+                : '<i class="fas fa-calendar-plus"></i> Add to Day';
+            btnItinerary.title = isNotes ? 'Add to a specific section' : 'Add to a specific day';
             btnItinerary.addEventListener('click', () => {
                 showDayPickerDialog(item, btnItinerary);
             });

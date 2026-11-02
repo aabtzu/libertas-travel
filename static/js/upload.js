@@ -154,34 +154,64 @@ function handleUrlImport(url) {
         return;
     }
 
-    // Show loading status
     showStatus('loading', 'Importing from URL...');
 
-    // Send URL to server
-    fetch('/api/import-url', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: url })
-    })
-    .then(response => response.json())
-    .then(data => {
+    _doImportUrl(url, null);
+}
+
+async function _fetchPageTextClientSide(url) {
+    // Fetch the page from the browser so session cookies and auth are included.
+    // Falls back to null on CORS or network error.
+    try {
+        const resp = await fetch(url, { credentials: 'include' });
+        if (!resp.ok) return null;
+        const html = await resp.text();
+        // Strip tags via regex - avoids setting innerHTML with untrusted content
+        const text = html
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return text.slice(0, 100000);
+    } catch (e) {
+        return null;
+    }
+}
+
+async function _doImportUrl(url, pageText) {
+    try {
+        const body = { url };
+        if (pageText) body.page_text = pageText;
+
+        const response = await fetch('/api/import-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await response.json();
+
         if (data.success) {
-            // Clear the URL input
             const urlInput = document.getElementById('url-input');
             if (urlInput) urlInput.value = '';
-
-            // Ask user for trip name
             promptForTripName(data.title, data.link);
+        } else if (!pageText && data.error && data.error.includes('403')) {
+            // Server got a 403 - try fetching client-side where session cookies work
+            showStatus('loading', 'Trying browser fetch (site may require login)...');
+            const text = await _fetchPageTextClientSide(url);
+            if (text && text.length > 50) {
+                await _doImportUrl(url, text);
+            } else {
+                showStatus('error', 'Could not access the page. Try copying the text and using Upload Plan instead.');
+            }
         } else {
             showStatus('error', data.error || 'Failed to import from URL.');
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('URL import error:', error);
-        showStatus('error', 'Failed to import from URL. Make sure the server is running and the URL is accessible.');
-    });
+        showStatus('error', 'Failed to import from URL. Make sure the URL is accessible.');
+    }
 }
 
 /**
@@ -273,6 +303,32 @@ function promptForTripName(suggestedName, link) {
     overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') useSuggested();
     });
+}
+
+// ==================== Paste Text Import ====================
+
+function togglePasteText() {
+    const area = document.getElementById('paste-text-area');
+    const btn = document.getElementById('paste-text-toggle');
+    if (!area) return;
+    const hidden = area.classList.toggle('hidden');
+    btn.innerHTML = hidden
+        ? '<i class="fas fa-paste"></i> Paste text instead'
+        : '<i class="fas fa-times"></i> Cancel';
+    if (!hidden) {
+        const ta = document.getElementById('paste-content');
+        if (ta) ta.focus();
+    }
+}
+
+async function handlePasteImport() {
+    const content = (document.getElementById('paste-content')?.value || '').trim();
+    if (!content) {
+        showStatus('error', 'Please paste some text first.');
+        return;
+    }
+    showStatus('loading', 'Importing from pasted text...');
+    await _doImportUrl('', content);
 }
 
 // Initialize when DOM is ready

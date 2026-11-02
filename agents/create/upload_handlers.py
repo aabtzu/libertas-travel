@@ -371,8 +371,14 @@ def upload_file_handler(
         return {"error": str(e)}, 500
 
 
-def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -> tuple[dict, int]:
-    """Import an itinerary from a URL. Returns (result, status_code)."""
+def url_import_handler(
+    user_id: int, url: str, output_dir: Path | None = None, page_text: str | None = None
+) -> tuple[dict, int]:
+    """Import an itinerary from a URL. Returns (result, status_code).
+
+    page_text: pre-fetched page text sent by the client (used when the server
+    cannot fetch the URL directly, e.g. sites behind login or bot-protection).
+    """
     import tempfile
     from datetime import time as dt_time
 
@@ -423,7 +429,7 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
 
         dates = [datetime.strptime(f["date"], "%Y-%m-%d").date() for f in google_flights]
         itinerary = Itinerary(title=title, items=items, start_date=min(dates), end_date=max(dates))
-        slug = slugify(itinerary.title)
+        slug = slugify(itinerary.title or "imported_trip")
         output_file = f"{slug}.html"
         web_view = ItineraryWebView()
         web_view.generate(
@@ -476,6 +482,44 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
                 "stops_count": len(parsed["stops"]),
             }, 200
 
+    # If the client pre-fetched the page text (e.g. to bypass bot-protection),
+    # skip the server-side download and parse the provided text directly.
+    if page_text:
+        if len(page_text.strip()) < 50:
+            return {"error": "Page had no readable text content."}, 400
+        parser = ItineraryParser()
+        itinerary = parser.parse_text(page_text[:100_000], source_url=url)
+        slug = slugify(itinerary.title or "imported_trip")
+        output_file = f"{slug}.html"
+        web_view = ItineraryWebView()
+        web_view.generate(
+            itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+        )
+        locations = {
+            item.location.name.split(",")[0]
+            for item in itinerary.items
+            if item.location.name and not item.is_home_location
+        }
+        itinerary_data = itinerary_to_data(itinerary)
+        trip_data = {
+            "title": itinerary.title or "Imported Trip",
+            "link": output_file,
+            "dates": format_dates(itinerary),
+            "days": itinerary.duration_days
+            or len({item.day_number for item in itinerary.items if item.day_number}),
+            "locations": len(locations),
+            "activities": len(itinerary.items),
+            "map_status": "pending",
+        }
+        db.add_trip(user_id, trip_data, itinerary_data)
+        geocoding_worker.queue_geocoding(output_file, itinerary)
+        return {
+            "success": True,
+            "title": itinerary.title or "Imported Trip",
+            "link": output_file,
+            "item_count": len(itinerary.items),
+        }, 200
+
     try:
         file_data, filename, content_type = download_from_url(url)
     except Exception as e:
@@ -526,7 +570,7 @@ def url_import_handler(user_id: int, url: str, output_dir: Path | None = None) -
             except Exception as e:
                 return {"error": f"Failed to parse itinerary: {str(e)}"}, 400
 
-        slug = slugify(itinerary.title)
+        slug = slugify(itinerary.title or "imported_trip")
         output_file = f"{slug}.html"
         web_view = ItineraryWebView()
         web_view.generate(

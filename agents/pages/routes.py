@@ -427,10 +427,12 @@ def writeup_view(rec_name: str):
                 itinerary_data,
                 style_profile=style_profile,
                 writing_samples=writing_samples,
+                trip_type=trip.get("trip_type", "itinerary"),
             )
             # Cache so future visits don't regenerate.
+            # No directive here, so clear writeup_titles so Quick Links shows all items.
             itinerary_data["writeup"] = writeup_text
-            itinerary_data["writeup_titles"] = included_titles
+            itinerary_data.pop("writeup_titles", None)
             try:
                 db.update_trip_itinerary_data(owner_id, link, itinerary_data)
             except Exception as save_err:
