@@ -7,7 +7,8 @@ import json
 import os
 from pathlib import Path
 
-from agents.common.categories import CATEGORY_ICONS, TRAVEL_CATEGORIES
+from agents.common.categories import TRAVEL_CATEGORIES
+from agents.itinerary.web_view_columns import _get_category_icon
 
 from .mapper import ItineraryMapper
 from .models import Itinerary, ItineraryItem
@@ -326,17 +327,9 @@ class ItineraryWebView:
         }
         return labels.get(category.lower(), category.title())
 
-    def _get_category_icon(self, category: str) -> str:
-        """Get Font Awesome icon class for a category.
-
-        Uses the canonical mapping from agents.common.categories, do not
-        add a local copy here.
-        """
-        return CATEGORY_ICONS.get(category.lower(), "fa-calendar-day")
-
     def _get_category_html(self, category: str) -> str:
         """Get icon-based HTML for a category badge."""
-        icon = self._get_category_icon(category)
+        icon = _get_category_icon(category)
         return f'<i class="fas {icon}"></i>'
 
     # The following methods are delegated to web_view_columns.py.

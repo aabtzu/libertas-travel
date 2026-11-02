@@ -17,10 +17,9 @@ from fiat_lux_agents.auth import make_auth_blueprint
 from flask import jsonify, request
 
 import database as db
+from agents.common.mailer import APP_URL, FROM_EMAIL
 from database.connection import USE_POSTGRES, get_db
 
-_APP_URL = os.environ.get("APP_URL", "https://libertas-travel.onrender.com")
-_FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@libertas-travel.onrender.com")
 _INVITE_CODE = os.environ.get("INVITE_CODE", "")
 
 auth_bp = make_auth_blueprint(
@@ -28,8 +27,8 @@ auth_bp = make_auth_blueprint(
     use_postgres=USE_POSTGRES,
     invite_code=_INVITE_CODE,
     secret_key=os.environ.get("SECRET_KEY", ""),
-    app_url=_APP_URL,
-    from_email=_FROM_EMAIL,
+    app_url=APP_URL,
+    from_email=FROM_EMAIL,
     app_name="Libertas",
     google_client_id=os.environ.get("GOOGLE_CLIENT_ID", ""),
     google_client_secret=os.environ.get("GOOGLE_CLIENT_SECRET", ""),

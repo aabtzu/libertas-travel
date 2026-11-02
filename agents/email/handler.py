@@ -11,11 +11,10 @@ from collections import defaultdict
 from datetime import date, timedelta
 from typing import Any
 
-import anthropic
-
 import database as db
 from agents.common.categories import get_trip_date_range as _trip_date_range
 from agents.common.llm import HAIKU as _HAIKU_MODEL
+from agents.common.llm import make_llm
 from agents.common.mailer import (
     send_import_confirmation,
     send_nothing_extracted,
@@ -124,11 +123,10 @@ def _match_by_instruction(instruction: str, trips: list[dict]) -> tuple[dict | N
     if not instruction.strip():
         return None, None
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
+    if not os.environ.get("ANTHROPIC_API_KEY", ""):
         return None, None
 
-    client = anthropic.Anthropic(api_key=api_key)
+    client = make_llm(model=_HAIKU_MODEL, max_tokens=100).client
     trip_titles = [t["title"] for t in trips if t.get("title")]
     titles_list = "\n".join(f"- {t}" for t in trip_titles) if trip_titles else "(none)"
     prompt = (
@@ -223,7 +221,7 @@ def _match_by_llm(item_dates: list[str], candidates: list[dict], items: list[dic
         "Reply with the exact trip title only, or NONE if unclear."
     )
     try:
-        client = anthropic.Anthropic(api_key=api_key)
+        client = make_llm(model=_HAIKU_MODEL, max_tokens=100).client
         msg = client.messages.create(
             model=_HAIKU_MODEL,
             max_tokens=100,

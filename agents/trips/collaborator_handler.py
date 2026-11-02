@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 import database as db
+from agents.common.mailer import APP_URL as _APP_URL
 from agents.common.mailer import send_collaboration_invite
-
-_APP_URL = os.environ.get("APP_URL", "https://libertas-travel.onrender.com")
 
 
 def _accept_url(token: str) -> str:

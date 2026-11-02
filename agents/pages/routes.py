@@ -56,13 +56,14 @@ def app_config_js():
     """
     import json
 
-    from agents.common.categories import CATEGORY_COLORS, CATEGORY_ICONS
+    from agents.common.categories import CANONICAL_CATEGORIES, CATEGORY_COLORS, CATEGORY_ICONS
     from agents.create.file_parsers import SUPPORTED_EXTENSIONS
 
     js = (
         f"window.CATEGORY_ICONS = {json.dumps(CATEGORY_ICONS)};\n"
         f"window.CATEGORY_COLORS = {json.dumps(CATEGORY_COLORS)};\n"
         f"window.LIBERTAS_ALLOWED_EXTENSIONS = {json.dumps(SUPPORTED_EXTENSIONS)};\n"
+        f"window.LIBERTAS_CATEGORIES = {json.dumps(sorted(CANONICAL_CATEGORIES))};\n"
     )
     return Response(js, mimetype="application/javascript")
 
