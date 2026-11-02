@@ -50,6 +50,7 @@ def generate_writeup(
     style_profile: dict | None = None,
     writing_samples: str = "",
     directive: str = "",
+    trip_type: str = "itinerary",
 ) -> tuple[str, list[str]]:
     """Turn structured trip ideas + tips into a readable narrative.
 
@@ -63,8 +64,16 @@ def generate_writeup(
     Returns (writeup_text, included_titles) so callers can persist which items
     were included, enabling Quick Links to match the filtered set.
     """
-    # Collect all items, skipping logistical categories that don't belong in a narrative.
-    _SKIP = {"flight", "transport", "home"}
+    # Skip logistical categories that don't belong in a narrative.
+    # Notes trips: keep transport (user put it there intentionally).
+    # Directive override: "include transport" keeps transport for any trip type.
+    directive_lower = directive.lower()
+    include_transport = (
+        trip_type == "notes"
+        or "transport" in directive_lower
+        or "include transport" in directive_lower
+    )
+    _SKIP = {"flight", "home"} if include_transport else {"flight", "transport", "home"}
     all_items = [i for i in itinerary_data.get("ideas", []) if i.get("category") not in _SKIP]
     for day in itinerary_data.get("days", []):
         for item in day.get("items", []):

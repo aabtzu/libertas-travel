@@ -492,7 +492,9 @@ def url_import_handler(
         slug = slugify(itinerary.title or "imported_trip")
         output_file = f"{slug}.html"
         web_view = ItineraryWebView()
-        web_view.generate(itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True)
+        web_view.generate(
+            itinerary, out_dir / output_file, use_ai_summary=False, skip_geocoding=True
+        )
         locations = {
             item.location.name.split(",")[0]
             for item in itinerary.items

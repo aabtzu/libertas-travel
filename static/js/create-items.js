@@ -4,13 +4,17 @@
  */
 
 function showDayPickerDialog(item, triggerButton) {
-    // If no days exist, prompt to create a day first
+    const isNotes = currentTrip.trip_type === 'notes';
+
+    // If no days/sections exist, prompt to create one first
     if (currentTrip.days.length === 0) {
-        LibertasModal.alert('Please add at least one day to your trip first.');
+        LibertasModal.alert(isNotes
+            ? 'Please add at least one section to your trip first.'
+            : 'Please add at least one day to your trip first.');
         return;
     }
 
-    // Create popup menu for day selection
+    // Create popup menu for day/section selection
     const existing = document.querySelector('.day-picker-popup');
     if (existing) existing.remove();
 
@@ -19,7 +23,7 @@ function showDayPickerDialog(item, triggerButton) {
 
     const header = document.createElement('div');
     header.className = 'day-picker-header';
-    header.textContent = 'Add to which day?';
+    header.textContent = isNotes ? 'Add to which section?' : 'Add to which day?';
     popup.appendChild(header);
 
     const dayList = document.createElement('div');
@@ -28,8 +32,13 @@ function showDayPickerDialog(item, triggerButton) {
     currentTrip.days.forEach((day, index) => {
         const dayOption = document.createElement('button');
         dayOption.className = 'day-picker-option';
-        const dateStr = day.date ? formatDate(day.date) : 'Date TBD';
-        dayOption.innerHTML = `<strong>Day ${day.day_number}</strong><span>${dateStr}</span>`;
+        if (isNotes) {
+            const sectionName = day.title || `Section ${day.day_number}`;
+            dayOption.innerHTML = `<strong>${escapeHtml(sectionName)}</strong>`;
+        } else {
+            const dateStr = day.date ? formatDate(day.date) : 'Date TBD';
+            dayOption.innerHTML = `<strong>Day ${day.day_number}</strong><span>${dateStr}</span>`;
+        }
         dayOption.addEventListener('click', () => {
             addItemToDay(item, index);
             popup.remove();

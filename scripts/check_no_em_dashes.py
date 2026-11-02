@@ -38,8 +38,8 @@ ALLOWLIST_FILES = {
 # break parsing. The check ignores em dashes on these specific lines.
 REGEX_ALLOWLIST_LINES = {
     # path -> set of line numbers (1-indexed)
-    "agents/create/chat_prompt.py": {338, 342, 346, 350},
-    "static/js/create-chat.js": {441},
+    "agents/create/chat_prompt.py": {387, 391, 395, 399},
+    "static/js/create-chat.js": {461},
     "agents/trips/writeup.py": {88},
 }
 

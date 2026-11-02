@@ -14,31 +14,52 @@ def _build_venue_chat_prompt(
 ) -> str:
     """Build the system prompt for venue-focused chat."""
     destination = trip_context.get("destination", "your destination")
+    trip_type = trip_context.get("trip_type", "itinerary")
     dates = trip_context.get("dates", "")
     days = trip_context.get("days", [])
     ideas = trip_context.get("ideas", [])
     curated_venues = curated_venues or []
+    is_notes = trip_type == "notes"
 
     itinerary_context = ""
 
     if days:
-        itinerary_context += "\n\nCurrent itinerary by day:"
-        for day in days:
-            day_num = day.get("day_number", "?")
-            day_date = day.get("date", "TBD")
-            items = day.get("items", [])
-            if items:
-                itinerary_context += f"\n  Day {day_num} ({day_date}):"
-                for item in items:
-                    title = item.get("title", "Untitled")
-                    category = item.get("category", "")
-                    time = item.get("time", "")
-                    location = item.get("location", "")
-                    time_str = f" at {time}" if time else ""
-                    loc_str = f" - {location}" if location else ""
-                    itinerary_context += f"\n    - [{category}] {title}{time_str}{loc_str}"
-            else:
-                itinerary_context += f"\n  Day {day_num} ({day_date}): No activities planned yet"
+        if is_notes:
+            itinerary_context += "\n\nCurrent sections:"
+            for day in days:
+                day_num = day.get("day_number", "?")
+                section_name = day.get("title") or f"Section {day_num}"
+                items = day.get("items", [])
+                if items:
+                    itinerary_context += f"\n  {section_name} (section {day_num}):"
+                    for item in items:
+                        title = item.get("title", "Untitled")
+                        category = item.get("category", "")
+                        location = item.get("location", "")
+                        loc_str = f" - {location}" if location else ""
+                        itinerary_context += f"\n    - [{category}] {title}{loc_str}"
+                else:
+                    itinerary_context += f"\n  {section_name} (section {day_num}): No items yet"
+        else:
+            itinerary_context += "\n\nCurrent itinerary by day:"
+            for day in days:
+                day_num = day.get("day_number", "?")
+                day_date = day.get("date", "TBD")
+                items = day.get("items", [])
+                if items:
+                    itinerary_context += f"\n  Day {day_num} ({day_date}):"
+                    for item in items:
+                        title = item.get("title", "Untitled")
+                        category = item.get("category", "")
+                        time = item.get("time", "")
+                        location = item.get("location", "")
+                        time_str = f" at {time}" if time else ""
+                        loc_str = f" - {location}" if location else ""
+                        itinerary_context += f"\n    - [{category}] {title}{time_str}{loc_str}"
+                else:
+                    itinerary_context += (
+                        f"\n  Day {day_num} ({day_date}): No activities planned yet"
+                    )
 
     if ideas:
         itinerary_context += "\n\nIdeas pile (items user is considering but hasn't scheduled):"
@@ -55,15 +76,33 @@ def _build_venue_chat_prompt(
 
     day_reference = ""
     if days:
-        day_reference = "\n\nAvailable days to add items to:"
-        for day in days:
-            day_num = day.get("day_number", "?")
-            day_date = day.get("date", "TBD")
-            day_reference += f"\n  - Day {day_num} ({day_date})"
+        if is_notes:
+            day_reference = "\n\nAvailable sections to add items to (use the section number as `day` in add_to_itinerary):"
+            for day in days:
+                day_num = day.get("day_number", "?")
+                section_name = day.get("title") or f"Section {day_num}"
+                day_reference += f'\n  - section {day_num}: "{section_name}"'
+            day_reference += (
+                "\n\nWhen the user says 'add to [section name]', match the name above and use that section number as `day`."
+                "\nIf the user asks to add to a section that does not exist yet, create it by using the next available section number."
+                "\nNever put items in the ideas pile unless the user explicitly asks to."
+            )
+        else:
+            day_reference = "\n\nAvailable days to add items to:"
+            for day in days:
+                day_num = day.get("day_number", "?")
+                day_date = day.get("date", "TBD")
+                day_reference += f"\n  - Day {day_num} ({day_date})"
     else:
-        day_reference = "\n\nNo days set up yet. When adding items, use day=1 (or appropriate day number) to create days automatically. Only omit day for items that are truly unscheduled ideas."
-        if dates:
-            day_reference += f"\n\nIMPORTANT: The trip dates are {dates}. The first date is Day 1. Calculate day numbers for items with specific dates (e.g., if trip starts Apr 23 and item is on Apr 25, that's Day 3)."
+        if is_notes:
+            day_reference = (
+                "\n\nNo sections set up yet. When adding items, use day=1 to create the first section."
+                "\nIf the user specifies a section name (e.g., 'add to Sevilla'), create it with the next available section number."
+            )
+        else:
+            day_reference = "\n\nNo days set up yet. When adding items, use day=1 (or appropriate day number) to create days automatically. Only omit day for items that are truly unscheduled ideas."
+            if dates:
+                day_reference += f"\n\nIMPORTANT: The trip dates are {dates}. The first date is Day 1. Calculate day numbers for items with specific dates (e.g., if trip starts Apr 23 and item is on Apr 25, that's Day 3)."
 
     existing_titles = set()
     for day in days:
@@ -269,12 +308,22 @@ Good example (creates exactly one suggestion):
 **ABBA Museum** - Interactive museum celebrating Sweden's famous pop group, featuring costumes, holograms, and singalong booths. Book tickets in advance online.
 
 Want me to add it to a specific day?
+
+## WRITING STYLE - always apply these
+
+Write descriptions the way a knowledgeable friend would: specific facts, concrete verbs, no hype.
+
+- Use concrete verbs: "serves wood-fired pizza", "opens at 8am", "book two weeks ahead"
+- No filler phrases: not "a must-visit", "truly special", "you won't be disappointed", "hidden gem", "nestled in", "iconic", "vibrant", "charming", "world-class", "unforgettable", "authentic experience"
+- No em dashes. Use a comma, colon, or split the sentence.
+- No unsolicited practical tips. Don't add "Pro tip:", "Insider tip:", booking advice, or logistics notes unless the user asked for them.
+- One sentence per idea. If you need two, split them cleanly.
+- Don't editorialize. Facts over adjectives.
 """
 
     if style_rules:
         prompt += f"""
-
-## WRITING STYLE RULES - follow these strictly
+## PERSONAL STYLE RULES - apply on top of the baseline above
 
 {style_rules}
 
