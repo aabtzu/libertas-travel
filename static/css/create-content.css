@@ -478,6 +478,28 @@
     border-bottom: 1px solid var(--border);
 }
 
+.notes-section-header .day-actions button {
+    background: transparent;
+    color: transparent;
+    transition: color 0.15s, background 0.15s;
+}
+
+.notes-section-header:hover .day-actions button {
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.notes-section-header .day-actions button:hover {
+    color: #5a6fd6;
+    background: rgba(102, 126, 234, 0.2);
+}
+
+.notes-section-header .day-actions button:disabled {
+    color: transparent;
+    background: transparent;
+    cursor: default;
+}
+
 .section-name-input {
     flex: 1;
     font-size: 1rem;

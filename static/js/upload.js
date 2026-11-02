@@ -305,6 +305,32 @@ function promptForTripName(suggestedName, link) {
     });
 }
 
+// ==================== Paste Text Import ====================
+
+function togglePasteText() {
+    const area = document.getElementById('paste-text-area');
+    const btn = document.getElementById('paste-text-toggle');
+    if (!area) return;
+    const hidden = area.classList.toggle('hidden');
+    btn.innerHTML = hidden
+        ? '<i class="fas fa-paste"></i> Paste text instead'
+        : '<i class="fas fa-times"></i> Cancel';
+    if (!hidden) {
+        const ta = document.getElementById('paste-content');
+        if (ta) ta.focus();
+    }
+}
+
+async function handlePasteImport() {
+    const content = (document.getElementById('paste-content')?.value || '').trim();
+    if (!content) {
+        showStatus('error', 'Please paste some text first.');
+        return;
+    }
+    showStatus('loading', 'Importing from pasted text...');
+    await _doImportUrl('', content);
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     initUpload();

@@ -579,3 +579,29 @@
 .subscribe-body-intro { margin-top: 0; }
 .subscribe-instructions { margin-top: 18px; }
 .subscribe-copied-icon { color: #27ae60; }
+
+/* Paste text import */
+.paste-text-section { margin-top: 10px; }
+.paste-text-toggle {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 4px 0;
+}
+.paste-text-toggle:hover { color: #5a6fd6; text-decoration: underline; }
+.paste-text-area { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.paste-text-area.hidden { display: none; }
+.paste-text-area textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.paste-text-area textarea:focus { outline: none; border-color: #667eea; }

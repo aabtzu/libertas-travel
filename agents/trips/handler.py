@@ -84,14 +84,20 @@ def generate_writeup_for_trip(user_id: int, link: str, directive: str = "") -> t
             style_profile=style_profile,
             writing_samples=writing_samples,
             directive=directive,
+            trip_type=trip.get("trip_type", "itinerary"),
         )
     except Exception as e:
         return {"error": f"Write-up generation failed: {e}"}, 500
 
     # Persist so the /w/ public page uses this version without regenerating.
-    # writeup_titles lets Quick Links show only the items in this write-up.
+    # writeup_titles is only set when a directive was used, so Quick Links
+    # stay filtered to that subset. Without a directive, clear it so Quick
+    # Links show all items regardless of when the write-up was generated.
     itinerary_data["writeup"] = text
-    itinerary_data["writeup_titles"] = included_titles
+    if directive:
+        itinerary_data["writeup_titles"] = included_titles
+    else:
+        itinerary_data.pop("writeup_titles", None)
     try:
         db.update_trip_itinerary_data(user_id, link, itinerary_data)
     except Exception as e:
