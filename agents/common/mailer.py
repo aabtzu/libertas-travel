@@ -18,8 +18,11 @@ import os
 
 logger = logging.getLogger(__name__)
 
-_FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@libertas-travel.onrender.com")
-_APP_URL = os.environ.get("APP_URL", "https://libertas-travel.onrender.com")
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@libertas-travel.onrender.com")
+APP_URL = os.environ.get("APP_URL", "https://libertas-travel.onrender.com")
+# Keep private aliases for backward compat within this module
+_FROM_EMAIL = FROM_EMAIL
+_APP_URL = APP_URL
 
 
 def send_mail(to: str, subject: str, body_html: str) -> bool:

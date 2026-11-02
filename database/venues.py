@@ -6,6 +6,8 @@ from typing import Any
 
 from database.connection import USE_POSTGRES, get_db
 
+MAX_VENUE_SEARCH_RESULTS = 50
+
 # --- SQL constants ---
 
 _SQL_PG_ADD_VENUE = """
@@ -295,7 +297,7 @@ def get_all_venues(filters: dict[str, Any] | None = None) -> list[dict[str, Any]
             return [dict(row) for row in cursor.fetchall()]
 
 
-def search_venues(query: str, limit: int = 50) -> list[dict[str, Any]]:
+def search_venues(query: str, limit: int = MAX_VENUE_SEARCH_RESULTS) -> list[dict[str, Any]]:
     """Search venues by name, city, or description."""
     with get_db() as conn:
         cursor = conn.cursor()

@@ -20,8 +20,8 @@ let autoSaveTimer = null;
 // Category icons mapping
 // CATEGORY_ICONS and CATEGORY_COLORS are defined in main.js
 
-// Valid category values for the dropdown
-const VALID_CATEGORIES = ['activity', 'meal', 'hotel', 'attraction', 'flight', 'transport', 'train', 'bus', 'other'];
+// Valid category values - from /app-config.js (CANONICAL_CATEGORIES in Python)
+const VALID_CATEGORIES = window.LIBERTAS_CATEGORIES || ['activity', 'meal', 'hotel', 'attraction', 'flight', 'transport', 'train', 'bus', 'other'];
 
 // Category normalization map (map aliases to valid values)
 const CATEGORY_MAP = {
