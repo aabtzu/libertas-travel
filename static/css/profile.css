@@ -138,3 +138,8 @@
 .fwd-add-row input:focus { border-color: var(--accent); }
 
 .profile-section-hint { color: #666; font-size: 0.9rem; margin-bottom: 16px; }
+
+.profile-field-row { display: flex; align-items: center; gap: 16px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.profile-field-row:last-child { border-bottom: none; }
+.profile-field-row label { width: 80px; font-weight: 600; color: #555; font-size: 0.9rem; }
+.profile-field-value { color: #333; font-family: monospace; font-size: 0.95rem; }
