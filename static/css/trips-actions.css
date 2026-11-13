@@ -605,3 +605,15 @@
     box-sizing: border-box;
 }
 .paste-text-area textarea:focus { outline: none; border-color: #667eea; }
+
+/* ---- Merge-all modal (trips-merge.js) ---- */
+#merge-trip-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+#merge-trip-modal.is-open { display: flex; }
