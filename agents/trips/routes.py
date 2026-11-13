@@ -276,6 +276,24 @@ def publish_trip(link: str):
     return json_err(result.get("error", "Unknown error"), status=status)
 
 
+@trips_bp.post("/api/trips/merge")
+@require_auth
+def merge_trips():
+    """Copy or move all items from one owned trip to another's ideas pile."""
+    from agents.trips.handler import merge_trips_handler
+
+    data = request.get_json(silent=True) or {}
+    result, status = merge_trips_handler(
+        g.user_id,
+        data.get("source_link", "").strip(),
+        data.get("target_link", "").strip(),
+        data.get("action", "copy").strip(),
+    )
+    if status == 200:
+        return json_ok(result)
+    return json_err(result.get("error", "Unknown error"), status=status)
+
+
 @trips_bp.post("/api/trips/clone-ideas")
 @require_auth
 def clone_ideas():

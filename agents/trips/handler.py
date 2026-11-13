@@ -156,6 +156,59 @@ def clone_ideas_between_trips(user_id: int, source_link: str, target_link: str) 
     return {"added": added}, 200
 
 
+def merge_trips_handler(
+    user_id: int, source_link: str, target_link: str, action: str
+) -> tuple[dict, int]:
+    """Copy (or move) all items from source trip to target trip's ideas pile.
+
+    action must be 'copy' or 'move'. For 'move', the source trip is deleted
+    after all items are transferred. Only works on trips the user owns.
+    """
+    if action not in ("copy", "move"):
+        return {"error": "action must be 'copy' or 'move'"}, 400
+    if not source_link or not target_link:
+        return {"error": "source_link and target_link required"}, 400
+    if source_link == target_link:
+        return {"error": "Source and target must be different trips"}, 400
+
+    # Normalize links
+    if not source_link.endswith(".html"):
+        source_link = source_link + ".html"
+    if not target_link.endswith(".html"):
+        target_link = target_link + ".html"
+
+    source_owner = db.get_trip_owner(source_link)
+    if not source_owner or source_owner != user_id:
+        return {"error": "Source trip not found or not owned by you"}, 404
+
+    target_owner = db.get_trip_owner(target_link)
+    if not target_owner or target_owner != user_id:
+        return {"error": "Target trip not found or not owned by you"}, 404
+
+    source, source_data = _load_trip_with_itinerary(user_id, source_link)
+    if not source:
+        return {"error": "Source trip not found"}, 404
+
+    # Collect all items from every day + existing ideas
+    items: list[dict] = []
+    for day in source_data.get("days", []):
+        items.extend(day.get("items", []))
+    items.extend(source_data.get("ideas", []))
+
+    if not items:
+        return {"error": "Source trip has no items to transfer"}, 400
+
+    added = 0
+    for item in items:
+        db.add_item_to_trip(user_id, target_link, item)
+        added += 1
+
+    if action == "move":
+        db.delete_trip(user_id, source_link)
+
+    return {"added": added, "deleted_source": action == "move"}, 200
+
+
 def regenerate_trip_map(user_id: int, link: str) -> tuple[dict, int]:
     """Recompute the map for a trip, used by the "Regen Map" button."""
     trip, itinerary_data = _load_trip_with_itinerary(user_id, link)
