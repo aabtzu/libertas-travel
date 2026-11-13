@@ -6,6 +6,7 @@
     let _statusMsg = null;
     let _sourceLink = null;
     let _sourceTitle = null;
+    let _sourceDates = null;
 
     function _buildModal() {
         if (_modal) return;
@@ -18,11 +19,9 @@
 
         const heading = document.createElement('h3');
         heading.id = 'merge-trip-heading';
-        heading.textContent = 'Copy or move all items';
 
         const subheading = document.createElement('p');
         subheading.className = 'copy-trip-subheading';
-        subheading.textContent = 'Select a destination trip:';
 
         _tripList = document.createElement('div');
         _tripList.className = 'copy-trip-list';
@@ -51,12 +50,35 @@
         if (_modal) _modal.classList.remove('is-open');
         _sourceLink = null;
         _sourceTitle = null;
+        _sourceDates = null;
     }
 
-    function _openModal(sourceLink, sourceTitle) {
+    function _hasDates(datesStr) {
+        return datesStr && datesStr.trim() && datesStr.trim().toLowerCase() !== 'date unknown';
+    }
+
+    function _monthYear(datesStr) {
+        if (!_hasDates(datesStr)) return null;
+        const m = datesStr.match(/([A-Za-z]+)\s+\d+.*?(\d{4})/);
+        return m ? m[1] + ' ' + m[2] : null;
+    }
+
+    function _openModal(sourceLink, sourceTitle, sourceDates) {
         _buildModal();
         _sourceLink = sourceLink;
         _sourceTitle = sourceTitle;
+        _sourceDates = sourceDates || '';
+
+        const heading = document.getElementById('merge-trip-heading');
+        if (heading) heading.textContent = sourceTitle || 'this trip';
+
+        const subheading = _modal.querySelector('.copy-trip-subheading');
+        if (subheading) {
+            subheading.textContent = _hasDates(_sourceDates)
+                ? `${_sourceDates} - where do you want to send it?`
+                : 'No dates set - items will go to destination ideas pile. Select a destination:';
+        }
+
         _statusMsg.textContent = '';
         _statusMsg.className = 'copy-trip-status';
         _tripList.textContent = 'Loading trips...';
@@ -80,27 +102,44 @@
                 return;
             }
 
+            const sourceHasDates = _hasDates(_sourceDates);
+
             trips.forEach(t => {
-                const row = document.createElement('div');
-                row.className = 'copy-trip-row';
+                const wrapper = document.createElement('div');
+                wrapper.className = 'copy-trip-wrapper merge-trip-row-wrapper';
 
                 const label = document.createElement('span');
-                label.className = 'copy-trip-label';
+                label.className = 'merge-trip-label';
                 label.textContent = t.title || t.link;
 
-                const copyBtn = _actionButton('Copy all', 'copy');
-                const moveBtn = _actionButton('Move all', 'move');
+                const btnGroup = document.createElement('div');
+                btnGroup.className = 'merge-trip-btns';
 
-                copyBtn.addEventListener('click', () => _doMerge('copy', t.link, t.title, copyBtn, moveBtn));
-                moveBtn.addEventListener('click', () => _doMerge('move', t.link, t.title, copyBtn, moveBtn));
+                if (sourceHasDates) {
+                    const itinBtn = _btn('Add to itinerary', 'primary');
+                    const ideasBtn = _btn('Add to ideas', 'secondary');
 
-                row.appendChild(label);
-                row.appendChild(copyBtn);
-                row.appendChild(moveBtn);
+                    itinBtn.title = 'Append days with their dates to the destination trip';
+                    ideasBtn.title = 'Strip dates and add all items to the destination ideas pile';
 
-                const wrapper = document.createElement('div');
-                wrapper.className = 'copy-trip-wrapper';
-                wrapper.appendChild(row);
+                    itinBtn.addEventListener('click', () => _pickAction('with_dates', t, [itinBtn, ideasBtn]));
+                    ideasBtn.addEventListener('click', () => _pickAction('ideas', t, [itinBtn, ideasBtn]));
+
+                    btnGroup.appendChild(itinBtn);
+                    btnGroup.appendChild(ideasBtn);
+                } else {
+                    const copyBtn = _btn('Copy to ideas', 'primary');
+                    const moveBtn = _btn('Move to ideas', 'secondary');
+
+                    copyBtn.addEventListener('click', () => _doMerge('copy', 'ideas', t, [copyBtn, moveBtn]));
+                    moveBtn.addEventListener('click', () => _doMerge('move', 'ideas', t, [copyBtn, moveBtn]));
+
+                    btnGroup.appendChild(copyBtn);
+                    btnGroup.appendChild(moveBtn);
+                }
+
+                wrapper.appendChild(label);
+                wrapper.appendChild(btnGroup);
                 _tripList.appendChild(wrapper);
             });
         } catch {
@@ -108,10 +147,10 @@
         }
     }
 
-    function _actionButton(label, variant) {
+    function _btn(label, variant) {
         const btn = document.createElement('button');
         btn.textContent = label;
-        btn.className = `copy-trip-btn copy-trip-btn--${variant}`;
+        btn.className = `copy-trip-btn merge-trip-btn--${variant}`;
         return btn;
     }
 
@@ -120,17 +159,77 @@
         _statusMsg.className = `copy-trip-status${state ? ' is-' + state : ''}`;
     }
 
-    async function _doMerge(action, targetLink, targetTitle, copyBtn, moveBtn) {
-        const confirmMsg = action === 'move'
-            ? `Move all items from "${_sourceTitle}" to "${targetTitle}"?\n\nThe source trip will be deleted after the move.`
-            : `Copy all items from "${_sourceTitle}" to "${targetTitle}"?`;
+    // For dated trips: show a copy/move choice before executing
+    async function _pickAction(mode, targetTrip, btns) {
+        const targetTitle = targetTrip.title || targetTrip.link;
+        const targetDates = targetTrip.dates || '';
 
-        const confirmed = await LibertasModal.confirm(confirmMsg, { danger: action === 'move' });
-        if (!confirmed) return;
+        let description = '';
+        if (mode === 'with_dates') {
+            description = `Add the days from "${_sourceTitle}" (${_sourceDates}) to "${targetTitle}".`;
+            const srcMY = _monthYear(_sourceDates);
+            const dstMY = _monthYear(targetDates);
+            if (srcMY && dstMY && srcMY !== dstMY) {
+                description += `\n\nNote: source is ${srcMY}, destination is ${dstMY}. Days will be appended without renumbering.`;
+            }
+        } else {
+            description = `Add all items from "${_sourceTitle}" to "${targetTitle}" ideas pile (without dates).`;
+        }
 
-        copyBtn.disabled = true;
-        moveBtn.disabled = true;
-        _setStatus(action === 'copy' ? 'Copying...' : 'Moving...', 'pending');
+        // Custom two-action confirm: Copy (keep source) or Move (delete source)
+        const action = await _actionDialog(description);
+        if (!action) return; // cancelled
+
+        _doMerge(action, mode, targetTrip, btns);
+    }
+
+    // Returns 'copy', 'move', or null (cancel)
+    function _actionDialog(description) {
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'merge-action-overlay';
+
+            const box = document.createElement('div');
+            box.className = 'merge-action-box';
+
+            const desc = document.createElement('p');
+            desc.className = 'merge-action-desc';
+            desc.textContent = description;
+
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = 'Copy (keep original)';
+            copyBtn.className = 'copy-trip-btn copy-trip-btn--copy';
+
+            const moveBtn = document.createElement('button');
+            moveBtn.textContent = 'Move (delete original)';
+            moveBtn.className = 'copy-trip-btn copy-trip-btn--move';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.className = 'copy-trip-cancel';
+
+            function close(result) {
+                document.body.removeChild(overlay);
+                resolve(result);
+            }
+
+            copyBtn.addEventListener('click', () => close('copy'));
+            moveBtn.addEventListener('click', () => close('move'));
+            cancelBtn.addEventListener('click', () => close(null));
+            overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
+
+            box.appendChild(desc);
+            box.appendChild(copyBtn);
+            box.appendChild(moveBtn);
+            box.appendChild(cancelBtn);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+        });
+    }
+
+    async function _doMerge(action, mode, targetTrip, btns) {
+        if (btns) btns.forEach(b => { b.disabled = true; });
+        _setStatus('Working...', 'pending');
 
         try {
             const res = await fetch('/api/trips/merge', {
@@ -138,24 +237,25 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     source_link: _sourceLink,
-                    target_link: targetLink,
+                    target_link: targetTrip.link,
                     action,
+                    mode,
                 }),
             });
             const data = await res.json();
-            if (!res.ok || !data.success) {
+            if (!res.ok || data.error) {
                 _setStatus(data.error || 'Failed.', 'error');
-                copyBtn.disabled = false;
-                moveBtn.disabled = false;
+                if (btns) btns.forEach(b => { b.disabled = false; });
                 return;
             }
 
             const count = data.added || 0;
+            const what = mode === 'with_dates' ? `${count} item(s) merged` : `${count} item(s) added to ideas`;
+
             if (action === 'move' && data.deleted_source) {
-                _setStatus(`Moved ${count} item(s). Source trip deleted.`, 'ok');
+                _setStatus(`Done - ${what}. Original trip deleted.`, 'ok');
                 setTimeout(() => {
                     _closeModal();
-                    // Remove card from the trips list if present
                     const sourceStem = (_sourceLink || '').replace(/\.html$/, '');
                     const card = document.querySelector(`.trip-card-wrapper[data-link="${sourceStem}"]`)
                         || document.querySelector(`.trip-card-wrapper[data-link="${_sourceLink}"]`);
@@ -163,18 +263,16 @@
                     else window.location.reload();
                 }, 1500);
             } else {
-                _setStatus(`${count} item(s) copied to ideas pile.`, 'ok');
+                _setStatus(`Done - ${what}.`, 'ok');
                 setTimeout(_closeModal, 1500);
             }
         } catch {
             _setStatus('Connection error.', 'error');
-            copyBtn.disabled = false;
-            moveBtn.disabled = false;
+            if (btns) btns.forEach(b => { b.disabled = false; });
         }
     }
 
-    // Exposed so trip card buttons and trips-actions.js can open it
-    window.mergeAllItems = function (sourceLink, sourceTitle) {
-        _openModal(sourceLink, sourceTitle);
+    window.mergeAllItems = function (sourceLink, sourceTitle, sourceDates) {
+        _openModal(sourceLink, sourceTitle, sourceDates);
     };
 }());

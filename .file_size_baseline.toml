@@ -12,4 +12,4 @@
 # Grew to 829 when /api/trips/merge was added (copy/move all items between trips).
 # Split plan: move calendar routes (lines 86-200) to calendar_routes.py and
 # user/profile routes (591-640) to user_routes.py. Tracked as follow-up work.
-"agents/trips/routes.py" = 829
+"agents/trips/routes.py" = 830

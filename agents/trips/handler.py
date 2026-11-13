@@ -157,15 +157,20 @@ def clone_ideas_between_trips(user_id: int, source_link: str, target_link: str) 
 
 
 def merge_trips_handler(
-    user_id: int, source_link: str, target_link: str, action: str
+    user_id: int, source_link: str, target_link: str, action: str, mode: str = "ideas"
 ) -> tuple[dict, int]:
-    """Copy (or move) all items from source trip to target trip's ideas pile.
+    """Copy (or move) all items from source trip to target trip.
 
-    action must be 'copy' or 'move'. For 'move', the source trip is deleted
-    after all items are transferred. Only works on trips the user owns.
+    action: 'copy' or 'move'. For 'move', source trip is deleted after transfer.
+    mode:
+      'ideas'      - flatten all source items into target's ideas pile (default)
+      'with_dates' - append source days to target's days list, preserving structure
+    Only works on trips the user owns.
     """
     if action not in ("copy", "move"):
         return {"error": "action must be 'copy' or 'move'"}, 400
+    if mode not in ("ideas", "with_dates"):
+        return {"error": "mode must be 'ideas' or 'with_dates'"}, 400
     if not source_link or not target_link:
         return {"error": "source_link and target_link required"}, 400
     if source_link == target_link:
@@ -189,19 +194,40 @@ def merge_trips_handler(
     if not source:
         return {"error": "Source trip not found"}, 404
 
-    # Collect all items from every day + existing ideas
-    items: list[dict] = []
-    for day in source_data.get("days", []):
-        items.extend(day.get("items", []))
-    items.extend(source_data.get("ideas", []))
+    if mode == "with_dates":
+        # Append source's day entries (with their items) to target's days list.
+        source_days = source_data.get("days", [])
+        if not source_days:
+            return {"error": "Source trip has no day entries to merge"}, 400
 
-    if not items:
-        return {"error": "Source trip has no items to transfer"}, 400
+        target, target_data = _load_trip_with_itinerary(user_id, target_link)
+        if not target:
+            return {"error": "Target trip not found"}, 404
 
-    added = 0
-    for item in items:
-        db.add_item_to_trip(user_id, target_link, item)
-        added += 1
+        target_days = target_data.get("days", [])
+        target_days.extend(source_days)
+        target_data["days"] = target_days
+
+        # Also carry over any ideas from source
+        source_ideas = source_data.get("ideas", [])
+        if source_ideas:
+            target_data.setdefault("ideas", []).extend(source_ideas)
+
+        db.update_trip_itinerary_data(user_id, target_link, target_data)
+        added = sum(len(d.get("items", [])) for d in source_days) + len(source_ideas)
+    else:
+        # Flatten all source items (day items + ideas) into target's ideas pile
+        items: list[dict] = []
+        for day in source_data.get("days", []):
+            items.extend(day.get("items", []))
+        items.extend(source_data.get("ideas", []))
+
+        if not items:
+            return {"error": "Source trip has no items to transfer"}, 400
+
+        for item in items:
+            db.add_item_to_trip(user_id, target_link, item)
+        added = len(items)
 
     if action == "move":
         db.delete_trip(user_id, source_link)
