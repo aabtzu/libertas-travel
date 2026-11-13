@@ -484,3 +484,96 @@ class TestCacheHeaders:
             "static assets are versioned with ?v= query strings and should "
             "stay cacheable; blanket no-store would refetch them every page load"
         )
+
+
+# ---------------------------------------------------------------------------
+# Merge trips
+# ---------------------------------------------------------------------------
+
+
+class TestMergeTrips:
+    def _create(self, client, title):
+        resp = client.post("/api/trips/create", json={"title": title, "days": 1})
+        data = resp.get_json()
+        link = data.get("trip", {}).get("link") or data.get("link", "")
+        return link
+
+    def test_merge_copy_transfers_items(self, client):
+        import database as db
+
+        src = self._create(client, "Merge Source Trip")
+        dst = self._create(client, "Merge Dest Trip")
+        try:
+            # Add an item to source
+            idata = db.get_trip_by_link(1, src).get("itinerary_data") or {}
+            idata["days"] = [{"items": [{"title": "Eiffel Tower", "category": "attraction"}]}]
+            db.update_trip_itinerary_data(1, src, idata)
+
+            resp = client.post(
+                "/api/trips/merge",
+                json={"source_link": src, "target_link": dst, "action": "copy"},
+            )
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data["added"] >= 1
+            assert data["deleted_source"] is False
+
+            # Source trip still exists
+            assert db.get_trip_by_link(1, src) is not None
+        finally:
+            db.delete_trip(1, src)
+            db.delete_trip(1, dst)
+
+    def test_merge_move_deletes_source(self, client):
+        import database as db
+
+        src = self._create(client, "Move Source Trip")
+        dst = self._create(client, "Move Dest Trip")
+        try:
+            idata = db.get_trip_by_link(1, src).get("itinerary_data") or {}
+            idata["days"] = [{"items": [{"title": "Louvre", "category": "attraction"}]}]
+            db.update_trip_itinerary_data(1, src, idata)
+
+            resp = client.post(
+                "/api/trips/merge",
+                json={"source_link": src, "target_link": dst, "action": "move"},
+            )
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data["deleted_source"] is True
+
+            # Source trip is gone
+            assert db.get_trip_by_link(1, src) is None
+            src = None  # don't try to delete in finally
+        finally:
+            if src:
+                db.delete_trip(1, src)
+            db.delete_trip(1, dst)
+
+    def test_merge_same_trip_rejected(self, client):
+        import database as db
+
+        src = self._create(client, "Same Trip Merge Test")
+        try:
+            resp = client.post(
+                "/api/trips/merge",
+                json={"source_link": src, "target_link": src, "action": "copy"},
+            )
+            assert resp.status_code == 400
+        finally:
+            db.delete_trip(1, src)
+
+    def test_merge_invalid_action_rejected(self, client):
+        import database as db
+
+        src = self._create(client, "Invalid Action Source")
+        dst = self._create(client, "Invalid Action Dest")
+        try:
+            resp = client.post(
+                "/api/trips/merge",
+                json={"source_link": src, "target_link": dst, "action": "teleport"},
+            )
+            assert resp.status_code == 400
+        finally:
+            db.delete_trip(1, src)
+            db.delete_trip(1, dst)

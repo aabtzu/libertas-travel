@@ -54,6 +54,16 @@ function initTripActions() {
             e.stopPropagation();
             copyTrip(copyBtn.dataset.link);
         }
+
+        // Merge (copy/move all items to another trip)
+        const mergeBtn = e.target.closest('.merge-btn');
+        if (mergeBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.mergeAllItems === 'function') {
+                window.mergeAllItems(mergeBtn.dataset.link, mergeBtn.dataset.title || 'this trip');
+            }
+        }
     });
 }
 
