@@ -126,6 +126,9 @@ def _resolve_owner_id(user_id: int, link: str) -> int | None:
     If user_id is an accepted collaborator, returns the actual owner's id.
     Returns None if the user has no edit access.
     """
+    # DB stores links with .html suffix; callers may omit it (e.g. URL path params)
+    if not link.endswith(".html"):
+        link = link + ".html"
     owner_id = db.get_trip_owner(link)
     if owner_id is None:
         return None
@@ -300,6 +303,8 @@ def export_trip_handler(user_id: int, link: str) -> dict[str, Any]:
 
 def add_item_to_trip_handler(user_id: int, link: str, data: dict[str, Any]) -> dict[str, Any]:
     """Add an item to trip's ideas pile."""
+    if not link.endswith(".html"):
+        link = link + ".html"
     owner_id = _resolve_owner_id(user_id, link)
     if owner_id is None:
         return {"error": "Trip not found or no edit access"}, 404

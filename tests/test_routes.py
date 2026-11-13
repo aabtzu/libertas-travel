@@ -132,6 +132,22 @@ class TestAddIdeaToTrip:
         finally:
             db.delete_trip(1, link)
 
+    def test_add_idea_stem_link(self, client):
+        """Route called with link stem (no .html) should work - this is what copy/move JS sends."""
+        import database as db
+
+        link = self._create_trip(client)
+        stem = link.replace(".html", "")
+        try:
+            resp = client.post(
+                f"/api/trips/{stem}/items",
+                json={"item": {"title": "Stem Link Item", "category": "meal"}},
+            )
+            assert resp.status_code == 200
+            assert resp.get_json().get("success") is True
+        finally:
+            db.delete_trip(1, link)
+
     def test_add_idea_no_item(self, client):
         import database as db
 
