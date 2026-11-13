@@ -288,6 +288,7 @@ def merge_trips():
         data.get("source_link", "").strip(),
         data.get("target_link", "").strip(),
         data.get("action", "copy").strip(),
+        data.get("mode", "ideas").strip(),
     )
     if status == 200:
         return json_ok(result)

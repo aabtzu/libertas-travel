@@ -61,7 +61,11 @@ function initTripActions() {
             e.preventDefault();
             e.stopPropagation();
             if (typeof window.mergeAllItems === 'function') {
-                window.mergeAllItems(mergeBtn.dataset.link, mergeBtn.dataset.title || 'this trip');
+                window.mergeAllItems(
+                    mergeBtn.dataset.link,
+                    mergeBtn.dataset.title || 'this trip',
+                    mergeBtn.dataset.dates || ''
+                );
             }
         }
     });

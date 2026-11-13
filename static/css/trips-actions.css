@@ -617,3 +617,129 @@
     justify-content: center;
 }
 #merge-trip-modal.is-open { display: flex; }
+
+/* ---- Merge modal row layout ---- */
+.merge-trip-row-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+.merge-trip-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    color: #333;
+}
+.merge-trip-btns {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.merge-trip-btn--primary {
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.merge-trip-btn--primary:hover { background: #5a6fd6; }
+.merge-trip-btn--secondary {
+    background: #f0f0f0;
+    color: #555;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.merge-trip-btn--secondary:hover { background: #e0e0e0; }
+
+/* ---- Copy/Move action dialog (second step for dated trips) ---- */
+.merge-action-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2100;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.merge-action-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    width: 380px;
+    max-width: 92vw;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.merge-action-desc {
+    font-size: 0.95rem;
+    color: #333;
+    margin: 0 0 6px;
+    white-space: pre-line;
+    line-height: 1.5;
+}
+.copy-trip-btn--copy {
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+}
+.copy-trip-btn--copy:hover { background: #5a6fd6; }
+.copy-trip-btn--move {
+    background: #fff;
+    color: #c0392b;
+    border: 1px solid #c0392b;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+}
+.copy-trip-btn--move:hover { background: #fdf0ef; }
+
+/* ---- Shared modal card styles (mirror of create-panels.css for trips page) ---- */
+.copy-trip-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    width: 440px;
+    max-width: 92vw;
+    max-height: 82vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+.copy-trip-card h3 { margin: 0 0 4px; font-size: 16px; color: #1a1a2e; }
+.copy-trip-subheading { margin: 0 0 16px; font-size: 13px; color: #666; }
+.copy-trip-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.copy-trip-status { font-size: 13px; min-height: 18px; }
+.copy-trip-status.is-ok { color: #27ae60; }
+.copy-trip-status.is-error { color: #c0392b; }
+.copy-trip-status.is-pending { color: #666; }
+.copy-trip-cancel {
+    margin-top: 12px;
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+}
