@@ -150,6 +150,12 @@ def how_it_works():
     )
 
 
+@pages_bp.get("/privacy")
+@pages_bp.get("/privacy.html")
+def privacy():
+    return render_template("privacy.html", nav=get_nav_html(""))
+
+
 @pages_bp.get("/about")
 @pages_bp.get("/about.html")
 def about():
