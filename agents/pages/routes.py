@@ -156,6 +156,11 @@ def privacy():
     return render_template("privacy.html", nav=get_nav_html(""))
 
 
+@pages_bp.get("/google7586afce9aa8c9b1.html")
+def google_site_verification():
+    return "google-site-verification: google7586afce9aa8c9b1.html", 200, {"Content-Type": "text/html"}
+
+
 @pages_bp.get("/about")
 @pages_bp.get("/about.html")
 def about():
