@@ -69,6 +69,7 @@ async function handleChatMessage(message, abortController) {
                     dates: currentTrip.start_date && currentTrip.end_date
                         ? `${currentTrip.start_date} to ${currentTrip.end_date}`
                         : '',
+                    today: new Date().toISOString().split('T')[0],
                     days: currentTrip.days,
                     ideas: currentTrip.ideas
                 }

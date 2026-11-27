@@ -16,10 +16,39 @@ def _build_venue_chat_prompt(
     destination = trip_context.get("destination", "your destination")
     trip_type = trip_context.get("trip_type", "itinerary")
     dates = trip_context.get("dates", "")
+    today = trip_context.get("today", "")
     days = trip_context.get("days", [])
     ideas = trip_context.get("ideas", [])
     curated_venues = curated_venues or []
     is_notes = trip_type == "notes"
+
+    # Derive a richer destination from item locations when the title is generic
+    if days:
+        seen = []
+        for day in days:
+            for item in day.get("items", []):
+                loc = (item.get("location") or "").strip()
+                if loc and loc not in seen:
+                    seen.append(loc)
+        if seen:
+            destination = ", ".join(seen[:5])
+
+    # Compute which day of the trip today falls on
+    current_day_note = ""
+    if today and dates:
+        try:
+            from datetime import date
+
+            start_str = dates.split(" to ")[0].strip()
+            trip_start = date.fromisoformat(start_str)
+            today_date = date.fromisoformat(today)
+            delta = (today_date - trip_start).days
+            if 0 <= delta < len(days):
+                current_day_note = f"\n- Today is {today} (Day {delta + 1} of the trip)"
+            elif delta >= 0:
+                current_day_note = f"\n- Today is {today} (trip started {delta + 1} days ago)"
+        except Exception:
+            pass
 
     itinerary_context = ""
 
@@ -157,7 +186,7 @@ You have the ability to:
 
 Current trip context:
 - Destination: {destination}
-- Dates: {dates if dates else "Not set yet"}
+- Dates: {dates if dates else "Not set yet"}{current_day_note}
 {itinerary_context}
 {day_reference}
 {curated_context}

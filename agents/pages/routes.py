@@ -158,7 +158,11 @@ def privacy():
 
 @pages_bp.get("/google7586afce9aa8c9b1.html")
 def google_site_verification():
-    return "google-site-verification: google7586afce9aa8c9b1.html", 200, {"Content-Type": "text/html"}
+    return (
+        "google-site-verification: google7586afce9aa8c9b1.html",
+        200,
+        {"Content-Type": "text/html"},
+    )
 
 
 @pages_bp.get("/about")
